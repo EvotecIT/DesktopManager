@@ -9,7 +9,7 @@
     DotNetFrameworkVersion = '4.7.2'
     FunctionsToExport      = @('Get-DesktopMonitors', 'Get-DesktopWallpaper', 'Set-DesktopWallpaper')
     GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
-    ModuleVersion          = '0.0.2'
+    ModuleVersion          = '0.0.3'
     PowerShellVersion      = '5.1'
     PrivateData            = @{
         PSData = @{
