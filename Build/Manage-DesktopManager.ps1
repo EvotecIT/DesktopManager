@@ -16,7 +16,7 @@ $Configuration = @{
             # ID used to uniquely identify this module
             GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
             # Version number of this module.
-            ModuleVersion          = '0.0.1'
+            ModuleVersion          = '0.0.X'
             # Author of this module
             Author                 = 'Przemyslaw Klys'
             # Company or vendor of this module
@@ -24,13 +24,13 @@ $Configuration = @{
             # Copyright statement for this module
             Copyright              = "(c) 2011 - $((Get-Date).Year) Przemyslaw Klys @ Evotec. All rights reserved."
             # Description of the functionality provided by this module
-            Description            = 'Desktop Manager'
+            Description            = 'Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.'
             # Tags applied to this module. These help with module discovery in online galleries.
-            Tags                   = @('windows', 'image', 'charts', 'qrcodes', 'barcodes')
+            Tags                   = @('windows', 'image', 'wallpaper','monitor')
             # A URL to the main website for this project.
             ProjectUri             = 'https://github.com/EvotecIT/DesktopManager'
 
-            #IconUri              = 'https://evotec.xyz/wp-content/uploads/2022/07/ImagePlayground.png'
+            IconUri              = 'https://evotec.xyz/wp-content/uploads/2022/12/DesktopManager.png'
 
             LicenseUri             = 'https://github.com/EvotecIT/DesktopManager/blob/master/License'
 
