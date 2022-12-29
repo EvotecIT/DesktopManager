@@ -14,17 +14,20 @@ schema: 2.0.0
 
 ### Index (Default)
 ```
-Set-DesktopWallpaper [-Index <Int32>] [-WallpaperPath <String>] [<CommonParameters>]
+Set-DesktopWallpaper [-Index <Int32>] [-WallpaperPath <String>] [-Position <DesktopWallpaperPosition>]
+ [<CommonParameters>]
 ```
 
 ### MonitorID
 ```
-Set-DesktopWallpaper [-MonitorID <String>] [-WallpaperPath <String>] [<CommonParameters>]
+Set-DesktopWallpaper [-MonitorID <String>] [-WallpaperPath <String>] [-Position <DesktopWallpaperPosition>]
+ [<CommonParameters>]
 ```
 
 ### All
 ```
-Set-DesktopWallpaper [-All] [-WallpaperPath <String>] [<CommonParameters>]
+Set-DesktopWallpaper [-All] [-WallpaperPath <String>] [-Position <DesktopWallpaperPosition>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -78,6 +81,22 @@ Accept wildcard characters: False
 Type: String
 Parameter Sets: MonitorID
 Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Position
+{{ Fill Position Description }}
+
+```yaml
+Type: DesktopWallpaperPosition
+Parameter Sets: (All)
+Aliases:
+Accepted values: Center, Tile, Stretch, Fit, Fill, Span
 
 Required: False
 Position: Named
