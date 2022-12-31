@@ -77,7 +77,7 @@ $FoundErrors = @(
         }
     }
     #Dot source the files
-    Foreach ($Import in @($Private + $Public + $Classes + $Enums)) {
+    Foreach ($Import in @($Classes + $Enums + $Private + $Public)) {
         Try {
             . $Import.Fullname
         } Catch {
