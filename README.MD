@@ -23,7 +23,7 @@
 ## Installation
 
 ```powershell
-Install-Module ImagePlayGround -Force -Verbose
+Install-Module DesktopManager -Force -Verbose
 ```
 
 ## Usage
