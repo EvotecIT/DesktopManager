@@ -1,4 +1,5 @@
-﻿using Monitors = DesktopManager.Monitors;
+﻿using DesktopManager;
+using Monitors = DesktopManager.Monitors;
 
 namespace DesktopManagerSample {
     class Program {
@@ -12,7 +13,6 @@ namespace DesktopManagerSample {
                 Console.WriteLine("Monitor: " + item);
             }
 
-
             Console.WriteLine("Available monitor connections: " + monitor.GetAvailableMonitorPaths());
             Console.WriteLine("Connected monitors: " + monitor.GetConnectedMonitors().Count);
 
@@ -20,7 +20,7 @@ namespace DesktopManagerSample {
 
             Console.WriteLine("1======");
 
-            List<Monitors.DISPLAY_DEVICE> devices = monitor.GetDisplayDevices();
+            var devices = monitor.GetDisplayDevices();
 
             foreach (var device in devices) {
                 Console.WriteLine($"Device Name: {device.DeviceName}");
