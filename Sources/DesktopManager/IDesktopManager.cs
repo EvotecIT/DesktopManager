@@ -1,7 +1,7 @@
 ﻿namespace DesktopManager;
 
 [ComImport, Guid("B92B56A9-8B55-4E14-9A89-0199BBB6F93B"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IDesktopManager {
+public interface IDesktopManager {
     void SetWallpaper([MarshalAs(UnmanagedType.LPWStr)] string monitorId, [MarshalAs(UnmanagedType.LPWStr)] string wallpaper);
     [return: MarshalAs(UnmanagedType.LPWStr)]
 
