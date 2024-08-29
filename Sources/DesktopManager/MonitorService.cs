@@ -86,7 +86,7 @@ namespace DesktopManager {
             _desktopManager.SetPosition(position);
         }
 
-        public MonitorBounds GetMonitorBounds(string monitorId) {
+        public RECT GetMonitorBounds(string monitorId) {
             return _desktopManager.GetMonitorBounds(monitorId);
         }
 

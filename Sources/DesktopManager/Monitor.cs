@@ -7,7 +7,7 @@ public class Monitor {
     public string Wallpaper { get; internal set; }
     public DesktopWallpaperPosition WallpaperPosition { get; internal set; }
     public MonitorPosition Position { get; internal set; }
-    public MonitorBounds Rect { get; internal set; }
+    public RECT Rect { get; internal set; }
 
     public Monitor(MonitorService monitorService) {
         _monitorService = monitorService;
@@ -29,7 +29,7 @@ public class Monitor {
         _monitorService.SetMonitorPosition(DeviceId, left, top, right, bottom);
     }
 
-    public MonitorBounds GetBounds() {
+    public RECT GetBounds() {
         return _monitorService.GetMonitorBounds(DeviceId);
     }
 }

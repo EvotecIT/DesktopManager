@@ -54,7 +54,7 @@ namespace DesktopManager {
             _monitorService.SetWallpaperPosition(position);
         }
 
-        public MonitorBounds GetMonitorRECT(string monitorId) {
+        public RECT GetMonitorRECT(string monitorId) {
             return _monitorService.GetMonitorBounds(monitorId);
         }
 

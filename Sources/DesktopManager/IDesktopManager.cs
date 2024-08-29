@@ -25,7 +25,7 @@ public interface IDesktopManager {
     [return: MarshalAs(UnmanagedType.Struct)]
 
 
-    MonitorBounds GetMonitorBounds([MarshalAs(UnmanagedType.LPWStr)] string monitorId);
+    RECT GetMonitorBounds([MarshalAs(UnmanagedType.LPWStr)] string monitorId);
 
     void SetBackgroundColor([MarshalAs(UnmanagedType.U4)] uint color);
     [return: MarshalAs(UnmanagedType.U4)]
