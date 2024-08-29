@@ -1,7 +1,7 @@
 ﻿namespace DesktopManager;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct Rect {
+public struct MonitorBounds {
     public int Left;
     public int Top;
     public int Right;
@@ -11,8 +11,8 @@ public struct Rect {
 [StructLayout(LayoutKind.Sequential)]
 public struct MonitorInfo {
     public int cbSize;
-    public Rect rcMonitor;
-    public Rect rcWork;
+    public MonitorBounds rcMonitor;
+    public MonitorBounds rcWork;
     public uint dwFlags;
 }
 

@@ -14,12 +14,12 @@ namespace DesktopManager {
             return _monitorService.GetMonitors();
         }
 
-        public uint GetAvailableMonitorPaths() {
-            return _monitorService.GetAvailableMonitorPaths();
-        }
+        //public uint GetAvailableMonitorPaths() {
+        //    return _monitorService.GetAvailableMonitorPaths();
+        //}
 
-        public List<string> GetConnectedMonitors() {
-            return _monitorService.GetConnectedMonitors();
+        public List<Monitor> GetMonitorsConnected() {
+            return _monitorService.GetMonitorsConnected();
         }
 
         public void SetWallpaper(string monitorId, string wallpaperPath) {
@@ -54,8 +54,8 @@ namespace DesktopManager {
             _monitorService.SetWallpaperPosition(position);
         }
 
-        public Rect GetMonitorRECT(string monitorId) {
-            return _monitorService.GetMonitorRECT(monitorId);
+        public MonitorBounds GetMonitorRECT(string monitorId) {
+            return _monitorService.GetMonitorBounds(monitorId);
         }
 
         public MonitorPosition GetMonitorPosition(string deviceId) {
@@ -70,12 +70,12 @@ namespace DesktopManager {
             _monitorService.SetMonitorPosition(deviceId, left, top, right, bottom);
         }
 
-        public void ListDisplayDevices() {
-            _monitorService.ListDisplayDevices();
+        public List<DISPLAY_DEVICE> DisplayDevicesAll() {
+            return _monitorService.DisplayDevicesAll();
         }
 
-        public List<DISPLAY_DEVICE> GetDisplayDevices() {
-            return _monitorService.GetDisplayDevices();
+        public List<DISPLAY_DEVICE> DisplayDevicesConnected() {
+            return _monitorService.DisplayDevicesConnected();
         }
     }
 }

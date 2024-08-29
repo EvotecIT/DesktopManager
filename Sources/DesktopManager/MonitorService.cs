@@ -14,35 +14,43 @@ namespace DesktopManager {
             List<Monitor> list = new List<Monitor>();
 
             for (uint i = 0; i < _desktopManager.GetMonitorDevicePathCount(); i++) {
-                var monitor = new Monitor();
+                var monitor = new Monitor(this);
                 monitor.Index = (int)i;
                 monitor.DeviceId = _desktopManager.GetMonitorDevicePathAt(i);
                 if (monitor.DeviceId != "") {
                     monitor.WallpaperPosition = _desktopManager.GetPosition();
                     monitor.Wallpaper = _desktopManager.GetWallpaper(monitor.DeviceId);
-                    monitor.Rect = _desktopManager.GetMonitorRECT(monitor.DeviceId);
+                    monitor.Rect = _desktopManager.GetMonitorBounds(monitor.DeviceId);
                 }
                 list.Add(monitor);
             }
 
             return list;
         }
+        public List<Monitor> GetMonitorsConnected() {
+            List<Monitor> list = new List<Monitor>();
+            foreach (var monitor in GetMonitors()) {
+                if (monitor.DeviceId != "") {
+                    list.Add(monitor);
+                }
+            }
+            return list;
+            //var count = GetAvailableMonitorPaths();
+            //List<string> devices = new List<string>();
+            //for (uint i = 0; i < count; i++) {
+            //    var monitorId = _desktopManager.GetMonitorDevicePathAt(i);
+            //    if (monitorId != "") {
+            //        devices.Add(monitorId);
+            //    }
+            //}
+            //return devices;
+        }
 
-        public uint GetAvailableMonitorPaths() {
+        private uint GetAvailableMonitorPaths() {
             return _desktopManager.GetMonitorDevicePathCount();
         }
 
-        public List<string> GetConnectedMonitors() {
-            var count = GetAvailableMonitorPaths();
-            List<string> devices = new List<string>();
-            for (uint i = 0; i < count; i++) {
-                var monitorId = _desktopManager.GetMonitorDevicePathAt(i);
-                if (monitorId != "") {
-                    devices.Add(monitorId);
-                }
-            }
-            return devices;
-        }
+
 
         public void SetWallpaper(string monitorId, string wallpaperPath) {
             _desktopManager.SetWallpaper(monitorId, wallpaperPath);
@@ -54,9 +62,9 @@ namespace DesktopManager {
         }
 
         public void SetWallpaper(string wallpaperPath) {
-            var devicePathCount = GetConnectedMonitors();
-            foreach (var devicePath in devicePathCount) {
-                _desktopManager.SetWallpaper(devicePath, wallpaperPath);
+            var devicePathCount = GetMonitorsConnected();
+            foreach (var device in devicePathCount) {
+                _desktopManager.SetWallpaper(device.DeviceId, wallpaperPath);
             }
         }
 
@@ -80,8 +88,8 @@ namespace DesktopManager {
             _desktopManager.SetPosition(position);
         }
 
-        public Rect GetMonitorRECT(string monitorId) {
-            return _desktopManager.GetMonitorRECT(monitorId);
+        public MonitorBounds GetMonitorBounds(string monitorId) {
+            return _desktopManager.GetMonitorBounds(monitorId);
         }
 
         public MonitorPosition GetMonitorPosition(string deviceId) {
@@ -98,8 +106,57 @@ namespace DesktopManager {
             SetMonitorPosition(deviceId, position.Left, position.Top, position.Right, position.Bottom);
         }
 
+        public void SetMonitorPosition1(string deviceId, int left, int top, int right, int bottom) {
+            var monitorRect = GetMonitorBounds(deviceId);
+            Console.WriteLine($"Attempting to set position for Monitor ID: {deviceId}");
+
+            DISPLAY_DEVICE d = new DISPLAY_DEVICE();
+            d.cb = Marshal.SizeOf(d);
+            int deviceNum = 0;
+
+            while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
+                Console.WriteLine($"Checking DISPLAY_DEVICE: {d.DeviceName}, StateFlags: {d.StateFlags}");
+                if ((d.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
+                    DEVMODE devMode = new DEVMODE();
+                    devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+                    if (MonitorNativeMethods.EnumDisplaySettings(d.DeviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
+                        Console.WriteLine($"Current Position: X={devMode.dmPositionX}, Y={devMode.dmPositionY}, Width={devMode.dmPelsWidth}, Height={devMode.dmPelsHeight}");
+
+                        if (monitorRect.Left == devMode.dmPositionX &&
+                            monitorRect.Top == devMode.dmPositionY &&
+                            (monitorRect.Right - monitorRect.Left) == devMode.dmPelsWidth &&
+                            (monitorRect.Bottom - monitorRect.Top) == devMode.dmPelsHeight) {
+
+                            devMode.dmFields = 0x00000020; // DM_POSITION
+                            devMode.dmPositionX = 0; // Move to top-left corner
+                            devMode.dmPositionY = 0;
+
+                            Console.WriteLine($"Setting new position: X={devMode.dmPositionX}, Y={devMode.dmPositionY}");
+
+                            var result = MonitorNativeMethods.ChangeDisplaySettingsEx(d.DeviceName, ref devMode, IntPtr.Zero, 0, IntPtr.Zero);
+                            if (result != 0) {
+                                Console.WriteLine($"ChangeDisplaySettingsEx failed with error code: {result}");
+                                throw new InvalidOperationException("Unable to set monitor position");
+                            }
+
+                            Console.WriteLine($"Monitor position set successfully for {d.DeviceName}");
+
+                            // Force refresh of display settings
+                            MonitorNativeMethods.ChangeDisplaySettingsEx(null, IntPtr.Zero, IntPtr.Zero, ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY, IntPtr.Zero);
+                            return;
+                        }
+                    }
+                }
+
+                deviceNum++;
+            }
+
+            throw new ArgumentException("Corresponding display device not found for the given Monitor ID.");
+        }
+
+
         public void SetMonitorPosition(string deviceId, int left, int top, int right, int bottom) {
-            var monitorRect = GetMonitorRECT(deviceId);
+            var monitorRect = GetMonitorBounds(deviceId);
 
             // Enumerate through all display devices and match by RECT
             DISPLAY_DEVICE d = new DISPLAY_DEVICE();
@@ -140,23 +197,28 @@ namespace DesktopManager {
             throw new ArgumentException("Corresponding display device not found for the given Monitor ID.");
         }
 
-        public void ListDisplayDevices() {
+
+        public List<DISPLAY_DEVICE> DisplayDevicesAll() {
+            List<DISPLAY_DEVICE> devices = new List<DISPLAY_DEVICE>();
+
             DISPLAY_DEVICE d = new DISPLAY_DEVICE();
             d.cb = Marshal.SizeOf(d);
 
             int deviceNum = 0;
             while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
-                Console.WriteLine($"Device Name: {d.DeviceName}");
-                Console.WriteLine($"Device String: {d.DeviceString}");
-                Console.WriteLine($"State Flags: {d.StateFlags}");
-                Console.WriteLine($"Device ID: {d.DeviceID}");
-                Console.WriteLine($"Device Key: {d.DeviceKey}");
-                Console.WriteLine();
+                //Console.WriteLine($"Device Name: {d.DeviceName}");
+                //Console.WriteLine($"Device String: {d.DeviceString}");
+                //Console.WriteLine($"State Flags: {d.StateFlags}");
+                //Console.WriteLine($"Device ID: {d.DeviceID}");
+                //Console.WriteLine($"Device Key: {d.DeviceKey}");
+                //Console.WriteLine();
                 deviceNum++;
+                devices.Add(d);
             }
+            return devices;
         }
 
-        public List<DISPLAY_DEVICE> GetDisplayDevices() {
+        public List<DISPLAY_DEVICE> DisplayDevicesConnected() {
             List<DISPLAY_DEVICE> devices = new List<DISPLAY_DEVICE>();
             DISPLAY_DEVICE device = new DISPLAY_DEVICE();
             device.cb = Marshal.SizeOf(device);
