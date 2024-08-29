@@ -42,14 +42,22 @@ namespace DesktopManagerSample {
             }
 
             // Set monitor position
-            monitor.SetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}", -3840, 0, 0, 2160);
+            monitor.SetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}", -3840, 500, 0, 2160);
 
             // Get and display monitor position
             var testPosition = monitor.GetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}");
             Helpers.ShowPropertiesTable("Position after move", testPosition);
 
+            Thread.Sleep(5000);
 
-            //monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\IMG_4644.jpeg");
+            // Set monitor position
+            monitor.SetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}", -3840, 0, 0, 2160);
+
+            // Get and display monitor position
+            testPosition = monitor.GetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}");
+            Helpers.ShowPropertiesTable("Position after move", testPosition);
+
+            monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
 
         }
     }

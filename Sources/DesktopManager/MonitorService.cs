@@ -46,11 +46,9 @@ namespace DesktopManager {
             //return devices;
         }
 
-        private uint GetAvailableMonitorPaths() {
-            return _desktopManager.GetMonitorDevicePathCount();
-        }
-
-
+        //private uint GetAvailableMonitorPaths() {
+        //    return _desktopManager.GetMonitorDevicePathCount();
+        //}
 
         public void SetWallpaper(string monitorId, string wallpaperPath) {
             _desktopManager.SetWallpaper(monitorId, wallpaperPath);
@@ -105,55 +103,6 @@ namespace DesktopManager {
         public void SetMonitorPosition(string deviceId, MonitorPosition position) {
             SetMonitorPosition(deviceId, position.Left, position.Top, position.Right, position.Bottom);
         }
-
-        public void SetMonitorPosition1(string deviceId, int left, int top, int right, int bottom) {
-            var monitorRect = GetMonitorBounds(deviceId);
-            Console.WriteLine($"Attempting to set position for Monitor ID: {deviceId}");
-
-            DISPLAY_DEVICE d = new DISPLAY_DEVICE();
-            d.cb = Marshal.SizeOf(d);
-            int deviceNum = 0;
-
-            while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
-                Console.WriteLine($"Checking DISPLAY_DEVICE: {d.DeviceName}, StateFlags: {d.StateFlags}");
-                if ((d.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
-                    DEVMODE devMode = new DEVMODE();
-                    devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
-                    if (MonitorNativeMethods.EnumDisplaySettings(d.DeviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
-                        Console.WriteLine($"Current Position: X={devMode.dmPositionX}, Y={devMode.dmPositionY}, Width={devMode.dmPelsWidth}, Height={devMode.dmPelsHeight}");
-
-                        if (monitorRect.Left == devMode.dmPositionX &&
-                            monitorRect.Top == devMode.dmPositionY &&
-                            (monitorRect.Right - monitorRect.Left) == devMode.dmPelsWidth &&
-                            (monitorRect.Bottom - monitorRect.Top) == devMode.dmPelsHeight) {
-
-                            devMode.dmFields = 0x00000020; // DM_POSITION
-                            devMode.dmPositionX = 0; // Move to top-left corner
-                            devMode.dmPositionY = 0;
-
-                            Console.WriteLine($"Setting new position: X={devMode.dmPositionX}, Y={devMode.dmPositionY}");
-
-                            var result = MonitorNativeMethods.ChangeDisplaySettingsEx(d.DeviceName, ref devMode, IntPtr.Zero, 0, IntPtr.Zero);
-                            if (result != 0) {
-                                Console.WriteLine($"ChangeDisplaySettingsEx failed with error code: {result}");
-                                throw new InvalidOperationException("Unable to set monitor position");
-                            }
-
-                            Console.WriteLine($"Monitor position set successfully for {d.DeviceName}");
-
-                            // Force refresh of display settings
-                            MonitorNativeMethods.ChangeDisplaySettingsEx(null, IntPtr.Zero, IntPtr.Zero, ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY, IntPtr.Zero);
-                            return;
-                        }
-                    }
-                }
-
-                deviceNum++;
-            }
-
-            throw new ArgumentException("Corresponding display device not found for the given Monitor ID.");
-        }
-
 
         public void SetMonitorPosition(string deviceId, int left, int top, int right, int bottom) {
             var monitorRect = GetMonitorBounds(deviceId);
