@@ -34,5 +34,6 @@
 	<ItemGroup>
 		<Using Include="System.Runtime.InteropServices" />
 		<Using Include="System" />
+		<Using Include="System.Collections.Generic" />
 	</ItemGroup>
 </Project>
