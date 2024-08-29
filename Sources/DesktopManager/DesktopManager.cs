@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 
 namespace DesktopManager {
     public class Monitors {
-        private const uint DISP_CHANGE_SUCCESSFUL = 0;
         private const int ENUM_CURRENT_SETTINGS = -1;
         private IDesktopManager _desktop;
 
@@ -153,14 +152,14 @@ namespace DesktopManager {
             var monitorRect = GetMonitorRECT(deviceId);
 
             // Enumerate through all display devices and match by RECT
-            MonitorNativeMethods.DISPLAY_DEVICE d = new MonitorNativeMethods.DISPLAY_DEVICE();
+            DISPLAY_DEVICE d = new DISPLAY_DEVICE();
             d.cb = Marshal.SizeOf(d);
             int deviceNum = 0;
 
             while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
-                if ((d.StateFlags & MonitorNativeMethods.DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
-                    MonitorNativeMethods.DEVMODE devMode = new MonitorNativeMethods.DEVMODE();
-                    devMode.dmSize = (short)Marshal.SizeOf(typeof(MonitorNativeMethods.DEVMODE));
+                if ((d.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
+                    DEVMODE devMode = new DEVMODE();
+                    devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
                     if (MonitorNativeMethods.EnumDisplaySettings(d.DeviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
                         // Compare RECTs
                         if (monitorRect.Left == devMode.dmPositionX &&
@@ -173,8 +172,8 @@ namespace DesktopManager {
                             devMode.dmPositionY = top;
 
                             // Apply the changes directly
-                            int result = MonitorNativeMethods.ChangeDisplaySettingsEx(d.DeviceName, ref devMode, IntPtr.Zero, 0, IntPtr.Zero);
-                            if (result != DISP_CHANGE_SUCCESSFUL) {
+                            DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(d.DeviceName, ref devMode, IntPtr.Zero, 0, IntPtr.Zero);
+                            if (result != DisplayChangeConfirmation.Successful) {
                                 Console.WriteLine($"ChangeDisplaySettingsEx failed with error code: {result}");
                                 throw new InvalidOperationException("Unable to set monitor position");
                             }
@@ -192,7 +191,7 @@ namespace DesktopManager {
         }
 
         public void ListDisplayDevices() {
-            MonitorNativeMethods.DISPLAY_DEVICE d = new MonitorNativeMethods.DISPLAY_DEVICE();
+            DISPLAY_DEVICE d = new DISPLAY_DEVICE();
             d.cb = Marshal.SizeOf(d);
 
             int deviceNum = 0;
@@ -207,14 +206,14 @@ namespace DesktopManager {
             }
         }
 
-        public List<MonitorNativeMethods.DISPLAY_DEVICE> GetDisplayDevices() {
-            List<MonitorNativeMethods.DISPLAY_DEVICE> devices = new List<MonitorNativeMethods.DISPLAY_DEVICE>();
-            MonitorNativeMethods.DISPLAY_DEVICE device = new MonitorNativeMethods.DISPLAY_DEVICE();
+        public List<DISPLAY_DEVICE> GetDisplayDevices() {
+            List<DISPLAY_DEVICE> devices = new List<DISPLAY_DEVICE>();
+            DISPLAY_DEVICE device = new DISPLAY_DEVICE();
             device.cb = Marshal.SizeOf(device);
 
             uint deviceNum = 0;
             while (MonitorNativeMethods.EnumDisplayDevices(null, deviceNum, ref device, 0)) {
-                if ((device.StateFlags & MonitorNativeMethods.DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
+                if ((device.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
                     devices.Add(device);
                 }
                 deviceNum++;

@@ -30,4 +30,9 @@
 		<SignAssembly>False</SignAssembly>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<Using Include="System.Runtime.InteropServices" />
+		<Using Include="System" />
+	</ItemGroup>
 </Project>

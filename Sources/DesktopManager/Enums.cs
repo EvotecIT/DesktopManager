@@ -1,22 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-namespace DesktopManager;
-
-[StructLayout(LayoutKind.Sequential)]
-public struct Rect {
-    public int Left;
-    public int Top;
-    public int Right;
-    public int Bottom;
-}
-
-[StructLayout(LayoutKind.Sequential)]
-public struct MonitorInfo {
-    public int cbSize;
-    public Rect rcMonitor;
-    public Rect rcWork;
-    public uint dwFlags;
-}
+﻿namespace DesktopManager;
 
 /// <summary>
 /// This enumeration is used to set and get slide show options.
@@ -58,4 +40,18 @@ public enum DesktopWallpaperPosition {
     Fit = 3,
     Fill = 4,
     Span = 5,
+}
+
+/// <summary>
+/// This enumeration is used during display change confirmation process.
+/// </summary>
+public enum DisplayChangeConfirmation : int {
+    Successful = 0,
+    Restart = 1,
+    Failed = -1,
+    BadMode = -2,
+    NotUpdated = -3,
+    BadFlags = -4,
+    BadParam = -5,
+    BadDualView = -6
 }
