@@ -29,7 +29,7 @@ Install-Module DesktopManager -Force -Verbose
 ## Usage
 
 ```powershell
-Get-DesktopMonitors | Format-Table
+Get-DesktopMonitor | Format-Table
 
 Get-DesktopWallpaper -Index 0
 

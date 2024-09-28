@@ -1,32 +1,57 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <AssemblyName>DesktopManager</AssemblyName>
-    <AssemblyTitle>DesktopManager</AssemblyTitle>
+    <PropertyGroup>
+        <AssemblyName>DesktopManager</AssemblyName>
+        <AssemblyTitle>DesktopManager</AssemblyTitle>
 
-    <TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net6.0;net7.0</TargetFrameworks>
-    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-    <Company>Evotec</Company>
-    <Authors>Przemyslaw Klys</Authors>
-
-    <PackageId>DesktopManager</PackageId>
-    <PackageTags>net60;net472;net48;net50;netstandard;netstandard2.0,netstandard2.1;net70</PackageTags>
-    <PackageProjectUrl>https://github.com/evotecit/DesktopManager</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/evotecit/DesktopManager/blob/master/License.md</PackageLicenseUrl>
-    <DelaySign>False</DelaySign>
-    <IsPublishable>True</IsPublishable>
-    <Copyright>(c) 2011 - 2022 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
-    <PackageIcon>DesktopManager.png</PackageIcon>
-    <RepositoryUrl>https://github.com/evotecit/DesktopManager</RepositoryUrl>
-    <DebugType>portable</DebugType>
-    <!--
+        <TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net6.0;net7.0;net8.0</TargetFrameworks>
+        <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+        <Company>Evotec</Company>
+        <Authors>Przemyslaw Klys</Authors>
+        <DelaySign>False</DelaySign>
+        <IsPublishable>True</IsPublishable>
+        <Copyright>(c) 2011 - 2024 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
+        <RepositoryUrl>https://github.com/evotecit/DesktopManager</RepositoryUrl>
+        <DebugType>portable</DebugType>
+        <!--
       Turns off reference assembly generation
       See: https://docs.microsoft.com/en-us/dotnet/standard/assembly/reference-assemblies
     -->
-    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
-    <PackageReadmeFile>README.MD</PackageReadmeFile>
-    <RepositoryType>git</RepositoryType>
-    <SignAssembly>False</SignAssembly>
-    <GenerateDocumentationFile>True</GenerateDocumentationFile>
-  </PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+        <RepositoryType>git</RepositoryType>
+        <SignAssembly>False</SignAssembly>
+        <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <PackageId>DesktopManager</PackageId>
+        <PackageIcon>DesktopManager.png</PackageIcon>
+        <PackageTags>
+            desktop;net472;net48;netstandard;netstandard2.0,netstandard2.1;net70;net80
+        </PackageTags>
+        <PackageProjectUrl>https://github.com/EvotecIT/DesktopManager</PackageProjectUrl>
+        <PackageReadmeFile>README.MD</PackageReadmeFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="..\..\Assets\Icons\DesktopManager.ico" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\Assets\Icons\DesktopManager.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\..\README.MD">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="System.Runtime.InteropServices" />
+        <Using Include="System" />
+        <Using Include="System.Collections.Generic" />
+    </ItemGroup>
 </Project>
