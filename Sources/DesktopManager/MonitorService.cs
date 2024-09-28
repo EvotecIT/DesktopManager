@@ -11,14 +11,26 @@ public class MonitorService {
     public List<Monitor> GetMonitors() {
         List<Monitor> list = new List<Monitor>();
 
-        for (uint i = 0; i < _desktopManager.GetMonitorDevicePathCount(); i++) {
-            var monitor = new Monitor(this);
-            monitor.Index = (int)i;
-            monitor.DeviceId = _desktopManager.GetMonitorDevicePathAt(i);
+        var count = _desktopManager.GetMonitorDevicePathCount();
+        for (uint i = 0; i < count; i++) {
+            var monitor = new Monitor(this) {
+                Index = (int)i,
+                DeviceId = _desktopManager.GetMonitorDevicePathAt(i)
+            };
             if (monitor.DeviceId != "") {
                 monitor.WallpaperPosition = _desktopManager.GetPosition();
                 monitor.Wallpaper = _desktopManager.GetWallpaper(monitor.DeviceId);
                 monitor.Rect = _desktopManager.GetMonitorBounds(monitor.DeviceId);
+
+                // Populate new properties
+                DISPLAY_DEVICE d = new DISPLAY_DEVICE();
+                d.cb = Marshal.SizeOf(d);
+                if (MonitorNativeMethods.EnumDisplayDevices(null, i, ref d, 0)) {
+                    monitor.DeviceName = d.DeviceName;
+                    monitor.DeviceString = d.DeviceString;
+                    monitor.StateFlags = d.StateFlags;
+                    monitor.DeviceKey = d.DeviceKey;
+                }
             }
             list.Add(monitor);
         }
@@ -33,20 +45,7 @@ public class MonitorService {
             }
         }
         return list;
-        //var count = GetAvailableMonitorPaths();
-        //List<string> devices = new List<string>();
-        //for (uint i = 0; i < count; i++) {
-        //    var monitorId = _desktopManager.GetMonitorDevicePathAt(i);
-        //    if (monitorId != "") {
-        //        devices.Add(monitorId);
-        //    }
-        //}
-        //return devices;
     }
-
-    //private uint GetAvailableMonitorPaths() {
-    //    return _desktopManager.GetMonitorDevicePathCount();
-    //}
 
     public void SetWallpaper(string monitorId, string wallpaperPath) {
         _desktopManager.SetWallpaper(monitorId, wallpaperPath);
@@ -153,12 +152,12 @@ public class MonitorService {
 
         int deviceNum = 0;
         while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
-            //Console.WriteLine($"Device Name: {d.DeviceName}");
-            //Console.WriteLine($"Device String: {d.DeviceString}");
-            //Console.WriteLine($"State Flags: {d.StateFlags}");
-            //Console.WriteLine($"Device ID: {d.DeviceID}");
-            //Console.WriteLine($"Device Key: {d.DeviceKey}");
-            //Console.WriteLine();
+            Console.WriteLine($"Device Name: {d.DeviceName}");
+            Console.WriteLine($"Device String: {d.DeviceString}");
+            Console.WriteLine($"State Flags: {d.StateFlags}");
+            Console.WriteLine($"Device ID: {d.DeviceID}");
+            Console.WriteLine($"Device Key: {d.DeviceKey}");
+            Console.WriteLine();
             deviceNum++;
             devices.Add(d);
         }

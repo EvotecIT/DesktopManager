@@ -8,13 +8,33 @@ public class Monitors {
         _monitorService = new MonitorService(desktopManager);
     }
 
-    public List<Monitor> GetMonitors() {
-        return _monitorService.GetMonitors();
-    }
-
-    //public uint GetAvailableMonitorPaths() {
-    //    return _monitorService.GetAvailableMonitorPaths();
+    //public List<Monitor> GetMonitors() {
+    //    return _monitorService.GetMonitors();
     //}
+
+    public List<Monitor> GetMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        var monitorsReturn = new List<Monitor>();
+        var monitors = _monitorService.GetMonitors();
+        foreach (var monitor in monitors) {
+            if (connectedOnly != null && connectedOnly.Value && !monitor.IsConnected) {
+                continue;
+            }
+            if (primaryOnly != null && primaryOnly.Value && !monitor.IsPrimary) {
+                continue;
+            }
+            if (index != null && monitor.Index != index) {
+                continue;
+            }
+            if (!string.IsNullOrEmpty(deviceId) && monitor.DeviceId != deviceId) {
+                continue;
+            }
+            if (!string.IsNullOrEmpty(deviceName) && monitor.DeviceName != deviceName) {
+                continue;
+            }
+            monitorsReturn.Add(monitor);
+        }
+        return monitorsReturn;
+    }
 
     public List<Monitor> GetMonitorsConnected() {
         return _monitorService.GetMonitorsConnected();
@@ -52,7 +72,7 @@ public class Monitors {
         _monitorService.SetWallpaperPosition(position);
     }
 
-    public RECT GetMonitorRECT(string monitorId) {
+    internal RECT GetMonitorRECT(string monitorId) {
         return _monitorService.GetMonitorBounds(monitorId);
     }
 
