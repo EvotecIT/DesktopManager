@@ -14,8 +14,6 @@ namespace DesktopManagerSample {
             Helpers.AddLine("Number of monitors (connected):", getMonitorsConnected.Count);
             Helpers.ShowPropertiesTable("GetMonitorsConnected() ", getMonitorsConnected);
 
-
-
             var listDisplayDevices = monitor.DisplayDevicesAll();
             Console.WriteLine("Count DisplayDevicesAll: " + listDisplayDevices.Count);
             Helpers.ShowPropertiesTable("DisplayDevicesAll()", listDisplayDevices);
@@ -28,17 +26,22 @@ namespace DesktopManagerSample {
 
             Console.WriteLine("======");
 
+            Console.WriteLine("Wallpaper Position (only first monitor): " + monitor.GetWallpaperPosition());
+
             foreach (var device in monitor.GetMonitorsConnected()) {
                 Console.WriteLine("3==================================");
                 Console.WriteLine("MonitorID: " + device.DeviceId);
-                Console.WriteLine("Wallpaper Path: " + monitor.GetWallpaper(device.DeviceId));
-                Console.WriteLine("Wallpaper Position (only first monitor): " + monitor.GetWallpaperPosition());
-                var rect = monitor.GetMonitorRECT(device.DeviceId);
-                Console.WriteLine("RECT: {0} {1} {2} {3}", rect.Left, rect.Top, rect.Right, rect.Bottom);
+                Console.WriteLine("Wallpaper Path: " + device.GetWallpaper());
+                var rect1 = device.GetMonitorPosition();
+                Console.WriteLine("RECT1: {0} {1} {2} {3}", rect1.Left, rect1.Top, rect1.Right, rect1.Bottom);
 
                 // Get and display monitor position
                 var position = monitor.GetMonitorPosition(device.DeviceId);
                 Helpers.ShowPropertiesTable($"Position before move {device.DeviceId}", position);
+
+                var position1 = device.GetMonitorPosition();
+                Helpers.ShowPropertiesTable($"Position before move {device.DeviceId}", position1);
+
             }
 
             // Set monitor position
