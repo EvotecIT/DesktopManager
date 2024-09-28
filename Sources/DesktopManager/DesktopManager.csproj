@@ -4,7 +4,7 @@
 		<AssemblyName>DesktopManager</AssemblyName>
 		<AssemblyTitle>DesktopManager</AssemblyTitle>
 
-		<TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net6.0;net7.0</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net6.0;net7.0;net8.0</TargetFrameworks>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<Company>Evotec</Company>
 		<Authors>Przemyslaw Klys</Authors>
@@ -15,7 +15,7 @@
 		<PackageLicenseUrl>https://github.com/evotecit/DesktopManager/blob/master/License.md</PackageLicenseUrl>
 		<DelaySign>False</DelaySign>
 		<IsPublishable>True</IsPublishable>
-		<Copyright>(c) 2011 - 2022 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
+		<Copyright>(c) 2011 - 2024 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
 		<PackageIcon>DesktopManager.png</PackageIcon>
 		<RepositoryUrl>https://github.com/evotecit/DesktopManager</RepositoryUrl>
 		<DebugType>portable</DebugType>
