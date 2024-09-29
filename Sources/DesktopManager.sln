@@ -5,11 +5,11 @@ VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DesktopManager", "DesktopManager\DesktopManager.csproj", "{9F0E29CE-05A9-4630-A697-5CAE98F58604}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DesktopManagerSample", "DesktopManagerSample\DesktopManagerSample.csproj", "{947035FD-3737-4563-8423-6986CA33107D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DesktopManager.Example", "DesktopManager.Example\DesktopManager.Example.csproj", "{947035FD-3737-4563-8423-6986CA33107D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopManager.PowerShell", "DesktopManager.PowerShell\DesktopManager.PowerShell.csproj", "{6CB4E9D1-F924-4CFE-AF68-B32BA0D1132F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DesktopManager.PowerShell", "DesktopManager.PowerShell\DesktopManager.PowerShell.csproj", "{6CB4E9D1-F924-4CFE-AF68-B32BA0D1132F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopManager.Tests", "DesktopManager.Tests\DesktopManager.Tests.csproj", "{9A33D810-3E64-4E42-9BA3-0862551A59B1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DesktopManager.Tests", "DesktopManager.Tests\DesktopManager.Tests.csproj", "{9A33D810-3E64-4E42-9BA3-0862551A59B1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
