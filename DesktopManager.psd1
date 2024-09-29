@@ -1,7 +1,7 @@
 ﻿@{
     AliasesToExport        = @('Get-DesktopMonitors')
     Author                 = 'Przemyslaw Klys'
-    CmdletsToExport        = @('Get-DesktopWallpaper', 'Get-DesktopMonitor', 'Set-DesktopPosition', 'Set-DesktopWallpaper')
+    CmdletsToExport        = @('Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Set-DesktopPosition', 'Set-DesktopWallpaper')
     CompanyName            = 'Evotec'
     CompatiblePSEditions   = @('Desktop', 'Core')
     Copyright              = '(c) 2011 - 2024 Przemyslaw Klys @ Evotec. All rights reserved.'
