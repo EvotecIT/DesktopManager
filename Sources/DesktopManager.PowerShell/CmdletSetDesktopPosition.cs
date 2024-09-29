@@ -14,7 +14,7 @@
 ///  <code>Set-DesktopPosition -PrimaryOnly -Left 0 -Top 0 -Right 1920 -Bottom 1080</code>
 /// </example>
 /// </summary>
-[Cmdlet(VerbsCommon.Set, "DesktopPosition", DefaultParameterSetName = "Index")]
+[Cmdlet(VerbsCommon.Set, "DesktopPosition", DefaultParameterSetName = "Index", SupportsShouldProcess = true)]
 public sealed class CmdletSetDesktopPosition : PSCmdlet {
     /// <summary>
     /// <para type="description">The index of the monitor to set the position for.</para>
@@ -80,7 +80,14 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
         // Get monitors
         var getMonitors = monitors.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
-            monitor.SetMonitorPosition(Left, Top, Right, Bottom);
+            var currentPosition = monitor.GetMonitorPosition();
+            var newPosition = new MonitorPosition(Left, Top, Right, Bottom);
+            if (ShouldProcess(
+                    $"Monitor {monitor.DeviceName}",
+                    $"Change position from Left: {currentPosition.Left}, Top: {currentPosition.Top}, Right: {currentPosition.Right}, Bottom: {currentPosition.Bottom} " +
+                    $"to Left: {newPosition.Left}, Top: {newPosition.Top}, Right: {newPosition.Right}, Bottom: {newPosition.Bottom}")) {
+                monitor.SetMonitorPosition(newPosition);
+            }
         }
     }
 }
