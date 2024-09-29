@@ -13,6 +13,9 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
     public string DeviceName;
 
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "Index")]
+    public SwitchParameter ConnectedOnly;
+
+    [Parameter(Mandatory = false, Position = 4, ParameterSetName = "Index")]
     public SwitchParameter? PrimaryOnly;
 
     [Parameter(Mandatory = true, Position = 5)]
@@ -26,8 +29,16 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
 
     protected override void BeginProcessing() {
         Monitors monitors = new Monitors();
-        var getMonitors = monitors.GetMonitors(primaryOnly: PrimaryOnly, index: Index, deviceId: DeviceId, deviceName: DeviceName);
-        foreach (var monitor in getMonitors) {
+
+        // Check if parameters are set by the user
+        bool? connectedOnly = MyInvocation.BoundParameters.ContainsKey(nameof(ConnectedOnly)) ? (bool?)ConnectedOnly : null;
+        bool? primaryOnly = MyInvocation.BoundParameters.ContainsKey(nameof(PrimaryOnly)) ? (bool?)PrimaryOnly : null;
+        int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
+        string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
+        string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
+
+        // Get monitors
+        var getMonitors = monitors.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName); foreach (var monitor in getMonitors) {
             monitor.SetMonitorPosition(Left, Top, Right, Bottom);
         }
     }
