@@ -43,28 +43,34 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     public string DeviceName;
 
     /// <summary>
-    /// <para type="description">Set the wallpaper for the primary monitor only.</para>
+    /// <para type="description">Set the wallpaper for connected monitors only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "Index")]
+    public SwitchParameter ConnectedOnly;
+
+    /// <summary>
+    /// <para type="description">Set the wallpaper for the primary monitor only.</para>
+    /// </summary>
+    [Parameter(Mandatory = false, Position = 4, ParameterSetName = "Index")]
     public SwitchParameter? PrimaryOnly;
 
     /// <summary>
     /// <para type="description">Set the wallpaper for all monitors.</para>
     /// </summary>
-    [Parameter(Mandatory = false, Position = 4, ParameterSetName = "All")]
+    [Parameter(Mandatory = false, Position = 5, ParameterSetName = "All")]
     public SwitchParameter All;
 
     /// <summary>
     /// <para type="description">The position of the wallpaper on the monitor.</para>
     /// </summary>
     [Alias("Position")]
-    [Parameter(Mandatory = false, Position = 5)]
+    [Parameter(Mandatory = false, Position = 6)]
     public DesktopWallpaperPosition? WallpaperPosition;
 
     /// <summary>
     /// <para type="description">The file path of the wallpaper image.</para>
     /// </summary>
-    [Parameter(Mandatory = true, Position = 6)]
+    [Parameter(Mandatory = true, Position = 7)]
     public string WallpaperPath;
 
     private ActionPreference ErrorAction;
@@ -90,6 +96,13 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
             return;
         }
 
+        // Check if parameters are set by the user
+        bool? connectedOnly = MyInvocation.BoundParameters.ContainsKey(nameof(ConnectedOnly)) ? (bool?)ConnectedOnly : null;
+        bool? primaryOnly = MyInvocation.BoundParameters.ContainsKey(nameof(PrimaryOnly)) ? (bool?)PrimaryOnly : null;
+        int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
+        string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
+        string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
+
         Monitors monitors = new Monitors();
         if (All) {
             var getMonitors = monitors.GetMonitors();
@@ -97,7 +110,8 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
                 monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
             }
         } else {
-            var getMonitors = monitors.GetMonitors(primaryOnly: PrimaryOnly, index: Index, deviceId: DeviceId, deviceName: DeviceName);
+            // Get monitors
+            var getMonitors = monitors.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
             foreach (var monitor in getMonitors) {
                 monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
             }
