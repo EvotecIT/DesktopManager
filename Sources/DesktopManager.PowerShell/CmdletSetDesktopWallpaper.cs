@@ -21,7 +21,7 @@ namespace DesktopManager.PowerShell;
 ///  <code>Set-DesktopWallpaper -PrimaryOnly -WallpaperPath "C:\Path\To\Wallpaper.jpg"</code>
 /// </example>
 /// </summary>
-[Cmdlet(VerbsCommon.Set, "DesktopWallpaper", DefaultParameterSetName = "Index")]
+[Cmdlet(VerbsCommon.Set, "DesktopWallpaper", DefaultParameterSetName = "Index", SupportsShouldProcess = true)]
 public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// <summary>
     /// <para type="description">The index of the monitor to set the wallpaper for.</para>
@@ -73,6 +73,9 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     [Parameter(Mandatory = true, Position = 7)]
     public string WallpaperPath;
 
+    /// <summary>
+    /// Error action preference, as set by the user
+    /// </summary>
     private ActionPreference ErrorAction;
 
     /// <summary>
@@ -80,7 +83,7 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// </summary>
     /// <exception cref="FileNotFoundException"></exception>
     protected override void BeginProcessing() {
-        ErrorAction = GetErrorAction();
+        ErrorAction = CmdletHelper.GetErrorAction(this);
         if (string.IsNullOrEmpty(WallpaperPath)) {
             if (ErrorAction == ActionPreference.Stop) {
                 throw new FileNotFoundException("The wallpaper file path is required.", WallpaperPath);
@@ -92,7 +95,7 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
             if (ErrorAction == ActionPreference.Stop) {
                 throw new FileNotFoundException("The wallpaper file path does not exist.", WallpaperPath);
             }
-            WriteWarning($"The wallpaper file path does not exists {WallpaperPath}.");
+            WriteWarning($"The wallpaper file path does not exist: {WallpaperPath}.");
             return;
         }
 
@@ -107,35 +110,38 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
         if (All) {
             var getMonitors = monitors.GetMonitors();
             foreach (var monitor in getMonitors) {
-                monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
+                if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {WallpaperPath}")) {
+                    try {
+                        monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
+                    } catch (Exception ex) {
+                        if (ErrorAction == ActionPreference.Stop) { throw; }
+                        WriteWarning($"Error setting wallpaper: {ex.Message}");
+                    }
+                }
             }
         } else {
             // Get monitors
             var getMonitors = monitors.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
             foreach (var monitor in getMonitors) {
-                monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
+                if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {WallpaperPath}")) {
+                    try {
+                        monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
+                    } catch (Exception ex) {
+                        if (ErrorAction == ActionPreference.Stop) { throw; }
+                        WriteWarning($"Error setting wallpaper: {ex.Message}");
+                    }
+                }
             }
         }
         if (WallpaperPosition != null) {
-            monitors.SetWallpaperPosition(WallpaperPosition.Value);
-        }
-    }
-
-    /// <summary>
-    /// Get the error action preference
-    /// </summary>
-    /// <returns></returns>
-    private ActionPreference GetErrorAction() {
-        // Get the error action preference as user requested
-        // It first sets the error action to the default error action preference
-        // If the user has specified the error action, it will set the error action to the user specified error action
-        ActionPreference errorAction = (ActionPreference)this.SessionState.PSVariable.GetValue("ErrorActionPreference");
-        if (this.MyInvocation.BoundParameters.ContainsKey("ErrorAction")) {
-            string errorActionString = this.MyInvocation.BoundParameters["ErrorAction"].ToString();
-            if (Enum.TryParse(errorActionString, true, out ActionPreference actionPreference)) {
-                errorAction = actionPreference;
+            if (ShouldProcess("All monitors", $"Set wallpaper position to {WallpaperPosition.Value}")) {
+                try {
+                    monitors.SetWallpaperPosition(WallpaperPosition.Value);
+                } catch (Exception ex) {
+                    if (ErrorAction == ActionPreference.Stop) { throw; }
+                    WriteWarning($"Error setting wallpaper position: {ex.Message}");
+                }
             }
         }
-        return errorAction;
     }
 }
