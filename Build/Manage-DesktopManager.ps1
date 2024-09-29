@@ -1,4 +1,6 @@
-﻿Build-Module -ModuleName 'DesktopManager' {
+﻿Import-Module C:\Support\Github\PSPublishModule\PSPublishModule.psd1 -Force
+
+Build-Module -ModuleName 'DesktopManager' {
     # Usual defaults as per standard module
     $Manifest = [ordered] @{
         # Minimum version of the Windows PowerShell engine required by this module
@@ -84,6 +86,7 @@
         NETFramework                      = 'net6.0', 'net472'
         NETSearchClass                    = "DesktopManager.PowerShell.CmdletSetDesktopWallpaper"
         NETHandleAssemblyWithSameName     = $true
+        NETBinaryModuleDocumenation        = $true
         #NETMergeLibraryDebugging          = $true
         DotSourceLibraries                = $true
         DotSourceClasses                  = $true
