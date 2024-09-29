@@ -1,5 +1,8 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Management.Automation;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DesktopManager.PowerShell;
 
