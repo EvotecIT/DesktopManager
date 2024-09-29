@@ -1,7 +1,8 @@
 ﻿namespace DesktopManager.PowerShell;
 
-[Cmdlet(VerbsCommon.Get, "DesktopWallpaper")]
-public sealed class CmdletGetDesktopWallpaper : PSCmdlet {
+[Alias("Get-DesktopMonitors")]
+[Cmdlet(VerbsCommon.Get, "DesktopMonitor")]
+public sealed class CmdletGetDesktopMonitor : PSCmdlet {
     [Parameter(Mandatory = false, Position = 0)]
     public int Index;
 
@@ -19,9 +20,17 @@ public sealed class CmdletGetDesktopWallpaper : PSCmdlet {
 
     protected override void BeginProcessing() {
         Monitors monitors = new Monitors();
-        var getMonitors = monitors.GetMonitors(connectedOnly: ConnectedOnly, primaryOnly: PrimaryOnly, index: Index, deviceId: DeviceId, deviceName: DeviceName);
-        foreach (var monitor in getMonitors) {
-            WriteObject(monitor.GetWallpaper());
-        }
+
+        // Check if parameters are set by the user
+        bool? connectedOnly = MyInvocation.BoundParameters.ContainsKey(nameof(ConnectedOnly)) ? (bool?)ConnectedOnly : null;
+        bool? primaryOnly = MyInvocation.BoundParameters.ContainsKey(nameof(PrimaryOnly)) ? (bool?)PrimaryOnly : null;
+        int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
+        string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
+        string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
+
+        // Get monitors
+        var getMonitors = monitors.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+        // Write monitors
+        WriteObject(getMonitors);
     }
 }
