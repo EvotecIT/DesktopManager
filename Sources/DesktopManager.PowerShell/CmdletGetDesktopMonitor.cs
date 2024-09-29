@@ -58,7 +58,7 @@ public sealed class CmdletGetDesktopMonitor : PSCmdlet {
     public SwitchParameter PrimaryOnly;
 
     /// <summary>
-    /// Begin processing the command.
+    /// <para type="description">Begin processing the command.</para>
     /// </summary>
     protected override void BeginProcessing() {
         Monitors monitors = new Monitors();
