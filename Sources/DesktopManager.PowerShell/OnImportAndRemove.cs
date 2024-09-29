@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Management.Automation;
 using System.Reflection;
 
 /// <summary>
