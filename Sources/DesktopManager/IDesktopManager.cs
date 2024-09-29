@@ -40,7 +40,6 @@ public interface IDesktopManager {
     /// </summary>
     /// <param name="monitorId">The monitor ID.</param>
     /// <returns>The bounds of the monitor.</returns>
-    [return: MarshalAs(UnmanagedType.Struct)]
     RECT GetMonitorBounds([MarshalAs(UnmanagedType.LPWStr)] string monitorId);
 
     /// <summary>
