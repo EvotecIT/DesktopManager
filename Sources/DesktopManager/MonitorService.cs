@@ -1,13 +1,24 @@
 namespace DesktopManager;
 
+/// <summary>
+/// Service for managing monitors and their settings.
+/// </summary>
 public class MonitorService {
     private const int ENUM_CURRENT_SETTINGS = -1;
     private readonly IDesktopManager _desktopManager;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MonitorService"/> class.
+    /// </summary>
+    /// <param name="desktopManager">The desktop manager interface.</param>
     public MonitorService(IDesktopManager desktopManager) {
         _desktopManager = desktopManager;
     }
 
+    /// <summary>
+    /// Gets the list of all monitors.
+    /// </summary>
+    /// <returns>A list of <see cref="Monitor"/> objects.</returns>
     public List<Monitor> GetMonitors() {
         List<Monitor> list = new List<Monitor>();
 
@@ -37,6 +48,11 @@ public class MonitorService {
 
         return list;
     }
+
+    /// <summary>
+    /// Gets the list of connected monitors.
+    /// </summary>
+    /// <returns>A list of connected <see cref="Monitor"/> objects.</returns>
     public List<Monitor> GetMonitorsConnected() {
         List<Monitor> list = new List<Monitor>();
         foreach (var monitor in GetMonitors()) {
@@ -47,15 +63,29 @@ public class MonitorService {
         return list;
     }
 
+    /// <summary>
+    /// Sets the wallpaper for a specific monitor.
+    /// </summary>
+    /// <param name="monitorId">The monitor ID.</param>
+    /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(string monitorId, string wallpaperPath) {
         _desktopManager.SetWallpaper(monitorId, wallpaperPath);
     }
 
+    /// <summary>
+    /// Sets the wallpaper for a monitor by index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(int index, string wallpaperPath) {
         var monitorId = _desktopManager.GetMonitorDevicePathAt((uint)index);
         _desktopManager.SetWallpaper(monitorId, wallpaperPath);
     }
 
+    /// <summary>
+    /// Sets the wallpaper for all connected monitors.
+    /// </summary>
+    /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(string wallpaperPath) {
         var devicePathCount = GetMonitorsConnected();
         foreach (var device in devicePathCount) {
@@ -63,30 +93,64 @@ public class MonitorService {
         }
     }
 
+    /// <summary>
+    /// Gets the wallpaper for a specific monitor.
+    /// </summary>
+    /// <param name="monitorId">The monitor ID.</param>
+    /// <returns>The path to the wallpaper image.</returns>
     public string GetWallpaper(string monitorId) {
         return _desktopManager.GetWallpaper(monitorId);
     }
 
+    /// <summary>
+    /// Gets the wallpaper for a monitor by index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <returns>The path to the wallpaper image.</returns>
     public string GetWallpaper(int index) {
         return _desktopManager.GetWallpaper(_desktopManager.GetMonitorDevicePathAt((uint)index));
     }
 
+    /// <summary>
+    /// Gets the device path of a monitor by index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <returns>The device path of the monitor.</returns>
     public string GetMonitorDevicePathAt(uint index) {
         return _desktopManager.GetMonitorDevicePathAt(index);
     }
 
+    /// <summary>
+    /// Gets the wallpaper position.
+    /// </summary>
+    /// <returns>The wallpaper position.</returns>
     public DesktopWallpaperPosition GetWallpaperPosition() {
         return _desktopManager.GetPosition();
     }
 
+    /// <summary>
+    /// Sets the wallpaper position.
+    /// </summary>
+    /// <param name="position">The wallpaper position.</param>
     public void SetWallpaperPosition(DesktopWallpaperPosition position) {
         _desktopManager.SetPosition(position);
     }
 
+    /// <summary>
+    /// Gets the bounds of a monitor.
+    /// </summary>
+    /// <param name="monitorId">The monitor ID.</param>
+    /// <returns>The bounds of the monitor.</returns>
     public RECT GetMonitorBounds(string monitorId) {
         return _desktopManager.GetMonitorBounds(monitorId);
     }
 
+    /// <summary>
+    /// Gets the position of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The position of the monitor.</returns>
+    /// <exception cref="ArgumentException">Thrown when the monitor is not found.</exception>
     public MonitorPosition GetMonitorPosition(string deviceId) {
         var monitors = GetMonitors();
         foreach (var monitor in monitors) {
@@ -97,10 +161,25 @@ public class MonitorService {
         throw new ArgumentException("Monitor not found");
     }
 
+    /// <summary>
+    /// Sets the position of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="position">The new position of the monitor.</param>
     public void SetMonitorPosition(string deviceId, MonitorPosition position) {
         SetMonitorPosition(deviceId, position.Left, position.Top, position.Right, position.Bottom);
     }
 
+    /// <summary>
+    /// Sets the position of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="left">The left position.</param>
+    /// <param name="top">The top position.</param>
+    /// <param name="right">The right position.</param>
+    /// <param name="bottom">The bottom position.</param>
+    /// <exception cref="InvalidOperationException">Thrown when unable to set monitor position.</exception>
+    /// <exception cref="ArgumentException">Thrown when the corresponding display device is not found.</exception>
     public void SetMonitorPosition(string deviceId, int left, int top, int right, int bottom) {
         var monitorRect = GetMonitorBounds(deviceId);
 
@@ -143,7 +222,10 @@ public class MonitorService {
         throw new ArgumentException("Corresponding display device not found for the given Monitor ID.");
     }
 
-
+    /// <summary>
+    /// Gets all display devices.
+    /// </summary>
+    /// <returns>A list of all <see cref="DISPLAY_DEVICE"/> objects.</returns>
     public List<DISPLAY_DEVICE> DisplayDevicesAll() {
         List<DISPLAY_DEVICE> devices = new List<DISPLAY_DEVICE>();
 
@@ -164,6 +246,10 @@ public class MonitorService {
         return devices;
     }
 
+    /// <summary>
+    /// Gets all connected display devices.
+    /// </summary>
+    /// <returns>A list of connected <see cref="DISPLAY_DEVICE"/> objects.</returns>
     public List<DISPLAY_DEVICE> DisplayDevicesConnected() {
         List<DISPLAY_DEVICE> devices = new List<DISPLAY_DEVICE>();
         DISPLAY_DEVICE device = new DISPLAY_DEVICE();
