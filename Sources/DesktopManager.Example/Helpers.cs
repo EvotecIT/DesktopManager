@@ -1,10 +1,7 @@
-using Spectre.Console;
-using System;
 using System.Collections;
-using System.Linq;
-using System.Net;
+using Spectre.Console;
 
-namespace DesktopManagerSample;
+namespace DesktopManager.Example;
 internal class Helpers {
     public static void ShowProperties(string analysisOf, object obj) {
         Console.WriteLine("----");
