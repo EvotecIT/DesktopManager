@@ -66,9 +66,16 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
     public int Bottom;
 
     /// <summary>
+    /// Error action preference, as set by the user
+    /// </summary>
+    private ActionPreference ErrorAction;
+
+    /// <summary>
     /// Begin processing the command.
     /// </summary>
     protected override void BeginProcessing() {
+        ErrorAction = CmdletHelper.GetErrorAction(this);
+
         Monitors monitors = new Monitors();
 
         // Check if parameters are set by the user
@@ -86,7 +93,12 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
                     $"Monitor {monitor.DeviceName}",
                     $"Change position from Left: {currentPosition.Left}, Top: {currentPosition.Top}, Right: {currentPosition.Right}, Bottom: {currentPosition.Bottom} " +
                     $"to Left: {newPosition.Left}, Top: {newPosition.Top}, Right: {newPosition.Right}, Bottom: {newPosition.Bottom}")) {
-                monitor.SetMonitorPosition(newPosition);
+                try {
+                    monitor.SetMonitorPosition(newPosition);
+                } catch (Exception ex) {
+                    if (ErrorAction == ActionPreference.Stop) { throw; }
+                    WriteWarning($"Error setting monitor position: {ex.Message}");
+                }
             }
         }
     }
