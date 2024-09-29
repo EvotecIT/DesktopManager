@@ -2,7 +2,7 @@
 
 namespace DesktopManager.PowerShell;
 
-/// <summary>
+/// <summary>Sets the desktop wallpaper for one or more monitors.</summary>
 /// <para type="synopsis">Sets the desktop wallpaper for one or more monitors.</para>
 /// <para type="description">Sets the desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also set the wallpaper for all monitors or only the primary monitor. Optionally, you can specify the wallpaper position.</para>
 /// <example>
@@ -20,7 +20,6 @@ namespace DesktopManager.PowerShell;
 ///  <para></para>
 ///  <code>Set-DesktopWallpaper -PrimaryOnly -WallpaperPath "C:\Path\To\Wallpaper.jpg"</code>
 /// </example>
-/// </summary>
 [Cmdlet(VerbsCommon.Set, "DesktopWallpaper", DefaultParameterSetName = "Index", SupportsShouldProcess = true)]
 public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// <summary>
@@ -72,14 +71,13 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// </summary>
     [Parameter(Mandatory = true, Position = 7)]
     public string WallpaperPath;
-
     /// <summary>
     /// Error action preference, as set by the user
     /// </summary>
     private ActionPreference ErrorAction;
 
     /// <summary>
-    /// Begin processing the command
+    /// <para type="description">Begin processing the command.</para>
     /// </summary>
     /// <exception cref="FileNotFoundException"></exception>
     protected override void BeginProcessing() {
@@ -111,12 +109,7 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
             var getMonitors = monitors.GetMonitors();
             foreach (var monitor in getMonitors) {
                 if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {WallpaperPath}")) {
-                    try {
-                        monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
-                    } catch (Exception ex) {
-                        if (ErrorAction == ActionPreference.Stop) { throw; }
-                        WriteWarning($"Error setting wallpaper: {ex.Message}");
-                    }
+                    monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
                 }
             }
         } else {
@@ -124,23 +117,13 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
             var getMonitors = monitors.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
             foreach (var monitor in getMonitors) {
                 if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {WallpaperPath}")) {
-                    try {
-                        monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
-                    } catch (Exception ex) {
-                        if (ErrorAction == ActionPreference.Stop) { throw; }
-                        WriteWarning($"Error setting wallpaper: {ex.Message}");
-                    }
+                    monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
                 }
             }
         }
         if (WallpaperPosition != null) {
             if (ShouldProcess("All monitors", $"Set wallpaper position to {WallpaperPosition.Value}")) {
-                try {
-                    monitors.SetWallpaperPosition(WallpaperPosition.Value);
-                } catch (Exception ex) {
-                    if (ErrorAction == ActionPreference.Stop) { throw; }
-                    WriteWarning($"Error setting wallpaper position: {ex.Message}");
-                }
+                monitors.SetWallpaperPosition(WallpaperPosition.Value);
             }
         }
     }

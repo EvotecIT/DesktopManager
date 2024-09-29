@@ -1,6 +1,6 @@
 ﻿namespace DesktopManager.PowerShell;
 
-/// <summary>
+/// <summary>Gets the current desktop wallpaper for one or more monitors.</summary>
 /// <para type="synopsis">Gets the current desktop wallpaper for one or more monitors.</para>
 /// <para type="description">Retrieves the current desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also get the wallpaper for all monitors or only the primary monitor.</para>
 /// <example>
@@ -18,7 +18,6 @@
 ///  <para></para>
 ///  <code>Get-DesktopWallpaper -PrimaryOnly</code>
 /// </example>
-/// </summary>
 [Cmdlet(VerbsCommon.Get, "DesktopWallpaper")]
 public sealed class CmdletGetDesktopWallpaper : PSCmdlet {
     /// <summary>

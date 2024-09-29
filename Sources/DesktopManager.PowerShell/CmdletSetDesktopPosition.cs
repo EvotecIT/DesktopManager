@@ -1,6 +1,6 @@
 ﻿namespace DesktopManager.PowerShell;
 
-/// <summary>
+/// <summary>Sets the position of the desktop for one or more monitors.</summary>
 /// <para type="synopsis">Sets the position of the desktop for one or more monitors.</para>
 /// <para type="description">Sets the position of the desktop for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also set the position for all monitors or only the primary monitor.</para>
 /// <example>
@@ -13,7 +13,6 @@
 ///  <para></para>
 ///  <code>Set-DesktopPosition -PrimaryOnly -Left 0 -Top 0 -Right 1920 -Bottom 1080</code>
 /// </example>
-/// </summary>
 [Cmdlet(VerbsCommon.Set, "DesktopPosition", DefaultParameterSetName = "Index", SupportsShouldProcess = true)]
 public sealed class CmdletSetDesktopPosition : PSCmdlet {
     /// <summary>

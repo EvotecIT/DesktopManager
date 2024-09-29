@@ -1,6 +1,6 @@
 ﻿namespace DesktopManager.PowerShell;
 
-/// <summary>
+/// <summary>Gets the desktop monitors information.</summary>
 /// <para type="synopsis">Gets the desktop monitors information.</para>
 /// <para type="description">Retrieves information about the desktop monitors connected to the system. You can filter the monitors by index, device ID, device name, connection status, or primary monitor status.</para>
 /// <example>
@@ -23,7 +23,6 @@
 ///  <para>Retrieves information for the primary monitor only.</para>
 ///  <code>Get-DesktopMonitor -PrimaryOnly</code>
 /// </example>
-/// </summary>
 [Alias("Get-DesktopMonitors")]
 [Cmdlet(VerbsCommon.Get, "DesktopMonitor")]
 public sealed class CmdletGetDesktopMonitor : PSCmdlet {
