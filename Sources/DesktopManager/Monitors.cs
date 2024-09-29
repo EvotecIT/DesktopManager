@@ -23,7 +23,7 @@ public class Monitors {
     /// <param name="deviceId">The device ID of the monitor to return.</param>
     /// <param name="deviceName">The device name of the monitor to return.</param>
     /// <returns>A list of monitors that match the specified filters.</returns>
-    public List<Monitor> GetMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+    public List<Monitor> GetMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string deviceId = null, string deviceName = null) {
         var monitorsReturn = new List<Monitor>();
         var monitors = _monitorService.GetMonitors();
         foreach (var monitor in monitors) {
