@@ -94,7 +94,7 @@ internal class Helpers {
     /// <param name="table">The table to which properties are added.</param>
     /// <param name="prefix">The prefix for the property names.</param>
     /// <param name="obj">The object whose properties are to be added.</param>
-    private static void AddPropertiesToTable(Table table, string prefix, object obj) {
+    private static void AddPropertiesToTable(Table table, string prefix, object? obj) {
         if (obj == null) {
             return;
         }
