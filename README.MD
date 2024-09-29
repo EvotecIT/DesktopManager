@@ -1,26 +1,51 @@
-﻿<p align="center">
+﻿# DesktopManager - C# Library and PowerShell Module
+
+DesktopManager is available as NuGet from the Nuget Gallery. and as PowerShell module from PSGallery
+
+<p align="center">
+  <a href="https://www.nuget.org/packages/DesktopManager"><img src="https://img.shields.io/nuget/dt/DesktopManager?label=nuget%20downloads" alt="nuget downloads"></a>
+  <a href="https://www.nuget.org/packages/DesktopManager"><img src="https://img.shields.io/nuget/v/DesktopManager" alt="nuget version"></a>
+</p>
+
+<p align="center">
   <a href="https://dev.azure.com/evotecpl/DesktopManager/_build/results?buildId=latest"><img src="https://img.shields.io/azure-devops/build/evotecpl/39c74615-8f34-4af0-a835-68dc33f9214f/14?label=Azure%20Pipelines&style=flat-square"></a>
   <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/v/DesktopManager.svg?style=flat-square"></a>
   <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/vpre/DesktopManager.svg?label=powershell%20gallery%20preview&colorB=yellow&style=flat-square"></a>
-  <a href="https://github.com/EvotecIT/DesktopManager"><img src="https://img.shields.io/github/license/EvotecIT/DesktopManager.svg?style=flat-square"></a>
+    <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/dt/DesktopManager.svg?style=flat-square"></a>
 </p>
 
 <p align="center">
   <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/p/DesktopManager.svg?style=flat-square"></a>
   <a href="https://github.com/EvotecIT/DesktopManager"><img src="https://img.shields.io/github/languages/top/evotecit/DesktopManager.svg?style=flat-square"></a>
   <a href="https://github.com/EvotecIT/DesktopManager"><img src="https://img.shields.io/github/languages/code-size/evotecit/DesktopManager.svg?style=flat-square"></a>
-  <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/dt/DesktopManager.svg?style=flat-square"></a>
+  <a href="https://github.com/EvotecIT/DesktopManager"><img src="https://img.shields.io/github/license/EvotecIT/DesktopManager.svg?style=flat-square"></a>
 </p>
 
 <p align="center">
-  <a href="https://twitter.com/PrzemyslawKlys"><img src="https://img.shields.io/twitter/follow/PrzemyslawKlys.svg?label=Twitter%20%40PrzemyslawKlys&style=flat-square&logo=twitter"></a>
-  <a href="https://evotec.xyz/hub"><img src="https://img.shields.io/badge/Blog-evotec.xyz-2A6496.svg?style=flat-square"></a>
-  <a href="https://www.linkedin.com/in/pklys"><img src="https://img.shields.io/badge/LinkedIn-pklys-0077B5.svg?logo=LinkedIn&style=flat-square"></a>
+  <a href="https://twitter.com/PrzemyslawKlys"><img src="https://img.shields.io/twitter/follow/PrzemyslawKlys.svg?label=Twitter%20%40PrzemyslawKlys&style=social"></a>
+  <a href="https://evotec.xyz/hub"><img src="https://img.shields.io/badge/Blog-evotec.xyz-2A6496.svg"></a>
+  <a href="https://www.linkedin.com/in/pklys"><img src="https://img.shields.io/badge/LinkedIn-pklys-0077B5.svg?logo=LinkedIn"></a>
+  <a href="https://www.threads.net/@przemyslaw.klys"><img src="https://img.shields.io/badge/Threads-@PrzemyslawKlys-000000.svg?logo=Threads&logoColor=White"></a>
 </p>
 
-**DesktopManager** is a C# library and PowerShell module that allows to get and set wallpapers to given monitor.
+## What it's all about
+
+<img height="256" align=right src="https://raw.githubusercontent.com/EvotecIT/DesktopManager/refs/heads/master/Assets/Images/DesktopManager.jpg">
+
+**DesktopManager** is a C# library and PowerShell module that allows to play with desktop settings. It allows to get information about monitors, display devices, wallpapers and set wallpapers. There are 2 ways to use:
+- **C# Library** - use it in your projects
+- **PowerShell Module** - use it in your scripts
+
+It has following features:
+- Get information about monitors
+- Get information about display devices
+- Get information about wallpapers
+- Set wallpapers
+- Get/Set monitor position
 
 ### Installation
+
+For using in PowerShell you can install it from PowerShell Gallery
 
 ```powershell
 Install-Module DesktopManager -Force -Verbose
