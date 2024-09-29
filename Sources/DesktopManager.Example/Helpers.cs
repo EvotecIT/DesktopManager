@@ -2,7 +2,15 @@ using System.Collections;
 using Spectre.Console;
 
 namespace DesktopManager.Example;
+/// <summary>
+/// Provides helper methods for displaying properties and adding lines to the console.
+/// </summary>
 internal class Helpers {
+    /// <summary>
+    /// Displays the properties of an object in the console.
+    /// </summary>
+    /// <param name="analysisOf">The description of the object being analyzed.</param>
+    /// <param name="obj">The object whose properties are to be displayed.</param>
     public static void ShowProperties(string analysisOf, object obj) {
         Console.WriteLine("----");
         Console.WriteLine($"Analysis of {analysisOf}:");
@@ -20,18 +28,39 @@ internal class Helpers {
         }
     }
 
+    /// <summary>
+    /// Adds a line to the console with a specified text and string value.
+    /// </summary>
+    /// <param name="text">The text to display.</param>
+    /// <param name="value">The string value to display.</param>
     public static void AddLine(string text, string value) {
         AnsiConsole.Write(new Rule($"[blue]{text}[/]: [yellow]{value}[/]"));
     }
 
+    /// <summary>
+    /// Adds a line to the console with a specified text and integer value.
+    /// </summary>
+    /// <param name="text">The text to display.</param>
+    /// <param name="value">The integer value to display.</param>
     public static void AddLine(string text, int value) {
         AnsiConsole.Write(new Rule($"[blue]{text}[/]: [yellow]{value}[/]"));
     }
 
+    /// <summary>
+    /// Adds a line to the console with a specified text and unsigned integer value.
+    /// </summary>
+    /// <param name="text">The text to display.</param>
+    /// <param name="value">The unsigned integer value to display.</param>
     public static void AddLine(string text, uint value) {
         AnsiConsole.Write(new Rule($"[blue]{text}[/]: [yellow]{value}[/]"));
     }
 
+    /// <summary>
+    /// Displays the properties of an object or a collection of objects in a table format.
+    /// </summary>
+    /// <param name="analysisOf">The description of the object being analyzed.</param>
+    /// <param name="objs">The object or collection of objects whose properties are to be displayed.</param>
+    /// <param name="perProperty">Indicates whether to display properties per property.</param>
     public static void ShowPropertiesTable(string analysisOf, object objs, bool perProperty = false) {
         var table = new Table();
         table.Border(TableBorder.Rounded);
@@ -59,6 +88,12 @@ internal class Helpers {
         AnsiConsole.Write(panel);
     }
 
+    /// <summary>
+    /// Adds the properties of an object to a table.
+    /// </summary>
+    /// <param name="table">The table to which properties are added.</param>
+    /// <param name="prefix">The prefix for the property names.</param>
+    /// <param name="obj">The object whose properties are to be added.</param>
     private static void AddPropertiesToTable(Table table, string prefix, object obj) {
         if (obj == null) {
             return;
