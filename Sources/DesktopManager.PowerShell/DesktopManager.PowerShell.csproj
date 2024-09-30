@@ -16,8 +16,8 @@
 		<PackageReference Include="PowerShellStandard.Library" Version="5.1.1" PrivateAssets="all" />
 	</ItemGroup>
 
-	<!-- Make sure the output DLL's from library are included in the output -->
 	<PropertyGroup>
+		<!-- Make sure the output DLL's from library are included in the output -->
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
 	<ItemGroup>
@@ -32,15 +32,24 @@
 		<Using Include="DesktopManager" />
 	</ItemGroup>
 
-	<PropertyGroup>
-		<!-- This is needed for XmlDoc2CmdletDoc to generate a PowerShell documentation file. -->
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-	</PropertyGroup>
-
 	<ItemGroup>
+		<!-- This is needed for XmlDoc2CmdletDoc to generate a PowerShell documentation. DLL itself will be removed/hidden -->
 		<PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.5.1">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
+
+	<PropertyGroup>
+		<!-- This is needed for XmlDoc2CmdletDoc to generate a PowerShell documentation. -->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	</PropertyGroup>
+
+	<Target Name="CopyDocumentationToPublishFolder" AfterTargets="GenerateDocumentationFile;Publish">
+		<!-- This is needed for XmlDoc2CmdletDoc to copy a PowerShell documentation file to Publish folder -->
+		<ItemGroup>
+			<DocFiles Include="$(OutputPath)$(AssemblyName).dll-Help.xml" />
+		</ItemGroup>
+		<Copy SourceFiles="@(DocFiles)" DestinationFolder="$(PublishDir)" />
+	</Target>
 </Project>
