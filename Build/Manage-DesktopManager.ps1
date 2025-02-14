@@ -83,10 +83,10 @@ Build-Module -ModuleName 'DesktopManager' {
         ResolveBinaryConflictsName        = 'DesktopManager.PowerShell'
         NETProjectName                    = 'DesktopManager.PowerShell'
         NETConfiguration                  = 'Release'
-        NETFramework                      = 'net6.0', 'net472'
+        NETFramework                      = 'net8.0', 'net472'
         NETSearchClass                    = "DesktopManager.PowerShell.CmdletSetDesktopWallpaper"
         NETHandleAssemblyWithSameName     = $true
-        NETBinaryModuleDocumenation        = $true
+        NETBinaryModuleDocumenation       = $true
         #NETMergeLibraryDebugging          = $true
         DotSourceLibraries                = $true
         DotSourceClasses                  = $true
