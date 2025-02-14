@@ -4,7 +4,7 @@
     CmdletsToExport        = @('Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Set-DesktopPosition', 'Set-DesktopWallpaper')
     CompanyName            = 'Evotec'
     CompatiblePSEditions   = @('Desktop', 'Core')
-    Copyright              = '(c) 2011 - 2024 Przemyslaw Klys @ Evotec. All rights reserved.'
+    Copyright              = '(c) 2011 - 2025 Przemyslaw Klys @ Evotec. All rights reserved.'
     Description            = 'Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.'
     DotNetFrameworkVersion = '4.7.2'
     FunctionsToExport      = @()
