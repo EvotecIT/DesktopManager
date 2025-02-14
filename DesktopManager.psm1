@@ -9,7 +9,7 @@ $AssemblyFolders = Get-ChildItem -Path $PSScriptRoot\Lib -Directory -ErrorAction
 # to speed up development adding direct path to binaries, instead of the the Lib folder
 $Development = $true
 $DevelopmentPath = "$PSScriptRoot\Sources\DesktopManager.PowerShell\bin\Debug"
-$DevelopmentFolderCore = "net6.0"
+$DevelopmentFolderCore = "net8.0"
 $DevelopmentFolderDefault = "net472"
 $BinaryModules = @(
     "DesktopManager.PowerShell.dll"
