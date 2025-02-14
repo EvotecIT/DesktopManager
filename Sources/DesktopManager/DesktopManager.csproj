@@ -4,7 +4,7 @@
         <AssemblyName>DesktopManager</AssemblyName>
         <AssemblyTitle>DesktopManager</AssemblyTitle>
 
-        <TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net6.0;net7.0;net8.0</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net8.0</TargetFrameworks>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
         <Company>Evotec</Company>
         <Authors>Przemyslaw Klys</Authors>
@@ -28,7 +28,7 @@
         <PackageId>DesktopManager</PackageId>
         <PackageIcon>DesktopManager.png</PackageIcon>
         <PackageTags>
-            desktop;net472;net48;netstandard;netstandard2.0,netstandard2.1;net70;net80
+            desktop;net472;net48;netstandard;netstandard2.0,netstandard2.1;net80
         </PackageTags>
         <PackageProjectUrl>https://github.com/EvotecIT/DesktopManager</PackageProjectUrl>
         <PackageReadmeFile>README.MD</PackageReadmeFile>
