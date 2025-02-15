@@ -1,32 +1,28 @@
 ﻿# DesktopManager - C# Library and PowerShell Module
 
-DesktopManager is available as NuGet from the Nuget Gallery. and as PowerShell module from PSGallery
+DesktopManager is available as NuGet from the Nuget Gallery.
 
-<p align="center">
-  <a href="https://www.nuget.org/packages/DesktopManager"><img src="https://img.shields.io/nuget/dt/DesktopManager?label=nuget%20downloads" alt="nuget downloads"></a>
-  <a href="https://www.nuget.org/packages/DesktopManager"><img src="https://img.shields.io/nuget/v/DesktopManager" alt="nuget version"></a>
-</p>
+[![nuget downloads](https://img.shields.io/nuget/dt/DesktopManager?label=nuget%20downloads)](https://www.nuget.org/packages/DesktopManager)
+[![nuget version](https://img.shields.io/nuget/v/DesktopManager)](https://www.nuget.org/packages/DesktopManager)
 
-<p align="center">
-  <a href="https://dev.azure.com/evotecpl/DesktopManager/_build/results?buildId=latest"><img src="https://img.shields.io/azure-devops/build/evotecpl/39c74615-8f34-4af0-a835-68dc33f9214f/14?label=Azure%20Pipelines&style=flat-square"></a>
-  <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/v/DesktopManager.svg?style=flat-square"></a>
-  <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/vpre/DesktopManager.svg?label=powershell%20gallery%20preview&colorB=yellow&style=flat-square"></a>
-    <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/dt/DesktopManager.svg?style=flat-square"></a>
-</p>
+You can also download it from PowerShell Gallery
 
-<p align="center">
-  <a href="https://www.powershellgallery.com/packages/DesktopManager"><img src="https://img.shields.io/powershellgallery/p/DesktopManager.svg?style=flat-square"></a>
-  <a href="https://github.com/EvotecIT/DesktopManager"><img src="https://img.shields.io/github/languages/top/evotecit/DesktopManager.svg?style=flat-square"></a>
-  <a href="https://github.com/EvotecIT/DesktopManager"><img src="https://img.shields.io/github/languages/code-size/evotecit/DesktopManager.svg?style=flat-square"></a>
-  <a href="https://github.com/EvotecIT/DesktopManager"><img src="https://img.shields.io/github/license/EvotecIT/DesktopManager.svg?style=flat-square"></a>
-</p>
+[![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/DesktopManager.svg?style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
+[![PowerShell Gallery Preview Version](https://img.shields.io/powershellgallery/vpre/DesktopManager.svg?label=powershell%20gallery%20preview&colorB=yellow&style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
+[![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/DesktopManager.svg?style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
 
-<p align="center">
-  <a href="https://twitter.com/PrzemyslawKlys"><img src="https://img.shields.io/twitter/follow/PrzemyslawKlys.svg?label=Twitter%20%40PrzemyslawKlys&style=social"></a>
-  <a href="https://evotec.xyz/hub"><img src="https://img.shields.io/badge/Blog-evotec.xyz-2A6496.svg"></a>
-  <a href="https://www.linkedin.com/in/pklys"><img src="https://img.shields.io/badge/LinkedIn-pklys-0077B5.svg?logo=LinkedIn"></a>
-  <a href="https://www.threads.net/@przemyslaw.klys"><img src="https://img.shields.io/badge/Threads-@PrzemyslawKlys-000000.svg?logo=Threads&logoColor=White"></a>
-</p>
+[![PowerShell Gallery Platform](https://img.shields.io/powershellgallery/p/DesktopManager.svg?style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
+[![GitHub top language](https://img.shields.io/github/languages/top/evotecit/DesktopManager.svg?style=flat-square)](https://github.com/EvotecIT/DesktopManager)
+[![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/evotecit/DesktopManager.svg?style=flat-square)](https://github.com/EvotecIT/DesktopManager)
+[![GitHub license](https://img.shields.io/github/license/EvotecIT/DesktopManager.svg?style=flat-square)](https://github.com/EvotecIT/DesktopManager)
+
+If you would like to contact me you can do so via Twitter or LinkedIn.
+
+[![Twitter Follow](https://img.shields.io/twitter/follow/PrzemyslawKlys.svg?label=Twitter%20%40PrzemyslawKlys&style=social)](https://twitter.com/PrzemyslawKlys)
+[![Blog evotec.xyz](https://img.shields.io/badge/Blog-evotec.xyz-2A6496.svg)](https://evotec.xyz/hub)
+[![LinkedIn pklys](https://img.shields.io/badge/LinkedIn-pklys-0077B5.svg?logo=LinkedIn)](https://www.linkedin.com/in/pklys)
+[![Threads @PrzemyslawKlys](https://img.shields.io/badge/Threads-@PrzemyslawKlys-000000.svg?logo=Threads&logoColor=White)](https://www.threads.net/@przemyslaw.klys)
+
 
 ## What it's all about
 
