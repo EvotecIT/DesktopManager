@@ -38,4 +38,3 @@ $Nugets = Get-ChildItem -Path $ReleasePath -Recurse -Filter "*.nupkg"
 foreach ($Nuget in $Nugets) {
     dotnet nuget sign $Nuget.FullName --certificate-fingerprint "483292C9E317AA13B07BB7A96AE9D1A5ED9E7703" --timestamper 'http://timestamp.digicert.com' --overwrite
 }
-
