@@ -12,6 +12,7 @@
         <IsPublishable>True</IsPublishable>
         <Copyright>(c) 2011 - 2024 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
         <RepositoryUrl>https://github.com/evotecit/DesktopManager</RepositoryUrl>
+        <VersionPrefix>1.0.1</VersionPrefix>
         <DebugType>portable</DebugType>
         <!--
       Turns off reference assembly generation
