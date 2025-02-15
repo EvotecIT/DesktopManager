@@ -69,6 +69,7 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// <summary>
     /// <para type="description">The file path of the wallpaper image.</para>
     /// </summary>
+    [Alias("FilePath", "Path")]
     [Parameter(Mandatory = true, Position = 7)]
     public string WallpaperPath;
     /// <summary>
