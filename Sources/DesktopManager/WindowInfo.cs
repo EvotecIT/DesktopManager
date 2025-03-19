@@ -49,6 +49,26 @@ namespace DesktopManager {
         /// Gets or sets the bottom position of the window.
         /// </summary>
         public int Bottom { get; set; }
+
+        /// <summary>
+        /// Gets or sets the monitor index on which this window is primarily located.
+        /// </summary>
+        public int MonitorIndex { get; set; }
+
+        /// <summary>
+        /// Gets or sets the monitor device ID on which this window is primarily located.
+        /// </summary>
+        public string MonitorDeviceId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the monitor device name on which this window is primarily located.
+        /// </summary>
+        public string MonitorDeviceName { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this monitor is the primary monitor.
+        /// </summary>
+        public bool IsOnPrimaryMonitor { get; set; }
     }
 
     /// <summary>
