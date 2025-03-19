@@ -66,6 +66,9 @@ namespace DesktopManager.PowerShell {
                 var action = GetActionDescription();
                 if (ShouldProcess($"Window '{window.Title}'", action)) {
                     try {
+                        if (Left >= 0 || Top >= 0 || Width >= 0 || Height >= 0) {
+                            manager.SetWindowPosition(window, Left, Top, Width, Height);
+                        }
                         if (State.HasValue) {
                             switch (State.Value) {
                                 case WindowState.Close:
@@ -81,10 +84,6 @@ namespace DesktopManager.PowerShell {
                                     manager.RestoreWindow(window);
                                     break;
                             }
-                        }
-
-                        if (Left >= 0 || Top >= 0 || Width >= 0 || Height >= 0) {
-                            manager.SetWindowPosition(window, Left, Top, Width, Height);
                         }
                     } catch (Exception ex) {
                         WriteWarning($"Failed to modify window '{window.Title}': {ex.Message}");
