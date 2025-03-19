@@ -8,6 +8,15 @@ namespace DesktopManager {
     /// Provides methods to manage windows, including getting window information and controlling window states.
     /// </summary>
     public class WindowManager {
+        private readonly Monitors _monitors;
+
+        /// <summary>
+        /// Initializes a new instance of the WindowManager class.
+        /// </summary>
+        public WindowManager() {
+            _monitors = new Monitors();
+        }
+
         /// <summary>
         /// Gets all visible windows.
         /// </summary>
@@ -50,6 +59,24 @@ namespace DesktopManager {
                             windowInfo.Top = rect.Top;
                             windowInfo.Right = rect.Right;
                             windowInfo.Bottom = rect.Bottom;
+
+                            // Find which monitor this window is primarily on
+                            var monitors = _monitors.GetMonitors();
+                            foreach (var monitor in monitors) {
+                                var monitorRect = monitor.GetMonitorBounds();
+                                // Check if window center point is within monitor bounds
+                                int windowCenterX = (rect.Left + rect.Right) / 2;
+                                int windowCenterY = (rect.Top + rect.Bottom) / 2;
+
+                                if (windowCenterX >= monitorRect.Left && windowCenterX < monitorRect.Right &&
+                                    windowCenterY >= monitorRect.Top && windowCenterY < monitorRect.Bottom) {
+                                    windowInfo.MonitorIndex = monitor.Index;
+                                    windowInfo.MonitorDeviceId = monitor.DeviceId;
+                                    windowInfo.MonitorDeviceName = monitor.DeviceName;
+                                    windowInfo.IsOnPrimaryMonitor = monitor.IsPrimary;
+                                    break;
+                                }
+                            }
                         }
 
                         windows.Add(windowInfo);
