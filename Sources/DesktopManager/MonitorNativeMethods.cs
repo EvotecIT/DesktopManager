@@ -140,4 +140,24 @@ public static class MonitorNativeMethods {
     /// <returns>The result of processing the message.</returns>
     [DllImport("user32.dll")]
     public static extern uint SendMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
+
+    /// <summary>
+    /// Gets information about the specified window.
+    /// </summary>
+    /// <param name="hWnd">A handle to the window.</param>
+    /// <param name="nIndex">The zero-based offset to the value to be retrieved.</param>
+    /// <returns>The requested value.</returns>
+    [DllImport("user32.dll")]
+    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    /// <summary>
+    /// Indexes for GetWindowLong
+    /// </summary>
+    public const int GWL_STYLE = -16;
+
+    /// <summary>
+    /// Window style values
+    /// </summary>
+    public const int WS_MINIMIZE = 0x20000000;
+    public const int WS_MAXIMIZE = 0x01000000;
 }
