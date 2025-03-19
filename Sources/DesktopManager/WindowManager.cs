@@ -52,13 +52,23 @@ namespace DesktopManager {
                             ProcessId = processId
                         };
 
-                        // Get window position
+                        // Get window position and state
                         RECT rect = new RECT();
                         if (MonitorNativeMethods.GetWindowRect(handle, out rect)) {
                             windowInfo.Left = rect.Left;
                             windowInfo.Top = rect.Top;
                             windowInfo.Right = rect.Right;
                             windowInfo.Bottom = rect.Bottom;
+
+                            // Get window state
+                            int style = MonitorNativeMethods.GetWindowLong(handle, MonitorNativeMethods.GWL_STYLE);
+                            if ((style & MonitorNativeMethods.WS_MINIMIZE) != 0) {
+                                windowInfo.State = WindowState.Minimize;
+                            } else if ((style & MonitorNativeMethods.WS_MAXIMIZE) != 0) {
+                                windowInfo.State = WindowState.Maximize;
+                            } else {
+                                windowInfo.State = WindowState.Normal;
+                            }
 
                             // Find which monitor this window is primarily on
                             var monitors = _monitors.GetMonitors();
@@ -136,14 +146,30 @@ namespace DesktopManager {
         /// <param name="width">The width of the window. Use -1 to keep current width.</param>
         /// <param name="height">The height of the window. Use -1 to keep current height.</param>
         public void SetWindowPosition(WindowInfo windowInfo, int left, int top, int width = -1, int height = -1) {
+            const int SWP_NOZORDER = 0x0004;
+            const int SWP_NOMOVE = 0x0002;
+            const int SWP_NOSIZE = 0x0001;
+
+            int flags = SWP_NOZORDER;
+
+            // If position is -1, don't move
+            if (left < 0 && top < 0) {
+                flags |= SWP_NOMOVE;
+            }
+
+            // If size is -1, don't resize
+            if (width < 0 && height < 0) {
+                flags |= SWP_NOSIZE;
+            }
+
             if (!MonitorNativeMethods.SetWindowPos(
                 windowInfo.Handle,
                 IntPtr.Zero,
-                left,
-                top,
-                width,
-                height,
-                1)) {
+                left < 0 ? windowInfo.Left : left,
+                top < 0 ? windowInfo.Top : top,
+                width < 0 ? windowInfo.Width : width,
+                height < 0 ? windowInfo.Height : height,
+                flags)) {
                 throw new InvalidOperationException("Failed to set window position");
             }
         }
