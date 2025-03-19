@@ -90,6 +90,27 @@ namespace DesktopManager {
         }
 
         /// <summary>
+        /// Sets the position and size of a window.
+        /// </summary>
+        /// <param name="windowInfo">The window information.</param>
+        /// <param name="left">The left position.</param>
+        /// <param name="top">The top position.</param>
+        /// <param name="width">The width of the window. Use -1 to keep current width.</param>
+        /// <param name="height">The height of the window. Use -1 to keep current height.</param>
+        public void SetWindowPosition(WindowInfo windowInfo, int left, int top, int width = -1, int height = -1) {
+            if (!MonitorNativeMethods.SetWindowPos(
+                windowInfo.Handle,
+                IntPtr.Zero,
+                left,
+                top,
+                width,
+                height,
+                1)) {
+                throw new InvalidOperationException("Failed to set window position");
+            }
+        }
+
+        /// <summary>
         /// Closes a window.
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
