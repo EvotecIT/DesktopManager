@@ -1,4 +1,8 @@
-﻿## 2.0.1 - 2025.02.15
+﻿## 3.0.0
+- Add `Get-DesktopWindow`
+- Add `Set-DesktopWindow`
+
+## 2.0.1 - 2025.02.15
 - Added missing aliases to `Set-DesktopWallpaper`
 
 ## 2.0.0 - 2025.02.14
