@@ -1,79 +1,92 @@
-﻿using System;
+﻿namespace DesktopManager;
 
-namespace DesktopManager {
+/// <summary>
+/// Represents basic information about a window.
+/// </summary>
+public class WindowInfo {
     /// <summary>
-    /// Represents basic information about a window.
+    /// Gets or sets the window title.
     /// </summary>
-    public class WindowInfo {
-        /// <summary>
-        /// Gets or sets the window title.
-        /// </summary>
-        public string Title { get; set; }
-
-        /// <summary>
-        /// Gets or sets the window handle.
-        /// </summary>
-        public IntPtr Handle { get; set; }
-
-        /// <summary>
-        /// Gets or sets the process ID of the window.
-        /// </summary>
-        public uint ProcessId { get; set; }
-
-        /// <summary>
-        /// Gets the width of the window.
-        /// </summary>
-        public int Width => Right - Left;
-
-        /// <summary>
-        /// Gets the height of the window.
-        /// </summary>
-        public int Height => Bottom - Top;
-
-        /// <summary>
-        /// Gets or sets the left position of the window.
-        /// </summary>
-        public int Left { get; set; }
-
-        /// <summary>
-        /// Gets or sets the top position of the window.
-        /// </summary>
-        public int Top { get; set; }
-
-        /// <summary>
-        /// Gets or sets the right position of the window.
-        /// </summary>
-        public int Right { get; set; }
-
-        /// <summary>
-        /// Gets or sets the bottom position of the window.
-        /// </summary>
-        public int Bottom { get; set; }
-
-        /// <summary>
-        /// Gets or sets the monitor index on which this window is primarily located.
-        /// </summary>
-        public int MonitorIndex { get; set; }
-
-        /// <summary>
-        /// Gets or sets the monitor device ID on which this window is primarily located.
-        /// </summary>
-        public string MonitorDeviceId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the monitor device name on which this window is primarily located.
-        /// </summary>
-        public string MonitorDeviceName { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether this monitor is the primary monitor.
-        /// </summary>
-        public bool IsOnPrimaryMonitor { get; set; }
-    }
+    public string Title { get; set; }
 
     /// <summary>
-    /// Represents the position and size information of a window.
+    /// Gets or sets the window handle.
     /// </summary>
-    public class WindowPosition : WindowInfo {
-    }
+    public IntPtr Handle { get; set; }
+
+    /// <summary>
+    /// Gets or sets the process ID of the window.
+    /// </summary>
+    public uint ProcessId { get; set; }
+
+    /// <summary>
+    /// Gets the width of the window.
+    /// </summary>
+    public int Width => Right - Left;
+
+    /// <summary>
+    /// Gets the height of the window.
+    /// </summary>
+    public int Height => Bottom - Top;
+
+    /// <summary>
+    /// Gets or sets the left position of the window.
+    /// </summary>
+    public int Left { get; set; }
+
+    /// <summary>
+    /// Gets or sets the top position of the window.
+    /// </summary>
+    public int Top { get; set; }
+
+    /// <summary>
+    /// Gets or sets the right position of the window.
+    /// </summary>
+    public int Right { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bottom position of the window.
+    /// </summary>
+    public int Bottom { get; set; }
+
+    /// <summary>
+    /// Gets or sets the monitor index on which this window is primarily located.
+    /// </summary>
+    public int MonitorIndex { get; set; }
+
+    /// <summary>
+    /// Gets or sets the monitor device ID on which this window is primarily located.
+    /// </summary>
+    public string MonitorDeviceId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the monitor device name on which this window is primarily located.
+    /// </summary>
+    public string MonitorDeviceName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this monitor is the primary monitor.
+    /// </summary>
+    public bool IsOnPrimaryMonitor { get; set; }
+
+    /// <summary>
+    /// Gets or sets the desired window state.
+    /// </summary>
+    public WindowState? State { get; set; }
+
+    /// <summary>
+    /// Gets whether this window should be resized.
+    /// </summary>
+    public bool ShouldResize => Width >= 0 || Height >= 0;
+
+    /// <summary>
+    /// Gets whether this window should be repositioned.
+    /// </summary>
+    public bool ShouldReposition => Left >= 0 || Top >= 0;
+}
+
+/// <summary>
+/// Represents the position and size information of a window.
+/// </summary>
+public class WindowPosition : WindowInfo {
 }
