@@ -1,5 +1,5 @@
 ﻿Import-Module .\DesktopManager.psd1 -Force
 
-Get-DesktopWindow | Format-Table
+Get-DesktopWindow | Format-Table *
 
-#Set-DesktopWindowPosition -Name 'PSWriteHTML - CHANGELOG.MD' -Left -1500 -Top 0
+Set-DesktopWindowPosition -Name '*Zadanie - Notepad' -State Maximize
