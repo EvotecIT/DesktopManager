@@ -2,4 +2,4 @@
 
 Get-DesktopWindow | Format-Table *
 
-Set-DesktopWindowPosition -Name '*Zadanie - Notepad' -State Maximize
+Set-DesktopWindow -Name '*Zadanie - Notepad' -Height 800 -Width 1200 -Left 100
