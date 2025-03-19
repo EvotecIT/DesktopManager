@@ -19,12 +19,17 @@ namespace DesktopManager {
         /// Gets or sets the process ID of the window.
         /// </summary>
         public uint ProcessId { get; set; }
-    }
 
-    /// <summary>
-    /// Represents the position information of a window.
-    /// </summary>
-    public class WindowPosition : WindowInfo {
+        /// <summary>
+        /// Gets the width of the window.
+        /// </summary>
+        public int Width => Right - Left;
+
+        /// <summary>
+        /// Gets the height of the window.
+        /// </summary>
+        public int Height => Bottom - Top;
+
         /// <summary>
         /// Gets or sets the left position of the window.
         /// </summary>
@@ -44,5 +49,11 @@ namespace DesktopManager {
         /// Gets or sets the bottom position of the window.
         /// </summary>
         public int Bottom { get; set; }
+    }
+
+    /// <summary>
+    /// Represents the position and size information of a window.
+    /// </summary>
+    public class WindowPosition : WindowInfo {
     }
 }
