@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace DesktopManager;
 
 /// <summary>
@@ -52,4 +54,90 @@ public static class MonitorNativeMethods {
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     // A signature for ChangeDisplaySettingsEx with a DEVMODE struct as the second parameter won't allow you to pass in IntPtr.Zero, so create an overload
     public static extern DisplayChangeConfirmation ChangeDisplaySettingsEx(string lpszDeviceName, IntPtr lpDevMode, IntPtr hwnd, ChangeDisplaySettingsFlags dwflags, IntPtr lParam);
+
+    /// <summary>
+    /// Gets the shell window handle.
+    /// </summary>
+    /// <returns>The handle of the shell window.</returns>
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetShellWindow();
+
+    /// <summary>
+    /// Enumerates all top-level windows.
+    /// </summary>
+    /// <param name="lpEnumFunc">The callback function to invoke for each window.</param>
+    /// <param name="lParam">Application-defined value to pass to the callback function.</param>
+    /// <returns>True if the enumeration completes, false if it was cancelled.</returns>
+    public delegate bool EnumWindowsProc(IntPtr hWnd, int lParam);
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc enumFunc, int lParam);
+
+    /// <summary>
+    /// Gets the window text length.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <returns>The length of the window text.</returns>
+    [DllImport("user32.dll")]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    /// <summary>
+    /// Gets the window text.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="lpString">The buffer to receive the text.</param>
+    /// <param name="nMaxCount">The maximum number of characters to copy.</param>
+    /// <returns>The number of characters copied.</returns>
+    [DllImport("user32.dll")]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    /// <summary>
+    /// Gets the window thread process ID.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="lpdwProcessId">Receives the process ID.</param>
+    /// <returns>The thread ID.</returns>
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    /// <summary>
+    /// Checks if a window is visible.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <returns>True if the window is visible.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    /// <summary>
+    /// Gets the window rectangle.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="lpRect">Receives the window rectangle.</param>
+    /// <returns>True if successful.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    /// <summary>
+    /// Sets the window position.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="hWndInsertAfter">The window to insert this window after.</param>
+    /// <param name="X">The new X coordinate.</param>
+    /// <param name="Y">The new Y coordinate.</param>
+    /// <param name="cx">The new width.</param>
+    /// <param name="cy">The new height.</param>
+    /// <param name="uFlags">Window sizing and positioning flags.</param>
+    /// <returns>True if successful.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
+
+    /// <summary>
+    /// Sends a message to a window.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="Msg">The message to send.</param>
+    /// <param name="wParam">Additional parameter.</param>
+    /// <param name="lParam">Additional parameter.</param>
+    /// <returns>The result of processing the message.</returns>
+    [DllImport("user32.dll")]
+    public static extern uint SendMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
 }
