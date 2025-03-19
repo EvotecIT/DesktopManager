@@ -37,11 +37,22 @@ namespace DesktopManager {
                         uint processId = 0;
                         MonitorNativeMethods.GetWindowThreadProcessId(handle, out processId);
 
-                        windows.Add(new WindowInfo {
+                        var windowInfo = new WindowInfo {
                             Title = title,
                             Handle = handle,
                             ProcessId = processId
-                        });
+                        };
+
+                        // Get window position
+                        RECT rect = new RECT();
+                        if (MonitorNativeMethods.GetWindowRect(handle, out rect)) {
+                            windowInfo.Left = rect.Left;
+                            windowInfo.Top = rect.Top;
+                            windowInfo.Right = rect.Right;
+                            windowInfo.Bottom = rect.Bottom;
+                        }
+
+                        windows.Add(windowInfo);
                     }
                 }
             }
