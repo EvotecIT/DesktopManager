@@ -1,5 +1,4 @@
 ﻿namespace DesktopManager;
-
 /// <summary>
 /// Represents basic information about a window.
 /// </summary>
@@ -70,19 +69,9 @@ public class WindowInfo {
     public bool IsOnPrimaryMonitor { get; set; }
 
     /// <summary>
-    /// Gets or sets the desired window state.
+    /// Gets or sets the current state of the window.
     /// </summary>
     public WindowState? State { get; set; }
-
-    /// <summary>
-    /// Gets whether this window should be resized.
-    /// </summary>
-    public bool ShouldResize => Width >= 0 || Height >= 0;
-
-    /// <summary>
-    /// Gets whether this window should be repositioned.
-    /// </summary>
-    public bool ShouldReposition => Left >= 0 || Top >= 0;
 }
 
 /// <summary>
