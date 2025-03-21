@@ -331,4 +331,88 @@ public static class MonitorNativeMethods {
     /// <returns>The handle to the foreground window.</returns>
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
+
+    /// <summary>
+    /// Key and mouse input event flags
+    /// </summary>
+    public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+    // public const uint KEYEVENTF_KEYUP = 0x0002;
+    // public const uint KEYEVENTF_UNICODE = 0x0004;
+    public const uint KEYEVENTF_SCANCODE = 0x0008;
+
+    /// <summary>
+    /// Keyboard message constants
+    /// </summary>
+    public const uint WM_KEYDOWN = 0x0100;
+    public const uint WM_KEYUP = 0x0101;
+    // public const uint WM_CHAR = 0x0102;
+    public const uint WM_SYSCOMMAND = 0x0112;
+
+    /// <summary>
+    /// SendInput constants
+    /// </summary>
+    public const uint INPUT_MOUSE = 0;
+    // public const uint INPUT_KEYBOARD = 1;
+    public const uint INPUT_HARDWARE = 2;
+
+    /// <summary>
+    /// Clipboard format constants
+    /// </summary>
+    public const uint CF_TEXT = 1;
+    // public const uint CF_UNICODETEXT = 13;
+
+    /// <summary>
+    /// Virtual key codes
+    /// </summary>
+    // public const ushort VK_CONTROL = 0x11;
+    public const ushort VK_SHIFT = 0x10;
+    public const ushort VK_MENU = 0x12; // ALT key
+    public const ushort VK_RETURN = 0x0D;
+    public const ushort VK_TAB = 0x09;
+    public const ushort VK_SPACE = 0x20;
+    public const ushort VK_BACK = 0x08;
+    public const ushort VK_ESCAPE = 0x1B;
+    // public const ushort VK_V = 0x56;
+    public const ushort VK_C = 0x43;
+
+    /// <summary>
+    /// Show window commands
+    /// </summary>
+    public const int SW_NORMAL = 1;
+    public const int SW_RESTORE = 9;
+
+    /// <summary>
+    /// Sets the show state of a window.
+    /// </summary>
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    /// <summary>
+    /// Brings a thread's windows to the foreground
+    /// </summary>
+    [DllImport("user32.dll")]
+    public static extern bool BringWindowToTop(IntPtr hWnd);
+
+    /// <summary>
+    /// Alternative method to send keyboard input to a window
+    /// </summary>
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>
+    /// Creates a thread that posts a message to the message queue
+    /// </summary>
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr CreateThread(IntPtr lpThreadAttributes, uint dwStackSize, ThreadStart lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, out uint lpThreadId);
+
+    /// <summary>
+    /// Delegate for thread start
+    /// </summary>
+    public delegate void ThreadStart();
+
+    /// <summary>
+    /// Waits for an object for the specified duration
+    /// </summary>
+    [DllImport("kernel32.dll")]
+    public static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 }

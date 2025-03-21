@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace DesktopManager {
@@ -54,8 +56,7 @@ namespace DesktopManager {
                         };
 
                         // Get window position and state
-                        RECT rect = new RECT();
-                        if (MonitorNativeMethods.GetWindowRect(handle, out rect)) {
+                        if (MonitorNativeMethods.GetWindowRect(handle, out RECT rect)) {
                             windowInfo.Left = rect.Left;
                             windowInfo.Top = rect.Top;
                             windowInfo.Right = rect.Right;
@@ -104,8 +105,7 @@ namespace DesktopManager {
         /// <param name="windowInfo">The window information.</param>
         /// <returns>The window position.</returns>
         public WindowPosition GetWindowPosition(WindowInfo windowInfo) {
-            RECT rect = new RECT();
-            if (MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out rect)) {
+            if (MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out RECT rect)) {
                 return new WindowPosition {
                     Title = windowInfo.Title,
                     Handle = windowInfo.Handle,
@@ -117,25 +117,6 @@ namespace DesktopManager {
                 };
             }
             throw new InvalidOperationException("Failed to get window position");
-        }
-
-        /// <summary>
-        /// Sets the position of a window.
-        /// </summary>
-        /// <param name="windowInfo">The window information.</param>
-        /// <param name="left">The left position.</param>
-        /// <param name="top">The top position.</param>
-        public void SetWindowPosition(WindowInfo windowInfo, int left, int top) {
-            if (!MonitorNativeMethods.SetWindowPos(
-                windowInfo.Handle,
-                IntPtr.Zero,
-                left,
-                top,
-                -1,
-                -1,
-                1)) {
-                throw new InvalidOperationException("Failed to set window position");
-            }
         }
 
         /// <summary>
@@ -224,25 +205,24 @@ namespace DesktopManager {
         }
 
         private bool MatchesWildcard(string text, string pattern) {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(pattern)) {
+                return false;
+            }
+            
             if (pattern == "*") {
                 return true;
             }
 
+            // Handle patterns with multiple wildcards
             if (pattern.Contains("*")) {
-                // Handle basic wildcard pattern with * only
-                int starIndex = pattern.IndexOf('*');
-                if (starIndex == 0) {
-                    // Pattern starts with *, check if text ends with rest of pattern
-                    return text.EndsWith(pattern.Substring(1), StringComparison.OrdinalIgnoreCase);
-                } else if (starIndex == pattern.Length - 1) {
-                    // Pattern ends with *, check if text starts with rest of pattern
-                    return text.StartsWith(pattern.Substring(0, pattern.Length - 1), StringComparison.OrdinalIgnoreCase);
-                } else {
-                    // Pattern has * in middle, check both parts
-                    string[] parts = pattern.Split('*');
-                    return text.StartsWith(parts[0], StringComparison.OrdinalIgnoreCase) &&
-                           text.EndsWith(parts[1], StringComparison.OrdinalIgnoreCase);
-                }
+                // Convert wildcard pattern to regex pattern
+                string regexPattern = "^" + Regex.Escape(pattern)
+                    .Replace("\\*", ".*")
+                    .Replace("\\?", ".")
+                    + "$";
+                
+                // Use .NET regex for more robust wildcard matching
+                return Regex.IsMatch(text, regexPattern, RegexOptions.IgnoreCase);
             }
 
             // If no wildcard, do a case-insensitive contains check
@@ -257,77 +237,218 @@ namespace DesktopManager {
         /// <param name="method">The method to use for sending text.</param>
         /// <exception cref="InvalidOperationException">Thrown when failed to send text to the window.</exception>
         public void SendText(WindowInfo windowInfo, string text, TextSendMethod method = TextSendMethod.Type) {
-            // Make sure the window is active
-            if (!ActivateWindow(windowInfo.Handle)) {
-                throw new InvalidOperationException("Failed to activate window");
+            if (windowInfo == null) {
+                throw new ArgumentNullException(nameof(windowInfo));
             }
 
-            // Small delay to ensure the window is ready
-            Thread.Sleep(100);
-
-            switch (method) {
-                case TextSendMethod.Type:
-                    TypeText(windowInfo.Handle, text);
-                    break;
-                case TextSendMethod.Paste:
-                    PasteText(windowInfo.Handle, text);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported text sending method");
-            }
-        }
-
-        /// <summary>
-        /// Activates the specified window.
-        /// </summary>
-        /// <param name="hWnd">The window handle.</param>
-        /// <returns>True if successful, otherwise false.</returns>
-        private bool ActivateWindow(IntPtr hWnd) {
-            if (hWnd == IntPtr.Zero) {
-                return false;
-            }
-
-            // Get foreground thread
-            uint foregroundThreadId = MonitorNativeMethods.GetWindowThreadProcessId(
-                MonitorNativeMethods.GetForegroundWindow(), out _);
-
-            // Get current thread
-            uint currentThreadId = MonitorNativeMethods.GetCurrentThreadId();
-
-            // Attach threads if necessary
-            bool threadsAttached = false;
-            if (foregroundThreadId != currentThreadId) {
-                // Attach foreground thread to our thread
-                threadsAttached = MonitorNativeMethods.AttachThreadInput(
-                    foregroundThreadId, currentThreadId, true);
-            }
-
-            // Bring window to foreground and set focus
-            bool result = MonitorNativeMethods.SetForegroundWindow(hWnd);
-            MonitorNativeMethods.SetFocus(hWnd);
-
-            // Detach threads if they were attached
-            if (threadsAttached) {
-                MonitorNativeMethods.AttachThreadInput(
-                    foregroundThreadId, currentThreadId, false);
-            }
-
-            // Allow window to process focus change
-            Thread.Sleep(50);
-            return result;
-        }
-
-        /// <summary>
-        /// Types text character by character to the specified window.
-        /// </summary>
-        /// <param name="hWnd">The window handle.</param>
-        /// <param name="text">The text to type.</param>
-        private void TypeText(IntPtr hWnd, string text) {
             if (string.IsNullOrEmpty(text)) {
                 return;
             }
 
-            // Process each character in the text
+            // Restore window if minimized
+            if (windowInfo.State == WindowState.Minimize) {
+                RestoreWindow(windowInfo);
+                Thread.Sleep(200);
+            }
+
+            // First try standard activation
+            if (!ActivateWindowCompletely(windowInfo.Handle)) {
+                throw new InvalidOperationException($"Failed to activate window '{windowInfo.Title}'");
+            }
+
+            // Wait for window to be ready
+            Thread.Sleep(300);
+
+            // Try to detect if this is a modern Windows app (like Notepad)
+            bool isModernApp = windowInfo.Title.Contains("Notepad") || 
+                              (windowInfo.Title.Contains("Remote Desktop") && !windowInfo.Title.Contains("Connection"));
+
+            if (isModernApp && method == TextSendMethod.Type) {
+                // Use specialized method for modern apps
+                TypeTextUsingVirtualKeys(windowInfo.Handle, text);
+            } else {
+                switch (method) {
+                    case TextSendMethod.Type:
+                        TypeTextEnhanced(windowInfo.Handle, text);
+                        break;
+                    case TextSendMethod.Paste:
+                        PasteTextEnhanced(windowInfo.Handle, text);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported text sending method");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ensures a window is completely activated and ready to receive input
+        /// </summary>
+        private bool ActivateWindowCompletely(IntPtr hWnd) {
+            if (hWnd == IntPtr.Zero) {
+                return false;
+            }
+
+            try {
+                // Get window information for better handling
+                uint processId = 0;
+                MonitorNativeMethods.GetWindowThreadProcessId(hWnd, out processId);
+                
+                // First restore the window if minimized
+                MonitorNativeMethods.ShowWindow(hWnd, MonitorNativeMethods.SW_RESTORE);
+                Thread.Sleep(100);
+                
+                // For applications like Remote Desktop Manager, we need a more aggressive approach
+                Process process = null;
+                string processName = string.Empty;
+                
+                try {
+                    process = Process.GetProcessById((int)processId);
+                    processName = process?.ProcessName?.ToLowerInvariant() ?? string.Empty;
+                }
+                catch {
+                    // Process might have terminated
+                }
+                
+                bool isRemoteDesktopManager = processName.Contains("remotedesktopmanager") || 
+                                             processName.Contains("rdm") ||
+                                             processName.Contains("devolutions");
+
+                if (isRemoteDesktopManager) {
+                    // Special handling for Remote Desktop Manager
+                    // First try to show and restore the window
+                    MonitorNativeMethods.ShowWindow(hWnd, MonitorNativeMethods.SW_NORMAL);
+                    Thread.Sleep(200);
+                    
+                    // For Remote Desktop Manager, sometimes we need to simulate Alt+Tab to activate
+                    SimulateAltTab(hWnd);
+                    Thread.Sleep(300);
+                    
+                    // Now try normal activation
+                    MonitorNativeMethods.SetForegroundWindow(hWnd);
+                    Thread.Sleep(100);
+                    
+                    return true; // Assume success for RDM to continue with sending text
+                }
+                
+                // Try multiple strategies to bring window to foreground
+                bool success = false;
+                
+                // Strategy 1: SetForegroundWindow
+                success = MonitorNativeMethods.SetForegroundWindow(hWnd);
+                Thread.Sleep(50);
+                
+                // Strategy 2: BringWindowToTop
+                MonitorNativeMethods.BringWindowToTop(hWnd);
+                Thread.Sleep(50);
+                
+                // Strategy 3: Thread attachment
+                uint foregroundThreadId = MonitorNativeMethods.GetWindowThreadProcessId(
+                    MonitorNativeMethods.GetForegroundWindow(), out _);
+                uint currentThreadId = MonitorNativeMethods.GetCurrentThreadId();
+                
+                if (foregroundThreadId != currentThreadId) {
+                    bool attached = MonitorNativeMethods.AttachThreadInput(foregroundThreadId, currentThreadId, true);
+                    if (attached) {
+                        MonitorNativeMethods.SetForegroundWindow(hWnd);
+                        MonitorNativeMethods.SetFocus(hWnd);
+                        MonitorNativeMethods.AttachThreadInput(foregroundThreadId, currentThreadId, false);
+                    }
+                }
+                
+                // Strategy 4: Try ALT keypress to force focus (helps with some applications)
+                SendInputVirtualKey(MonitorNativeMethods.VK_MENU);
+                Thread.Sleep(50);
+                MonitorNativeMethods.SetForegroundWindow(hWnd);
+                Thread.Sleep(50);
+                
+                // Final check if the window is now in foreground
+                IntPtr foregroundWindow = MonitorNativeMethods.GetForegroundWindow();
+                success = foregroundWindow == hWnd;
+                
+                // Set focus one more time just to be sure
+                if (success) {
+                    MonitorNativeMethods.SetFocus(hWnd);
+                }
+                
+                return success;
+            }
+            catch (Exception ex) {
+                Debug.WriteLine($"Error in ActivateWindowCompletely: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Simulates Alt+Tab to get to a specific window
+        /// </summary>
+        private void SimulateAltTab(IntPtr targetWindow) {
+            // Press Alt
+            MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[1];
+            inputs[0].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[0].u.ki.wVk = MonitorNativeMethods.VK_MENU;
+            inputs[0].u.ki.wScan = 0;
+            inputs[0].u.ki.dwFlags = 0;
+            inputs[0].u.ki.time = 0;
+            inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+            MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+            Thread.Sleep(50);
+            
+            // Press Tab
+            inputs[0].u.ki.wVk = MonitorNativeMethods.VK_TAB;
+            MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+            Thread.Sleep(100);
+            
+            // Release Tab
+            inputs[0].u.ki.wVk = MonitorNativeMethods.VK_TAB;
+            inputs[0].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+            MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+            Thread.Sleep(50);
+            
+            // Check if we're on the target window
+            IntPtr currentWindow = MonitorNativeMethods.GetForegroundWindow();
+            if (currentWindow == targetWindow) {
+                // Release Alt
+                inputs[0].u.ki.wVk = MonitorNativeMethods.VK_MENU;
+                inputs[0].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+                MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+                return;
+            }
+            
+            // Try cycling through windows (up to 10 attempts)
+            for (int i = 0; i < 10; i++) {
+                // Press Tab again
+                inputs[0].u.ki.wVk = MonitorNativeMethods.VK_TAB;
+                inputs[0].u.ki.dwFlags = 0;
+                MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+                Thread.Sleep(50);
+                
+                // Release Tab
+                inputs[0].u.ki.wVk = MonitorNativeMethods.VK_TAB;
+                inputs[0].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+                MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+                Thread.Sleep(50);
+                
+                // Check if we found the window
+                currentWindow = MonitorNativeMethods.GetForegroundWindow();
+                if (currentWindow == targetWindow) {
+                    break;
+                }
+            }
+            
+            // Release Alt
+            inputs[0].u.ki.wVk = MonitorNativeMethods.VK_MENU;
+            inputs[0].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+            MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+        }
+
+        /// <summary>
+        /// Types text character by character to the specified window using enhanced method
+        /// </summary>
+        private void TypeTextEnhanced(IntPtr hWnd, string text) {
+            if (string.IsNullOrEmpty(text)) {
+                return;
+            }
+
             foreach (char c in text) {
                 // Handle special characters
                 switch (c) {
@@ -335,43 +456,129 @@ namespace DesktopManager {
                         // Skip carriage returns as we'll handle newlines with '\n'
                         continue;
                     case '\n':
-                        // Send Enter key for newline
-                        MonitorNativeMethods.SendMessage(hWnd,
-                            MonitorNativeMethods.WM_CHAR,
-                            (uint)'\r', 0);
-                        Thread.Sleep(5); // Small delay between characters
+                        // Send Enter key
+                        SendVirtualKey(hWnd, MonitorNativeMethods.VK_RETURN);
+                        Thread.Sleep(10);
                         continue;
                     case '\t':
                         // Send Tab key
-                        MonitorNativeMethods.SendMessage(hWnd,
-                            MonitorNativeMethods.WM_CHAR,
-                            (uint)'\t', 0);
-                        Thread.Sleep(5); // Small delay between characters
+                        SendVirtualKey(hWnd, MonitorNativeMethods.VK_TAB);
+                        Thread.Sleep(10);
                         continue;
                 }
 
-                // Send regular character
-                MonitorNativeMethods.SendMessage(hWnd,
-                    MonitorNativeMethods.WM_CHAR,
-                    (uint)c, 0);
-
-                // Small delay between characters to simulate realistic typing
-                Thread.Sleep(5);
+                // Only use one method to avoid duplication
+                // Use SendMessage for more reliability across applications
+                MonitorNativeMethods.SendMessage(hWnd, MonitorNativeMethods.WM_CHAR, (uint)c, 0);
+                
+                // Small delay between characters for reliability
+                Thread.Sleep(10);
             }
         }
 
         /// <summary>
-        /// Pastes text to the specified window using the clipboard.
+        /// Types text using virtual key codes instead of WM_CHAR - better for modern Windows apps
         /// </summary>
-        /// <param name="hWnd">The window handle.</param>
-        /// <param name="text">The text to paste.</param>
-        /// <exception cref="InvalidOperationException">Thrown when clipboard operations fail.</exception>
-        private void PasteText(IntPtr hWnd, string text) {
+        private void TypeTextUsingVirtualKeys(IntPtr hWnd, string text) {
+            // This method uses a different approach for modern Windows apps
+            // that might not properly handle WM_CHAR messages
+            
+            foreach (char c in text) {
+                // Handle special characters
+                switch (c) {
+                    case '\r':
+                        continue;
+                    case '\n':
+                        // Send Enter key
+                        SendInputVirtualKey(MonitorNativeMethods.VK_RETURN);
+                        Thread.Sleep(15);
+                        continue;
+                    case '\t':
+                        // Send Tab key
+                        SendInputVirtualKey(MonitorNativeMethods.VK_TAB);
+                        Thread.Sleep(15);
+                        continue;
+                    case ' ':
+                        // Send Space key
+                        SendInputVirtualKey(MonitorNativeMethods.VK_SPACE);
+                        Thread.Sleep(15);
+                        continue;
+                }
+
+                // For regular characters, use SendInput with appropriate key codes
+                // This handles the translation of characters to key presses
+                SendCharacterAsScanCode(c);
+                Thread.Sleep(15);
+            }
+        }
+
+        /// <summary>
+        /// Send a virtual key press and release to the window
+        /// </summary>
+        private void SendVirtualKey(IntPtr hWnd, ushort keyCode) {
+            // Key down
+            MonitorNativeMethods.PostMessage(hWnd, MonitorNativeMethods.WM_KEYDOWN, keyCode, 0);
+            Thread.Sleep(5);
+            
+            // Key up
+            MonitorNativeMethods.PostMessage(hWnd, MonitorNativeMethods.WM_KEYUP, keyCode, 0);
+            Thread.Sleep(5);
+        }
+
+        /// <summary>
+        /// Sends a virtual key press using SendInput API - bypasses window message handling
+        /// </summary>
+        private void SendInputVirtualKey(ushort keyCode) {
+            // Create input event array
+            MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[2];
+            
+            // Key down
+            inputs[0].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[0].u.ki.wVk = keyCode;
+            inputs[0].u.ki.wScan = 0;
+            inputs[0].u.ki.dwFlags = 0;
+            inputs[0].u.ki.time = 0;
+            inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+            
+            // Key up
+            inputs[1].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[1].u.ki.wVk = keyCode;
+            inputs[1].u.ki.wScan = 0;
+            inputs[1].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+            inputs[1].u.ki.time = 0;
+            inputs[1].u.ki.dwExtraInfo = IntPtr.Zero;
+            
+            // Send inputs
+            MonitorNativeMethods.SendInput(2, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+        }
+
+        /// <summary>
+        /// Sends a character as a keyboard scan code using SendInput
+        /// </summary>
+        private void SendCharacterAsScanCode(char c) {
+            // For modern Windows apps, use UNICODE input to send characters
+            MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[1];
+            
+            inputs[0].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[0].u.ki.wVk = 0; // No virtual key code
+            inputs[0].u.ki.wScan = (ushort)c; // Character as scan code
+            inputs[0].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_UNICODE; // Use UNICODE flag
+            inputs[0].u.ki.time = 0;
+            inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+            
+            MonitorNativeMethods.SendInput(1, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+        }
+
+        /// <summary>
+        /// Pastes text to the specified window using the clipboard and a single paste strategy
+        /// to avoid duplicate keystrokes.
+        /// </summary>
+        private void PasteTextEnhanced(IntPtr hWnd, string text) {
             if (string.IsNullOrEmpty(text)) {
                 return;
             }
 
-            // Store the current clipboard content to restore later
+            // Store the current clipboard content
             string originalClipboardText = GetClipboardText();
 
             try {
@@ -381,49 +588,14 @@ namespace DesktopManager {
                 }
 
                 // Small delay to ensure clipboard is ready
-                Thread.Sleep(50);
-
-                // Send Ctrl+V to paste
-                // Press Ctrl
-                MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[4];
-
-                // Press Ctrl
-                inputs[0].type = MonitorNativeMethods.INPUT_KEYBOARD;
-                inputs[0].u.ki.wVk = MonitorNativeMethods.VK_CONTROL;
-                inputs[0].u.ki.wScan = 0;
-                inputs[0].u.ki.dwFlags = 0;
-                inputs[0].u.ki.time = 0;
-                inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
-
-                // Press V
-                inputs[1].type = MonitorNativeMethods.INPUT_KEYBOARD;
-                inputs[1].u.ki.wVk = MonitorNativeMethods.VK_V;
-                inputs[1].u.ki.wScan = 0;
-                inputs[1].u.ki.dwFlags = 0;
-                inputs[1].u.ki.time = 0;
-                inputs[1].u.ki.dwExtraInfo = IntPtr.Zero;
-
-                // Release V
-                inputs[2].type = MonitorNativeMethods.INPUT_KEYBOARD;
-                inputs[2].u.ki.wVk = MonitorNativeMethods.VK_V;
-                inputs[2].u.ki.wScan = 0;
-                inputs[2].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
-                inputs[2].u.ki.time = 0;
-                inputs[2].u.ki.dwExtraInfo = IntPtr.Zero;
-
-                // Release Ctrl
-                inputs[3].type = MonitorNativeMethods.INPUT_KEYBOARD;
-                inputs[3].u.ki.wVk = MonitorNativeMethods.VK_CONTROL;
-                inputs[3].u.ki.wScan = 0;
-                inputs[3].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
-                inputs[3].u.ki.time = 0;
-                inputs[3].u.ki.dwExtraInfo = IntPtr.Zero;
-
-                // Send keyboard input
-                MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
-
-                // Allow time for paste to complete
                 Thread.Sleep(100);
+
+                // Use only one paste strategy to avoid duplication
+                // Strategy: Send Ctrl+V using SendInput for best compatibility
+                SendCtrlVUsingInputs();
+                
+                // Allow time for paste operation to complete
+                Thread.Sleep(200);
             }
             finally {
                 // Restore original clipboard content
@@ -431,6 +603,49 @@ namespace DesktopManager {
                     SetClipboardText(originalClipboardText);
                 }
             }
+        }
+
+        /// <summary>
+        /// Sends Ctrl+V using the SendInput method
+        /// </summary>
+        private void SendCtrlVUsingInputs() {
+            // Create input events array for Ctrl+V sequence
+            MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[4];
+            
+            // Press Ctrl
+            inputs[0].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[0].u.ki.wVk = MonitorNativeMethods.VK_CONTROL;
+            inputs[0].u.ki.wScan = 0;
+            inputs[0].u.ki.dwFlags = 0;
+            inputs[0].u.ki.time = 0;
+            inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+
+            // Press V
+            inputs[1].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[1].u.ki.wVk = MonitorNativeMethods.VK_V;
+            inputs[1].u.ki.wScan = 0;
+            inputs[1].u.ki.dwFlags = 0;
+            inputs[1].u.ki.time = 0;
+            inputs[1].u.ki.dwExtraInfo = IntPtr.Zero;
+
+            // Release V
+            inputs[2].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[2].u.ki.wVk = MonitorNativeMethods.VK_V;
+            inputs[2].u.ki.wScan = 0;
+            inputs[2].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+            inputs[2].u.ki.time = 0;
+            inputs[2].u.ki.dwExtraInfo = IntPtr.Zero;
+
+            // Release Ctrl
+            inputs[3].type = MonitorNativeMethods.INPUT_KEYBOARD;
+            inputs[3].u.ki.wVk = MonitorNativeMethods.VK_CONTROL;
+            inputs[3].u.ki.wScan = 0;
+            inputs[3].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+            inputs[3].u.ki.time = 0;
+            inputs[3].u.ki.dwExtraInfo = IntPtr.Zero;
+
+            // Send the input events
+            MonitorNativeMethods.SendInput(4, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
         }
 
         /// <summary>
