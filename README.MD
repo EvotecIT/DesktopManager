@@ -38,6 +38,8 @@ It has following features:
 - Get information about wallpapers
 - Set wallpapers
 - Get/Set monitor position
+- Get/Set window position
+- Get/Set window state (minimize, maximize, restore)
 
 ### Installation
 
