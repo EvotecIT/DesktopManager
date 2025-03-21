@@ -115,6 +115,18 @@ Helpers.ShowPropertiesTable("Position after move", testPosition);
 monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
 ```
 
+#### Example in C# - Getting/Setting Window Position
+
+```csharp
+var manager = new WindowManager();
+manager.GetWindows
+manager.SetWindowPosition
+manager.CloseWindow
+manager.MinimizeWindow
+manager.MaximizeWindow
+manager.RestoreWindow
+```
+
 #### Example in PowerShell - Getting Monitor Information
 
 ```powershell
@@ -151,4 +163,18 @@ $Desktop2 | Format-Table
 
 Set-DesktopPosition -Index 0 -Left -3840 -Top 0 -Right 0 -Bottom 1660 -WhatIf
 Set-DesktopPosition -Index 1 -Left 0 -Top 0 -Right 3840 -Bottom 2160 -WhatIf
+
+
+### Example in PowerShell - Getting/Setting Window Position
+
+```powershell
+Get-DesktopWindow | Format-Table *
+```
+
+![image](https://github.com/user-attachments/assets/e4d026f7-2035-4a45-9779-a85423acdb21)
+
+
+```powershell
+Set-DesktopWindow -Name '*Zadanie - Notepad' -Height 800 -Width 1200 -Left 100
+Set-DesktopWindow -Name '*Zadanie - Notepad' -State Maximize
 ```
