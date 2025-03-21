@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace DesktopManager {
     /// <summary>
@@ -244,7 +245,285 @@ namespace DesktopManager {
                 }
             }
 
-            return text.Contains(pattern);
+            // If no wildcard, do a case-insensitive contains check
+            return text.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Sends text to a window using the specified method.
+        /// </summary>
+        /// <param name="windowInfo">The window information.</param>
+        /// <param name="text">The text to send.</param>
+        /// <param name="method">The method to use for sending text.</param>
+        /// <exception cref="InvalidOperationException">Thrown when failed to send text to the window.</exception>
+        public void SendText(WindowInfo windowInfo, string text, TextSendMethod method = TextSendMethod.Type) {
+            // Make sure the window is active
+            if (!ActivateWindow(windowInfo.Handle)) {
+                throw new InvalidOperationException("Failed to activate window");
+            }
+
+            // Small delay to ensure the window is ready
+            Thread.Sleep(100);
+
+            switch (method) {
+                case TextSendMethod.Type:
+                    TypeText(windowInfo.Handle, text);
+                    break;
+                case TextSendMethod.Paste:
+                    PasteText(windowInfo.Handle, text);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported text sending method");
+            }
+        }
+
+        /// <summary>
+        /// Activates the specified window.
+        /// </summary>
+        /// <param name="hWnd">The window handle.</param>
+        /// <returns>True if successful, otherwise false.</returns>
+        private bool ActivateWindow(IntPtr hWnd) {
+            if (hWnd == IntPtr.Zero) {
+                return false;
+            }
+
+            // Get foreground thread
+            uint foregroundThreadId = MonitorNativeMethods.GetWindowThreadProcessId(
+                MonitorNativeMethods.GetForegroundWindow(), out _);
+
+            // Get current thread
+            uint currentThreadId = MonitorNativeMethods.GetCurrentThreadId();
+
+            // Attach threads if necessary
+            bool threadsAttached = false;
+            if (foregroundThreadId != currentThreadId) {
+                // Attach foreground thread to our thread
+                threadsAttached = MonitorNativeMethods.AttachThreadInput(
+                    foregroundThreadId, currentThreadId, true);
+            }
+
+            // Bring window to foreground and set focus
+            bool result = MonitorNativeMethods.SetForegroundWindow(hWnd);
+            MonitorNativeMethods.SetFocus(hWnd);
+
+            // Detach threads if they were attached
+            if (threadsAttached) {
+                MonitorNativeMethods.AttachThreadInput(
+                    foregroundThreadId, currentThreadId, false);
+            }
+
+            // Allow window to process focus change
+            Thread.Sleep(50);
+            return result;
+        }
+
+        /// <summary>
+        /// Types text character by character to the specified window.
+        /// </summary>
+        /// <param name="hWnd">The window handle.</param>
+        /// <param name="text">The text to type.</param>
+        private void TypeText(IntPtr hWnd, string text) {
+            if (string.IsNullOrEmpty(text)) {
+                return;
+            }
+
+            // Process each character in the text
+            foreach (char c in text) {
+                // Handle special characters
+                switch (c) {
+                    case '\r':
+                        // Skip carriage returns as we'll handle newlines with '\n'
+                        continue;
+                    case '\n':
+                        // Send Enter key for newline
+                        MonitorNativeMethods.SendMessage(hWnd,
+                            MonitorNativeMethods.WM_CHAR,
+                            (uint)'\r', 0);
+                        Thread.Sleep(5); // Small delay between characters
+                        continue;
+                    case '\t':
+                        // Send Tab key
+                        MonitorNativeMethods.SendMessage(hWnd,
+                            MonitorNativeMethods.WM_CHAR,
+                            (uint)'\t', 0);
+                        Thread.Sleep(5); // Small delay between characters
+                        continue;
+                }
+
+                // Send regular character
+                MonitorNativeMethods.SendMessage(hWnd,
+                    MonitorNativeMethods.WM_CHAR,
+                    (uint)c, 0);
+
+                // Small delay between characters to simulate realistic typing
+                Thread.Sleep(5);
+            }
+        }
+
+        /// <summary>
+        /// Pastes text to the specified window using the clipboard.
+        /// </summary>
+        /// <param name="hWnd">The window handle.</param>
+        /// <param name="text">The text to paste.</param>
+        /// <exception cref="InvalidOperationException">Thrown when clipboard operations fail.</exception>
+        private void PasteText(IntPtr hWnd, string text) {
+            if (string.IsNullOrEmpty(text)) {
+                return;
+            }
+
+            // Store the current clipboard content to restore later
+            string originalClipboardText = GetClipboardText();
+
+            try {
+                // Set new clipboard content
+                if (!SetClipboardText(text)) {
+                    throw new InvalidOperationException("Failed to set clipboard text");
+                }
+
+                // Small delay to ensure clipboard is ready
+                Thread.Sleep(50);
+
+                // Send Ctrl+V to paste
+                // Press Ctrl
+                MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[4];
+
+                // Press Ctrl
+                inputs[0].type = MonitorNativeMethods.INPUT_KEYBOARD;
+                inputs[0].u.ki.wVk = MonitorNativeMethods.VK_CONTROL;
+                inputs[0].u.ki.wScan = 0;
+                inputs[0].u.ki.dwFlags = 0;
+                inputs[0].u.ki.time = 0;
+                inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+
+                // Press V
+                inputs[1].type = MonitorNativeMethods.INPUT_KEYBOARD;
+                inputs[1].u.ki.wVk = MonitorNativeMethods.VK_V;
+                inputs[1].u.ki.wScan = 0;
+                inputs[1].u.ki.dwFlags = 0;
+                inputs[1].u.ki.time = 0;
+                inputs[1].u.ki.dwExtraInfo = IntPtr.Zero;
+
+                // Release V
+                inputs[2].type = MonitorNativeMethods.INPUT_KEYBOARD;
+                inputs[2].u.ki.wVk = MonitorNativeMethods.VK_V;
+                inputs[2].u.ki.wScan = 0;
+                inputs[2].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+                inputs[2].u.ki.time = 0;
+                inputs[2].u.ki.dwExtraInfo = IntPtr.Zero;
+
+                // Release Ctrl
+                inputs[3].type = MonitorNativeMethods.INPUT_KEYBOARD;
+                inputs[3].u.ki.wVk = MonitorNativeMethods.VK_CONTROL;
+                inputs[3].u.ki.wScan = 0;
+                inputs[3].u.ki.dwFlags = MonitorNativeMethods.KEYEVENTF_KEYUP;
+                inputs[3].u.ki.time = 0;
+                inputs[3].u.ki.dwExtraInfo = IntPtr.Zero;
+
+                // Send keyboard input
+                MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(MonitorNativeMethods.INPUT)));
+
+                // Allow time for paste to complete
+                Thread.Sleep(100);
+            }
+            finally {
+                // Restore original clipboard content
+                if (originalClipboardText != null) {
+                    SetClipboardText(originalClipboardText);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the current text from the clipboard.
+        /// </summary>
+        /// <returns>The clipboard text, or null if no text is available.</returns>
+        private string GetClipboardText() {
+            if (!MonitorNativeMethods.OpenClipboard(IntPtr.Zero)) {
+                return null;
+            }
+
+            try {
+                IntPtr hClipboardData = MonitorNativeMethods.GetClipboardData(MonitorNativeMethods.CF_UNICODETEXT);
+                if (hClipboardData == IntPtr.Zero) {
+                    return null;
+                }
+
+                IntPtr pchData = MonitorNativeMethods.GlobalLock(hClipboardData);
+                if (pchData == IntPtr.Zero) {
+                    return null;
+                }
+
+                try {
+                    return Marshal.PtrToStringUni(pchData);
+                }
+                finally {
+                    MonitorNativeMethods.GlobalUnlock(hClipboardData);
+                }
+            }
+            finally {
+                MonitorNativeMethods.CloseClipboard();
+            }
+        }
+
+        /// <summary>
+        /// Sets text to the clipboard.
+        /// </summary>
+        /// <param name="text">The text to set.</param>
+        /// <returns>True if successful, otherwise false.</returns>
+        private bool SetClipboardText(string text) {
+            if (!MonitorNativeMethods.OpenClipboard(IntPtr.Zero)) {
+                return false;
+            }
+
+            try {
+                // Empty the clipboard
+                if (!MonitorNativeMethods.EmptyClipboard()) {
+                    return false;
+                }
+
+                // Allocate global memory for the text
+                int size = (text.Length + 1) * 2; // Size in bytes for Unicode string (including null terminator)
+                IntPtr hGlobal = MonitorNativeMethods.GlobalAlloc(MonitorNativeMethods.GMEM_MOVEABLE, (uint)size);
+                if (hGlobal == IntPtr.Zero) {
+                    return false;
+                }
+
+                try {
+                    // Lock the memory and copy the data
+                    IntPtr pGlobal = MonitorNativeMethods.GlobalLock(hGlobal);
+                    if (pGlobal == IntPtr.Zero) {
+                        return false;
+                    }
+
+                    try {
+                        Marshal.Copy(text.ToCharArray(), 0, pGlobal, text.Length);
+                        // Set the null terminator
+                        Marshal.WriteInt16(pGlobal, text.Length * 2, 0);
+                    }
+                    finally {
+                        MonitorNativeMethods.GlobalUnlock(hGlobal);
+                    }
+
+                    // Set the clipboard data
+                    IntPtr result = MonitorNativeMethods.SetClipboardData(MonitorNativeMethods.CF_UNICODETEXT, hGlobal);
+                    if (result == IntPtr.Zero) {
+                        return false;
+                    }
+
+                    // The system now owns the memory, so don't free it
+                    hGlobal = IntPtr.Zero;
+                    return true;
+                }
+                finally {
+                    // Free the memory if SetClipboardData failed
+                    if (hGlobal != IntPtr.Zero) {
+                        MonitorNativeMethods.GlobalFree(hGlobal);
+                    }
+                }
+            }
+            finally {
+                MonitorNativeMethods.CloseClipboard();
+            }
         }
     }
 }
