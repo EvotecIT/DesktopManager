@@ -1,0 +1,1 @@
+﻿dotnet build "C:\Support\GitHub\DesktopManager\Sources\DesktopManager.sln"
