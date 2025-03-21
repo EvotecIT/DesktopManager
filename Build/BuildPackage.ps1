@@ -1,5 +1,7 @@
 ﻿Clear-Host
 
+Import-Module PSPublishModule
+
 $ProjectPath = "C:\Support\GitHub\DesktopManager\Sources"
 $ReleasePath = "C:\Support\GitHub\DesktopManager\Sources\DesktopManager\bin\Release"
 
