@@ -10,7 +10,7 @@
         <Company>Evotec</Company>
         <Authors>Przemyslaw Klys</Authors>
         <LangVersion>latest</LangVersion>
-        <Copyright>(c) 2011 - 2024 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
+        <Copyright>(c) 2011 - 2025 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="PowerShellStandard.Library" Version="5.1.1" PrivateAssets="all" />

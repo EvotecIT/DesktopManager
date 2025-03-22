@@ -10,7 +10,7 @@
         <Authors>Przemyslaw Klys</Authors>
         <DelaySign>False</DelaySign>
         <IsPublishable>True</IsPublishable>
-        <Copyright>(c) 2011 - 2024 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
+        <Copyright>(c) 2011 - 2025 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
         <RepositoryUrl>https://github.com/evotecit/DesktopManager</RepositoryUrl>
         <VersionPrefix>3.0.0</VersionPrefix>
         <DebugType>portable</DebugType>
