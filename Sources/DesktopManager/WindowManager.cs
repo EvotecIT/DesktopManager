@@ -222,6 +222,31 @@ namespace DesktopManager {
                 0);
         }
 
+        /// <summary>
+        /// Sets whether a window is topmost.
+        /// </summary>
+        /// <param name="windowInfo">The window information.</param>
+        /// <param name="topMost">True to make the window topmost; false to reset.</param>
+        public void SetWindowTopMost(WindowInfo windowInfo, bool topMost) {
+            const int SWP_NOMOVE = 0x0002;
+            const int SWP_NOSIZE = 0x0001;
+
+            var insertAfter = topMost ? MonitorNativeMethods.HWND_TOPMOST : MonitorNativeMethods.HWND_NOTOPMOST;
+            if (!MonitorNativeMethods.SetWindowPos(windowInfo.Handle, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)) {
+                throw new InvalidOperationException("Failed to set window topmost state");
+            }
+        }
+
+        /// <summary>
+        /// Activates a window.
+        /// </summary>
+        /// <param name="windowInfo">The window information.</param>
+        public void ActivateWindow(WindowInfo windowInfo) {
+            if (!MonitorNativeMethods.SetForegroundWindow(windowInfo.Handle)) {
+                throw new InvalidOperationException("Failed to activate window");
+            }
+        }
+
         private bool MatchesWildcard(string text, string pattern) {
             if (pattern == "*") {
                 return true;

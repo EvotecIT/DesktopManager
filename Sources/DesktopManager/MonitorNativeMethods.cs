@@ -131,6 +131,21 @@ public static class MonitorNativeMethods {
     public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
 
     /// <summary>
+    /// Brings the specified window to the foreground.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <returns>True if successful.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    /// <summary>
+    /// Gets the handle of the foreground window.
+    /// </summary>
+    /// <returns>The foreground window handle.</returns>
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    /// <summary>
     /// Sends a message to a window.
     /// </summary>
     /// <param name="hWnd">The window handle.</param>
@@ -154,10 +169,22 @@ public static class MonitorNativeMethods {
     /// Indexes for GetWindowLong
     /// </summary>
     public const int GWL_STYLE = -16;
+    public const int GWL_EXSTYLE = -20;
 
     /// <summary>
     /// Window style values
     /// </summary>
     public const int WS_MINIMIZE = 0x20000000;
     public const int WS_MAXIMIZE = 0x01000000;
+
+    /// <summary>
+    /// Extended window style values
+    /// </summary>
+    public const int WS_EX_TOPMOST = 0x00000008;
+
+    /// <summary>
+    /// Window insert after handles.
+    /// </summary>
+    public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+    public static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
 }

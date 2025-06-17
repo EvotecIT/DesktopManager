@@ -56,6 +56,18 @@ namespace DesktopManager.PowerShell {
         public WindowState? State { get; set; }
 
         /// <summary>
+        /// <para type="description">Set the window as top-most.</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public SwitchParameter TopMost { get; set; }
+
+        /// <summary>
+        /// <para type="description">Activate the window.</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public SwitchParameter Activate { get; set; }
+
+        /// <summary>
         /// Begin processing
         /// </summary>
         protected override void BeginProcessing() {
@@ -85,6 +97,12 @@ namespace DesktopManager.PowerShell {
                                     break;
                             }
                         }
+                        if (TopMost.IsPresent) {
+                            manager.SetWindowTopMost(window, true);
+                        }
+                        if (Activate.IsPresent) {
+                            manager.ActivateWindow(window);
+                        }
                     } catch (Exception ex) {
                         WriteWarning($"Failed to modify window '{window.Title}': {ex.Message}");
                     }
@@ -103,6 +121,12 @@ namespace DesktopManager.PowerShell {
             }
             if (Width >= 0 || Height >= 0) {
                 parts.Add($"Resize to {Width}x{Height}");
+            }
+            if (TopMost.IsPresent) {
+                parts.Add("TopMost");
+            }
+            if (Activate.IsPresent) {
+                parts.Add("Activate");
             }
 
             return string.Join(" and ", parts);
