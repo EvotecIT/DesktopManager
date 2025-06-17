@@ -20,3 +20,6 @@ Locale: en-US
 ### [Set-DesktopWallpaper](Set-DesktopWallpaper.md)
 {{ Fill in the Synopsis }}
 
+### [Get-DesktopScreenshot](Get-DesktopScreenshot.md)
+{{ Fill in the Synopsis }}
+

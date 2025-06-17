@@ -40,6 +40,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
         <None Include="..\..\Assets\Icons\DesktopManager.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
