@@ -14,12 +14,15 @@ public static class ScreenshotService {
     /// </summary>
     /// <returns>A <see cref="Bitmap"/> containing the screenshot.</returns>
     public static Bitmap CaptureScreen() {
-        int width = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CXVIRTUALSCREEN);
-        int height = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CYVIRTUALSCREEN);
-        int left = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_XVIRTUALSCREEN);
-        int top = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_YVIRTUALSCREEN);
+        Monitors monitors = new();
+        var rects = monitors.GetMonitors().Select(m => m.GetMonitorBounds());
 
-        return CaptureRegion(left, top, width, height);
+        int left = rects.Min(r => r.Left);
+        int top = rects.Min(r => r.Top);
+        int right = rects.Max(r => r.Right);
+        int bottom = rects.Max(r => r.Bottom);
+
+        return CaptureRegion(left, top, right - left, bottom - top);
     }
 
     /// <summary>
