@@ -160,4 +160,10 @@ public static class MonitorNativeMethods {
     /// </summary>
     public const int WS_MINIMIZE = 0x20000000;
     public const int WS_MAXIMIZE = 0x01000000;
+
+    /// <summary>
+    /// Window position flags
+    /// </summary>
+    public const int SWP_NOZORDER = 0x0004;
+    public const int SWP_NOSIZE = 0x0001;
 }
