@@ -1,4 +1,4 @@
-﻿Import-Module C:\Support\Github\PSPublishModule\PSPublishModule.psd1 -Force
+﻿Import-Module PSPublishModule -Force
 
 Build-Module -ModuleName 'DesktopManager' {
     # Usual defaults as per standard module
@@ -91,6 +91,7 @@ Build-Module -ModuleName 'DesktopManager' {
         DotSourceLibraries                = $true
         DotSourceClasses                  = $true
         DeleteTargetModuleBeforeBuild     = $true
+        RefreshPSD1Only                   = $true
     }
 
     New-ConfigurationBuild @newConfigurationBuildSplat

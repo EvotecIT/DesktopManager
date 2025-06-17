@@ -137,11 +137,9 @@ namespace DesktopManager {
         /// <param name="width">The width of the window. Use -1 to keep current width.</param>
         /// <param name="height">The height of the window. Use -1 to keep current height.</param>
         public void SetWindowPosition(WindowInfo windowInfo, int left, int top, int width = -1, int height = -1) {
-            const int SWP_NOZORDER = 0x0004;
             const int SWP_NOMOVE = 0x0002;
-            const int SWP_NOSIZE = 0x0001;
 
-            int flags = SWP_NOZORDER;
+            int flags = MonitorNativeMethods.SWP_NOZORDER;
 
             // If position is -1, don't move
             if (left < 0 && top < 0) {
@@ -150,7 +148,7 @@ namespace DesktopManager {
 
             // If size is -1, don't resize
             if (width < 0 && height < 0) {
-                flags |= SWP_NOSIZE;
+                flags |= MonitorNativeMethods.SWP_NOSIZE;
             }
 
             if (!MonitorNativeMethods.SetWindowPos(
