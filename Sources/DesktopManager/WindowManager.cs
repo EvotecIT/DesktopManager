@@ -60,8 +60,9 @@ namespace DesktopManager {
                             windowInfo.Right = rect.Right;
                             windowInfo.Bottom = rect.Bottom;
 
-                            // Get window state
-                            int style = MonitorNativeMethods.GetWindowLong(handle, MonitorNativeMethods.GWL_STYLE);
+                            // Get window state using the IntPtr wrapper to work on x86 and x64
+                            IntPtr stylePtr = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE);
+                            int style = unchecked((int)(long)stylePtr);
                             if ((style & MonitorNativeMethods.WS_MINIMIZE) != 0) {
                                 windowInfo.State = WindowState.Minimize;
                             } else if ((style & MonitorNativeMethods.WS_MAXIMIZE) != 0) {
