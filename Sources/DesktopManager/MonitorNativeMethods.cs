@@ -150,13 +150,25 @@ public static class MonitorNativeMethods {
     // On 32-bit systems GetWindowLong is used while on 64-bit systems
     // the operating system exposes GetWindowLongPtr. Define both and
     // call the appropriate version at runtime.
+
+    /// <summary>
+    /// 32-bit variant of <c>GetWindowLongPtr</c>.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="nIndex">The value index to retrieve.</param>
+    /// <returns>The requested value as a pointer.</returns>
     [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
     private static extern IntPtr GetWindowLong32(IntPtr hWnd, int nIndex);
 
+    /// <summary>
+    /// 64-bit variant of <c>GetWindowLongPtr</c>.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="nIndex">The value index to retrieve.</param>
+    /// <returns>The requested value as a pointer.</returns>
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
     private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
 
-    /// <summary>
     /// <summary>
     /// Retrieves information about the specified window in a platform agnostic manner.
     /// </summary>
