@@ -233,7 +233,7 @@ namespace DesktopManager {
                 }
             }
 
-            return text.Contains(pattern);
+            return text.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }
