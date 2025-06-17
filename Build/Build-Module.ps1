@@ -1,4 +1,4 @@
-﻿Import-Module C:\Support\Github\PSPublishModule\PSPublishModule.psd1 -Force
+﻿Import-Module PSPublishModule -Force
 
 Build-Module -ModuleName 'DesktopManager' {
     # Usual defaults as per standard module
