@@ -147,8 +147,23 @@ public static class MonitorNativeMethods {
     /// <param name="hWnd">A handle to the window.</param>
     /// <param name="nIndex">The zero-based offset to the value to be retrieved.</param>
     /// <returns>The requested value.</returns>
-    [DllImport("user32.dll")]
-    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern IntPtr GetWindowLong32(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    /// <summary>
+    /// Retrieves information about the specified window. Handles both x86 and x64 processes.
+    /// </summary>
+    /// <param name="hWnd">A handle to the window.</param>
+    /// <param name="nIndex">The zero-based offset to the value to be retrieved.</param>
+    /// <returns>The requested value as a pointer.</returns>
+    public static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex) {
+        return IntPtr.Size == 8
+            ? GetWindowLongPtr64(hWnd, nIndex)
+            : GetWindowLong32(hWnd, nIndex);
+    }
 
     /// <summary>
     /// Indexes for GetWindowLong
