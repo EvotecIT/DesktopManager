@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -125,16 +125,7 @@ namespace DesktopManager {
         /// <param name="left">The left position.</param>
         /// <param name="top">The top position.</param>
         public void SetWindowPosition(WindowInfo windowInfo, int left, int top) {
-            if (!MonitorNativeMethods.SetWindowPos(
-                windowInfo.Handle,
-                IntPtr.Zero,
-                left,
-                top,
-                -1,
-                -1,
-                1)) {
-                throw new InvalidOperationException("Failed to set window position");
-            }
+            SetWindowPosition(windowInfo, left, top, -1, -1);
         }
 
         /// <summary>
