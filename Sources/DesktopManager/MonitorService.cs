@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace DesktopManager;
 
 /// <summary>
@@ -13,6 +15,12 @@ public class MonitorService {
     /// <param name="desktopManager">The desktop manager interface.</param>
     public MonitorService(IDesktopManager desktopManager) {
         _desktopManager = desktopManager;
+
+        try {
+            _desktopManager.Enable();
+        } catch (COMException) {
+            // Ignored - COM may fail in unsupported scenarios
+        }
     }
 
     /// <summary>
