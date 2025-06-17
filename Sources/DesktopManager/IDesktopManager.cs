@@ -1,4 +1,4 @@
-﻿namespace DesktopManager;
+namespace DesktopManager;
 
 /// <summary>
 /// Provides methods to manage desktop settings and wallpapers.

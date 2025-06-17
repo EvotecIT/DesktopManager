@@ -1,4 +1,4 @@
-﻿namespace DesktopManager;
+namespace DesktopManager;
 
 /// <summary>
 /// Represents a rectangle defined by the coordinates of its upper-left and lower-right corners.

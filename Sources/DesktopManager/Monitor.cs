@@ -1,4 +1,4 @@
-﻿namespace DesktopManager;
+namespace DesktopManager;
 
 /// <summary>
 /// Represents a monitor and provides methods to interact with it.
