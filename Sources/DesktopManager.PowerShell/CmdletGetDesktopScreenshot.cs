@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.Management.Automation;
 
@@ -15,15 +16,33 @@ public sealed class CmdletGetDesktopScreenshot : PSCmdlet {
     public string Path;
 
     /// <summary>
+    /// <para type="description">Index of the monitor to capture. Defaults to the entire virtual screen.</para>
+    /// </summary>
+    [Parameter(Mandatory = false)]
+    public int? Monitor;
+
+    /// <summary>
+    /// <para type="description">Region to capture in screen coordinates.</para>
+    /// </summary>
+    [Parameter(Mandatory = false)]
+    public Rectangle? Region;
+
+    /// <summary>
     /// Begin processing the command.
     /// </summary>
     protected override void BeginProcessing() {
-        using var bitmap = ScreenshotService.CaptureScreen();
+        Bitmap bitmap = Region != null
+            ? ScreenshotService.CaptureRegion(Region.Value)
+            : Monitor != null
+                ? ScreenshotService.CaptureMonitor(Monitor.Value)
+                : ScreenshotService.CaptureScreen();
+
         if (MyInvocation.BoundParameters.ContainsKey(nameof(Path))) {
             bitmap.Save(Path, ImageFormat.Png);
+            bitmap.Dispose();
             WriteObject(Path);
         } else {
-            WriteObject(bitmap); // Bitmap disposed by PowerShell after pipeline
+            WriteObject(bitmap);
         }
     }
 }

@@ -21,5 +21,5 @@ Locale: en-US
 {{ Fill in the Synopsis }}
 
 ### [Get-DesktopScreenshot](Get-DesktopScreenshot.md)
-{{ Fill in the Synopsis }}
+Capture a screenshot of the entire desktop, a single monitor or a custom region.
 

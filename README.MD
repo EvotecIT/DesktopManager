@@ -40,7 +40,7 @@ It has following features:
 - Get/Set monitor position
 - Get/Set window position
 - Get/Set window state (minimize, maximize, restore)
-- Capture desktop screenshots
+- Capture desktop screenshots (specific monitor or region)
 
 ### Installation
 
