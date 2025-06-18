@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Linq;
 
 namespace DesktopManager;
 
@@ -228,6 +229,65 @@ public class MonitorService {
         }
 
         throw new ArgumentException("Corresponding display device not found for the given Monitor ID.");
+    }
+
+    /// <summary>
+    /// Sets the resolution of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="width">The desired width.</param>
+    /// <param name="height">The desired height.</param>
+    public void SetMonitorResolution(string deviceId, int width, int height) {
+        var deviceName = GetMonitors().First(m => m.DeviceId == deviceId).DeviceName;
+
+        DEVMODE devMode = new DEVMODE();
+        devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+        if (!MonitorNativeMethods.EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
+            throw new InvalidOperationException("Unable to get display settings");
+        }
+
+        devMode.dmFields = 0x00080000 | 0x00100000; // DM_PELSWIDTH | DM_PELSHEIGHT
+        devMode.dmPelsWidth = width;
+        devMode.dmPelsHeight = height;
+
+        DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(deviceName, ref devMode, IntPtr.Zero, ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY, IntPtr.Zero);
+        if (result != DisplayChangeConfirmation.Successful && result != DisplayChangeConfirmation.Restart) {
+            throw new InvalidOperationException($"Unable to set monitor resolution. Error: {result}");
+        }
+    }
+
+    /// <summary>
+    /// Sets the orientation of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="orientation">The orientation to apply.</param>
+    public void SetMonitorOrientation(string deviceId, DisplayOrientation orientation) {
+        var deviceName = GetMonitors().First(m => m.DeviceId == deviceId).DeviceName;
+
+        DEVMODE devMode = new DEVMODE();
+        devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+        if (!MonitorNativeMethods.EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
+            throw new InvalidOperationException("Unable to get display settings");
+        }
+
+        if ((orientation == DisplayOrientation.Degrees90 || orientation == DisplayOrientation.Degrees270) &&
+            (devMode.dmDisplayOrientation == (int)DisplayOrientation.Default || devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees180) ||
+            (orientation == DisplayOrientation.Default || orientation == DisplayOrientation.Degrees180) &&
+            (devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees90 || devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees270)) {
+            int temp = devMode.dmPelsWidth;
+            devMode.dmPelsWidth = devMode.dmPelsHeight;
+            devMode.dmPelsHeight = temp;
+            devMode.dmFields = 0x00080000 | 0x00100000 | 0x00000080;
+        } else {
+            devMode.dmFields = 0x00000080;
+        }
+
+        devMode.dmDisplayOrientation = (int)orientation;
+
+        DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(deviceName, ref devMode, IntPtr.Zero, ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY, IntPtr.Zero);
+        if (result != DisplayChangeConfirmation.Successful && result != DisplayChangeConfirmation.Restart) {
+            throw new InvalidOperationException($"Unable to set monitor orientation. Error: {result}");
+        }
     }
 
     /// <summary>

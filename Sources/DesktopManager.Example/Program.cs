@@ -1,4 +1,4 @@
-﻿namespace DesktopManager.Example {
+namespace DesktopManager.Example {
     /// <summary>
     /// The main class for the DesktopManager example application.
     /// </summary>
@@ -74,6 +74,9 @@
 
             // Demonstrate window management features
             WindowExamples.Run();
+            // Demonstrate resolution & orientation features
+            ResolutionOrientationDemo.Run();
         }
     }
 }
+

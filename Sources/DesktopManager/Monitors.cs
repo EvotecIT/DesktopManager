@@ -164,6 +164,46 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Sets the resolution of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="width">The desired width.</param>
+    /// <param name="height">The desired height.</param>
+    public void SetMonitorResolution(string deviceId, int width, int height) {
+        _monitorService.SetMonitorResolution(deviceId, width, height);
+    }
+
+    /// <summary>
+    /// Sets the resolution of a monitor by its index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="width">The desired width.</param>
+    /// <param name="height">The desired height.</param>
+    public void SetMonitorResolution(int index, int width, int height) {
+        var deviceId = _monitorService.GetMonitorDevicePathAt((uint)index);
+        _monitorService.SetMonitorResolution(deviceId, width, height);
+    }
+
+    /// <summary>
+    /// Sets the orientation of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="orientation">The orientation to apply.</param>
+    public void SetMonitorOrientation(string deviceId, DisplayOrientation orientation) {
+        _monitorService.SetMonitorOrientation(deviceId, orientation);
+    }
+
+    /// <summary>
+    /// Sets the orientation of a monitor by its index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="orientation">The orientation to apply.</param>
+    public void SetMonitorOrientation(int index, DisplayOrientation orientation) {
+        var deviceId = _monitorService.GetMonitorDevicePathAt((uint)index);
+        _monitorService.SetMonitorOrientation(deviceId, orientation);
+    }
+
+    /// <summary>
     /// Gets a list of all display devices.
     /// </summary>
     /// <returns>A list of all display devices.</returns>

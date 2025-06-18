@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -162,6 +163,40 @@ namespace DesktopManager {
                 flags)) {
                 throw new InvalidOperationException("Failed to set window position");
             }
+        }
+
+        /// <summary>
+        /// Moves the specified window to the target monitor while preserving its relative position.
+        /// </summary>
+        /// <param name="windowInfo">The window to move.</param>
+        /// <param name="targetMonitor">The monitor to move the window to.</param>
+        public void MoveWindowToMonitor(WindowInfo windowInfo, Monitor targetMonitor) {
+            if (targetMonitor == null) {
+                throw new ArgumentNullException(nameof(targetMonitor));
+            }
+
+            RECT windowRect = new RECT();
+            if (!MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out windowRect)) {
+                throw new InvalidOperationException("Failed to get window position");
+            }
+
+            var targetBounds = targetMonitor.GetMonitorBounds();
+
+            var currentMonitor = _monitors.GetMonitors(index: windowInfo.MonitorIndex).FirstOrDefault();
+            RECT currentBounds;
+            if (currentMonitor != null) {
+                currentBounds = currentMonitor.GetMonitorBounds();
+            } else {
+                currentBounds = new RECT { Left = windowRect.Left, Top = windowRect.Top };
+            }
+
+            int offsetX = windowRect.Left - currentBounds.Left;
+            int offsetY = windowRect.Top - currentBounds.Top;
+
+            int newLeft = targetBounds.Left + offsetX;
+            int newTop = targetBounds.Top + offsetY;
+
+            SetWindowPosition(windowInfo, newLeft, newTop);
         }
 
         /// <summary>
