@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Linq;
+using System.Text;
+using Microsoft.Win32;
 
 namespace DesktopManager;
 
@@ -130,7 +132,13 @@ public class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(string monitorId, string wallpaperPath) {
-        Execute(() => _desktopManager.SetWallpaper(monitorId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
+        try {
+            Execute(() => _desktopManager.SetWallpaper(monitorId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
+        } catch (DesktopManagerException) {
+            SetSystemWallpaper(wallpaperPath);
+        } catch (COMException) {
+            SetSystemWallpaper(wallpaperPath);
+        }
     }
 
     /// <summary>
@@ -139,8 +147,14 @@ public class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(int index, string wallpaperPath) {
-        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
-        Execute(() => _desktopManager.SetWallpaper(monitorId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
+        try {
+            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            Execute(() => _desktopManager.SetWallpaper(monitorId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
+        } catch (DesktopManagerException) {
+            SetSystemWallpaper(wallpaperPath);
+        } catch (COMException) {
+            SetSystemWallpaper(wallpaperPath);
+        }
     }
 
     /// <summary>
@@ -148,9 +162,15 @@ public class MonitorService {
     /// </summary>
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(string wallpaperPath) {
-        var devicePathCount = GetMonitorsConnected();
-        foreach (var device in devicePathCount) {
-            Execute(() => _desktopManager.SetWallpaper(device.DeviceId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
+        try {
+            var devicePathCount = GetMonitorsConnected();
+            foreach (var device in devicePathCount) {
+                Execute(() => _desktopManager.SetWallpaper(device.DeviceId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
+            }
+        } catch (DesktopManagerException) {
+            SetSystemWallpaper(wallpaperPath);
+        } catch (COMException) {
+            SetSystemWallpaper(wallpaperPath);
         }
     }
 
@@ -160,7 +180,13 @@ public class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <returns>The path to the wallpaper image.</returns>
     public string GetWallpaper(string monitorId) {
-        return Execute(() => _desktopManager.GetWallpaper(monitorId), nameof(IDesktopManager.GetWallpaper));
+        try {
+            return Execute(() => _desktopManager.GetWallpaper(monitorId), nameof(IDesktopManager.GetWallpaper));
+        } catch (DesktopManagerException) {
+            return GetSystemWallpaper();
+        } catch (COMException) {
+            return GetSystemWallpaper();
+        }
     }
 
     /// <summary>
@@ -169,8 +195,14 @@ public class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <returns>The path to the wallpaper image.</returns>
     public string GetWallpaper(int index) {
-        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
-        return Execute(() => _desktopManager.GetWallpaper(monitorId), nameof(IDesktopManager.GetWallpaper));
+        try {
+            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            return Execute(() => _desktopManager.GetWallpaper(monitorId), nameof(IDesktopManager.GetWallpaper));
+        } catch (DesktopManagerException) {
+            return GetSystemWallpaper();
+        } catch (COMException) {
+            return GetSystemWallpaper();
+        }
     }
 
     /// <summary>
@@ -187,7 +219,13 @@ public class MonitorService {
     /// </summary>
     /// <returns>The wallpaper position.</returns>
     public DesktopWallpaperPosition GetWallpaperPosition() {
-        return Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
+        try {
+            return Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
+        } catch (DesktopManagerException) {
+            return GetWallpaperPositionFallback();
+        } catch (COMException) {
+            return GetWallpaperPositionFallback();
+        }
     }
 
     /// <summary>
@@ -195,7 +233,13 @@ public class MonitorService {
     /// </summary>
     /// <param name="position">The wallpaper position.</param>
     public void SetWallpaperPosition(DesktopWallpaperPosition position) {
-        Execute(() => _desktopManager.SetPosition(position), nameof(IDesktopManager.SetPosition));
+        try {
+            Execute(() => _desktopManager.SetPosition(position), nameof(IDesktopManager.SetPosition));
+        } catch (DesktopManagerException) {
+            SetWallpaperPositionFallback(position);
+        } catch (COMException) {
+            SetWallpaperPositionFallback(position);
+        }
     }
 
     /// <summary>
@@ -224,6 +268,77 @@ public class MonitorService {
             rect.Bottom = mode.dmPositionY + mode.dmPelsHeight;
         }
         return rect;
+    }
+
+    private void SetSystemWallpaper(string path) {
+        MonitorNativeMethods.SystemParametersInfo(MonitorNativeMethods.SPI_SETDESKWALLPAPER, 0, path, MonitorNativeMethods.SPIF_UPDATEINIFILE | MonitorNativeMethods.SPIF_SENDWININICHANGE);
+    }
+
+    private string GetSystemWallpaper() {
+        StringBuilder sb = new StringBuilder(260);
+        if (MonitorNativeMethods.SystemParametersInfo(MonitorNativeMethods.SPI_GETDESKWALLPAPER, (uint)sb.Capacity, sb, 0)) {
+            return sb.ToString();
+        }
+        return string.Empty;
+    }
+
+    private DesktopWallpaperPosition GetWallpaperPositionFallback() {
+        try {
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Desktop", false);
+            if (key != null) {
+                string style = key.GetValue("WallpaperStyle", "0")?.ToString() ?? "0";
+                string tile = key.GetValue("TileWallpaper", "0")?.ToString() ?? "0";
+                if (tile == "1") {
+                    return DesktopWallpaperPosition.Tile;
+                }
+                return style switch {
+                    "0" => DesktopWallpaperPosition.Center,
+                    "2" => DesktopWallpaperPosition.Stretch,
+                    "6" => DesktopWallpaperPosition.Fit,
+                    "10" => DesktopWallpaperPosition.Fill,
+                    "22" => DesktopWallpaperPosition.Span,
+                    _ => DesktopWallpaperPosition.Center
+                };
+            }
+        } catch {
+        }
+        return DesktopWallpaperPosition.Center;
+    }
+
+    private void SetWallpaperPositionFallback(DesktopWallpaperPosition position) {
+        try {
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Desktop", true);
+            if (key != null) {
+                switch (position) {
+                    case DesktopWallpaperPosition.Tile:
+                        key.SetValue("WallpaperStyle", "0");
+                        key.SetValue("TileWallpaper", "1");
+                        break;
+                    case DesktopWallpaperPosition.Center:
+                        key.SetValue("WallpaperStyle", "0");
+                        key.SetValue("TileWallpaper", "0");
+                        break;
+                    case DesktopWallpaperPosition.Stretch:
+                        key.SetValue("WallpaperStyle", "2");
+                        key.SetValue("TileWallpaper", "0");
+                        break;
+                    case DesktopWallpaperPosition.Fit:
+                        key.SetValue("WallpaperStyle", "6");
+                        key.SetValue("TileWallpaper", "0");
+                        break;
+                    case DesktopWallpaperPosition.Fill:
+                        key.SetValue("WallpaperStyle", "10");
+                        key.SetValue("TileWallpaper", "0");
+                        break;
+                    case DesktopWallpaperPosition.Span:
+                        key.SetValue("WallpaperStyle", "22");
+                        key.SetValue("TileWallpaper", "0");
+                        break;
+                }
+                SetSystemWallpaper(GetSystemWallpaper());
+            }
+        } catch {
+        }
     }
 
     /// <summary>
