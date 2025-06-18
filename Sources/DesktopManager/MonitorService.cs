@@ -10,6 +10,22 @@ public class MonitorService {
     private const int ENUM_CURRENT_SETTINGS = -1;
     private readonly IDesktopManager _desktopManager;
 
+    private void Execute(Action action, string operation) {
+        try {
+            action();
+        } catch (COMException ex) {
+            throw new DesktopManagerException(operation, ex);
+        }
+    }
+
+    private T Execute<T>(Func<T> func, string operation) {
+        try {
+            return func();
+        } catch (COMException ex) {
+            throw new DesktopManagerException(operation, ex);
+        }
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="MonitorService"/> class.
     /// </summary>
@@ -18,9 +34,9 @@ public class MonitorService {
         _desktopManager = desktopManager;
 
         try {
-            _desktopManager.Enable();
-        } catch (COMException) {
-            // Ignored - COM may fail in unsupported scenarios
+            Execute(() => _desktopManager.Enable(), nameof(IDesktopManager.Enable));
+        } catch (DesktopManagerException) {
+            // COM failures are ignored during initialization to support unsupported scenarios
         }
     }
 
@@ -31,16 +47,16 @@ public class MonitorService {
     public List<Monitor> GetMonitors() {
         List<Monitor> list = new List<Monitor>();
 
-        var count = _desktopManager.GetMonitorDevicePathCount();
+        var count = Execute(() => _desktopManager.GetMonitorDevicePathCount(), nameof(IDesktopManager.GetMonitorDevicePathCount));
         for (uint i = 0; i < count; i++) {
             var monitor = new Monitor(this) {
                 Index = (int)i,
-                DeviceId = _desktopManager.GetMonitorDevicePathAt(i)
+                DeviceId = Execute(() => _desktopManager.GetMonitorDevicePathAt(i), nameof(IDesktopManager.GetMonitorDevicePathAt))
             };
             if (monitor.DeviceId != "") {
-                monitor.WallpaperPosition = _desktopManager.GetPosition();
-                monitor.Wallpaper = _desktopManager.GetWallpaper(monitor.DeviceId);
-                monitor.Rect = _desktopManager.GetMonitorBounds(monitor.DeviceId);
+                monitor.WallpaperPosition = Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
+                monitor.Wallpaper = Execute(() => _desktopManager.GetWallpaper(monitor.DeviceId), nameof(IDesktopManager.GetWallpaper));
+                monitor.Rect = Execute(() => _desktopManager.GetMonitorBounds(monitor.DeviceId), nameof(IDesktopManager.GetMonitorBounds));
 
                 // Populate new properties
                 DISPLAY_DEVICE d = new DISPLAY_DEVICE();
@@ -78,7 +94,7 @@ public class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(string monitorId, string wallpaperPath) {
-        _desktopManager.SetWallpaper(monitorId, wallpaperPath);
+        Execute(() => _desktopManager.SetWallpaper(monitorId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
     }
 
     /// <summary>
@@ -87,8 +103,8 @@ public class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(int index, string wallpaperPath) {
-        var monitorId = _desktopManager.GetMonitorDevicePathAt((uint)index);
-        _desktopManager.SetWallpaper(monitorId, wallpaperPath);
+        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+        Execute(() => _desktopManager.SetWallpaper(monitorId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
     }
 
     /// <summary>
@@ -98,7 +114,7 @@ public class MonitorService {
     public void SetWallpaper(string wallpaperPath) {
         var devicePathCount = GetMonitorsConnected();
         foreach (var device in devicePathCount) {
-            _desktopManager.SetWallpaper(device.DeviceId, wallpaperPath);
+            Execute(() => _desktopManager.SetWallpaper(device.DeviceId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
         }
     }
 
@@ -108,7 +124,7 @@ public class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <returns>The path to the wallpaper image.</returns>
     public string GetWallpaper(string monitorId) {
-        return _desktopManager.GetWallpaper(monitorId);
+        return Execute(() => _desktopManager.GetWallpaper(monitorId), nameof(IDesktopManager.GetWallpaper));
     }
 
     /// <summary>
@@ -117,7 +133,8 @@ public class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <returns>The path to the wallpaper image.</returns>
     public string GetWallpaper(int index) {
-        return _desktopManager.GetWallpaper(_desktopManager.GetMonitorDevicePathAt((uint)index));
+        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+        return Execute(() => _desktopManager.GetWallpaper(monitorId), nameof(IDesktopManager.GetWallpaper));
     }
 
     /// <summary>
@@ -126,7 +143,7 @@ public class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <returns>The device path of the monitor.</returns>
     public string GetMonitorDevicePathAt(uint index) {
-        return _desktopManager.GetMonitorDevicePathAt(index);
+        return Execute(() => _desktopManager.GetMonitorDevicePathAt(index), nameof(IDesktopManager.GetMonitorDevicePathAt));
     }
 
     /// <summary>
@@ -134,7 +151,7 @@ public class MonitorService {
     /// </summary>
     /// <returns>The wallpaper position.</returns>
     public DesktopWallpaperPosition GetWallpaperPosition() {
-        return _desktopManager.GetPosition();
+        return Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
     }
 
     /// <summary>
@@ -142,7 +159,7 @@ public class MonitorService {
     /// </summary>
     /// <param name="position">The wallpaper position.</param>
     public void SetWallpaperPosition(DesktopWallpaperPosition position) {
-        _desktopManager.SetPosition(position);
+        Execute(() => _desktopManager.SetPosition(position), nameof(IDesktopManager.SetPosition));
     }
 
     /// <summary>
@@ -151,7 +168,7 @@ public class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <returns>The bounds of the monitor.</returns>
     public RECT GetMonitorBounds(string monitorId) {
-        return _desktopManager.GetMonitorBounds(monitorId);
+        return Execute(() => _desktopManager.GetMonitorBounds(monitorId), nameof(IDesktopManager.GetMonitorBounds));
     }
 
     /// <summary>
