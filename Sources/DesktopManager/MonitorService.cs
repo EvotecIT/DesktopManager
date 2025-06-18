@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 using System.Linq;
 
@@ -45,33 +46,68 @@ public class MonitorService {
     /// </summary>
     /// <returns>A list of <see cref="Monitor"/> objects.</returns>
     public List<Monitor> GetMonitors() {
-        List<Monitor> list = new List<Monitor>();
+        try {
+            List<Monitor> list = new List<Monitor>();
 
-        var count = Execute(() => _desktopManager.GetMonitorDevicePathCount(), nameof(IDesktopManager.GetMonitorDevicePathCount));
-        for (uint i = 0; i < count; i++) {
-            var monitor = new Monitor(this) {
-                Index = (int)i,
-                DeviceId = Execute(() => _desktopManager.GetMonitorDevicePathAt(i), nameof(IDesktopManager.GetMonitorDevicePathAt))
-            };
-            if (monitor.DeviceId != "") {
-                monitor.WallpaperPosition = Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
-                monitor.Wallpaper = Execute(() => _desktopManager.GetWallpaper(monitor.DeviceId), nameof(IDesktopManager.GetWallpaper));
-                monitor.Rect = Execute(() => _desktopManager.GetMonitorBounds(monitor.DeviceId), nameof(IDesktopManager.GetMonitorBounds));
+            var count = Execute(() => _desktopManager.GetMonitorDevicePathCount(), nameof(IDesktopManager.GetMonitorDevicePathCount));
+            for (uint i = 0; i < count; i++) {
+                var monitor = new Monitor(this) {
+                    Index = (int)i,
+                    DeviceId = Execute(() => _desktopManager.GetMonitorDevicePathAt(i), nameof(IDesktopManager.GetMonitorDevicePathAt))
+                };
+                if (monitor.DeviceId != "") {
+                    monitor.WallpaperPosition = Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
+                    monitor.Wallpaper = Execute(() => _desktopManager.GetWallpaper(monitor.DeviceId), nameof(IDesktopManager.GetWallpaper));
+                    monitor.Rect = Execute(() => _desktopManager.GetMonitorBounds(monitor.DeviceId), nameof(IDesktopManager.GetMonitorBounds));
 
-                // Populate new properties
-                DISPLAY_DEVICE d = new DISPLAY_DEVICE();
-                d.cb = Marshal.SizeOf(d);
-                if (MonitorNativeMethods.EnumDisplayDevices(null, i, ref d, 0)) {
-                    monitor.DeviceName = d.DeviceName;
-                    monitor.DeviceString = d.DeviceString;
-                    monitor.StateFlags = d.StateFlags;
-                    monitor.DeviceKey = d.DeviceKey;
+                    // Populate new properties
+                    DISPLAY_DEVICE d = new DISPLAY_DEVICE();
+                    d.cb = Marshal.SizeOf(d);
+                    if (MonitorNativeMethods.EnumDisplayDevices(null, i, ref d, 0)) {
+                        monitor.DeviceName = d.DeviceName;
+                        monitor.DeviceString = d.DeviceString;
+                        monitor.StateFlags = d.StateFlags;
+                        monitor.DeviceKey = d.DeviceKey;
+                    }
+                }
+                list.Add(monitor);
+            }
+
+            return list;
+        } catch (DesktopManagerException) {
+            return EnumerateMonitorsFallback();
+        } catch (COMException) {
+            return EnumerateMonitorsFallback();
+        }
+    }
+
+    private List<Monitor> EnumerateMonitorsFallback() {
+        List<Monitor> monitors = new List<Monitor>();
+        int index = 0;
+        MonitorNativeMethods.MonitorEnumProc proc = (IntPtr hMonitor, IntPtr hdc, ref RECT rect, IntPtr lparam) => {
+            MONITORINFOEX info = new MONITORINFOEX();
+            info.cbSize = Marshal.SizeOf<MONITORINFOEX>();
+            if (MonitorNativeMethods.GetMonitorInfo(hMonitor, ref info)) {
+                DISPLAY_DEVICE device = new DISPLAY_DEVICE();
+                device.cb = Marshal.SizeOf(device);
+                if (MonitorNativeMethods.EnumDisplayDevices(info.szDevice, 0, ref device, 0)) {
+                    var monitor = new Monitor(this) {
+                        Index = index,
+                        DeviceId = info.szDevice,
+                        DeviceName = device.DeviceName,
+                        DeviceString = device.DeviceString,
+                        StateFlags = device.StateFlags,
+                        DeviceKey = device.DeviceKey,
+                        Rect = info.rcMonitor
+                    };
+                    monitors.Add(monitor);
                 }
             }
-            list.Add(monitor);
-        }
-
-        return list;
+            index++;
+            return true;
+        };
+        MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+        return monitors;
     }
 
     /// <summary>
@@ -168,7 +204,26 @@ public class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <returns>The bounds of the monitor.</returns>
     public RECT GetMonitorBounds(string monitorId) {
-        return Execute(() => _desktopManager.GetMonitorBounds(monitorId), nameof(IDesktopManager.GetMonitorBounds));
+        try {
+            return Execute(() => _desktopManager.GetMonitorBounds(monitorId), nameof(IDesktopManager.GetMonitorBounds));
+        } catch (DesktopManagerException) {
+            return GetMonitorBoundsFallback(monitorId);
+        } catch (COMException) {
+            return GetMonitorBoundsFallback(monitorId);
+        }
+    }
+
+    private RECT GetMonitorBoundsFallback(string deviceName) {
+        RECT rect = new RECT();
+        DEVMODE mode = new DEVMODE();
+        mode.dmSize = (short)Marshal.SizeOf<DEVMODE>();
+        if (MonitorNativeMethods.EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref mode)) {
+            rect.Left = mode.dmPositionX;
+            rect.Top = mode.dmPositionY;
+            rect.Right = mode.dmPositionX + mode.dmPelsWidth;
+            rect.Bottom = mode.dmPositionY + mode.dmPelsHeight;
+        }
+        return rect;
     }
 
     /// <summary>
