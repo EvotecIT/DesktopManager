@@ -71,6 +71,9 @@
 
             // Set wallpaper for the first monitor
             monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
+
+            // Demonstrate window management features
+            WindowExamples.Run();
         }
     }
 }

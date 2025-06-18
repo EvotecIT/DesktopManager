@@ -178,3 +178,18 @@ Get-DesktopWindow | Format-Table *
 Set-DesktopWindow -Name '*Zadanie - Notepad' -Height 800 -Width 1200 -Left 100
 Set-DesktopWindow -Name '*Zadanie - Notepad' -State Maximize
 ```
+
+### Example in PowerShell - Activating and Setting Window Top-Most
+
+```powershell
+Set-DesktopWindow -Name '*Notepad*' -TopMost -Activate
+```
+
+#### Example in C# - Activating and Setting Window Top-Most
+
+```csharp
+var manager = new WindowManager();
+var window = manager.GetWindows().First();
+manager.SetWindowTopMost(window, true);
+manager.ActivateWindow(window);
+```
