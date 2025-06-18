@@ -1,4 +1,4 @@
-﻿namespace DesktopManager.Example {
+namespace DesktopManager.Example {
     /// <summary>
     /// The main class for the DesktopManager example application.
     /// </summary>
@@ -74,6 +74,10 @@
 
             // Run monitor watcher example for 30 seconds
             MonitorWatcherExample.RunAsync(TimeSpan.FromSeconds(30)).Wait();
+          
+            // Run orienation demo
+            ResolutionOrientationDemo.Run();
         }
     }
 }
+
