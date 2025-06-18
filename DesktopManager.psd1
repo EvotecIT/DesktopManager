@@ -1,7 +1,7 @@
 ﻿@{
     AliasesToExport        = @('Get-DesktopMonitors')
     Author                 = 'Przemyslaw Klys'
-    CmdletsToExport        = @('Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Get-DesktopWindow', 'Set-DesktopPosition', 'Set-DesktopWallpaper', 'Set-DesktopWindow', 'Set-DesktopResolution')
+    CmdletsToExport        = @('Register-DesktopMonitorEvent', 'Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Get-DesktopWindow', 'Set-DesktopPosition', 'Set-DesktopWallpaper', 'Set-DesktopWindow')
     CompanyName            = 'Evotec'
     CompatiblePSEditions   = @('Desktop', 'Core')
     Copyright              = '(c) 2011 - 2025 Przemyslaw Klys @ Evotec. All rights reserved.'

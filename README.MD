@@ -199,4 +199,18 @@ var manager = new WindowManager();
 var window = manager.GetWindows().First();
 manager.SetWindowTopMost(window, true);
 manager.ActivateWindow(window);
+#### Example in PowerShell - Monitoring Display Changes
+
+Use `Register-DesktopMonitorEvent` to react when monitors are plugged in or the display configuration changes.
+
+```powershell
+Register-DesktopMonitorEvent -Duration 30 -Action { Write-Host 'Display settings changed' }
+```
+
+#### Example in C# - Monitoring Display Changes
+
+Applications can subscribe to the `MonitorWatcher.DisplaySettingsChanged` event.
+
+```csharp
+MonitorWatcherExample.Run(TimeSpan.FromSeconds(30));
 ```

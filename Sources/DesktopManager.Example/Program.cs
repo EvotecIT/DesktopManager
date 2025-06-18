@@ -74,6 +74,10 @@ namespace DesktopManager.Example {
 
             // Demonstrate window management features
             WindowExamples.Run();
+
+            // Run monitor watcher example for 30 seconds
+            MonitorWatcherExample.RunAsync(TimeSpan.FromSeconds(30)).Wait();
+          
             // Demonstrate resolution & orientation features
             ResolutionOrientationDemo.Run();
         }
