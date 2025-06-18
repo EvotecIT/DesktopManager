@@ -63,12 +63,19 @@ public static class MonitorNativeMethods {
     public static extern IntPtr GetShellWindow();
 
     /// <summary>
+    /// Callback invoked for each top‑level window during enumeration.
+    /// </summary>
+    /// <param name="hWnd">The handle to the window.</param>
+    /// <param name="lParam">Application-defined value passed from <see cref="EnumWindows"/>.</param>
+    /// <returns><c>true</c> to continue enumeration; otherwise <c>false</c>.</returns>
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    /// <summary>
     /// Enumerates all top-level windows.
     /// </summary>
-    /// <param name="lpEnumFunc">The callback function to invoke for each window.</param>
+    /// <param name="enumFunc">The callback function to invoke for each window.</param>
     /// <param name="lParam">Application-defined value to pass to the callback function.</param>
-    /// <returns>True if the enumeration completes, false if it was cancelled.</returns>
-    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    /// <returns><c>true</c> if the enumeration completes; otherwise <c>false</c>.</returns>
     [DllImport("user32.dll")]
     public static extern bool EnumWindows(EnumWindowsProc enumFunc, IntPtr lParam);
 
@@ -157,16 +164,6 @@ public static class MonitorNativeMethods {
     public static extern uint SendMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
 
     /// <summary>
-    /// Gets information about the specified window.
-    /// </summary>
-    /// <param name="hWnd">A handle to the window.</param>
-    /// <param name="nIndex">The zero-based offset to the value to be retrieved.</param>
-    /// <returns>The requested value.</returns>
-    // On 32-bit systems GetWindowLong is used while on 64-bit systems
-    // the operating system exposes GetWindowLongPtr. Define both and
-    // call the appropriate version at runtime.
-
-    /// <summary>
     /// 32-bit variant of <c>GetWindowLongPtr</c>.
     /// </summary>
     /// <param name="hWnd">Window handle.</param>
@@ -202,26 +199,48 @@ public static class MonitorNativeMethods {
     }
 
     /// <summary>
-    /// Indexes for GetWindowLong
+    /// Index for retrieving the window style via <see cref="GetWindowLongPtr"/>.
     /// </summary>
     public const int GWL_STYLE = -16;
+
+    /// <summary>
+    /// Index for retrieving the extended window style via <see cref="GetWindowLongPtr"/>.
+    /// </summary>
     public const int GWL_EXSTYLE = -20;
 
     /// <summary>
-    /// Window style values
+    /// Window style value that indicates the window is minimized.
     /// </summary>
     public const int WS_MINIMIZE = 0x20000000;
+
+    /// <summary>
+    /// Window style value that indicates the window is maximized.
+    /// </summary>
     public const int WS_MAXIMIZE = 0x01000000;
+
+    /// <summary>
+    /// Extended window style that marks a window as topmost.
+    /// </summary>
     public const int WS_EX_TOPMOST = 0x00000008;
 
     /// <summary>
-    /// Window insert after handles.
+    /// Handle used with <see cref="SetWindowPos"/> to place a window above all non-topmost windows.
     /// </summary>
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+
+    /// <summary>
+    /// Handle used with <see cref="SetWindowPos"/> to place a window above other windows without making it topmost.
+    /// </summary>
     public static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
-    /// Window position flags
+
+    /// <summary>
+    /// Window position flag that retains the current Z order.
     /// </summary>
     public const int SWP_NOZORDER = 0x0004;
+
+    /// <summary>
+    /// Window position flag that retains the current size.
+    /// </summary>
     public const int SWP_NOSIZE = 0x0001;
 
     /// <summary>
@@ -233,10 +252,22 @@ public static class MonitorNativeMethods {
     public static extern int GetSystemMetrics(int nIndex);
 
     /// <summary>
-    /// System metric indexes used with <see cref="GetSystemMetrics"/>.
+    /// System metric index for the virtual screen X coordinate.
     /// </summary>
     public const int SM_XVIRTUALSCREEN = 76;
+
+    /// <summary>
+    /// System metric index for the virtual screen Y coordinate.
+    /// </summary>
     public const int SM_YVIRTUALSCREEN = 77;
+
+    /// <summary>
+    /// System metric index for the virtual screen width.
+    /// </summary>
     public const int SM_CXVIRTUALSCREEN = 78;
+
+    /// <summary>
+    /// System metric index for the virtual screen height.
+    /// </summary>
     public const int SM_CYVIRTUALSCREEN = 79;
 }
