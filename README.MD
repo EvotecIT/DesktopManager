@@ -40,6 +40,7 @@ It has following features:
 - Get/Set monitor position
 - Get/Set window position
 - Get/Set window state (minimize, maximize, restore)
+ - Capture desktop screenshots from all monitors, a single monitor or a custom region
 
 ### Installation
 
@@ -127,6 +128,13 @@ manager.MaximizeWindow
 manager.RestoreWindow
 ```
 
+### Platform notes
+
+When retrieving a window's style the library uses a helper method that calls
+`GetWindowLong` on 32-bit processes and `GetWindowLongPtr` on 64-bit ones. The
+method returns an `IntPtr`, so callers should convert the value to the
+appropriate numeric type.
+
 #### Example in PowerShell - Getting Monitor Information
 
 ```powershell
@@ -177,4 +185,33 @@ Get-DesktopWindow | Format-Table *
 ```powershell
 Set-DesktopWindow -Name '*Zadanie - Notepad' -Height 800 -Width 1200 -Left 100
 Set-DesktopWindow -Name '*Zadanie - Notepad' -State Maximize
+```
+
+### Example in PowerShell - Activating and Setting Window Top-Most
+
+```powershell
+Set-DesktopWindow -Name '*Notepad*' -TopMost -Activate
+```
+
+#### Example in C# - Activating and Setting Window Top-Most
+
+```csharp
+var manager = new WindowManager();
+var window = manager.GetWindows().First();
+manager.SetWindowTopMost(window, true);
+manager.ActivateWindow(window);
+#### Example in PowerShell - Monitoring Display Changes
+
+Use `Register-DesktopMonitorEvent` to react when monitors are plugged in or the display configuration changes.
+
+```powershell
+Register-DesktopMonitorEvent -Duration 30 -Action { Write-Host 'Display settings changed' }
+```
+
+#### Example in C# - Monitoring Display Changes
+
+Applications can subscribe to the `MonitorWatcher.DisplaySettingsChanged` event.
+
+```csharp
+MonitorWatcherExample.Run(TimeSpan.FromSeconds(30));
 ```

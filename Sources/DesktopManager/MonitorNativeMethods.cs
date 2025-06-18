@@ -1,4 +1,5 @@
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace DesktopManager;
 
@@ -26,6 +27,56 @@ public static class MonitorNativeMethods {
     /// <returns>True if the function succeeds; otherwise, false.</returns>
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+
+    /// <summary>
+    /// Represents a callback function that processes display monitors during enumeration.
+    /// </summary>
+    /// <param name="hMonitor">Handle to the display monitor.</param>
+    /// <param name="hdcMonitor">Handle to a device context.</param>
+    /// <param name="lprcMonitor">Pointer to a RECT structure with monitor bounds.</param>
+    /// <param name="dwData">Application-defined data.</param>
+    /// <returns>True to continue enumeration.</returns>
+    public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+
+    /// <summary>
+    /// Enumerates the display monitors.
+    /// </summary>
+    /// <param name="hdc">Optional device context.</param>
+    /// <param name="lprcClip">Optional clipping rectangle.</param>
+    /// <param name="lpfnEnum">Callback function.</param>
+    /// <param name="dwData">Application-defined data.</param>
+    /// <returns>True if enumeration succeeds.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+    /// <summary>
+    /// Retrieves information about a display monitor.
+    /// </summary>
+    /// <param name="hMonitor">Handle to the display monitor.</param>
+    /// <param name="lpmi">Structure that receives monitor information.</param>
+    /// <returns>True if the function succeeds.</returns>
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
+
+    /// <summary>
+    /// The monitor is the primary display monitor.
+    /// </summary>
+    public const int MONITORINFOF_PRIMARY = 0x00000001;
+
+    /// <summary>
+    /// Returns NULL if no display monitors intersect.
+    /// </summary>
+    public const int MONITOR_DEFAULTTONULL = 0x00000000;
+
+    /// <summary>
+    /// Returns a handle to the primary display monitor.
+    /// </summary>
+    public const int MONITOR_DEFAULTTOPRIMARY = 0x00000001;
+
+    /// <summary>
+    /// Returns the nearest monitor to the passed rectangle or point.
+    /// </summary>
+    public const int MONITOR_DEFAULTTONEAREST = 0x00000002;
 
     //[DllImport("user32.dll", CharSet = CharSet.Auto)]
     //public static extern int ChangeDisplaySettingsEx(string lpszDeviceName, ref DEVMODE lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
@@ -63,12 +114,19 @@ public static class MonitorNativeMethods {
     public static extern IntPtr GetShellWindow();
 
     /// <summary>
+    /// Callback invoked for each top‑level window during enumeration.
+    /// </summary>
+    /// <param name="hWnd">The handle to the window.</param>
+    /// <param name="lParam">Application-defined value passed from <see cref="EnumWindows"/>.</param>
+    /// <returns><c>true</c> to continue enumeration; otherwise <c>false</c>.</returns>
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    /// <summary>
     /// Enumerates all top-level windows.
     /// </summary>
-    /// <param name="lpEnumFunc">The callback function to invoke for each window.</param>
+    /// <param name="enumFunc">The callback function to invoke for each window.</param>
     /// <param name="lParam">Application-defined value to pass to the callback function.</param>
-    /// <returns>True if the enumeration completes, false if it was cancelled.</returns>
-    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    /// <returns><c>true</c> if the enumeration completes; otherwise <c>false</c>.</returns>
     [DllImport("user32.dll")]
     public static extern bool EnumWindows(EnumWindowsProc enumFunc, IntPtr lParam);
 
@@ -131,6 +189,21 @@ public static class MonitorNativeMethods {
     public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
 
     /// <summary>
+    /// Brings the specified window to the foreground.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <returns>True if successful.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    /// <summary>
+    /// Gets the handle of the foreground window.
+    /// </summary>
+    /// <returns>The foreground window handle.</returns>
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    /// <summary>
     /// Sends a message to a window.
     /// </summary>
     /// <param name="hWnd">The window handle.</param>
@@ -142,22 +215,110 @@ public static class MonitorNativeMethods {
     public static extern uint SendMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
 
     /// <summary>
-    /// Gets information about the specified window.
+    /// 32-bit variant of <c>GetWindowLongPtr</c>.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="nIndex">The value index to retrieve.</param>
+    /// <returns>The requested value as a pointer.</returns>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern IntPtr GetWindowLong32(IntPtr hWnd, int nIndex);
+
+    /// <summary>
+    /// 64-bit variant of <c>GetWindowLongPtr</c>.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="nIndex">The value index to retrieve.</param>
+    /// <returns>The requested value as a pointer.</returns>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    /// <summary>
+    /// Retrieves information about the specified window in a platform agnostic manner.
     /// </summary>
     /// <param name="hWnd">A handle to the window.</param>
     /// <param name="nIndex">The zero-based offset to the value to be retrieved.</param>
-    /// <returns>The requested value.</returns>
-    [DllImport("user32.dll")]
-    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+    /// <returns>The requested value as a pointer.</returns>
+    /// <remarks>
+    /// When running under a 64-bit process, <see cref="GetWindowLongPtr64"/> is invoked.
+    /// Otherwise <see cref="GetWindowLong32"/> is used. The caller should convert the
+    /// returned <see cref="IntPtr"/> to the appropriate numeric type.
+    /// </remarks>
+    public static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex) {
+        return IntPtr.Size == 8
+            ? GetWindowLongPtr64(hWnd, nIndex)
+            : GetWindowLong32(hWnd, nIndex);
+    }
 
     /// <summary>
-    /// Indexes for GetWindowLong
+    /// Index for retrieving the window style via <see cref="GetWindowLongPtr"/>.
     /// </summary>
     public const int GWL_STYLE = -16;
 
     /// <summary>
-    /// Window style values
+    /// Index for retrieving the extended window style via <see cref="GetWindowLongPtr"/>.
+    /// </summary>
+    public const int GWL_EXSTYLE = -20;
+
+    /// <summary>
+    /// Window style value that indicates the window is minimized.
     /// </summary>
     public const int WS_MINIMIZE = 0x20000000;
+
+    /// <summary>
+    /// Window style value that indicates the window is maximized.
+    /// </summary>
     public const int WS_MAXIMIZE = 0x01000000;
+
+    /// <summary>
+    /// Extended window style that marks a window as topmost.
+    /// </summary>
+    public const int WS_EX_TOPMOST = 0x00000008;
+
+    /// <summary>
+    /// Handle used with <see cref="SetWindowPos"/> to place a window above all non-topmost windows.
+    /// </summary>
+    public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+
+    /// <summary>
+    /// Handle used with <see cref="SetWindowPos"/> to place a window above other windows without making it topmost.
+    /// </summary>
+    public static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+
+    /// <summary>
+    /// Window position flag that retains the current Z order.
+    /// </summary>
+    public const int SWP_NOZORDER = 0x0004;
+
+    /// <summary>
+    /// Window position flag that retains the current size.
+    /// </summary>
+    public const int SWP_NOSIZE = 0x0001;
+
+    /// <summary>
+    /// Retrieves the specified system metric or system configuration setting.
+    /// </summary>
+    /// <param name="nIndex">The system metric to be retrieved.</param>
+    /// <returns>The requested system metric value.</returns>
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
+    /// <summary>
+    /// System metric index for the virtual screen X coordinate.
+    /// </summary>
+    public const int SM_XVIRTUALSCREEN = 76;
+
+    /// <summary>
+    /// System metric index for the virtual screen Y coordinate.
+    /// </summary>
+    public const int SM_YVIRTUALSCREEN = 77;
+
+    /// <summary>
+    /// System metric index for the virtual screen width.
+    /// </summary>
+    public const int SM_CXVIRTUALSCREEN = 78;
+
+    /// <summary>
+    /// System metric index for the virtual screen height.
+    /// </summary>
+    public const int SM_CYVIRTUALSCREEN = 79;
 }

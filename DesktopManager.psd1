@@ -9,12 +9,11 @@
     DotNetFrameworkVersion = '4.7.2'
     FunctionsToExport      = @()
     GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
-    ModuleVersion          = '3.1.0'
+    ModuleVersion          = '3.2.0'
     PowerShellVersion      = '5.1'
     PrivateData            = @{
         PSData = @{
             IconUri    = 'https://evotec.xyz/wp-content/uploads/2022/12/DesktopManager.png'
-            Prerelease = 'Preview1'
             ProjectUri = 'https://github.com/EvotecIT/DesktopManager'
             Tags       = @('windows', 'image', 'wallpaper', 'monitor')
         }

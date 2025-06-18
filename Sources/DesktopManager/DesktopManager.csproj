@@ -4,7 +4,7 @@
         <AssemblyName>DesktopManager</AssemblyName>
         <AssemblyTitle>DesktopManager</AssemblyTitle>
 
-        <TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net8.0</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;net472;net8.0</TargetFrameworks>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
         <Company>Evotec</Company>
         <Authors>Przemyslaw Klys</Authors>
@@ -39,6 +39,14 @@
         <Content Include="..\..\Assets\Icons\DesktopManager.ico" />
     </ItemGroup>
 
+  <ItemGroup>
+      <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+      <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
+  </ItemGroup>
+
     <ItemGroup>
         <PackageReference Include="System.Text.Json" Version="8.0.4" />
     </ItemGroup>
@@ -58,5 +66,9 @@
         <Using Include="System.Runtime.InteropServices" />
         <Using Include="System" />
         <Using Include="System.Collections.Generic" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Win32.SystemEvents" Version="8.0.0" />
     </ItemGroup>
 </Project>
