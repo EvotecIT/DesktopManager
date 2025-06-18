@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netstandard2.0;netstandard2.1;net472;net48;net8.0</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;net472;net8.0</TargetFrameworks>
         <Description>PowerShell Module for working Windows Desktop</Description>
         <AssemblyName>DesktopManager.PowerShell</AssemblyName>
         <AssemblyTitle>DesktopManager.PowerShell</AssemblyTitle>

@@ -1,7 +1,7 @@
 ﻿@{
     AliasesToExport        = @('Get-DesktopMonitors')
     Author                 = 'Przemyslaw Klys'
-    CmdletsToExport        = @('Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Get-DesktopWindow', 'Invoke-DesktopScreenshot', 'Set-DesktopPosition', 'Set-DesktopWallpaper', 'Set-DesktopWindow')
+    CmdletsToExport        = @('Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Get-DesktopWindow', 'Invoke-DesktopScreenshot', 'Register-DesktopMonitorEvent', 'Set-DesktopPosition', 'Set-DesktopResolution', 'Set-DesktopWallpaper', 'Set-DesktopWindow')
     CompanyName            = 'Evotec'
     CompatiblePSEditions   = @('Desktop', 'Core')
     Copyright              = '(c) 2011 - 2025 Przemyslaw Klys @ Evotec. All rights reserved.'
@@ -14,7 +14,7 @@
     PrivateData            = @{
         PSData = @{
             IconUri    = 'https://evotec.xyz/wp-content/uploads/2022/12/DesktopManager.png'
-            Prerelease = 'Preview1'
+            Prerelease = 'Preview2'
             ProjectUri = 'https://github.com/EvotecIT/DesktopManager'
             Tags       = @('windows', 'image', 'wallpaper', 'monitor')
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Management.Automation;
 
 namespace DesktopManager.PowerShell {
@@ -50,10 +51,28 @@ namespace DesktopManager.PowerShell {
         public int Height { get; set; } = -1;
 
         /// <summary>
+        /// <para type="description">Target monitor index to move the window to.</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public int? MonitorIndex { get; set; }
+
+        /// <summary>
         /// <para type="description">The desired window state (Normal, Minimize, Maximize, or Close).</para>
         /// </summary>
         [Parameter(Mandatory = false)]
         public WindowState? State { get; set; }
+
+        /// <summary>
+        /// <para type="description">Set the window as top-most.</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public SwitchParameter TopMost { get; set; }
+
+        /// <summary>
+        /// <para type="description">Activate the window.</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public SwitchParameter Activate { get; set; }
 
         /// <summary>
         /// Begin processing
@@ -62,10 +81,24 @@ namespace DesktopManager.PowerShell {
             var manager = new WindowManager();
             var windows = manager.GetWindows(Name);
 
+            Monitor targetMonitor = null;
+            if (MonitorIndex.HasValue) {
+                targetMonitor = new Monitors().GetMonitors(index: MonitorIndex.Value).FirstOrDefault();
+                if (targetMonitor == null) {
+                    WriteWarning($"Monitor with index {MonitorIndex.Value} not found");
+                }
+            }
+
             foreach (var window in windows) {
                 var action = GetActionDescription();
+                if (MonitorIndex.HasValue) {
+                    action = $"Move to monitor {MonitorIndex.Value}" + (string.IsNullOrEmpty(action) ? string.Empty : $" and {action}");
+                }
                 if (ShouldProcess($"Window '{window.Title}'", action)) {
                     try {
+                        if (targetMonitor != null) {
+                            manager.MoveWindowToMonitor(window, targetMonitor);
+                        }
                         if (Left >= 0 || Top >= 0 || Width >= 0 || Height >= 0) {
                             manager.SetWindowPosition(window, Left, Top, Width, Height);
                         }
@@ -85,6 +118,12 @@ namespace DesktopManager.PowerShell {
                                     break;
                             }
                         }
+                        if (TopMost.IsPresent) {
+                            manager.SetWindowTopMost(window, true);
+                        }
+                        if (Activate.IsPresent) {
+                            manager.ActivateWindow(window);
+                        }
                     } catch (Exception ex) {
                         WriteWarning($"Failed to modify window '{window.Title}': {ex.Message}");
                     }
@@ -98,11 +137,20 @@ namespace DesktopManager.PowerShell {
             if (State.HasValue) {
                 parts.Add(State.Value.ToString());
             }
+            if (MonitorIndex.HasValue) {
+                parts.Add($"Move to monitor {MonitorIndex.Value}");
+            }
             if (Left >= 0 || Top >= 0) {
                 parts.Add($"Move to ({Left}, {Top})");
             }
             if (Width >= 0 || Height >= 0) {
                 parts.Add($"Resize to {Width}x{Height}");
+            }
+            if (TopMost.IsPresent) {
+                parts.Add("TopMost");
+            }
+            if (Activate.IsPresent) {
+                parts.Add("Activate");
             }
 
             return string.Join(" and ", parts);
