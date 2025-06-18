@@ -12,10 +12,14 @@
         <LangVersion>latest</LangVersion>
         <Copyright>(c) 2011 - 2025 Przemyslaw Klys @ Evotec. All rights reserved.</Copyright>
     </PropertyGroup>
-    <ItemGroup>
-        <PackageReference Include="PowerShellStandard.Library" Version="5.1.1" PrivateAssets="all" />
-        <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
-    </ItemGroup>
+  <ItemGroup>
+      <PackageReference Include="PowerShellStandard.Library" Version="5.1.1" PrivateAssets="all" />
+      <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+      <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
+  </ItemGroup>
 
     <PropertyGroup>
         <!-- Make sure the output DLL's from library are included in the output -->

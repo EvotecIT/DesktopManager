@@ -39,9 +39,13 @@
         <Content Include="..\..\Assets\Icons\DesktopManager.ico" />
     </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
-    </ItemGroup>
+  <ItemGroup>
+      <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+      <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
+  </ItemGroup>
 
     <ItemGroup>
         <None Include="..\..\Assets\Icons\DesktopManager.png">

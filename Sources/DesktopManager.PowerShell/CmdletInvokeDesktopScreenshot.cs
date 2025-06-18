@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Management.Automation;
+using System.Runtime.Versioning;
 
 namespace DesktopManager.PowerShell;
 
@@ -9,6 +10,7 @@ namespace DesktopManager.PowerShell;
 /// <para type="synopsis">Captures a screenshot of the desktop.</para>
 /// <para type="description">Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.</para>
 [Cmdlet(VerbsLifecycle.Invoke, "DesktopScreenshot")]
+[SupportedOSPlatform("windows")]
 public sealed class CmdletInvokeDesktopScreenshot : PSCmdlet {
     /// <summary>
     /// <para type="description">Optional path to save the screenshot as a PNG file.</para>
