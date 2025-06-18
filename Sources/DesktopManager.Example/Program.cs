@@ -1,4 +1,4 @@
-﻿namespace DesktopManager.Example {
+namespace DesktopManager.Example {
     /// <summary>
     /// The main class for the DesktopManager example application.
     /// </summary>
@@ -71,6 +71,9 @@
 
             // Set wallpaper for the first monitor
             monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
+
+            ResolutionOrientationDemo.Run();
         }
     }
 }
+
