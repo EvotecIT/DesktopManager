@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 
 namespace DesktopManager {
     /// <summary>
@@ -220,6 +222,59 @@ namespace DesktopManager {
                 (uint)WindowMessage.WM_SYSCOMMAND,
                 (uint)WindowCommand.SC_RESTORE,
                 0);
+        }
+
+        /// <summary>
+        /// Saves the positions of all visible windows to a file.
+        /// </summary>
+        /// <param name="path">Destination file path.</param>
+        public void SaveLayout(string path) {
+            var layout = new WindowLayout();
+            var windows = GetWindows();
+            foreach (var window in windows) {
+                layout.Windows.Add(GetWindowPosition(window));
+            }
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            File.WriteAllText(path, JsonSerializer.Serialize(layout, options));
+        }
+
+        /// <summary>
+        /// Loads window positions from a file and applies them to matching windows.
+        /// </summary>
+        /// <param name="path">Path to the layout file.</param>
+        public void LoadLayout(string path) {
+            if (!File.Exists(path)) {
+                throw new FileNotFoundException("Layout file not found.", path);
+            }
+
+            var json = File.ReadAllText(path);
+            var layout = JsonSerializer.Deserialize<WindowLayout>(json);
+            if (layout?.Windows == null) {
+                return;
+            }
+
+            foreach (var saved in layout.Windows) {
+                var windows = GetWindows(saved.Title);
+                foreach (var window in windows) {
+                    SetWindowPosition(window, saved.Left, saved.Top, saved.Width, saved.Height);
+                    if (saved.State.HasValue) {
+                        switch (saved.State.Value) {
+                            case WindowState.Close:
+                                CloseWindow(window);
+                                break;
+                            case WindowState.Minimize:
+                                MinimizeWindow(window);
+                                break;
+                            case WindowState.Maximize:
+                                MaximizeWindow(window);
+                                break;
+                            case WindowState.Normal:
+                                RestoreWindow(window);
+                                break;
+                        }
+                    }
+                }
+            }
         }
 
         private bool MatchesWildcard(string text, string pattern) {
