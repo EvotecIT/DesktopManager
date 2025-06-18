@@ -72,6 +72,10 @@ namespace DesktopManager.Example {
             // Set wallpaper for the first monitor
             monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
 
+            // Run monitor watcher example for 30 seconds
+            MonitorWatcherExample.RunAsync(TimeSpan.FromSeconds(30)).Wait();
+          
+            // Run orienation demo
             ResolutionOrientationDemo.Run();
         }
     }

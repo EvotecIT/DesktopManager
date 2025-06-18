@@ -185,3 +185,19 @@ Get-DesktopWindow | Format-Table *
 Set-DesktopWindow -Name '*Zadanie - Notepad' -Height 800 -Width 1200 -Left 100
 Set-DesktopWindow -Name '*Zadanie - Notepad' -State Maximize
 ```
+
+#### Example in PowerShell - Monitoring Display Changes
+
+Use `Register-DesktopMonitorEvent` to react when monitors are plugged in or the display configuration changes.
+
+```powershell
+Register-DesktopMonitorEvent -Duration 30 -Action { Write-Host 'Display settings changed' }
+```
+
+#### Example in C# - Monitoring Display Changes
+
+Applications can subscribe to the `MonitorWatcher.DisplaySettingsChanged` event.
+
+```csharp
+MonitorWatcherExample.Run(TimeSpan.FromSeconds(30));
+```
