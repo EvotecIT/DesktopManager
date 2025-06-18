@@ -111,7 +111,7 @@ internal class Helpers {
                 nestedTable.AddColumn("Value");
 
                 foreach (DictionaryEntry entry in dictionaryValue) {
-                    var escapedKey = Markup.Escape(entry.Key.ToString());
+                    var escapedKey = Markup.Escape(entry.Key?.ToString() ?? string.Empty);
                     var escapedValue = Markup.Escape(entry.Value?.ToString() ?? "null");
                     nestedTable.AddRow(escapedKey, escapedValue);
                 }

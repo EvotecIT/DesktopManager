@@ -2,11 +2,13 @@
 using System;
 using System.Management.Automation;
 using System.Timers;
+using System.Runtime.Versioning;
 
 namespace DesktopManager.PowerShell;
 
 /// <summary>Registers for desktop monitor change events.</summary>
 [Cmdlet(VerbsLifecycle.Register, "DesktopMonitorEvent")]
+[SupportedOSPlatform("windows")]
 public sealed class CmdletRegisterDesktopMonitorEvent : PSCmdlet {
     /// <summary>The script block to run when the event is raised.</summary>
     [Parameter(Mandatory = false)]

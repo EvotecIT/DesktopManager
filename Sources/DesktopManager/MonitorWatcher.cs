@@ -1,6 +1,7 @@
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Microsoft.Win32;
 
 namespace DesktopManager;
@@ -8,6 +9,7 @@ namespace DesktopManager;
 /// <summary>
 /// Monitors display change notifications using <c>WM_DISPLAYCHANGE</c>.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public sealed class MonitorWatcher : IDisposable {
     /// <summary>
     /// Raised when display settings change.
