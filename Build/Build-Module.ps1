@@ -28,7 +28,7 @@ Build-Module -ModuleName 'DesktopManager' {
 
         DotNetFrameworkVersion = '4.7.2'
 
-        PreReleaseTag          = 'Preview2'
+        PreReleaseTag          = 'Preview3'
     }
     New-ConfigurationManifest @Manifest
 
