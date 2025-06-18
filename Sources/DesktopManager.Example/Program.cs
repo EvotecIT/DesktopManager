@@ -72,10 +72,13 @@ namespace DesktopManager.Example {
             // Set wallpaper for the first monitor
             monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
 
+            // Demonstrate window management features
+            WindowExamples.Run();
+
             // Run monitor watcher example for 30 seconds
             MonitorWatcherExample.RunAsync(TimeSpan.FromSeconds(30)).Wait();
           
-            // Run orienation demo
+            // Demonstrate resolution & orientation features
             ResolutionOrientationDemo.Run();
         }
     }
