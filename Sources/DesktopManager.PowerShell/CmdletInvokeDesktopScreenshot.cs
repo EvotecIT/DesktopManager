@@ -22,13 +22,22 @@ public sealed class CmdletInvokeDesktopScreenshot : PSCmdlet {
     [Parameter(Mandatory = false)]
     public int? Index;
 
+    /// <summary>
+    /// <para type="description">Identifier of the monitor to capture.</para>
+    /// </summary>
     [Alias("MonitorID")]
     [Parameter(Mandatory = false)]
     public string DeviceId;
 
+    /// <summary>
+    /// <para type="description">Name of the monitor to capture.</para>
+    /// </summary>
     [Parameter(Mandatory = false)]
     public string DeviceName;
 
+    /// <summary>
+    /// <para type="description">Capture the primary monitor only.</para>
+    /// </summary>
     [Parameter(Mandatory = false)]
     public SwitchParameter? PrimaryOnly;
 
