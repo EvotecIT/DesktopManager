@@ -127,6 +127,13 @@ manager.MaximizeWindow
 manager.RestoreWindow
 ```
 
+### Platform notes
+
+When retrieving a window's style the library uses a helper method that calls
+`GetWindowLong` on 32-bit processes and `GetWindowLongPtr` on 64-bit ones. The
+method returns an `IntPtr`, so callers should convert the value to the
+appropriate numeric type.
+
 #### Example in PowerShell - Getting Monitor Information
 
 ```powershell

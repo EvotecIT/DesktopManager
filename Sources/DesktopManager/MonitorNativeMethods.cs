@@ -147,8 +147,44 @@ public static class MonitorNativeMethods {
     /// <param name="hWnd">A handle to the window.</param>
     /// <param name="nIndex">The zero-based offset to the value to be retrieved.</param>
     /// <returns>The requested value.</returns>
-    [DllImport("user32.dll")]
-    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+    // On 32-bit systems GetWindowLong is used while on 64-bit systems
+    // the operating system exposes GetWindowLongPtr. Define both and
+    // call the appropriate version at runtime.
+
+    /// <summary>
+    /// 32-bit variant of <c>GetWindowLongPtr</c>.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="nIndex">The value index to retrieve.</param>
+    /// <returns>The requested value as a pointer.</returns>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern IntPtr GetWindowLong32(IntPtr hWnd, int nIndex);
+
+    /// <summary>
+    /// 64-bit variant of <c>GetWindowLongPtr</c>.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="nIndex">The value index to retrieve.</param>
+    /// <returns>The requested value as a pointer.</returns>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    /// <summary>
+    /// Retrieves information about the specified window in a platform agnostic manner.
+    /// </summary>
+    /// <param name="hWnd">A handle to the window.</param>
+    /// <param name="nIndex">The zero-based offset to the value to be retrieved.</param>
+    /// <returns>The requested value as a pointer.</returns>
+    /// <remarks>
+    /// When running under a 64-bit process, <see cref="GetWindowLongPtr64"/> is invoked.
+    /// Otherwise <see cref="GetWindowLong32"/> is used. The caller should convert the
+    /// returned <see cref="IntPtr"/> to the appropriate numeric type.
+    /// </remarks>
+    public static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex) {
+        return IntPtr.Size == 8
+            ? GetWindowLongPtr64(hWnd, nIndex)
+            : GetWindowLong32(hWnd, nIndex);
+    }
 
     /// <summary>
     /// Indexes for GetWindowLong
@@ -160,4 +196,10 @@ public static class MonitorNativeMethods {
     /// </summary>
     public const int WS_MINIMIZE = 0x20000000;
     public const int WS_MAXIMIZE = 0x01000000;
+
+    /// <summary>
+    /// Window position flags
+    /// </summary>
+    public const int SWP_NOZORDER = 0x0004;
+    public const int SWP_NOSIZE = 0x0001;
 }
