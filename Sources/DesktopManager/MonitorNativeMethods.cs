@@ -212,10 +212,6 @@ public static class MonitorNativeMethods {
     /// </summary>
     public const int WS_MINIMIZE = 0x20000000;
     public const int WS_MAXIMIZE = 0x01000000;
-
-    /// <summary>
-    /// Extended window style values
-    /// </summary>
     public const int WS_EX_TOPMOST = 0x00000008;
 
     /// <summary>
@@ -227,4 +223,20 @@ public static class MonitorNativeMethods {
     /// </summary>
     public const int SWP_NOZORDER = 0x0004;
     public const int SWP_NOSIZE = 0x0001;
+
+    /// <summary>
+    /// Retrieves the specified system metric or system configuration setting.
+    /// </summary>
+    /// <param name="nIndex">The system metric to be retrieved.</param>
+    /// <returns>The requested system metric value.</returns>
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
+    /// <summary>
+    /// System metric indexes used with <see cref="GetSystemMetrics"/>.
+    /// </summary>
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_CYVIRTUALSCREEN = 79;
 }

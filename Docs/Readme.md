@@ -20,3 +20,6 @@ Locale: en-US
 ### [Set-DesktopWallpaper](Set-DesktopWallpaper.md)
 {{ Fill in the Synopsis }}
 
+### [Invoke-DesktopScreenshot](Invoke-DesktopScreenshot.md)
+Capture a screenshot of all monitors, a single monitor or an arbitrary region.
+
