@@ -14,7 +14,7 @@
     PrivateData            = @{
         PSData = @{
             IconUri    = 'https://evotec.xyz/wp-content/uploads/2022/12/DesktopManager.png'
-            Prerelease = 'Preview2'
+            Prerelease = 'Preview3'
             ProjectUri = 'https://github.com/EvotecIT/DesktopManager'
             Tags       = @('windows', 'image', 'wallpaper', 'monitor')
         }
