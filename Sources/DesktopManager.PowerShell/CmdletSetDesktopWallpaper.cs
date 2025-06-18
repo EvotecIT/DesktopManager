@@ -32,13 +32,13 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// <para type="description">The device ID of the monitor to set the wallpaper for.</para>
     /// </summary>
     [Alias("MonitorID")]
-    [Parameter(Mandatory = false, Position = 1, ParameterSetName = "Index")]
+    [Parameter(Mandatory = false, Position = 1, ParameterSetName = "DeviceId")]
     public string DeviceId;
 
     /// <summary>
     /// <para type="description">The device name of the monitor to set the wallpaper for.</para>
     /// </summary>
-    [Parameter(Mandatory = false, Position = 2, ParameterSetName = "Index")]
+    [Parameter(Mandatory = false, Position = 2, ParameterSetName = "DeviceName")]
     public string DeviceName;
 
     /// <summary>
@@ -104,6 +104,11 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
         int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
         string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
+
+        if (index != null && (deviceId != null || deviceName != null)) {
+            var ex = new ArgumentException("-Index cannot be combined with -DeviceId or -DeviceName.");
+            ThrowTerminatingError(new ErrorRecord(ex, "ParameterConflict", ErrorCategory.InvalidArgument, null));
+        }
 
         Monitors monitors = new Monitors();
         if (All) {
