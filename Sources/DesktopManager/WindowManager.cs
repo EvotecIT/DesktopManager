@@ -32,7 +32,7 @@ namespace DesktopManager {
                         handles.Add(handle);
                     }
                     return true;
-                }, 0);
+                }, IntPtr.Zero);
 
             var windows = new List<WindowInfo>();
             foreach (var handle in handles) {

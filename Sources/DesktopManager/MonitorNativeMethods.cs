@@ -68,9 +68,9 @@ public static class MonitorNativeMethods {
     /// <param name="lpEnumFunc">The callback function to invoke for each window.</param>
     /// <param name="lParam">Application-defined value to pass to the callback function.</param>
     /// <returns>True if the enumeration completes, false if it was cancelled.</returns>
-    public delegate bool EnumWindowsProc(IntPtr hWnd, int lParam);
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")]
-    public static extern bool EnumWindows(EnumWindowsProc enumFunc, int lParam);
+    public static extern bool EnumWindows(EnumWindowsProc enumFunc, IntPtr lParam);
 
     /// <summary>
     /// Gets the window text length.

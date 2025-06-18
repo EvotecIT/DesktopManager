@@ -10,7 +10,7 @@ Build-Module -ModuleName 'DesktopManager' {
         # ID used to uniquely identify this module
         GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
         # Version number of this module.
-        ModuleVersion          = '3.0.X'
+        ModuleVersion          = '3.1.X'
         # Author of this module
         Author                 = 'Przemyslaw Klys'
         # Company or vendor of this module
@@ -27,6 +27,8 @@ Build-Module -ModuleName 'DesktopManager' {
         IconUri                = 'https://evotec.xyz/wp-content/uploads/2022/12/DesktopManager.png'
 
         DotNetFrameworkVersion = '4.7.2'
+
+        PreReleaseTag          = 'Preview1'
     }
     New-ConfigurationManifest @Manifest
 
