@@ -8,8 +8,8 @@ namespace DesktopManager.PowerShell;
 /// <summary>Takes a screenshot of the desktop.</summary>
 /// <para type="synopsis">Captures a screenshot of the desktop.</para>
 /// <para type="description">Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.</para>
-[Cmdlet(VerbsLifecycle.Invoke, "Screenshot")]
-public sealed class CmdletInvokeScreenshot : PSCmdlet {
+[Cmdlet(VerbsLifecycle.Invoke, "DesktopScreenshot")]
+public sealed class CmdletInvokeDesktopScreenshot : PSCmdlet {
     /// <summary>
     /// <para type="description">Optional path to save the screenshot as a PNG file.</para>
     /// </summary>
@@ -45,16 +45,18 @@ public sealed class CmdletInvokeScreenshot : PSCmdlet {
     public int? Top;
 
     /// <summary>
-    /// <para type="description">Right coordinate of the region to capture.</para>
+    /// <para type="description">Width of the region to capture.</para>
     /// </summary>
+    [Alias("Right")]
     [Parameter(Mandatory = false)]
-    public int? Right;
+    public int? Width;
 
     /// <summary>
-    /// <para type="description">Bottom coordinate of the region to capture.</para>
+    /// <para type="description">Height of the region to capture.</para>
     /// </summary>
+    [Alias("Bottom")]
     [Parameter(Mandatory = false)]
-    public int? Bottom;
+    public int? Height;
 
     /// <summary>
     /// Begin processing the command.
@@ -62,14 +64,14 @@ public sealed class CmdletInvokeScreenshot : PSCmdlet {
     protected override void BeginProcessing() {
         bool hasRegion = MyInvocation.BoundParameters.ContainsKey(nameof(Left)) &&
                           MyInvocation.BoundParameters.ContainsKey(nameof(Top)) &&
-                          MyInvocation.BoundParameters.ContainsKey(nameof(Right)) &&
-                          MyInvocation.BoundParameters.ContainsKey(nameof(Bottom));
+                          MyInvocation.BoundParameters.ContainsKey(nameof(Width)) &&
+                          MyInvocation.BoundParameters.ContainsKey(nameof(Height));
 
         Bitmap bitmap;
 
         if (hasRegion) {
-            int width = Right!.Value - Left!.Value;
-            int height = Bottom!.Value - Top!.Value;
+            int width = Width!.Value;
+            int height = Height!.Value;
             bitmap = ScreenshotService.CaptureRegion(Left!.Value, Top!.Value, width, height);
         } else {
             Monitors monitors = new();

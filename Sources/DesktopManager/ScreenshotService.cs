@@ -15,7 +15,8 @@ public static class ScreenshotService {
     /// <returns>A <see cref="Bitmap"/> containing the screenshot.</returns>
     public static Bitmap CaptureScreen() {
         Monitors monitors = new();
-        var rects = monitors.GetMonitors().Select(m => m.GetMonitorBounds());
+        var rects = monitors.GetMonitors(connectedOnly: true)
+                            .Select(m => m.GetMonitorBounds());
 
         int left = rects.Min(r => r.Left);
         int top = rects.Min(r => r.Top);
@@ -26,15 +27,17 @@ public static class ScreenshotService {
     }
 
     /// <summary>
-    /// Captures a screenshot of the specified monitor by index.
+    /// Captures a screenshot of the specified monitor.
     /// </summary>
     /// <param name="index">Monitor index starting at 0.</param>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="deviceName">Monitor device name.</param>
     /// <returns>Bitmap with the screenshot.</returns>
-    public static Bitmap CaptureMonitor(int index) {
+    public static Bitmap CaptureMonitor(int? index = null, string deviceId = null, string deviceName = null) {
         Monitors monitors = new();
-        var monitor = monitors.GetMonitors(index: index).FirstOrDefault();
+        var monitor = monitors.GetMonitors(index: index, deviceId: deviceId, deviceName: deviceName).FirstOrDefault();
         if (monitor == null) {
-            throw new ArgumentOutOfRangeException(nameof(index));
+            throw new ArgumentException("Monitor not found");
         }
 
         var rect = monitor.GetMonitorBounds();
@@ -59,6 +62,10 @@ public static class ScreenshotService {
     /// <param name="height">Height of the region.</param>
     /// <returns>Bitmap with the screenshot.</returns>
     public static Bitmap CaptureRegion(int left, int top, int width, int height) {
+        if (width <= 0 || height <= 0) {
+            throw new ArgumentException("Width and height must be greater than zero");
+        }
+
         Bitmap bitmap = new Bitmap(width, height);
         using Graphics g = Graphics.FromImage(bitmap);
         g.CopyFromScreen(left, top, 0, 0, new Size(width, height));
