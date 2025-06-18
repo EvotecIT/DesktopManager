@@ -23,15 +23,15 @@ public class WindowTopMostActivationTests
         }
 
         var window = windows.First();
-        var originalStyle = MonitorNativeMethods.GetWindowLong(window.Handle, MonitorNativeMethods.GWL_EXSTYLE);
+        var originalStyle = MonitorNativeMethods.GetWindowLongPtr(window.Handle, MonitorNativeMethods.GWL_EXSTYLE);
         bool wasTop = (originalStyle & MonitorNativeMethods.WS_EX_TOPMOST) != 0;
 
         manager.SetWindowTopMost(window, !wasTop);
-        var toggled = MonitorNativeMethods.GetWindowLong(window.Handle, MonitorNativeMethods.GWL_EXSTYLE);
+        var toggled = MonitorNativeMethods.GetWindowLongPtr(window.Handle, MonitorNativeMethods.GWL_EXSTYLE);
         Assert.AreEqual(!wasTop, (toggled & MonitorNativeMethods.WS_EX_TOPMOST) != 0);
 
         manager.SetWindowTopMost(window, wasTop);
-        var reverted = MonitorNativeMethods.GetWindowLong(window.Handle, MonitorNativeMethods.GWL_EXSTYLE);
+        var reverted = MonitorNativeMethods.GetWindowLongPtr(window.Handle, MonitorNativeMethods.GWL_EXSTYLE);
         Assert.AreEqual(wasTop, (reverted & MonitorNativeMethods.WS_EX_TOPMOST) != 0);
     }
 
