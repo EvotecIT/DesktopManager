@@ -55,4 +55,8 @@
         <Using Include="System" />
         <Using Include="System.Collections.Generic" />
     </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Win32.SystemEvents" Version="8.0.0" />
+    </ItemGroup>
 </Project>
