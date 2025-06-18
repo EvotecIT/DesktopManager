@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace DesktopManager;
 
 /// <summary>
@@ -44,6 +46,34 @@ public struct MonitorInfo {
     /// The attributes of the display monitor.
     /// </summary>
     public uint dwFlags;
+}
+
+/// <summary>
+/// Extends <see cref="MonitorInfo"/> with the device name.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+public struct MONITORINFOEX {
+    /// <summary>
+    /// The size of the structure, in bytes.
+    /// </summary>
+    public int cbSize;
+    /// <summary>
+    /// The display monitor rectangle.
+    /// </summary>
+    public RECT rcMonitor;
+    /// <summary>
+    /// The work area rectangle of the display monitor.
+    /// </summary>
+    public RECT rcWork;
+    /// <summary>
+    /// The attributes of the display monitor.
+    /// </summary>
+    public uint dwFlags;
+    /// <summary>
+    /// The device name.
+    /// </summary>
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+    public string szDevice;
 }
 
 /// <summary>

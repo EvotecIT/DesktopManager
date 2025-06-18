@@ -1,4 +1,5 @@
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace DesktopManager;
 
@@ -26,6 +27,56 @@ public static class MonitorNativeMethods {
     /// <returns>True if the function succeeds; otherwise, false.</returns>
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+
+    /// <summary>
+    /// Represents a callback function that processes display monitors during enumeration.
+    /// </summary>
+    /// <param name="hMonitor">Handle to the display monitor.</param>
+    /// <param name="hdcMonitor">Handle to a device context.</param>
+    /// <param name="lprcMonitor">Pointer to a RECT structure with monitor bounds.</param>
+    /// <param name="dwData">Application-defined data.</param>
+    /// <returns>True to continue enumeration.</returns>
+    public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+
+    /// <summary>
+    /// Enumerates the display monitors.
+    /// </summary>
+    /// <param name="hdc">Optional device context.</param>
+    /// <param name="lprcClip">Optional clipping rectangle.</param>
+    /// <param name="lpfnEnum">Callback function.</param>
+    /// <param name="dwData">Application-defined data.</param>
+    /// <returns>True if enumeration succeeds.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+    /// <summary>
+    /// Retrieves information about a display monitor.
+    /// </summary>
+    /// <param name="hMonitor">Handle to the display monitor.</param>
+    /// <param name="lpmi">Structure that receives monitor information.</param>
+    /// <returns>True if the function succeeds.</returns>
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
+
+    /// <summary>
+    /// The monitor is the primary display monitor.
+    /// </summary>
+    public const int MONITORINFOF_PRIMARY = 0x00000001;
+
+    /// <summary>
+    /// Returns NULL if no display monitors intersect.
+    /// </summary>
+    public const int MONITOR_DEFAULTTONULL = 0x00000000;
+
+    /// <summary>
+    /// Returns a handle to the primary display monitor.
+    /// </summary>
+    public const int MONITOR_DEFAULTTOPRIMARY = 0x00000001;
+
+    /// <summary>
+    /// Returns the nearest monitor to the passed rectangle or point.
+    /// </summary>
+    public const int MONITOR_DEFAULTTONEAREST = 0x00000002;
 
     //[DllImport("user32.dll", CharSet = CharSet.Auto)]
     //public static extern int ChangeDisplaySettingsEx(string lpszDeviceName, ref DEVMODE lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
