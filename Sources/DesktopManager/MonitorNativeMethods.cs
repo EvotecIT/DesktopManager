@@ -321,4 +321,34 @@ public static class MonitorNativeMethods {
     /// System metric index for the virtual screen height.
     /// </summary>
     public const int SM_CYVIRTUALSCREEN = 79;
+
+    /// <summary>
+    /// Retrieves the number of physical monitors associated with an HMONITOR.
+    /// </summary>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, out uint pdwNumberOfPhysicalMonitors);
+
+    /// <summary>
+    /// Retrieves the physical monitor handles associated with an HMONITOR.
+    /// </summary>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint dwPhysicalMonitorArraySize, [Out] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+    /// <summary>
+    /// Destroys a physical monitor handle.
+    /// </summary>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool DestroyPhysicalMonitor(IntPtr hMonitor);
+
+    /// <summary>
+    /// Gets the brightness of a monitor.
+    /// </summary>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool GetMonitorBrightness(IntPtr hMonitor, out uint pdwMinimumBrightness, out uint pdwCurrentBrightness, out uint pdwMaximumBrightness);
+
+    /// <summary>
+    /// Sets the brightness of a monitor.
+    /// </summary>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool SetMonitorBrightness(IntPtr hMonitor, uint dwNewBrightness);
 }

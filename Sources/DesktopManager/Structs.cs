@@ -77,6 +77,23 @@ public struct MONITORINFOEX {
 }
 
 /// <summary>
+/// Represents a physical monitor and its handle.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+public struct PHYSICAL_MONITOR {
+    /// <summary>
+    /// Handle to the physical monitor.
+    /// </summary>
+    public IntPtr hPhysicalMonitor;
+
+    /// <summary>
+    /// Friendly name of the physical monitor.
+    /// </summary>
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+    public string szPhysicalMonitorDescription;
+}
+
+/// <summary>
 /// Represents a point with x and y coordinates.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
