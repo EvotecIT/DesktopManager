@@ -18,7 +18,11 @@ public class MonitorBrightnessTests {
 
         var monitor = monitors.First();
         var service = new Monitors();
-        int current = service.GetMonitorBrightness(monitor.DeviceId);
-        service.SetMonitorBrightness(monitor.DeviceId, current);
+        try {
+            int current = service.GetMonitorBrightness(monitor.DeviceId);
+            service.SetMonitorBrightness(monitor.DeviceId, current);
+        } catch (InvalidOperationException ex) {
+            Assert.Inconclusive($"Brightness not supported: {ex.Message}");
+        }
     }
 }

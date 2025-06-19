@@ -1,7 +1,11 @@
 Import-Module .\DesktopManager.psd1 -Force
 
-# Get brightness for the first monitor
-Get-DesktopBrightness -Index 0
+# Display brightness for all connected monitors
+Get-DesktopMonitor -ConnectedOnly | ForEach-Object {
+    $level = Get-DesktopBrightness -DeviceId $_.DeviceId
+    "${($_.DeviceName)} brightness: $level"
+}
 
-# Set brightness for the first monitor
+# Change brightness on the first monitor (preview with WhatIf)
 Set-DesktopBrightness -Index 0 -Brightness 50 -WhatIf
+

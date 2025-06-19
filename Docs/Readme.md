@@ -23,3 +23,10 @@ Locale: en-US
 ### [Invoke-DesktopScreenshot](Invoke-DesktopScreenshot.md)
 Capture a screenshot of all monitors, a single monitor or an arbitrary region.
 
+### [Get-DesktopBrightness](Get-DesktopBrightness.md)
+Retrieve the current brightness level of a monitor.
+
+### [Set-DesktopBrightness](Set-DesktopBrightness.md)
+Adjust the brightness level of a monitor.
+
+
