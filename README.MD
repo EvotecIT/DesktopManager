@@ -215,3 +215,20 @@ Applications can subscribe to the `MonitorWatcher.DisplaySettingsChanged` event.
 ```csharp
 MonitorWatcherExample.Run(TimeSpan.FromSeconds(30));
 ```
+
+#### Example in PowerShell - Saving and Restoring Window Layout
+
+```powershell
+Save-DesktopWindowLayout -Path './layout.json'
+# ... move windows around ...
+Restore-DesktopWindowLayout -Path './layout.json'
+```
+
+#### Example in C# - Saving and Restoring Window Layout
+
+```csharp
+var manager = new WindowManager();
+manager.SaveLayout("layout.json");
+// ... move windows around ...
+manager.LoadLayout("layout.json");
+```

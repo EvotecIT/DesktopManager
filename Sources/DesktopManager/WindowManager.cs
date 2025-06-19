@@ -272,6 +272,59 @@ namespace DesktopManager {
             }
         }
 
+        /// <summary>
+        /// Saves the current window layout to a JSON file.
+        /// </summary>
+        /// <param name="path">Destination path for the layout.</param>
+        public void SaveLayout(string path) {
+            var layout = new WindowLayout {
+                Windows = GetWindows().Select(GetWindowPosition).ToList()
+            };
+            var json = System.Text.Json.JsonSerializer.Serialize(layout,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            System.IO.File.WriteAllText(path, json);
+        }
+
+        /// <summary>
+        /// Loads a window layout from a JSON file and applies it.
+        /// </summary>
+        /// <param name="path">Path to the layout file.</param>
+        public void LoadLayout(string path) {
+            if (!System.IO.File.Exists(path)) {
+                throw new System.IO.FileNotFoundException("Layout file not found", path);
+            }
+
+            var json = System.IO.File.ReadAllText(path);
+            var layout = System.Text.Json.JsonSerializer.Deserialize<WindowLayout>(json);
+            if (layout == null) {
+                return;
+            }
+
+            var current = GetWindows();
+            foreach (var target in layout.Windows) {
+                var window = current.FirstOrDefault(w => w.ProcessId == target.ProcessId && w.Title == target.Title);
+                if (window != null) {
+                    SetWindowPosition(window, target.Left, target.Top, target.Width, target.Height);
+                    if (target.State.HasValue) {
+                        switch (target.State.Value) {
+                            case WindowState.Minimize:
+                                MinimizeWindow(window);
+                                break;
+                            case WindowState.Maximize:
+                                MaximizeWindow(window);
+                                break;
+                            case WindowState.Normal:
+                                RestoreWindow(window);
+                                break;
+                            case WindowState.Close:
+                                CloseWindow(window);
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+
         private bool MatchesWildcard(string text, string pattern) {
             if (pattern == "*") {
                 return true;

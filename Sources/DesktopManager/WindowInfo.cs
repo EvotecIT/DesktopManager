@@ -1,4 +1,6 @@
-﻿namespace DesktopManager;
+using System.Text.Json.Serialization;
+
+namespace DesktopManager;
 /// <summary>
 /// Represents basic information about a window.
 /// </summary>
@@ -11,6 +13,7 @@ public class WindowInfo {
     /// <summary>
     /// Gets or sets the window handle.
     /// </summary>
+    [JsonIgnore]
     public IntPtr Handle { get; set; }
 
     /// <summary>
