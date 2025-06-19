@@ -80,5 +80,23 @@ public class MonitorFallbackTests {
 
         Assert.AreEqual(newPos, roundTrip);
     }
+
+    [TestMethod]
+    public void SetAndGetBackgroundColor_FallsBackToRegistry() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var service = new MonitorService(new FailingDesktopManager());
+        uint original = service.GetBackgroundColor();
+        uint newColor = original == 0xFFFFFFu ? 0x0000FFu : 0xFFFFFFu;
+
+        service.SetBackgroundColor(newColor);
+        uint roundTrip = service.GetBackgroundColor();
+
+        service.SetBackgroundColor(original);
+
+        Assert.AreEqual(newColor, roundTrip);
+    }
 }
 

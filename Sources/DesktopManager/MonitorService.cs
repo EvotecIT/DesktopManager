@@ -215,6 +215,34 @@ public class MonitorService {
     }
 
     /// <summary>
+    /// Gets the desktop background color.
+    /// </summary>
+    /// <returns>The background color as RGB value.</returns>
+    public uint GetBackgroundColor() {
+        try {
+            return Execute(() => _desktopManager.GetBackgroundColor(), nameof(IDesktopManager.GetBackgroundColor));
+        } catch (DesktopManagerException) {
+            return GetBackgroundColorFallback();
+        } catch (COMException) {
+            return GetBackgroundColorFallback();
+        }
+    }
+
+    /// <summary>
+    /// Sets the desktop background color.
+    /// </summary>
+    /// <param name="color">Color as RGB value.</param>
+    public void SetBackgroundColor(uint color) {
+        try {
+            Execute(() => _desktopManager.SetBackgroundColor(color), nameof(IDesktopManager.SetBackgroundColor));
+        } catch (DesktopManagerException) {
+            SetBackgroundColorFallback(color);
+        } catch (COMException) {
+            SetBackgroundColorFallback(color);
+        }
+    }
+
+    /// <summary>
     /// Gets the wallpaper position.
     /// </summary>
     /// <returns>The wallpaper position.</returns>
@@ -336,6 +364,39 @@ public class MonitorService {
                         break;
                 }
                 SetSystemWallpaper(GetSystemWallpaper());
+            }
+        } catch {
+        }
+    }
+
+    private uint GetBackgroundColorFallback() {
+        try {
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Colors", false);
+            if (key != null) {
+                string value = key.GetValue("Background")?.ToString();
+                if (!string.IsNullOrEmpty(value)) {
+                    var parts = value.Split(' ');
+                    if (parts.Length == 3 &&
+                        byte.TryParse(parts[0], out var r) &&
+                        byte.TryParse(parts[1], out var g) &&
+                        byte.TryParse(parts[2], out var b)) {
+                        return (uint)(r | (g << 8) | (b << 16));
+                    }
+                }
+            }
+        } catch {
+        }
+        return 0;
+    }
+
+    private void SetBackgroundColorFallback(uint color) {
+        try {
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Colors", true);
+            if (key != null) {
+                byte r = (byte)(color & 0xFF);
+                byte g = (byte)((color >> 8) & 0xFF);
+                byte b = (byte)((color >> 16) & 0xFF);
+                key.SetValue("Background", $"{r} {g} {b}");
             }
         } catch {
         }

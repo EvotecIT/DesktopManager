@@ -38,6 +38,7 @@ It has following features:
 - Get information about display devices
 - Get information about wallpapers
 - Set wallpapers
+- Get/Set desktop background color
 - Get/Set monitor position
 - Get/Set window position
 - Get/Set window state (minimize, maximize, restore)
@@ -145,6 +146,8 @@ Get-DesktopWallpaper -Index 0
 
 Set-DesktopWallpaper -Index 1 -WallpaperPath "C:\Support\GitHub\ImagePlayground\Sources\ImagePlayground.Examples\bin\Debug\net7.0\Images\KulekWSluchawkach.jpg" -Position Fit
 Set-DesktopWallpaper -Index 0 -WallpaperPath "C:\Users\przemyslaw.klys\Downloads\IMG_4820.jpg"
+Set-DesktopBackgroundColor -Color 0x0000FF
+Get-DesktopBackgroundColor
 ```
 
 ```powershell
