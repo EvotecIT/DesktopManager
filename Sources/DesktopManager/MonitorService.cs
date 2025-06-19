@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Linq;
+using System.Management;
 
 namespace DesktopManager;
 
@@ -404,5 +405,51 @@ public class MonitorService {
         }
 
         return devices;
+    }
+
+    /// <summary>
+    /// Gets the current brightness level of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The brightness level from 0 to 100.</returns>
+    public int GetMonitorBrightness(string deviceId) {
+        try {
+            using ManagementObjectSearcher searcher = new ManagementObjectSearcher(
+                "root\\WMI",
+                "SELECT InstanceName, CurrentBrightness FROM WmiMonitorBrightness");
+            foreach (ManagementObject obj in searcher.Get()) {
+                string instance = obj["InstanceName"]?.ToString();
+                if (!string.IsNullOrEmpty(instance) && instance.IndexOf(deviceId, StringComparison.OrdinalIgnoreCase) >= 0) {
+                    return Convert.ToInt32(obj["CurrentBrightness"]);
+                }
+            }
+            throw new ArgumentException("Monitor not found");
+        } catch (Exception ex) {
+            throw new InvalidOperationException("Unable to get monitor brightness", ex);
+        }
+    }
+
+    /// <summary>
+    /// Sets the brightness level of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="brightness">The brightness level from 0 to 100.</param>
+    public void SetMonitorBrightness(string deviceId, int brightness) {
+        try {
+            using ManagementObjectSearcher searcher = new ManagementObjectSearcher(
+                "root\\WMI",
+                "SELECT InstanceName FROM WmiMonitorBrightnessMethods");
+            foreach (ManagementObject obj in searcher.Get()) {
+                string instance = obj["InstanceName"]?.ToString();
+                if (!string.IsNullOrEmpty(instance) && instance.IndexOf(deviceId, StringComparison.OrdinalIgnoreCase) >= 0) {
+                    object[] args = { uint.MaxValue, (byte)brightness };
+                    obj.InvokeMethod("WmiSetBrightness", args);
+                    return;
+                }
+            }
+            throw new ArgumentException("Monitor not found");
+        } catch (Exception ex) {
+            throw new InvalidOperationException("Unable to set monitor brightness", ex);
+        }
     }
 }

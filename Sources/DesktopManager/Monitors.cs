@@ -204,6 +204,44 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Gets the brightness level of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The brightness level from 0 to 100.</returns>
+    public int GetMonitorBrightness(string deviceId) {
+        return _monitorService.GetMonitorBrightness(deviceId);
+    }
+
+    /// <summary>
+    /// Gets the brightness level of a monitor by its index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <returns>The brightness level from 0 to 100.</returns>
+    public int GetMonitorBrightness(int index) {
+        var deviceId = _monitorService.GetMonitorDevicePathAt((uint)index);
+        return _monitorService.GetMonitorBrightness(deviceId);
+    }
+
+    /// <summary>
+    /// Sets the brightness level of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="brightness">The brightness level from 0 to 100.</param>
+    public void SetMonitorBrightness(string deviceId, int brightness) {
+        _monitorService.SetMonitorBrightness(deviceId, brightness);
+    }
+
+    /// <summary>
+    /// Sets the brightness level of a monitor by its index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="brightness">The brightness level from 0 to 100.</param>
+    public void SetMonitorBrightness(int index, int brightness) {
+        var deviceId = _monitorService.GetMonitorDevicePathAt((uint)index);
+        _monitorService.SetMonitorBrightness(deviceId, brightness);
+    }
+
+    /// <summary>
     /// Gets a list of all display devices.
     /// </summary>
     /// <returns>A list of all display devices.</returns>
