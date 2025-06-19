@@ -9,6 +9,10 @@ using Microsoft.Win32;
 namespace DesktopManager;
 
 public partial class MonitorService {
+    /// <summary>
+    /// Gets the desktop background color.
+    /// </summary>
+    /// <returns>The background color as RGB value.</returns>
     public uint GetBackgroundColor() {
         try {
             return Execute(() => _desktopManager.GetBackgroundColor(), nameof(IDesktopManager.GetBackgroundColor));

@@ -107,6 +107,7 @@ public static partial class MonitorNativeMethods {
     public static extern DisplayChangeConfirmation ChangeDisplaySettingsEx(string lpszDeviceName, IntPtr lpDevMode, IntPtr hwnd, ChangeDisplaySettingsFlags dwflags, IntPtr lParam);
 
     /// <summary>
+    /// Gets the number of physical monitors associated with an HMONITOR handle.
     /// </summary>
     /// <param name="hMonitor">The monitor handle.</param>
     /// <param name="pdwNumberOfPhysicalMonitors">Receives the number of monitors.</param>
