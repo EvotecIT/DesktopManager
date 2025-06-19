@@ -294,6 +294,9 @@ public class Monitors {
     /// <param name="direction">Direction to advance.</param>
     public void AdvanceWallpaperSlide(DesktopSlideshowDirection direction) {
         _monitorService.AdvanceWallpaperSlide(direction);
+    }
+
+    /// <summary>
     /// Gets the brightness of a monitor by its device ID.
     /// </summary>
     /// <param name="deviceId">The device ID of the monitor.</param>
