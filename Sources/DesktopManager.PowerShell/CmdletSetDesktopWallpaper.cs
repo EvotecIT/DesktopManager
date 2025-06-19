@@ -70,8 +70,20 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// <para type="description">The file path of the wallpaper image.</para>
     /// </summary>
     [Alias("FilePath", "Path")]
-    [Parameter(Mandatory = true, Position = 7)]
+    [Parameter(Mandatory = false, Position = 7)]
     public string WallpaperPath;
+
+    /// <summary>
+    /// <para type="description">URL of the wallpaper image.</para>
+    /// </summary>
+    [Parameter(Mandatory = false)]
+    public string Url;
+
+    /// <summary>
+    /// <para type="description">Image data stream to use as wallpaper.</para>
+    /// </summary>
+    [Parameter(Mandatory = false)]
+    public Stream ImageData;
     /// <summary>
     /// Error action preference, as set by the user
     /// </summary>
@@ -83,19 +95,38 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// <exception cref="FileNotFoundException"></exception>
     protected override void BeginProcessing() {
         ErrorAction = CmdletHelper.GetErrorAction(this);
-        if (string.IsNullOrEmpty(WallpaperPath)) {
+
+        bool hasPath = MyInvocation.BoundParameters.ContainsKey(nameof(WallpaperPath));
+        bool hasUrl = MyInvocation.BoundParameters.ContainsKey(nameof(Url));
+        bool hasImage = MyInvocation.BoundParameters.ContainsKey(nameof(ImageData));
+
+        if (!(hasPath || hasUrl || hasImage)) {
+            var ex = new FileNotFoundException("WallpaperPath, Url or ImageData is required.");
             if (ErrorAction == ActionPreference.Stop) {
-                throw new FileNotFoundException("The wallpaper file path is required.", WallpaperPath);
+                throw ex;
             }
-            WriteWarning("The wallpaper file path is required.");
+            WriteWarning(ex.Message);
             return;
         }
-        if (!File.Exists(WallpaperPath)) {
+
+        if ((hasPath ? 1 : 0) + (hasUrl ? 1 : 0) + (hasImage ? 1 : 0) > 1) {
+            var ex = new ArgumentException("Specify only one of WallpaperPath, Url or ImageData.");
+            ThrowTerminatingError(new ErrorRecord(ex, "ParameterConflict", ErrorCategory.InvalidArgument, null));
+        }
+
+        if (hasPath && !File.Exists(WallpaperPath)) {
             if (ErrorAction == ActionPreference.Stop) {
                 throw new FileNotFoundException("The wallpaper file path does not exist.", WallpaperPath);
             }
             WriteWarning($"The wallpaper file path does not exist: {WallpaperPath}.");
             return;
+        }
+
+        byte[] imageBytes = null;
+        if (hasImage) {
+            using MemoryStream ms = new MemoryStream();
+            ImageData.CopyTo(ms);
+            imageBytes = ms.ToArray();
         }
 
         // Check if parameters are set by the user
@@ -111,19 +142,31 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
         }
 
         Monitors monitors = new Monitors();
+        string target = hasPath ? WallpaperPath : hasUrl ? Url : "<stream>";
+
+        Action<Monitor> apply = monitor => {
+            if (hasPath) {
+                monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
+            } else if (hasUrl) {
+                monitors.SetWallpaperFromUrl(monitor.DeviceId, Url);
+            } else {
+                using MemoryStream ms2 = new MemoryStream(imageBytes);
+                monitors.SetWallpaper(monitor.DeviceId, ms2);
+            }
+        };
+
         if (All) {
             var getMonitors = monitors.GetMonitors();
             foreach (var monitor in getMonitors) {
-                if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {WallpaperPath}")) {
-                    monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
+                if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {target}")) {
+                    apply(monitor);
                 }
             }
         } else {
-            // Get monitors
             var getMonitors = monitors.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
             foreach (var monitor in getMonitors) {
-                if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {WallpaperPath}")) {
-                    monitors.SetWallpaper(monitor.DeviceId, WallpaperPath);
+                if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set wallpaper to {target}")) {
+                    apply(monitor);
                 }
             }
         }
