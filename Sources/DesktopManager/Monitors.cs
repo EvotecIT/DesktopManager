@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace DesktopManager;
 
 /// <summary>
@@ -65,6 +67,24 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Sets the wallpaper for a specific monitor using image data.
+    /// </summary>
+    /// <param name="monitorId">The ID of the monitor.</param>
+    /// <param name="imageStream">Stream containing image data.</param>
+    public void SetWallpaper(string monitorId, Stream imageStream) {
+        _monitorService.SetWallpaper(monitorId, imageStream);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for a specific monitor from a URL.
+    /// </summary>
+    /// <param name="monitorId">The ID of the monitor.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    public void SetWallpaperFromUrl(string monitorId, string url) {
+        _monitorService.SetWallpaperFromUrl(monitorId, url);
+    }
+
+    /// <summary>
     /// Sets the wallpaper for a specific monitor by its index.
     /// </summary>
     /// <param name="index">The index of the monitor.</param>
@@ -74,11 +94,45 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Sets the wallpaper for a monitor by its index using image data.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="imageStream">Stream containing image data.</param>
+    public void SetWallpaper(int index, Stream imageStream) {
+        _monitorService.SetWallpaper(index, imageStream);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for a monitor by its index from a URL.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    public void SetWallpaperFromUrl(int index, string url) {
+        _monitorService.SetWallpaperFromUrl(index, url);
+    }
+
+    /// <summary>
     /// Sets the wallpaper for all monitors.
     /// </summary>
     /// <param name="wallpaperPath">The file path of the wallpaper image.</param>
     public void SetWallpaper(string wallpaperPath) {
         _monitorService.SetWallpaper(wallpaperPath);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for all monitors using image data.
+    /// </summary>
+    /// <param name="imageStream">Stream containing image data.</param>
+    public void SetWallpaper(Stream imageStream) {
+        _monitorService.SetWallpaper(imageStream);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for all monitors from a URL.
+    /// </summary>
+    /// <param name="url">URL pointing to the image.</param>
+    public void SetWallpaperFromUrl(string url) {
+        _monitorService.SetWallpaperFromUrl(url);
     }
 
     /// <summary>
@@ -240,6 +294,21 @@ public class Monitors {
     /// <param name="direction">Direction to advance.</param>
     public void AdvanceWallpaperSlide(DesktopSlideshowDirection direction) {
         _monitorService.AdvanceWallpaperSlide(direction);
+    /// Gets the brightness of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The current brightness level.</returns>
+    public int GetMonitorBrightness(string deviceId) {
+        return _monitorService.GetMonitorBrightness(deviceId);
+    }
+
+    /// <summary>
+    /// Sets the brightness of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="brightness">The brightness level to set.</param>
+    public void SetMonitorBrightness(string deviceId, int brightness) {
+        _monitorService.SetMonitorBrightness(deviceId, brightness);
     }
 
     /// <summary>

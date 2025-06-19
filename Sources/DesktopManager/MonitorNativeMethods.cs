@@ -397,4 +397,51 @@ public static class MonitorNativeMethods {
         void RemoveObjectAt(uint uiIndex);
         void Clear();
     }
+    /// <summary>
+    /// Gets the number of physical monitors associated with an HMONITOR handle.
+    /// </summary>
+    /// <param name="hMonitor">The monitor handle.</param>
+    /// <param name="pdwNumberOfPhysicalMonitors">Receives the number of monitors.</param>
+    /// <returns><c>true</c> if the call succeeds.</returns>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, out uint pdwNumberOfPhysicalMonitors);
+
+    /// <summary>
+    /// Retrieves handles to the physical monitors associated with an HMONITOR.
+    /// </summary>
+    /// <param name="hMonitor">The monitor handle.</param>
+    /// <param name="dwPhysicalMonitorArraySize">Size of the array.</param>
+    /// <param name="pPhysicalMonitorArray">The array that receives the monitor handles.</param>
+    /// <returns><c>true</c> if the call succeeds.</returns>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint dwPhysicalMonitorArraySize, [Out] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+    /// <summary>
+    /// Closes monitor handles obtained from <see cref="GetPhysicalMonitorsFromHMONITOR"/>.
+    /// </summary>
+    /// <param name="dwPhysicalMonitorArraySize">Size of the array.</param>
+    /// <param name="pPhysicalMonitorArray">Array of monitor handles to close.</param>
+    /// <returns><c>true</c> if the call succeeds.</returns>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool DestroyPhysicalMonitors(uint dwPhysicalMonitorArraySize, PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+    /// <summary>
+    /// Retrieves the monitor's brightness information.
+    /// </summary>
+    /// <param name="hMonitor">Handle to the physical monitor.</param>
+    /// <param name="pdwMinimumBrightness">Receives the minimum brightness.</param>
+    /// <param name="pdwCurrentBrightness">Receives the current brightness.</param>
+    /// <param name="pdwMaximumBrightness">Receives the maximum brightness.</param>
+    /// <returns><c>true</c> if the call succeeds.</returns>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool GetMonitorBrightness(IntPtr hMonitor, out uint pdwMinimumBrightness, out uint pdwCurrentBrightness, out uint pdwMaximumBrightness);
+
+    /// <summary>
+    /// Sets the monitor's brightness.
+    /// </summary>
+    /// <param name="hMonitor">Handle to the physical monitor.</param>
+    /// <param name="dwNewBrightness">The brightness value to set.</param>
+    /// <returns><c>true</c> if the call succeeds.</returns>
+    [DllImport("Dxva2.dll", SetLastError = true)]
+    public static extern bool SetMonitorBrightness(IntPtr hMonitor, uint dwNewBrightness);
 }

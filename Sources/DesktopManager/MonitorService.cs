@@ -1,6 +1,8 @@
 using System;
-using System.Runtime.InteropServices;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
 using Microsoft.Win32;
@@ -143,6 +145,31 @@ public class MonitorService {
     }
 
     /// <summary>
+    /// Sets the wallpaper for a specific monitor from a data stream.
+    /// </summary>
+    /// <param name="monitorId">The monitor ID.</param>
+    /// <param name="imageStream">Stream containing image data.</param>
+    public void SetWallpaper(string monitorId, Stream imageStream) {
+        string temp = WriteStreamToTempFile(imageStream);
+        try {
+            SetWallpaper(monitorId, temp);
+        } finally {
+            DeleteTempFile(temp);
+        }
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for a specific monitor from a URL.
+    /// </summary>
+    /// <param name="monitorId">The monitor ID.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    public void SetWallpaperFromUrl(string monitorId, string url) {
+        using HttpClient client = new();
+        using Stream stream = client.GetStreamAsync(url).GetAwaiter().GetResult();
+        SetWallpaper(monitorId, stream);
+    }
+
+    /// <summary>
     /// Sets the wallpaper for a monitor by index.
     /// </summary>
     /// <param name="index">The index of the monitor.</param>
@@ -156,6 +183,26 @@ public class MonitorService {
         } catch (COMException) {
             SetSystemWallpaper(wallpaperPath);
         }
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for a monitor by index from a data stream.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="imageStream">Stream containing image data.</param>
+    public void SetWallpaper(int index, Stream imageStream) {
+        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+        SetWallpaper(monitorId, imageStream);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for a monitor by index from a URL.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    public void SetWallpaperFromUrl(int index, string url) {
+        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+        SetWallpaperFromUrl(monitorId, url);
     }
 
     /// <summary>
@@ -173,6 +220,29 @@ public class MonitorService {
         } catch (COMException) {
             SetSystemWallpaper(wallpaperPath);
         }
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for all monitors using image data stream.
+    /// </summary>
+    /// <param name="imageStream">Stream containing image data.</param>
+    public void SetWallpaper(Stream imageStream) {
+        string temp = WriteStreamToTempFile(imageStream);
+        try {
+            SetWallpaper(temp);
+        } finally {
+            DeleteTempFile(temp);
+        }
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for all monitors using an image from a URL.
+    /// </summary>
+    /// <param name="url">URL pointing to the image.</param>
+    public void SetWallpaperFromUrl(string url) {
+        using HttpClient client = new();
+        using Stream stream = client.GetStreamAsync(url).GetAwaiter().GetResult();
+        SetWallpaper(stream);
     }
 
     /// <summary>
@@ -309,6 +379,20 @@ public class MonitorService {
             return sb.ToString();
         }
         return string.Empty;
+    }
+
+    private static string WriteStreamToTempFile(Stream stream) {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        using FileStream fs = File.Create(path);
+        stream.CopyTo(fs);
+        return path;
+    }
+
+    private static void DeleteTempFile(string path) {
+        try {
+            File.Delete(path);
+        } catch {
+        }
     }
 
     private DesktopWallpaperPosition GetWallpaperPositionFallback() {
@@ -536,6 +620,70 @@ public class MonitorService {
         DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(deviceName, ref devMode, IntPtr.Zero, ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY, IntPtr.Zero);
         if (result != DisplayChangeConfirmation.Successful && result != DisplayChangeConfirmation.Restart) {
             throw new InvalidOperationException($"Unable to set monitor orientation. Error: {result}");
+        }
+    }
+
+    private PHYSICAL_MONITOR[] GetPhysicalMonitors(string deviceId) {
+        IntPtr found = IntPtr.Zero;
+        MonitorNativeMethods.MonitorEnumProc proc = (IntPtr h, IntPtr hdc, ref RECT r, IntPtr data) => {
+            MONITORINFOEX info = new MONITORINFOEX();
+            info.cbSize = Marshal.SizeOf<MONITORINFOEX>();
+            if (MonitorNativeMethods.GetMonitorInfo(h, ref info) && info.szDevice == deviceId) {
+                found = h;
+                return false;
+            }
+            return true;
+        };
+        MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+        if (found == IntPtr.Zero) {
+            return Array.Empty<PHYSICAL_MONITOR>();
+        }
+        if (!MonitorNativeMethods.GetNumberOfPhysicalMonitorsFromHMONITOR(found, out uint count) || count == 0) {
+            return Array.Empty<PHYSICAL_MONITOR>();
+        }
+        PHYSICAL_MONITOR[] monitors = new PHYSICAL_MONITOR[count];
+        if (!MonitorNativeMethods.GetPhysicalMonitorsFromHMONITOR(found, count, monitors)) {
+            return Array.Empty<PHYSICAL_MONITOR>();
+        }
+        return monitors;
+    }
+
+    /// <summary>
+    /// Gets the current brightness of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The current brightness level.</returns>
+    public int GetMonitorBrightness(string deviceId) {
+        var monitors = GetPhysicalMonitors(deviceId);
+        if (monitors.Length == 0) {
+            throw new InvalidOperationException("Monitor handle not found");
+        }
+        try {
+            if (MonitorNativeMethods.GetMonitorBrightness(monitors[0].hPhysicalMonitor, out uint min, out uint cur, out uint _)) {
+                return (int)cur;
+            }
+            throw new InvalidOperationException("GetMonitorBrightness failed");
+        } finally {
+            MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors);
+        }
+    }
+
+    /// <summary>
+    /// Sets the brightness of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="brightness">Brightness value to set.</param>
+    public void SetMonitorBrightness(string deviceId, int brightness) {
+        var monitors = GetPhysicalMonitors(deviceId);
+        if (monitors.Length == 0) {
+            throw new InvalidOperationException("Monitor handle not found");
+        }
+        try {
+            if (!MonitorNativeMethods.SetMonitorBrightness(monitors[0].hPhysicalMonitor, (uint)brightness)) {
+                throw new InvalidOperationException("SetMonitorBrightness failed");
+            }
+        } finally {
+            MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors);
         }
     }
 
