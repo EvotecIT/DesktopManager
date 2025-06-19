@@ -150,6 +150,14 @@ Set-DesktopBackgroundColor -Color 0x0000FF
 Get-DesktopBackgroundColor
 ```
 
+#### Example in PowerShell - Wallpaper Slideshow
+
+```powershell
+Start-DesktopSlideshow -ImagePath 'C:\Wallpapers\img1.jpg','C:\Wallpapers\img2.jpg'
+Advance-DesktopSlideshow -Direction Forward
+Stop-DesktopSlideshow
+```
+
 ```powershell
 $Desktop1 = Get-DesktopMonitor
 $Desktop1 | Format-Table

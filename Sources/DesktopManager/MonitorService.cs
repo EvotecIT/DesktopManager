@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Collections.Generic;
 using Microsoft.Win32;
 
 namespace DesktopManager;
@@ -684,6 +685,64 @@ public class MonitorService {
         } finally {
             MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors);
         }
+    }
+
+    /// <summary>
+    /// Starts a wallpaper slideshow using the provided images.
+    /// </summary>
+    /// <param name="wallpaperPaths">Collection of wallpaper file paths.</param>
+    public void StartWallpaperSlideshow(IEnumerable<string> wallpaperPaths) {
+        if (wallpaperPaths == null) {
+            throw new ArgumentNullException(nameof(wallpaperPaths));
+        }
+
+        IntPtr arrayPtr = IntPtr.Zero;
+        try {
+            arrayPtr = CreateShellItemArray(wallpaperPaths);
+            Execute(() => _desktopManager.SetSlideshow(arrayPtr), nameof(IDesktopManager.SetSlideshow));
+        } finally {
+            if (arrayPtr != IntPtr.Zero) {
+                Marshal.Release(arrayPtr);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Stops the currently running wallpaper slideshow.
+    /// </summary>
+    public void StopWallpaperSlideshow() {
+        Execute(() => _desktopManager.SetSlideshow(IntPtr.Zero), nameof(IDesktopManager.SetSlideshow));
+    }
+
+    /// <summary>
+    /// Advances the slideshow in the given direction.
+    /// </summary>
+    /// <param name="direction">Direction to advance.</param>
+    public void AdvanceWallpaperSlide(DesktopSlideshowDirection direction) {
+        Execute(() => _desktopManager.AdvanceSlideshow(null, direction), nameof(IDesktopManager.AdvanceSlideshow));
+    }
+
+    private static IntPtr CreateShellItemArray(IEnumerable<string> paths) {
+        Guid clsidEnum = new("2d3468c1-36a7-43b6-ac24-d3f02fd9607a");
+        Guid iidShellItem = new("43826D1E-E718-42EE-BC55-A1E261C37BFE");
+        Guid iidShellItemArray = new("b63ea76d-1f85-456f-a19c-48159efa858b");
+
+        var collection = (MonitorNativeMethods.IObjectCollection)Activator.CreateInstance(Type.GetTypeFromCLSID(clsidEnum));
+        foreach (var path in paths) {
+            if (string.IsNullOrEmpty(path)) continue;
+            int hr = MonitorNativeMethods.SHCreateItemFromParsingName(path, IntPtr.Zero, ref iidShellItem, out IntPtr item);
+            if (hr != 0) {
+                Marshal.ThrowExceptionForHR(hr);
+            }
+            object obj = Marshal.GetObjectForIUnknown(item);
+            collection.AddObject(obj);
+            Marshal.Release(item);
+        }
+
+        IntPtr unk = Marshal.GetIUnknownForObject(collection);
+        Marshal.QueryInterface(unk, ref iidShellItemArray, out IntPtr arrayPtr);
+        Marshal.Release(unk);
+        return arrayPtr;
     }
 
     /// <summary>

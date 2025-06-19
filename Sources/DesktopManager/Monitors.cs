@@ -274,6 +274,29 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Starts a wallpaper slideshow on the desktop.
+    /// </summary>
+    /// <param name="wallpaperPath">Paths to slideshow images.</param>
+    public void StartWallpaperSlideshow(IEnumerable<string> wallpaperPath) {
+        _monitorService.StartWallpaperSlideshow(wallpaperPath);
+    }
+
+    /// <summary>
+    /// Stops any running wallpaper slideshow.
+    /// </summary>
+    public void StopWallpaperSlideshow() {
+        _monitorService.StopWallpaperSlideshow();
+    }
+
+    /// <summary>
+    /// Advances the wallpaper slideshow in the specified direction.
+    /// </summary>
+    /// <param name="direction">Direction to advance.</param>
+    public void AdvanceWallpaperSlide(DesktopSlideshowDirection direction) {
+        _monitorService.AdvanceWallpaperSlide(direction);
+    }
+
+    /// <summary>
     /// Gets the brightness of a monitor by its device ID.
     /// </summary>
     /// <param name="deviceId">The device ID of the monitor.</param>
