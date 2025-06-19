@@ -125,6 +125,22 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Gets the desktop background color.
+    /// </summary>
+    /// <returns>The background color as RGB value.</returns>
+    public uint GetBackgroundColor() {
+        return _monitorService.GetBackgroundColor();
+    }
+
+    /// <summary>
+    /// Sets the desktop background color.
+    /// </summary>
+    /// <param name="color">Color as RGB value.</param>
+    public void SetBackgroundColor(uint color) {
+        _monitorService.SetBackgroundColor(color);
+    }
+
+    /// <summary>
     /// Gets the bounds of a monitor by its ID.
     /// </summary>
     /// <param name="monitorId">The ID of the monitor.</param>

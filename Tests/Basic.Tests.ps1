@@ -14,4 +14,12 @@ Describe 'DesktopManager basic tests' {
     It 'Exports Restore-DesktopWindowLayout' {
         Get-Command Restore-DesktopWindowLayout | Should -Not -BeNullOrEmpty
     }
+
+    It 'Exports Get-DesktopBackgroundColor' {
+        Get-Command Get-DesktopBackgroundColor | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Set-DesktopBackgroundColor' {
+        Get-Command Set-DesktopBackgroundColor | Should -Not -BeNullOrEmpty
+    }
 }
