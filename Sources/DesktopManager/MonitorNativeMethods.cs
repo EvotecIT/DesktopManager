@@ -363,4 +363,38 @@ public static class MonitorNativeMethods {
     /// Broadcasts the WM_SETTINGCHANGE message after updating the user profile.
     /// </summary>
     public const uint SPIF_SENDWININICHANGE = 0x0002;
+
+    // Shell helpers for wallpaper slideshow
+
+    /// <summary>
+    /// Creates an IShellItem from a file path.
+    /// </summary>
+    /// <param name="pszPath">Path to the file.</param>
+    /// <param name="pbc">Reserved, pass IntPtr.Zero.</param>
+    /// <param name="riid">The interface ID of the requested interface.</param>
+    /// <param name="ppv">Receives the interface pointer.</param>
+    /// <returns>HRESULT indicating success or failure.</returns>
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern int SHCreateItemFromParsingName(string pszPath, IntPtr pbc, ref Guid riid, out IntPtr ppv);
+
+    /// <summary>
+    /// Interface for an array of COM objects.
+    /// </summary>
+    [ComImport, Guid("92CA9DCD-5622-4bba-A805-5E9F541BD8C9"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IObjectArray {
+        uint GetCount();
+        [return: MarshalAs(UnmanagedType.Interface)]
+        object GetAt(uint uiIndex, ref Guid riid);
+    }
+
+    /// <summary>
+    /// Interface for a mutable collection of COM objects.
+    /// </summary>
+    [ComImport, Guid("5632b1a4-e38a-400a-928a-d4cd63230295"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IObjectCollection : IObjectArray {
+        void AddObject([MarshalAs(UnmanagedType.Interface)] object pv);
+        void AddFromArray(IObjectArray poaSource);
+        void RemoveObjectAt(uint uiIndex);
+        void Clear();
+    }
 }
