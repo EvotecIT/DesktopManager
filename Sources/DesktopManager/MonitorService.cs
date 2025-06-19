@@ -1,7 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Linq;
-using System.Collections.Generic;
 
 namespace DesktopManager;
 
@@ -405,89 +404,5 @@ public class MonitorService {
         }
 
         return devices;
-    }
-
-    private IntPtr GetMonitorHandle(string deviceId) {
-        IntPtr handle = IntPtr.Zero;
-        MonitorNativeMethods.MonitorEnumProc proc = (IntPtr hMonitor, IntPtr hdc, ref RECT r, IntPtr l) => {
-            MONITORINFOEX info = new MONITORINFOEX { cbSize = Marshal.SizeOf<MONITORINFOEX>() };
-            if (MonitorNativeMethods.GetMonitorInfo(hMonitor, ref info)) {
-                if (string.Equals(info.szDevice, deviceId, StringComparison.OrdinalIgnoreCase)) {
-                    handle = hMonitor;
-                    return false;
-                }
-            }
-            return true;
-        };
-        MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
-        return handle;
-    }
-
-    /// <summary>
-    /// Gets the current brightness level of a monitor.
-    /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
-    /// <returns>The brightness level from 0 to 100.</returns>
-    public int GetMonitorBrightness(string deviceId) {
-        IntPtr hMonitor = GetMonitorHandle(deviceId);
-        if (hMonitor == IntPtr.Zero) {
-            throw new ArgumentException("Monitor not found", nameof(deviceId));
-        }
-
-        IntPtr physical = IntPtr.Zero;
-        try {
-            if (!MonitorNativeMethods.GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor, out uint count) || count == 0) {
-                throw new InvalidOperationException("Unable to get physical monitors");
-            }
-
-            PHYSICAL_MONITOR[] monitors = new PHYSICAL_MONITOR[count];
-            if (!MonitorNativeMethods.GetPhysicalMonitorsFromHMONITOR(hMonitor, count, monitors)) {
-                throw new InvalidOperationException("Unable to enumerate physical monitors");
-            }
-
-            physical = monitors[0].hPhysicalMonitor;
-            if (MonitorNativeMethods.GetMonitorBrightness(physical, out uint min, out uint current, out uint max)) {
-                return (int)current;
-            }
-
-            throw new InvalidOperationException("Unable to get monitor brightness");
-        } finally {
-            if (physical != IntPtr.Zero) {
-                MonitorNativeMethods.DestroyPhysicalMonitor(physical);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Sets the brightness level of a monitor.
-    /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
-    /// <param name="brightness">The brightness level from 0 to 100.</param>
-    public void SetMonitorBrightness(string deviceId, int brightness) {
-        IntPtr hMonitor = GetMonitorHandle(deviceId);
-        if (hMonitor == IntPtr.Zero) {
-            throw new ArgumentException("Monitor not found", nameof(deviceId));
-        }
-
-        IntPtr physical = IntPtr.Zero;
-        try {
-            if (!MonitorNativeMethods.GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor, out uint count) || count == 0) {
-                throw new InvalidOperationException("Unable to get physical monitors");
-            }
-
-            PHYSICAL_MONITOR[] monitors = new PHYSICAL_MONITOR[count];
-            if (!MonitorNativeMethods.GetPhysicalMonitorsFromHMONITOR(hMonitor, count, monitors)) {
-                throw new InvalidOperationException("Unable to enumerate physical monitors");
-            }
-
-            physical = monitors[0].hPhysicalMonitor;
-            if (!MonitorNativeMethods.SetMonitorBrightness(physical, (uint)brightness)) {
-                throw new InvalidOperationException("Unable to set monitor brightness");
-            }
-        } finally {
-            if (physical != IntPtr.Zero) {
-                MonitorNativeMethods.DestroyPhysicalMonitor(physical);
-            }
-        }
     }
 }
