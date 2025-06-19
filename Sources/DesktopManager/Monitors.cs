@@ -220,6 +220,24 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Gets the brightness of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The current brightness level.</returns>
+    public int GetMonitorBrightness(string deviceId) {
+        return _monitorService.GetMonitorBrightness(deviceId);
+    }
+
+    /// <summary>
+    /// Sets the brightness of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="brightness">The brightness level to set.</param>
+    public void SetMonitorBrightness(string deviceId, int brightness) {
+        _monitorService.SetMonitorBrightness(deviceId, brightness);
+    }
+
+    /// <summary>
     /// Gets a list of all display devices.
     /// </summary>
     /// <returns>A list of all display devices.</returns>
