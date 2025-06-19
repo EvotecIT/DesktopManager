@@ -15,6 +15,7 @@ You can also download it from PowerShell Gallery
 [![GitHub top language](https://img.shields.io/github/languages/top/evotecit/DesktopManager.svg?style=flat-square)](https://github.com/EvotecIT/DesktopManager)
 [![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/evotecit/DesktopManager.svg?style=flat-square)](https://github.com/EvotecIT/DesktopManager)
 [![GitHub license](https://img.shields.io/github/license/EvotecIT/DesktopManager.svg?style=flat-square)](https://github.com/EvotecIT/DesktopManager)
+[![codecov](https://img.shields.io/codecov/c/github/EvotecIT/DesktopManager?style=flat-square)](https://codecov.io/gh/EvotecIT/DesktopManager)
 
 If you would like to contact me you can do so via Twitter or LinkedIn.
 
