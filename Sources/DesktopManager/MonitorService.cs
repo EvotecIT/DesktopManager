@@ -477,6 +477,70 @@ public class MonitorService {
         }
     }
 
+    private PHYSICAL_MONITOR[] GetPhysicalMonitors(string deviceId) {
+        IntPtr found = IntPtr.Zero;
+        MonitorNativeMethods.MonitorEnumProc proc = (IntPtr h, IntPtr hdc, ref RECT r, IntPtr data) => {
+            MONITORINFOEX info = new MONITORINFOEX();
+            info.cbSize = Marshal.SizeOf<MONITORINFOEX>();
+            if (MonitorNativeMethods.GetMonitorInfo(h, ref info) && info.szDevice == deviceId) {
+                found = h;
+                return false;
+            }
+            return true;
+        };
+        MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+        if (found == IntPtr.Zero) {
+            return Array.Empty<PHYSICAL_MONITOR>();
+        }
+        if (!MonitorNativeMethods.GetNumberOfPhysicalMonitorsFromHMONITOR(found, out uint count) || count == 0) {
+            return Array.Empty<PHYSICAL_MONITOR>();
+        }
+        PHYSICAL_MONITOR[] monitors = new PHYSICAL_MONITOR[count];
+        if (!MonitorNativeMethods.GetPhysicalMonitorsFromHMONITOR(found, count, monitors)) {
+            return Array.Empty<PHYSICAL_MONITOR>();
+        }
+        return monitors;
+    }
+
+    /// <summary>
+    /// Gets the current brightness of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The current brightness level.</returns>
+    public int GetMonitorBrightness(string deviceId) {
+        var monitors = GetPhysicalMonitors(deviceId);
+        if (monitors.Length == 0) {
+            throw new InvalidOperationException("Monitor handle not found");
+        }
+        try {
+            if (MonitorNativeMethods.GetMonitorBrightness(monitors[0].hPhysicalMonitor, out uint min, out uint cur, out uint _)) {
+                return (int)cur;
+            }
+            throw new InvalidOperationException("GetMonitorBrightness failed");
+        } finally {
+            MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors);
+        }
+    }
+
+    /// <summary>
+    /// Sets the brightness of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="brightness">Brightness value to set.</param>
+    public void SetMonitorBrightness(string deviceId, int brightness) {
+        var monitors = GetPhysicalMonitors(deviceId);
+        if (monitors.Length == 0) {
+            throw new InvalidOperationException("Monitor handle not found");
+        }
+        try {
+            if (!MonitorNativeMethods.SetMonitorBrightness(monitors[0].hPhysicalMonitor, (uint)brightness)) {
+                throw new InvalidOperationException("SetMonitorBrightness failed");
+            }
+        } finally {
+            MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors);
+        }
+    }
+
     /// <summary>
     /// Gets all display devices.
     /// </summary>

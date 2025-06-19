@@ -356,3 +356,19 @@ public struct DEVMODE {
     /// </summary>
     public int dmPanningHeight;
 }
+
+/// <summary>
+/// Represents a physical monitor handle used with monitor configuration APIs.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+public struct PHYSICAL_MONITOR {
+    /// <summary>
+    /// Handle to the physical monitor.
+    /// </summary>
+    public IntPtr hPhysicalMonitor;
+    /// <summary>
+    /// Friendly description of the monitor.
+    /// </summary>
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+    public string szPhysicalMonitorDescription;
+}
