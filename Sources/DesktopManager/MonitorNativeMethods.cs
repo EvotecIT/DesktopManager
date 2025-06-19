@@ -321,4 +321,46 @@ public static class MonitorNativeMethods {
     /// System metric index for the virtual screen height.
     /// </summary>
     public const int SM_CYVIRTUALSCREEN = 79;
+
+    /// <summary>
+    /// Sets or retrieves system-wide parameters, including desktop wallpaper.
+    /// </summary>
+    /// <param name="uiAction">The system-wide parameter to set or query.</param>
+    /// <param name="uiParam">Parameter whose usage depends on <paramref name="uiAction"/>.</param>
+    /// <param name="pvParam">Parameter whose usage and format depends on <paramref name="uiAction"/>.</param>
+    /// <param name="fWinIni">Flags specifying if the user profile is updated.</param>
+    /// <returns><c>true</c> if successful; otherwise <c>false</c>.</returns>
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, StringBuilder pvParam, uint fWinIni);
+
+    /// <summary>
+    /// Sets or retrieves system-wide parameters, including desktop wallpaper.
+    /// </summary>
+    /// <param name="uiAction">The system-wide parameter to set or query.</param>
+    /// <param name="uiParam">Parameter whose usage depends on <paramref name="uiAction"/>.</param>
+    /// <param name="pvParam">Parameter whose usage and format depends on <paramref name="uiAction"/>.</param>
+    /// <param name="fWinIni">Flags specifying if the user profile is updated.</param>
+    /// <returns><c>true</c> if successful; otherwise <c>false</c>.</returns>
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string pvParam, uint fWinIni);
+
+    /// <summary>
+    /// Action code for setting the desktop wallpaper.
+    /// </summary>
+    public const uint SPI_SETDESKWALLPAPER = 0x0014;
+
+    /// <summary>
+    /// Action code for retrieving the desktop wallpaper.
+    /// </summary>
+    public const uint SPI_GETDESKWALLPAPER = 0x0073;
+
+    /// <summary>
+    /// Writes the new system-wide parameter to the user profile.
+    /// </summary>
+    public const uint SPIF_UPDATEINIFILE = 0x0001;
+
+    /// <summary>
+    /// Broadcasts the WM_SETTINGCHANGE message after updating the user profile.
+    /// </summary>
+    public const uint SPIF_SENDWININICHANGE = 0x0002;
 }
