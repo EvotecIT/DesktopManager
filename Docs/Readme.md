@@ -20,6 +20,12 @@ Locale: en-US
 ### [Set-DesktopWallpaper](Set-DesktopWallpaper.md)
 {{ Fill in the Synopsis }}
 
+### [Get-DesktopBackgroundColor](Get-DesktopBackgroundColor.md)
+{{ Fill in the Synopsis }}
+
+### [Set-DesktopBackgroundColor](Set-DesktopBackgroundColor.md)
+{{ Fill in the Synopsis }}
+
 ### [Invoke-DesktopScreenshot](Invoke-DesktopScreenshot.md)
 Capture a screenshot of all monitors, a single monitor or an arbitrary region.
 
