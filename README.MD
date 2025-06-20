@@ -233,7 +233,7 @@ MonitorWatcherExample.Run(TimeSpan.FromSeconds(30));
 ```powershell
 Save-DesktopWindowLayout -Path './layout.json'
 # ... move windows around ...
-Restore-DesktopWindowLayout -Path './layout.json'
+Restore-DesktopWindowLayout -Path './layout.json' -Validate
 ```
 
 #### Example in C# - Saving and Restoring Window Layout
@@ -242,5 +242,5 @@ Restore-DesktopWindowLayout -Path './layout.json'
 var manager = new WindowManager();
 manager.SaveLayout("layout.json");
 // ... move windows around ...
-manager.LoadLayout("layout.json");
+manager.LoadLayout("layout.json", validate: true);
 ```

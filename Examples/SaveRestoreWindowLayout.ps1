@@ -6,4 +6,4 @@ Save-DesktopWindowLayout -Path './layout.json'
 # ... move windows around ...
 
 # Restore saved layout
-Restore-DesktopWindowLayout -Path './layout.json'
+Restore-DesktopWindowLayout -Path './layout.json' -Validate
