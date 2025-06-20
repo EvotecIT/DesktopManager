@@ -44,8 +44,13 @@ public partial class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string monitorId, string url) {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
+            throw new NotSupportedException($"Invalid wallpaper URL '{url}'. Only HTTP and HTTPS schemes are supported.");
+        }
+
         using HttpClient client = new();
-        using Stream stream = client.GetStreamAsync(url).GetAwaiter().GetResult();
+        using Stream stream = client.GetStreamAsync(uri).GetAwaiter().GetResult();
         SetWallpaper(monitorId, stream);
     }
 
@@ -120,8 +125,13 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string url) {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
+            throw new NotSupportedException($"Invalid wallpaper URL '{url}'. Only HTTP and HTTPS schemes are supported.");
+        }
+
         using HttpClient client = new();
-        using Stream stream = client.GetStreamAsync(url).GetAwaiter().GetResult();
+        using Stream stream = client.GetStreamAsync(uri).GetAwaiter().GetResult();
         SetWallpaper(stream);
     }
 
