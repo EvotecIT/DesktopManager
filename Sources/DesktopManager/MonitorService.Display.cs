@@ -224,7 +224,7 @@ public partial class MonitorService {
                 return new MonitorPosition(monitor.Rect.Left, monitor.Rect.Top, monitor.Rect.Right, monitor.Rect.Bottom);
             }
         }
-        throw new ArgumentException("Monitor not found");
+        throw new ArgumentException($"Monitor with device ID '{deviceId}' not found");
     }
 
     /// <summary>
@@ -285,7 +285,7 @@ public partial class MonitorService {
             deviceNum++;
         }
 
-        throw new ArgumentException("Corresponding display device not found for the given Monitor ID.");
+        throw new ArgumentException($"Corresponding display device not found for monitor ID '{deviceId}'.");
     }
 
     /// <summary>

@@ -39,7 +39,12 @@ public static class ScreenshotService {
         Monitors monitors = new();
         var monitor = monitors.GetMonitors(index: index, deviceId: deviceId, deviceName: deviceName).FirstOrDefault();
         if (monitor == null) {
-            throw new ArgumentException("Monitor not found");
+            string requested = !string.IsNullOrEmpty(deviceId)
+                ? $"DeviceId '{deviceId}'"
+                : !string.IsNullOrEmpty(deviceName)
+                    ? $"DeviceName '{deviceName}'"
+                    : "the specified criteria";
+            throw new ArgumentException($"Monitor not found for {requested}");
         }
 
         var rect = monitor.GetMonitorBounds();
