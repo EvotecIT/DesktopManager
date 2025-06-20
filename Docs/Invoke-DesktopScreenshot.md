@@ -16,7 +16,7 @@ Invoke-DesktopScreenshot [-Path <String>] [-Index <Int32>] [-DeviceId <String>] 
 ```
 
 ## DESCRIPTION
-The **Invoke-DesktopScreenshot** cmdlet captures the current desktop image. When a path is specified, the screenshot is saved as a PNG file. Otherwise a `System.Drawing.Bitmap` object is returned. You can target a single monitor by index, device ID or device name, limit capture to the primary monitor, or capture an arbitrary region of the desktop.
+The **Invoke-DesktopScreenshot** cmdlet captures the current desktop image. When a path is specified, the screenshot is saved as a PNG file. Otherwise a `System.Drawing.Bitmap` object is returned. You can target a single monitor by index, device ID or device name, limit capture to the primary monitor, or capture an arbitrary region of the desktop. If no monitor matches the provided *DeviceId* or *DeviceName*, an `ArgumentException` is thrown and the message includes the identifier that was requested.
 
 ## PARAMETERS
 ### -Path
