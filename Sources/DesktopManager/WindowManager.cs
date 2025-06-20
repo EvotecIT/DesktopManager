@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.IO;
 
 namespace DesktopManager {
     /// <summary>
@@ -289,15 +290,25 @@ namespace DesktopManager {
         /// Loads a window layout from a JSON file and applies it.
         /// </summary>
         /// <param name="path">Path to the layout file.</param>
-        public void LoadLayout(string path) {
+        /// <param name="validate">Validate layout before applying.</param>
+        public void LoadLayout(string path, bool validate = false) {
             if (!System.IO.File.Exists(path)) {
                 throw new System.IO.FileNotFoundException("Layout file not found", path);
             }
 
             var json = System.IO.File.ReadAllText(path);
-            var layout = System.Text.Json.JsonSerializer.Deserialize<WindowLayout>(json);
+            WindowLayout? layout;
+            try {
+                layout = System.Text.Json.JsonSerializer.Deserialize<WindowLayout>(json);
+            } catch (System.Text.Json.JsonException ex) {
+                throw new InvalidOperationException($"Invalid layout file: {ex.Message}", ex);
+            }
             if (layout == null) {
                 return;
+            }
+
+            if (validate) {
+                ValidateLayout(layout);
             }
 
             var current = GetWindows();
@@ -321,6 +332,22 @@ namespace DesktopManager {
                                 break;
                         }
                     }
+                }
+            }
+        }
+
+        private static void ValidateLayout(WindowLayout layout) {
+            if (layout.Windows == null) {
+                throw new InvalidDataException("Layout does not contain any windows.");
+            }
+
+            foreach (var window in layout.Windows) {
+                if (string.IsNullOrWhiteSpace(window.Title)) {
+                    throw new InvalidDataException("Window title is required.");
+                }
+
+                if (window.ProcessId == 0) {
+                    throw new InvalidDataException($"Window '{window.Title}' has invalid process id.");
                 }
             }
         }

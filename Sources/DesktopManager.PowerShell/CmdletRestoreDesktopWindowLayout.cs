@@ -13,12 +13,18 @@ public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {
     public string Path { get; set; }
 
     /// <summary>
+    /// <para type="description">Validate layout before applying.</para>
+    /// </summary>
+    [Parameter()]
+    public SwitchParameter Validate { get; set; }
+
+    /// <summary>
     /// Begin processing.
     /// </summary>
     protected override void BeginProcessing() {
         var manager = new WindowManager();
         if (ShouldProcess(Path, "Restore window layout")) {
-            manager.LoadLayout(Path);
+            manager.LoadLayout(Path, Validate.IsPresent);
         }
     }
 }
