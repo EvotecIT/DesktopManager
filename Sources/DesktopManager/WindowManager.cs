@@ -28,13 +28,15 @@ namespace DesktopManager {
             var handles = new List<IntPtr>();
             var shellWindowhWnd = MonitorNativeMethods.GetShellWindow();
 
-            MonitorNativeMethods.EnumWindows(
+            if (!MonitorNativeMethods.EnumWindows(
                 (handle, lParam) => {
                     if (handle != shellWindowhWnd && MonitorNativeMethods.IsWindowVisible(handle)) {
                         handles.Add(handle);
                     }
                     return true;
-                }, IntPtr.Zero);
+                }, IntPtr.Zero)) {
+                throw new InvalidOperationException("Failed to enumerate windows");
+            }
 
             var windows = new List<WindowInfo>();
             foreach (var handle in handles) {

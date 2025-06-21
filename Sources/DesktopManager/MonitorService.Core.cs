@@ -111,7 +111,10 @@ public partial class MonitorService {
             index++;
             return true;
         };
-        MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+        if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero)) {
+            Console.WriteLine("EnumDisplayMonitors failed");
+        }
+        
         return monitors;
     }
 

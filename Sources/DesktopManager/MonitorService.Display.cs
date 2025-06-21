@@ -358,7 +358,10 @@ public partial class MonitorService {
             }
             return true;
         };
-        MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+        if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero)) {
+            Console.WriteLine("EnumDisplayMonitors failed");
+            return Array.Empty<PHYSICAL_MONITOR>();
+        }
         if (found == IntPtr.Zero) {
             return Array.Empty<PHYSICAL_MONITOR>();
         }
@@ -388,7 +391,9 @@ public partial class MonitorService {
             }
             throw new InvalidOperationException("GetMonitorBrightness failed");
         } finally {
-            MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors);
+            if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
+                Console.WriteLine("DestroyPhysicalMonitors failed");
+            }
         }
     }
 
@@ -407,7 +412,9 @@ public partial class MonitorService {
                 throw new InvalidOperationException("SetMonitorBrightness failed");
             }
         } finally {
-            MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors);
+            if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
+                Console.WriteLine("DestroyPhysicalMonitors failed");
+            }
         }
     }
 
