@@ -31,7 +31,7 @@ public sealed class CmdletSetDesktopBrightness : PSCmdlet {
     /// <para type="description">Set brightness for the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "PrimaryOnly")]
-    public SwitchParameter? PrimaryOnly;
+    public SwitchParameter PrimaryOnly;
 
     /// <summary>
     /// <para type="description">Brightness level to set.</para>

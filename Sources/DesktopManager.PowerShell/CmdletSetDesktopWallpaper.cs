@@ -51,7 +51,7 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
     /// <para type="description">Set the wallpaper for the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 4, ParameterSetName = "Index")]
-    public SwitchParameter? PrimaryOnly;
+    public SwitchParameter PrimaryOnly;
 
     /// <summary>
     /// <para type="description">Set the wallpaper for all monitors.</para>
