@@ -136,10 +136,6 @@ public sealed class CmdletSetDesktopWallpaper : PSCmdlet {
         string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
 
-        if (index != null && (deviceId != null || deviceName != null)) {
-            var ex = new ArgumentException("-Index cannot be combined with -DeviceId or -DeviceName.");
-            ThrowTerminatingError(new ErrorRecord(ex, "ParameterConflict", ErrorCategory.InvalidArgument, null));
-        }
 
         Monitors monitors = new Monitors();
         string target = hasPath ? WallpaperPath : hasUrl ? Url : "<stream>";
