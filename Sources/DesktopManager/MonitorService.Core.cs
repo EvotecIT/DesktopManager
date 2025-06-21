@@ -41,8 +41,8 @@ public partial class MonitorService {
 
         try {
             Execute(() => _desktopManager.Enable(), nameof(IDesktopManager.Enable));
-        } catch (DesktopManagerException) {
-            // COM failures are ignored during initialization to support unsupported scenarios
+        } catch (DesktopManagerException ex) {
+            Console.WriteLine($"DesktopManager initialization failed: {ex.Message}");
         }
     }
 
