@@ -42,7 +42,7 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
     /// <para type="description">Set the position for the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "PrimaryOnly")]
-    public SwitchParameter? PrimaryOnly;
+    public SwitchParameter PrimaryOnly;
 
     /// <summary>
     /// <para type="description">The left position of the monitor.</para>

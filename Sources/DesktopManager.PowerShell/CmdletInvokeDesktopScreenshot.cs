@@ -41,7 +41,7 @@ public sealed class CmdletInvokeDesktopScreenshot : PSCmdlet {
     /// <para type="description">Capture the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false)]
-    public SwitchParameter? PrimaryOnly;
+    public SwitchParameter PrimaryOnly;
 
     /// <summary>
     /// <para type="description">Left coordinate of the region to capture.</para>
