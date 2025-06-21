@@ -220,6 +220,13 @@ Use `Register-DesktopMonitorEvent` to react when monitors are plugged in or the 
 Register-DesktopMonitorEvent -Duration 30 -Action { Write-Host 'Display settings changed' }
 ```
 
+Use `Register-DesktopOrientationEvent` or `Register-DesktopResolutionEvent` to handle orientation or resolution changes individually.
+
+```powershell
+Register-DesktopResolutionEvent -Duration 30 -Action { Write-Host 'Resolution changed' }
+Register-DesktopOrientationEvent -Duration 30 -Action { Write-Host 'Orientation changed' }
+```
+
 #### Example in C# - Monitoring Display Changes
 
 Applications can subscribe to the `MonitorWatcher.DisplaySettingsChanged` event.

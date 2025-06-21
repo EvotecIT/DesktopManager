@@ -22,4 +22,12 @@ Describe 'DesktopManager basic tests' {
     It 'Exports Set-DesktopBackgroundColor' {
         Get-Command Set-DesktopBackgroundColor | Should -Not -BeNullOrEmpty
     }
+
+    It 'Exports Register-DesktopOrientationEvent' {
+        Get-Command Register-DesktopOrientationEvent | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Register-DesktopResolutionEvent' {
+        Get-Command Register-DesktopResolutionEvent | Should -Not -BeNullOrEmpty
+    }
 }
