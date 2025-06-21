@@ -30,6 +30,19 @@ public class MonitorServiceCleanupTests {
         public bool Enable() => true;
     }
 
+    private class ThrowingStream : Stream {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => 0;
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new IOException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     [TestMethod]
     public void SetWallpaper_FromStream_DeletesTempFileOnFailure() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
@@ -37,7 +50,7 @@ public class MonitorServiceCleanupTests {
         }
         var fake = new ThrowingWallpaperDesktopManager();
         var service = new MonitorService(fake);
-        using var ms = new MemoryStream(new byte[] {1,2,3});
+        using var ms = new MemoryStream(new byte[] { 1, 2, 3 });
         service.SetWallpaper("mon", ms);
         Assert.IsNotNull(fake.TempPath);
         Assert.IsFalse(File.Exists(fake.TempPath!));
@@ -50,9 +63,57 @@ public class MonitorServiceCleanupTests {
         }
         var fake = new ThrowingWallpaperDesktopManager();
         var service = new MonitorService(fake);
-        using var ms = new MemoryStream(new byte[] {1,2,3});
+        using var ms = new MemoryStream(new byte[] { 1, 2, 3 });
         service.SetWallpaper(ms);
         Assert.IsNotNull(fake.TempPath);
         Assert.IsFalse(File.Exists(fake.TempPath!));
+    }
+
+    [TestMethod]
+    public void SetWallpaper_FromStream_DeletesTempFileOnWriteFailure() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+        string dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        string? oldTemp = Environment.GetEnvironmentVariable("TEMP");
+        string? oldTmp = Environment.GetEnvironmentVariable("TMP");
+        Environment.SetEnvironmentVariable("TEMP", dir);
+        Environment.SetEnvironmentVariable("TMP", dir);
+        try {
+            var fake = new FakeDesktopManager();
+            var service = new MonitorService(fake);
+            using var stream = new ThrowingStream();
+            Assert.ThrowsException<IOException>(() => service.SetWallpaper("mon", stream));
+            Assert.AreEqual(0, Directory.GetFiles(dir).Length);
+        } finally {
+            Environment.SetEnvironmentVariable("TEMP", oldTemp);
+            Environment.SetEnvironmentVariable("TMP", oldTmp);
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [TestMethod]
+    public void SetWallpaper_AllMonitors_FromStream_DeletesTempFileOnWriteFailure() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+        string dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        string? oldTemp = Environment.GetEnvironmentVariable("TEMP");
+        string? oldTmp = Environment.GetEnvironmentVariable("TMP");
+        Environment.SetEnvironmentVariable("TEMP", dir);
+        Environment.SetEnvironmentVariable("TMP", dir);
+        try {
+            var fake = new FakeDesktopManager();
+            var service = new MonitorService(fake);
+            using var stream = new ThrowingStream();
+            Assert.ThrowsException<IOException>(() => service.SetWallpaper(stream));
+            Assert.AreEqual(0, Directory.GetFiles(dir).Length);
+        } finally {
+            Environment.SetEnvironmentVariable("TEMP", oldTemp);
+            Environment.SetEnvironmentVariable("TMP", oldTmp);
+            Directory.Delete(dir, true);
+        }
     }
 }

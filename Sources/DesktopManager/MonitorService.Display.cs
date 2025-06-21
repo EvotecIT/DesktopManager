@@ -107,9 +107,14 @@ public partial class MonitorService {
 
     private static string WriteStreamToTempFile(Stream stream) {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        using FileStream fs = File.Create(path);
-        stream.CopyTo(fs);
-        return path;
+        try {
+            using FileStream fs = File.Create(path);
+            stream.CopyTo(fs);
+            return path;
+        } catch {
+            DeleteTempFile(path);
+            throw;
+        }
     }
 
     private static void DeleteTempFile(string path) {
