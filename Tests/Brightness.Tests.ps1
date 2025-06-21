@@ -3,10 +3,10 @@ BeforeAll {
 }
 
 describe 'Brightness cmdlets' {
-    it 'exports Get-DesktopBrightness' {
+    it 'exports Get-DesktopBrightness' -Skip:(-not $IsWindows) {
         Get-Command Get-DesktopBrightness | Should -Not -BeNullOrEmpty
     }
-    it 'exports Set-DesktopBrightness' {
+    it 'exports Set-DesktopBrightness' -Skip:(-not $IsWindows) {
         Get-Command Set-DesktopBrightness | Should -Not -BeNullOrEmpty
     }
     it 'supports WhatIf for Set-DesktopBrightness' -Skip:(-not $IsWindows) {
