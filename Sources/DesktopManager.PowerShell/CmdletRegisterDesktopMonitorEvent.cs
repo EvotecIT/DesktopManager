@@ -7,14 +7,24 @@ using System.Runtime.Versioning;
 namespace DesktopManager.PowerShell;
 
 /// <summary>Registers for desktop monitor change events.</summary>
+/// <para type="synopsis">Registers for desktop monitor change events.</para>
+/// <para type="description">Subscribes to display setting changes and returns the event subscription.</para>
+/// <example>
+///   <summary>Monitor changes for five minutes</summary>
+///   <code>Register-DesktopMonitorEvent -Duration (New-TimeSpan -Minutes 5)</code>
+/// </example>
 [Cmdlet(VerbsLifecycle.Register, "DesktopMonitorEvent")]
 [SupportedOSPlatform("windows")]
 public sealed class CmdletRegisterDesktopMonitorEvent : PSCmdlet {
-    /// <summary>The script block to run when the event is raised.</summary>
+    /// <summary>
+    /// <para type="description">The script block to run when the event is raised.</para>
+    /// </summary>
     [Parameter(Mandatory = false)]
     public ScriptBlock Action { get; set; }
 
-    /// <summary>The duration to monitor before automatically unregistering.</summary>
+    /// <summary>
+    /// <para type="description">The duration to monitor before automatically unregistering.</para>
+    /// </summary>
     [Parameter(Mandatory = false)]
     public TimeSpan Duration { get; set; }
 

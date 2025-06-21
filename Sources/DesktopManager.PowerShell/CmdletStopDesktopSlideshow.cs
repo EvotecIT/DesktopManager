@@ -4,6 +4,11 @@ namespace DesktopManager.PowerShell;
 
 /// <summary>Stops the desktop wallpaper slideshow.</summary>
 /// <para type="synopsis">Stops the desktop wallpaper slideshow.</para>
+/// <para type="description">Ends any running wallpaper slideshow on all monitors.</para>
+/// <example>
+///   <summary>Stop slideshow</summary>
+///   <code>Stop-DesktopSlideshow</code>
+/// </example>
 [Cmdlet(VerbsLifecycle.Stop, "DesktopSlideshow", SupportsShouldProcess = true)]
 public sealed class CmdletStopDesktopSlideshow : PSCmdlet {
     protected override void BeginProcessing() {
