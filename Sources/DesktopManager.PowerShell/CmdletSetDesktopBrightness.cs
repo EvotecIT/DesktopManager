@@ -54,10 +54,6 @@ public sealed class CmdletSetDesktopBrightness : PSCmdlet {
         string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
 
-        if (index != null && (deviceId != null || deviceName != null)) {
-            var ex = new ArgumentException("-Index cannot be combined with -DeviceId or -DeviceName.");
-            ThrowTerminatingError(new ErrorRecord(ex, "ParameterConflict", ErrorCategory.InvalidArgument, null));
-        }
 
         var getMonitors = monitors.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
