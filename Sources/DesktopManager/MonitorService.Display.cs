@@ -115,7 +115,8 @@ public partial class MonitorService {
     private static void DeleteTempFile(string path) {
         try {
             File.Delete(path);
-        } catch {
+        } catch (Exception ex) {
+            Console.WriteLine($"DeleteTempFile failed: {ex.Message}");
         }
     }
 
@@ -137,7 +138,8 @@ public partial class MonitorService {
                     _ => DesktopWallpaperPosition.Center
                 };
             }
-        } catch {
+        } catch (Exception ex) {
+            Console.WriteLine($"GetWallpaperPositionFallback failed: {ex.Message}");
         }
         return DesktopWallpaperPosition.Center;
     }
@@ -174,7 +176,8 @@ public partial class MonitorService {
                 }
                 SetSystemWallpaper(GetSystemWallpaper());
             }
-        } catch {
+        } catch (Exception ex) {
+            Console.WriteLine($"SetWallpaperPositionFallback failed: {ex.Message}");
         }
     }
 
@@ -193,7 +196,8 @@ public partial class MonitorService {
                     }
                 }
             }
-        } catch {
+        } catch (Exception ex) {
+            Console.WriteLine($"GetBackgroundColorFallback failed: {ex.Message}");
         }
         return 0;
     }
@@ -207,7 +211,8 @@ public partial class MonitorService {
                 byte b = (byte)((color >> 16) & 0xFF);
                 key.SetValue("Background", $"{r} {g} {b}");
             }
-        } catch {
+        } catch (Exception ex) {
+            Console.WriteLine($"SetBackgroundColorFallback failed: {ex.Message}");
         }
     }
 
