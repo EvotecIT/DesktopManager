@@ -7,6 +7,7 @@ namespace DesktopManager;
 /// </summary>
 public class Monitors {
     private readonly MonitorService _monitorService;
+    private List<Monitor>? _cachedMonitors;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Monitors"/> class.
@@ -14,6 +15,13 @@ public class Monitors {
     public Monitors() {
         IDesktopManager desktopManager = (IDesktopManager)new DesktopManagerWrapper(); // Explicit cast
         _monitorService = new MonitorService(desktopManager);
+    }
+
+    /// <summary>
+    /// Forces monitor enumeration and updates the cache.
+    /// </summary>
+    public void RefreshMonitors() {
+        _cachedMonitors = _monitorService.GetMonitors();
     }
 
     /// <summary>
@@ -27,7 +35,7 @@ public class Monitors {
     /// <returns>A list of monitors that match the specified filters.</returns>
     public List<Monitor> GetMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string deviceId = null, string deviceName = null) {
         var monitorsReturn = new List<Monitor>();
-        var monitors = _monitorService.GetMonitors();
+        var monitors = _cachedMonitors ??= _monitorService.GetMonitors();
         foreach (var monitor in monitors) {
             if (connectedOnly != null && connectedOnly.Value && !monitor.IsConnected) {
                 continue;
