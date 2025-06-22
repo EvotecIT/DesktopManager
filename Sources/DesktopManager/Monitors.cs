@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -84,6 +85,10 @@ public class Monitors {
         _monitorService.SetWallpaperFromUrl(monitorId, url);
     }
 
+    public Task SetWallpaperFromUrlAsync(string monitorId, string url) {
+        return _monitorService.SetWallpaperFromUrlAsync(monitorId, url);
+    }
+
     /// <summary>
     /// Sets the wallpaper for a specific monitor by its index.
     /// </summary>
@@ -111,6 +116,10 @@ public class Monitors {
         _monitorService.SetWallpaperFromUrl(index, url);
     }
 
+    public Task SetWallpaperFromUrlAsync(int index, string url) {
+        return _monitorService.SetWallpaperFromUrlAsync(index, url);
+    }
+
     /// <summary>
     /// Sets the wallpaper for all monitors.
     /// </summary>
@@ -133,6 +142,10 @@ public class Monitors {
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string url) {
         _monitorService.SetWallpaperFromUrl(url);
+    }
+
+    public Task SetWallpaperFromUrlAsync(string url) {
+        return _monitorService.SetWallpaperFromUrlAsync(url);
     }
 
     /// <summary>

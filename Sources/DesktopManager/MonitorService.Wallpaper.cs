@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace DesktopManager;
@@ -47,13 +48,17 @@ public partial class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string monitorId, string url) {
+        SetWallpaperFromUrlAsync(monitorId, url).GetAwaiter().GetResult();
+    }
+
+    public async Task SetWallpaperFromUrlAsync(string monitorId, string url) {
         if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
             throw new NotSupportedException($"Invalid wallpaper URL '{url}'. Only HTTP and HTTPS schemes are supported.");
         }
 
         using HttpClient client = new();
-        using Stream stream = client.GetStreamAsync(uri).GetAwaiter().GetResult();
+        using Stream stream = await client.GetStreamAsync(uri);
         SetWallpaper(monitorId, stream);
     }
 
@@ -89,8 +94,12 @@ public partial class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(int index, string url) {
+        SetWallpaperFromUrlAsync(index, url).GetAwaiter().GetResult();
+    }
+
+    public async Task SetWallpaperFromUrlAsync(int index, string url) {
         var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
-        SetWallpaperFromUrl(monitorId, url);
+        await SetWallpaperFromUrlAsync(monitorId, url);
     }
 
     /// <summary>
@@ -131,13 +140,17 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string url) {
+        SetWallpaperFromUrlAsync(url).GetAwaiter().GetResult();
+    }
+
+    public async Task SetWallpaperFromUrlAsync(string url) {
         if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
             throw new NotSupportedException($"Invalid wallpaper URL '{url}'. Only HTTP and HTTPS schemes are supported.");
         }
 
         using HttpClient client = new();
-        using Stream stream = client.GetStreamAsync(uri).GetAwaiter().GetResult();
+        using Stream stream = await client.GetStreamAsync(uri);
         SetWallpaper(stream);
     }
 
