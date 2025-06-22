@@ -16,6 +16,9 @@ public sealed class CmdletStartDesktopSlideshow : PSCmdlet {
     [Parameter(Mandatory = true, Position = 0)]
     public string[] ImagePath;
 
+    /// <summary>
+    /// Begins processing the cmdlet.
+    /// </summary>
     protected override void BeginProcessing() {
         if (!ShouldProcess("Desktop", "Start slideshow")) {
             return;

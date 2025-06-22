@@ -4,6 +4,10 @@ using System.Threading.Tasks;
 namespace DesktopManager.Example;
 
 internal static class MonitorWatcherExample {
+    /// <summary>
+    /// Runs the monitor watcher example for the specified duration.
+    /// </summary>
+    /// <param name="duration">Amount of time to listen for events.</param>
     public static async Task RunAsync(TimeSpan duration) {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Console.WriteLine("MonitorWatcher works only on Windows.");

@@ -19,9 +19,9 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
     }
 
     /// <summary>
-    /// OnRemove is called when the module is removed.
+    /// Called when the module is removed from the PowerShell session.
     /// </summary>
-    /// <param name="module"></param>
+    /// <param name="module">Module being removed.</param>
     public void OnRemove(PSModuleInfo module) {
         if (IsNetFramework()) {
             AppDomain.CurrentDomain.AssemblyResolve -= MyResolveEventHandler;
@@ -29,11 +29,11 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
     }
 
     /// <summary>
-    /// MyResolveEventHandler is a method that handles the AssemblyResolve event.
+    /// Handles assembly resolution for dependencies shipped with the module.
     /// </summary>
-    /// <param name="sender"></param>
-    /// <param name="args"></param>
-    /// <returns></returns>
+    /// <param name="sender">The source of the event.</param>
+    /// <param name="args">Information about the assembly to resolve.</param>
+    /// <returns>The loaded assembly or <c>null</c> if not found.</returns>
     private static Assembly MyResolveEventHandler(object sender, ResolveEventArgs args) {
         var libDirectory = Path.GetDirectoryName(typeof(OnModuleImportAndRemove).Assembly.Location);
         var directoriesToSearch = new List<string> { libDirectory };
@@ -60,9 +60,9 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
     }
 
     /// <summary>
-    /// Determine if the current runtime is .NET Framework
+    /// Determines whether the current runtime is .NET Framework.
     /// </summary>
-    /// <returns></returns>
+    /// <returns><c>true</c> if running on .NET Framework; otherwise <c>false</c>.</returns>
     private bool IsNetFramework() {
         return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
     }
@@ -73,9 +73,9 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
     }
 
     /// <summary>
-    /// Determine if the current runtime is .NET 5 or higher
+    /// Determines whether the current runtime is .NET 5 or higher.
     /// </summary>
-    /// <returns></returns>
+    /// <returns><c>true</c> if running on .NET 5 or newer; otherwise <c>false</c>.</returns>
     private bool IsNet5OrHigher() {
         return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET 5", StringComparison.OrdinalIgnoreCase) ||
                System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET 6", StringComparison.OrdinalIgnoreCase) ||

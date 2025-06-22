@@ -5,10 +5,12 @@ namespace DesktopManager.PowerShell;
 /// </summary>
 public static class CmdletHelper {
     /// <summary>
-    /// Gets the error action preference for the specified cmdlet.
+    /// Gets the effective <see cref="ActionPreference"/> value for the provided
+    /// cmdlet.
     /// </summary>
-    /// <param name="cmdlet"></param>
-    /// <returns></returns>
+    /// <param name="cmdlet">Cmdlet for which the error action should be
+    /// resolved.</param>
+    /// <returns>The resolved error action preference.</returns>
     public static ActionPreference GetErrorAction(PSCmdlet cmdlet) {
         // Get the error action preference as user requested
         // It first sets the error action to the default error action preference

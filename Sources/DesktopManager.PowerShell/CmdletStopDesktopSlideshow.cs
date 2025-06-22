@@ -11,6 +11,9 @@ namespace DesktopManager.PowerShell;
 /// </example>
 [Cmdlet(VerbsLifecycle.Stop, "DesktopSlideshow", SupportsShouldProcess = true)]
 public sealed class CmdletStopDesktopSlideshow : PSCmdlet {
+    /// <summary>
+    /// Begins processing the cmdlet.
+    /// </summary>
     protected override void BeginProcessing() {
         if (ShouldProcess("Desktop", "Stop slideshow")) {
             Monitors monitors = new();

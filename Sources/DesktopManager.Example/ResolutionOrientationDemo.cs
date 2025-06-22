@@ -3,6 +3,9 @@ using System.Linq;
 namespace DesktopManager.Example;
 
 internal static class ResolutionOrientationDemo {
+    /// <summary>
+    /// Demonstrates changing resolution and orientation on the first monitor.
+    /// </summary>
     public static void Run() {
         Monitors monitors = new Monitors();
         var first = monitors.GetMonitorsConnected().FirstOrDefault();
