@@ -7,6 +7,9 @@ namespace DesktopManager.Example {
     /// Demonstrates WindowManager features such as setting a window top-most and activating it.
     /// </summary>
     internal static class WindowExamples {
+        /// <summary>
+        /// Demonstrates basic window operations using <see cref="WindowManager"/>.
+        /// </summary>
         public static void Run() {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 Console.WriteLine("Window management examples require Windows.");

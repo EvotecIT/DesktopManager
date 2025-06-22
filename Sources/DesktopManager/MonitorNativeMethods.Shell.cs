@@ -65,7 +65,18 @@ public static partial class MonitorNativeMethods
     [ComImport, Guid("92CA9DCD-5622-4bba-A805-5E9F541BD8C9"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IObjectArray
     {
+        /// <summary>
+        /// Gets the number of objects in the array.
+        /// </summary>
+        /// <returns>The number of contained objects.</returns>
         uint GetCount();
+
+        /// <summary>
+        /// Retrieves the object at the specified index.
+        /// </summary>
+        /// <param name="uiIndex">Index of the object to retrieve.</param>
+        /// <param name="riid">Requested interface identifier.</param>
+        /// <returns>The requested COM object.</returns>
         [return: MarshalAs(UnmanagedType.Interface)] object GetAt(uint uiIndex, ref Guid riid);
     }
 
@@ -75,9 +86,19 @@ public static partial class MonitorNativeMethods
     [ComImport, Guid("5632b1a4-e38a-400a-928a-d4cd63230295"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IObjectCollection : IObjectArray
     {
+        /// <summary>Adds an object to the collection.</summary>
+        /// <param name="pv">The object to add.</param>
         void AddObject([MarshalAs(UnmanagedType.Interface)] object pv);
+
+        /// <summary>Adds all objects from another collection.</summary>
+        /// <param name="poaSource">Collection to copy objects from.</param>
         void AddFromArray(IObjectArray poaSource);
+
+        /// <summary>Removes an object at the given index.</summary>
+        /// <param name="uiIndex">Index of the object to remove.</param>
         void RemoveObjectAt(uint uiIndex);
+
+        /// <summary>Clears all objects from the collection.</summary>
         void Clear();
     }
 }
