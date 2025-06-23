@@ -285,7 +285,12 @@ namespace DesktopManager {
             };
             var json = System.Text.Json.JsonSerializer.Serialize(layout,
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            System.IO.File.WriteAllText(path, json);
+            var fullPath = System.IO.Path.GetFullPath(path);
+            var directory = System.IO.Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory)) {
+                System.IO.Directory.CreateDirectory(directory);
+            }
+            System.IO.File.WriteAllText(fullPath, json);
         }
 
         /// <summary>
