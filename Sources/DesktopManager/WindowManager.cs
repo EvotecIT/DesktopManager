@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace DesktopManager {
     /// <summary>
@@ -355,27 +356,20 @@ namespace DesktopManager {
         }
 
         private bool MatchesWildcard(string text, string pattern) {
-            if (pattern == "*") {
-                return true;
+            if (string.IsNullOrEmpty(pattern)) {
+                return false;
             }
 
-            if (pattern.Contains("*")) {
-                // Handle basic wildcard pattern with * only
-                int starIndex = pattern.IndexOf('*');
-                if (starIndex == 0) {
-                    // Pattern starts with *, check if text ends with rest of pattern
-                    return text.EndsWith(pattern.Substring(1), StringComparison.OrdinalIgnoreCase);
-                } else if (starIndex == pattern.Length - 1) {
-                    // Pattern ends with *, check if text starts with rest of pattern
-                    return text.StartsWith(pattern.Substring(0, pattern.Length - 1), StringComparison.OrdinalIgnoreCase);
-                } else {
-                    // Pattern has * in middle, check both parts
-                    string[] parts = pattern.Split('*');
-                    return text.StartsWith(parts[0], StringComparison.OrdinalIgnoreCase) &&
-                           text.EndsWith(parts[1], StringComparison.OrdinalIgnoreCase);
-                }
+            // If the pattern contains wildcard characters, convert it to a regex
+            if (pattern.Contains('*') || pattern.Contains('?')) {
+                string regexPattern = "^" + Regex.Escape(pattern)
+                    .Replace("\\*", ".*")
+                    .Replace("\\?", ".") + "$";
+
+                return Regex.IsMatch(text, regexPattern, RegexOptions.IgnoreCase);
             }
 
+            // For plain text patterns without wildcards, check if it occurs anywhere
             return text.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }

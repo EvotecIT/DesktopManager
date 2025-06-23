@@ -21,5 +21,15 @@ public class WindowManagerWildcardTests {
         Assert.IsTrue(InvokeMatches("hello", "ell"));
         Assert.IsFalse(InvokeMatches("hello", "abc*"));
     }
+
+    [TestMethod]
+    public void MatchesWildcard_ExtendedPatterns() {
+        Assert.IsTrue(InvokeMatches("hello", "h*o"));
+        Assert.IsTrue(InvokeMatches("hello", "h*l?"));
+        Assert.IsTrue(InvokeMatches("hello", "h?l*"));
+        Assert.IsTrue(InvokeMatches("hello", "*e??o"));
+        Assert.IsTrue(InvokeMatches("hello", "h??lo"));
+        Assert.IsFalse(InvokeMatches("hello", "h?x?o"));
+    }
 }
 
