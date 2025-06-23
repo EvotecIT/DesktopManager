@@ -30,6 +30,7 @@ public sealed class MonitorWatcher : IDisposable {
     private const int ENUM_CURRENT_SETTINGS = -1;
 
     private Dictionary<string, MonitorState> _state = new();
+    private bool _disposed;
 
     private struct MonitorState {
         public int Width;
@@ -106,8 +107,19 @@ public sealed class MonitorWatcher : IDisposable {
     /// Unsubscribes from system events.
     /// </summary>
     public void Dispose() {
-        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    ~MonitorWatcher() {
+        Dispose(false);
+    }
+
+    private void Dispose(bool disposing) {
+        if (!_disposed) {
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            _disposed = true;
+        }
     }
 }
 #endif
