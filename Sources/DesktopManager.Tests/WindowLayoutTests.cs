@@ -67,4 +67,31 @@ public class WindowLayoutTests {
 
         System.IO.File.Delete(path);
     }
+
+    [TestMethod]
+    public void SaveLayout_RelativePath_CreatesFile() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var manager = new WindowManager();
+        var windows = manager.GetWindows();
+        if (windows.Count == 0) {
+            Assert.Inconclusive("No windows found to test");
+        }
+
+        var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString());
+        System.IO.Directory.CreateDirectory(tempDir);
+        var originalDir = System.Environment.CurrentDirectory;
+        System.Environment.CurrentDirectory = tempDir;
+        try {
+            var relative = System.IO.Path.Combine("sub", "layout.json");
+            manager.SaveLayout(relative);
+            var fullPath = System.IO.Path.Combine(tempDir, relative);
+            Assert.IsTrue(System.IO.File.Exists(fullPath));
+        } finally {
+            System.Environment.CurrentDirectory = originalDir;
+            System.IO.Directory.Delete(tempDir, true);
+        }
+    }
 }
