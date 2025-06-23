@@ -17,7 +17,7 @@ public sealed class CmdletSetDesktopBackgroundColor : PSCmdlet {
     /// Begin processing the command.
     /// </summary>
     protected override void BeginProcessing() {
-        if (ShouldProcess("Desktop", $"Set background color to 0x{Color:X6}")) {
+        if (ShouldProcess("Desktop", $"Change desktop background color to 0x{Color:X6}")) {
             Monitors monitors = new Monitors();
             monitors.SetBackgroundColor(Color);
         }

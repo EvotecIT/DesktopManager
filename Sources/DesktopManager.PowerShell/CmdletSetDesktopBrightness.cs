@@ -57,7 +57,7 @@ public sealed class CmdletSetDesktopBrightness : PSCmdlet {
 
         var getMonitors = monitors.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
-            if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set brightness to {Brightness}")) {
+            if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set brightness to {Brightness}%")) {
                 try {
                     monitors.SetMonitorBrightness(monitor.DeviceId, Brightness);
                 } catch (Exception ex) {

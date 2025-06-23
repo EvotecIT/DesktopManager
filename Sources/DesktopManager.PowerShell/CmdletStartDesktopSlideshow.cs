@@ -20,7 +20,7 @@ public sealed class CmdletStartDesktopSlideshow : PSCmdlet {
     /// Begins processing the cmdlet.
     /// </summary>
     protected override void BeginProcessing() {
-        if (!ShouldProcess("Desktop", "Start slideshow")) {
+        if (!ShouldProcess("Desktop", $"Start wallpaper slideshow with {ImagePath.Length} image(s)")) {
             return;
         }
 
