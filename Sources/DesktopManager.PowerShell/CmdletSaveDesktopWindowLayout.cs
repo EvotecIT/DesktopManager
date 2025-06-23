@@ -17,7 +17,7 @@ public sealed class CmdletSaveDesktopWindowLayout : PSCmdlet {
     /// </summary>
     protected override void BeginProcessing() {
         var manager = new WindowManager();
-        if (ShouldProcess(Path, "Save window layout")) {
+        if (ShouldProcess($"Layout file '{Path}'", "Save desktop window layout")) {
             manager.SaveLayout(Path);
             WriteObject(Path);
         }
