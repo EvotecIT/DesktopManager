@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -51,5 +52,16 @@ public class WindowPositionTests {
         manager.SetWindowPosition(window, original.Left, original.Top);
 
         Assert.AreEqual(indexBefore, indexAfterMove);
+    }
+
+    [TestMethod]
+    public void GetWindowPosition_InvalidHandle_Throws() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var manager = new WindowManager();
+        var dummy = new WindowInfo { Handle = IntPtr.Zero };
+        Assert.ThrowsException<InvalidOperationException>(() => manager.GetWindowPosition(dummy));
     }
 }
