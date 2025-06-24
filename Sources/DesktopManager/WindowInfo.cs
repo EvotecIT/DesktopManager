@@ -81,8 +81,4 @@ public class WindowInfo {
 /// Represents the position and size information of a window.
 /// </summary>
 public class WindowPosition : WindowInfo {
-    /// <summary>
-    /// Gets or sets the state of the window when the layout was saved.
-    /// </summary>
-    public new WindowState? State { get; set; }
 }

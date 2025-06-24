@@ -15,3 +15,5 @@ Sources/*/bin
 Sources/*/*/obj
 Sources/*/*/bin
 Sources/packages/*
+dotnet-install.sh
+packages-microsoft-prod.deb
