@@ -111,6 +111,16 @@ namespace DesktopManager {
         public WindowPosition GetWindowPosition(WindowInfo windowInfo) {
             RECT rect = new RECT();
             if (MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out rect)) {
+                // Re-evaluate the current state directly from the window to avoid stale data
+                IntPtr stylePtr = MonitorNativeMethods.GetWindowLongPtr(windowInfo.Handle, MonitorNativeMethods.GWL_STYLE);
+                int style = unchecked((int)(long)stylePtr);
+                var state = WindowState.Normal;
+                if ((style & MonitorNativeMethods.WS_MINIMIZE) != 0) {
+                    state = WindowState.Minimize;
+                } else if ((style & MonitorNativeMethods.WS_MAXIMIZE) != 0) {
+                    state = WindowState.Maximize;
+                }
+
                 return new WindowPosition {
                     Title = windowInfo.Title,
                     Handle = windowInfo.Handle,
@@ -118,7 +128,8 @@ namespace DesktopManager {
                     Left = rect.Left,
                     Top = rect.Top,
                     Right = rect.Right,
-                    Bottom = rect.Bottom
+                    Bottom = rect.Bottom,
+                    State = state
                 };
             }
             throw new InvalidOperationException("Failed to get window position");
@@ -383,6 +394,8 @@ namespace DesktopManager {
             foreach (var target in layout.Windows) {
                 var window = current.FirstOrDefault(w => w.ProcessId == target.ProcessId && w.Title == target.Title);
                 if (window != null) {
+                    // restore window to allow repositioning
+                    RestoreWindow(window);
                     SetWindowPosition(window, target.Left, target.Top, target.Width, target.Height);
                     if (target.State.HasValue) {
                         switch (target.State.Value) {
@@ -393,12 +406,13 @@ namespace DesktopManager {
                                 MaximizeWindow(window);
                                 break;
                             case WindowState.Normal:
-                                RestoreWindow(window);
+                                // already restored above
                                 break;
                             case WindowState.Close:
                                 CloseWindow(window);
                                 break;
                         }
+                        window.State = target.State;
                     }
                 }
             }
