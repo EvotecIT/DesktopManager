@@ -29,6 +29,14 @@ public static partial class MonitorNativeMethods {
     public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
 
     /// <summary>
+    /// Sets the process DPI awareness.
+    /// </summary>
+    /// <param name="value">The DPI awareness value.</param>
+    /// <returns>Returns S_OK on success.</returns>
+    [DllImport("shcore.dll")]
+    public static extern int SetProcessDpiAwareness(ProcessDpiAwareness value);
+
+    /// <summary>
     /// Represents a callback function that processes display monitors during enumeration.
     /// </summary>
     /// <param name="hMonitor">Handle to the display monitor.</param>

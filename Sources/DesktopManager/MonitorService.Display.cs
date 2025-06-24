@@ -357,6 +357,32 @@ public partial class MonitorService {
         }
     }
 
+    /// <summary>
+    /// Sets the DPI scaling of a monitor.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="scalingPercent">The DPI scaling percentage.</param>
+    public void SetMonitorDpiScaling(string deviceId, int scalingPercent) {
+        var deviceName = GetMonitors().First(m => m.DeviceId == deviceId).DeviceName;
+
+        DEVMODE devMode = new DEVMODE();
+        devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+        if (!MonitorNativeMethods.EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
+            throw new InvalidOperationException("Unable to get display settings");
+        }
+
+        // Ensure process is DPI aware
+        try { MonitorNativeMethods.SetProcessDpiAwareness(ProcessDpiAwareness.Process_Per_Monitor_DPI_Aware); } catch { }
+
+        devMode.dmFields = DM_LOGPIXELS;
+        devMode.dmLogPixels = (short)(96 * scalingPercent / 100);
+
+        DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(deviceName, ref devMode, IntPtr.Zero, ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY, IntPtr.Zero);
+        if (result != DisplayChangeConfirmation.Successful && result != DisplayChangeConfirmation.Restart) {
+            throw new InvalidOperationException($"Unable to set DPI scaling. Error: {result}");
+        }
+    }
+
     private PHYSICAL_MONITOR[] GetPhysicalMonitors(string deviceId) {
         IntPtr found = IntPtr.Zero;
         MonitorNativeMethods.MonitorEnumProc proc = (IntPtr h, IntPtr hdc, ref RECT r, IntPtr data) => {

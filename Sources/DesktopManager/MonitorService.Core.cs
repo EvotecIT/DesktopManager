@@ -14,6 +14,7 @@ namespace DesktopManager;
 /// </summary>
 public partial class MonitorService {
     private const int ENUM_CURRENT_SETTINGS = -1;
+    private const int DM_LOGPIXELS = 0x00020000;
     private readonly IDesktopManager _desktopManager;
 
     private void Execute(Action action, string operation) {
