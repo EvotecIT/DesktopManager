@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Runtime.InteropServices;
+using DesktopManager;
 
 namespace DesktopManager.Tests;
 
@@ -19,15 +20,22 @@ public class WindowLayoutTests {
 
         var window = windows.First();
         var original = manager.GetWindowPosition(window);
+        var originalState = original.State;
         var path = System.IO.Path.GetTempFileName();
 
         manager.SaveLayout(path);
         manager.SetWindowPosition(window, original.Left + 20, original.Top + 20);
+        if (originalState == WindowState.Maximize) {
+            manager.MinimizeWindow(window);
+        } else {
+            manager.MaximizeWindow(window);
+        }
         manager.LoadLayout(path);
         var restored = manager.GetWindowPosition(window);
 
         Assert.AreEqual(original.Left, restored.Left);
         Assert.AreEqual(original.Top, restored.Top);
+        Assert.AreEqual(originalState, restored.State);
 
         System.IO.File.Delete(path);
     }

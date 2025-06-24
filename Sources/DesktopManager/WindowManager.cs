@@ -118,7 +118,8 @@ namespace DesktopManager {
                     Left = rect.Left,
                     Top = rect.Top,
                     Right = rect.Right,
-                    Bottom = rect.Bottom
+                    Bottom = rect.Bottom,
+                    State = windowInfo.State
                 };
             }
             throw new InvalidOperationException("Failed to get window position");
@@ -339,6 +340,7 @@ namespace DesktopManager {
                                 CloseWindow(window);
                                 break;
                         }
+                        window.State = target.State;
                     }
                 }
             }
