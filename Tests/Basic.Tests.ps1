@@ -30,4 +30,10 @@ Describe 'DesktopManager basic tests' {
     It 'Exports Register-DesktopResolutionEvent' {
         Get-Command Register-DesktopResolutionEvent | Should -Not -BeNullOrEmpty
     }
+    It 'Exports Get-DesktopWallpaperHistory' {
+        Get-Command Get-DesktopWallpaperHistory | Should -Not -BeNullOrEmpty
+    }
+    It 'Exports Set-DesktopWallpaperHistory' {
+        Get-Command Set-DesktopWallpaperHistory | Should -Not -BeNullOrEmpty
+    }
 }
