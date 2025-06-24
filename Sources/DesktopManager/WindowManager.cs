@@ -111,6 +111,16 @@ namespace DesktopManager {
         public WindowPosition GetWindowPosition(WindowInfo windowInfo) {
             RECT rect = new RECT();
             if (MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out rect)) {
+                // Re-evaluate the current state directly from the window to avoid stale data
+                IntPtr stylePtr = MonitorNativeMethods.GetWindowLongPtr(windowInfo.Handle, MonitorNativeMethods.GWL_STYLE);
+                int style = unchecked((int)(long)stylePtr);
+                var state = WindowState.Normal;
+                if ((style & MonitorNativeMethods.WS_MINIMIZE) != 0) {
+                    state = WindowState.Minimize;
+                } else if ((style & MonitorNativeMethods.WS_MAXIMIZE) != 0) {
+                    state = WindowState.Maximize;
+                }
+
                 return new WindowPosition {
                     Title = windowInfo.Title,
                     Handle = windowInfo.Handle,
@@ -119,7 +129,7 @@ namespace DesktopManager {
                     Top = rect.Top,
                     Right = rect.Right,
                     Bottom = rect.Bottom,
-                    State = windowInfo.State
+                    State = state
                 };
             }
             throw new InvalidOperationException("Failed to get window position");
