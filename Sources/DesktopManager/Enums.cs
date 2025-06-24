@@ -145,4 +145,18 @@ public enum ProcessDpiAwareness {
     Process_System_DPI_Aware = 1,
     /// <summary>The process is per-monitor DPI aware.</summary>
     Process_Per_Monitor_DPI_Aware = 2
+} 
+
+/// <summary>
+/// Represents the Windows color theme.
+/// </summary>
+public enum SystemTheme {
+    /// <summary>
+    /// Light mode.
+    /// </summary>
+    Light = 0,
+    /// <summary>
+    /// Dark mode.
+    /// </summary>
+    Dark = 1
 }

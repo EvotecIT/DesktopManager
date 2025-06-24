@@ -220,4 +220,14 @@ public static partial class MonitorNativeMethods
     /// System metric index for the virtual screen height.
     /// </summary>
     public const int SM_CYVIRTUALSCREEN = 79;
+
+    /// <summary>
+    /// Broadcast handle used with window messages.
+    /// </summary>
+    public static readonly IntPtr HWND_BROADCAST = new IntPtr(0xffff);
+
+    /// <summary>
+    /// Message sent when a system-wide setting changes.
+    /// </summary>
+    public const uint WM_SETTINGCHANGE = 0x001A;
 }
