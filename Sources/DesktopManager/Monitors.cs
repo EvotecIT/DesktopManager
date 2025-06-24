@@ -295,6 +295,25 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Sets the DPI scaling of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="scalingPercent">The DPI scaling percentage.</param>
+    public void SetMonitorDpiScaling(string deviceId, int scalingPercent) {
+        _monitorService.SetMonitorDpiScaling(deviceId, scalingPercent);
+    }
+
+    /// <summary>
+    /// Sets the DPI scaling of a monitor by its index.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="scalingPercent">The DPI scaling percentage.</param>
+    public void SetMonitorDpiScaling(int index, int scalingPercent) {
+        var deviceId = _monitorService.GetMonitorDevicePathAt((uint)index);
+        _monitorService.SetMonitorDpiScaling(deviceId, scalingPercent);
+    }
+
+    /// <summary>
     /// Starts a wallpaper slideshow on the desktop.
     /// </summary>
     /// <param name="wallpaperPath">Paths to slideshow images.</param>
