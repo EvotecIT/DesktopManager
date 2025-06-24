@@ -170,6 +170,66 @@ namespace DesktopManager {
         }
 
         /// <summary>
+        /// Snaps a window to a predefined region of its monitor.
+        /// </summary>
+        /// <param name="window">The window to snap.</param>
+        /// <param name="position">The snap position.</param>
+        public void SnapWindow(WindowInfo window, SnapPosition position) {
+            if (window == null) {
+                throw new ArgumentNullException(nameof(window));
+            }
+
+            var monitor = _monitors.GetMonitors(index: window.MonitorIndex).FirstOrDefault();
+            if (monitor == null) {
+                monitor = _monitors.GetMonitors(primaryOnly: true).FirstOrDefault();
+                if (monitor == null) {
+                    throw new InvalidOperationException("No monitor found for snapping");
+                }
+            }
+
+            var bounds = monitor.GetMonitorBounds();
+            int monitorWidth = bounds.Right - bounds.Left;
+            int monitorHeight = bounds.Bottom - bounds.Top;
+
+            int width = monitorWidth;
+            int height = monitorHeight;
+            int left = bounds.Left;
+            int top = bounds.Top;
+
+            switch (position) {
+                case SnapPosition.Left:
+                    width = monitorWidth / 2;
+                    break;
+                case SnapPosition.Right:
+                    width = monitorWidth / 2;
+                    left += monitorWidth / 2;
+                    break;
+                case SnapPosition.TopLeft:
+                    width = monitorWidth / 2;
+                    height = monitorHeight / 2;
+                    break;
+                case SnapPosition.TopRight:
+                    width = monitorWidth / 2;
+                    height = monitorHeight / 2;
+                    left += monitorWidth / 2;
+                    break;
+                case SnapPosition.BottomLeft:
+                    width = monitorWidth / 2;
+                    height = monitorHeight / 2;
+                    top += monitorHeight / 2;
+                    break;
+                case SnapPosition.BottomRight:
+                    width = monitorWidth / 2;
+                    height = monitorHeight / 2;
+                    left += monitorWidth / 2;
+                    top += monitorHeight / 2;
+                    break;
+            }
+
+            SetWindowPosition(window, left, top, width, height);
+        }
+
+        /// <summary>
         /// Moves the specified window to the target monitor while preserving its relative position.
         /// </summary>
         /// <param name="windowInfo">The window to move.</param>
