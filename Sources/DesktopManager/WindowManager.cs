@@ -334,6 +334,8 @@ namespace DesktopManager {
             foreach (var target in layout.Windows) {
                 var window = current.FirstOrDefault(w => w.ProcessId == target.ProcessId && w.Title == target.Title);
                 if (window != null) {
+                    // restore window to allow repositioning
+                    RestoreWindow(window);
                     SetWindowPosition(window, target.Left, target.Top, target.Width, target.Height);
                     if (target.State.HasValue) {
                         switch (target.State.Value) {
@@ -344,7 +346,7 @@ namespace DesktopManager {
                                 MaximizeWindow(window);
                                 break;
                             case WindowState.Normal:
-                                RestoreWindow(window);
+                                // already restored above
                                 break;
                             case WindowState.Close:
                                 CloseWindow(window);
