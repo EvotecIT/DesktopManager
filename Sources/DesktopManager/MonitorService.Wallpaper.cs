@@ -23,6 +23,7 @@ public partial class MonitorService {
         } catch (COMException) {
             SetSystemWallpaper(wallpaperPath);
         }
+        WallpaperHistory.AddEntry(wallpaperPath);
     }
 
     /// <summary>
@@ -60,6 +61,7 @@ public partial class MonitorService {
         using HttpClient client = new();
         using Stream stream = await client.GetStreamAsync(uri);
         SetWallpaper(monitorId, stream);
+        WallpaperHistory.AddEntry(url);
     }
 
     /// <summary>
@@ -76,6 +78,7 @@ public partial class MonitorService {
         } catch (COMException) {
             SetSystemWallpaper(wallpaperPath);
         }
+        WallpaperHistory.AddEntry(wallpaperPath);
     }
 
     /// <summary>
@@ -100,6 +103,7 @@ public partial class MonitorService {
     public async Task SetWallpaperFromUrlAsync(int index, string url) {
         var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
         await SetWallpaperFromUrlAsync(monitorId, url);
+        WallpaperHistory.AddEntry(url);
     }
 
     /// <summary>
@@ -117,6 +121,7 @@ public partial class MonitorService {
         } catch (COMException) {
             SetSystemWallpaper(wallpaperPath);
         }
+        WallpaperHistory.AddEntry(wallpaperPath);
     }
 
     /// <summary>
@@ -152,6 +157,7 @@ public partial class MonitorService {
         using HttpClient client = new();
         using Stream stream = await client.GetStreamAsync(uri);
         SetWallpaper(stream);
+        WallpaperHistory.AddEntry(url);
     }
 
     /// <summary>
