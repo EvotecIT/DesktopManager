@@ -5,6 +5,11 @@ using System.Text.Json;
 
 namespace DesktopManager;
 
+/// <summary>
+/// Helper methods for persisting and retrieving a list of recently used
+/// wallpaper paths. The history is stored as JSON in the user's
+/// ApplicationData folder.
+/// </summary>
 public static class WallpaperHistory
 {
     private static readonly object _lock = new();
@@ -14,6 +19,10 @@ public static class WallpaperHistory
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "DesktopManager", "wallpaper-history.json");
 
+    /// <summary>
+    /// Reads the wallpaper history from the persistent storage.
+    /// </summary>
+    /// <returns>A list of wallpaper paths with the most recent entry first.</returns>
     public static List<string> GetHistory()
     {
         lock (_lock)
@@ -35,6 +44,10 @@ public static class WallpaperHistory
         }
     }
 
+    /// <summary>
+    /// Replaces the current history with the specified collection of paths.
+    /// </summary>
+    /// <param name="paths">Collection of wallpaper file paths to persist.</param>
     public static void SetHistory(IEnumerable<string> paths)
     {
         lock (_lock)
@@ -49,6 +62,11 @@ public static class WallpaperHistory
         }
     }
 
+    /// <summary>
+    /// Adds the specified path to the history placing it at the top.
+    /// If the path already exists it is moved to the first position.
+    /// </summary>
+    /// <param name="path">The wallpaper file path to record.</param>
     public static void AddEntry(string path)
     {
         if (string.IsNullOrEmpty(path))
