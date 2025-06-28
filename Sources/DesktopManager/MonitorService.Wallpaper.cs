@@ -52,6 +52,12 @@ public partial class MonitorService {
         SetWallpaperFromUrlAsync(monitorId, url).GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Asynchronously sets the wallpaper for a specific monitor using an image from a URL.
+    /// </summary>
+    /// <param name="monitorId">The monitor ID.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task SetWallpaperFromUrlAsync(string monitorId, string url) {
         if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
@@ -100,6 +106,12 @@ public partial class MonitorService {
         SetWallpaperFromUrlAsync(index, url).GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Asynchronously sets the wallpaper for a monitor by index using an image from a URL.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task SetWallpaperFromUrlAsync(int index, string url) {
         var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
         await SetWallpaperFromUrlAsync(monitorId, url);
@@ -148,6 +160,11 @@ public partial class MonitorService {
         SetWallpaperFromUrlAsync(url).GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Asynchronously sets the wallpaper for all monitors using an image from a URL.
+    /// </summary>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task SetWallpaperFromUrlAsync(string url) {
         if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {

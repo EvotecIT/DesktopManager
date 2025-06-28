@@ -93,6 +93,12 @@ public class Monitors {
         _monitorService.SetWallpaperFromUrl(monitorId, url);
     }
 
+    /// <summary>
+    /// Asynchronously sets the wallpaper for a specific monitor from a URL.
+    /// </summary>
+    /// <param name="monitorId">The ID of the monitor.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task SetWallpaperFromUrlAsync(string monitorId, string url) {
         return _monitorService.SetWallpaperFromUrlAsync(monitorId, url);
     }
@@ -124,6 +130,12 @@ public class Monitors {
         _monitorService.SetWallpaperFromUrl(index, url);
     }
 
+    /// <summary>
+    /// Asynchronously sets the wallpaper for a monitor by its index from a URL.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task SetWallpaperFromUrlAsync(int index, string url) {
         return _monitorService.SetWallpaperFromUrlAsync(index, url);
     }
@@ -152,6 +164,11 @@ public class Monitors {
         _monitorService.SetWallpaperFromUrl(url);
     }
 
+    /// <summary>
+    /// Asynchronously sets the wallpaper for all monitors from a URL.
+    /// </summary>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public Task SetWallpaperFromUrlAsync(string url) {
         return _monitorService.SetWallpaperFromUrlAsync(url);
     }
