@@ -111,6 +111,9 @@ public sealed class MonitorWatcher : IDisposable {
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Finalizes an instance of the <see cref="MonitorWatcher"/> class.
+    /// </summary>
     ~MonitorWatcher() {
         Dispose(false);
     }
