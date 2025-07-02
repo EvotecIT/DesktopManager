@@ -159,7 +159,7 @@ namespace DesktopManager {
             int flags = MonitorNativeMethods.SWP_NOZORDER;
 
             // If position is -1, don't move
-            if (left < 0 && top < 0) {
+            if (left == -1 && top == -1) {
                 flags |= SWP_NOMOVE;
             }
 
@@ -171,8 +171,8 @@ namespace DesktopManager {
             if (!MonitorNativeMethods.SetWindowPos(
                 windowInfo.Handle,
                 IntPtr.Zero,
-                left < 0 ? windowInfo.Left : left,
-                top < 0 ? windowInfo.Top : top,
+                left == -1 ? windowInfo.Left : left,
+                top == -1 ? windowInfo.Top : top,
                 width < 0 ? windowInfo.Width : width,
                 height < 0 ? windowInfo.Height : height,
                 flags)) {
