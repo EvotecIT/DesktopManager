@@ -8,36 +8,29 @@ schema: 2.0.0
 # Get-DesktopWallpaper
 
 ## SYNOPSIS
-{{ Fill in the Synopsis }}
+Gets the current desktop wallpaper path for one or more monitors.
 
 ## SYNTAX
 
-### Index (Default)
 ```
-Get-DesktopWallpaper -Index <Int32> [<CommonParameters>]
-```
-
-### MonitorID
-```
-Get-DesktopWallpaper -MonitorID <String> [<CommonParameters>]
+Get-DesktopWallpaper [-Index <Int32>] [-DeviceId <String>] [-DeviceName <String>] [-ConnectedOnly] [-PrimaryOnly] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-{{ Fill in the Description }}
+Returns the wallpaper file path for the specified monitor. When no monitor is specified the wallpaper for every monitor is returned. You can target a monitor by index, device ID or device name and optionally limit the query to connected or primary monitors.
 
 ## EXAMPLES
 
 ### Example 1
 ```powershell
-PS C:\> {{ Add example code here }}
+PS C:\> Get-DesktopWallpaper -Index 0
 ```
-
-{{ Add example description here }}
+Retrieves the wallpaper path for the first monitor.
 
 ## PARAMETERS
 
 ### -Index
-{{ Fill Index Description }}
+Index of the monitor returned by `Get-DesktopMonitor`.
 
 ```yaml
 Type: Int32
@@ -52,7 +45,7 @@ Accept wildcard characters: False
 ```
 
 ### -MonitorID
-{{ Fill MonitorID Description }}
+Device identifier of the monitor to query.
 
 ```yaml
 Type: String

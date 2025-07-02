@@ -8,7 +8,7 @@ schema: 2.0.0
 # Set-DesktopWallpaper
 
 ## SYNOPSIS
-{{ Fill in the Synopsis }}
+Sets the desktop wallpaper for one or more monitors.
 
 ## SYNTAX
 
@@ -31,21 +31,20 @@ Set-DesktopWallpaper [-All] [-WallpaperPath <String>] [-Position <DesktopWallpap
 ```
 
 ## DESCRIPTION
-{{ Fill in the Description }}
+Applies the specified image to the selected monitor. You can target a monitor by index or device identifier, or update all monitors at once. The wallpaper position can be set to Center, Fill, Fit, Stretch, Tile or Span.
 
 ## EXAMPLES
 
 ### Example 1
 ```powershell
-PS C:\> {{ Add example code here }}
+PS C:\> Set-DesktopWallpaper -Index 0 -WallpaperPath "C:\Wallpapers\image.jpg" -Position Fill
 ```
-
-{{ Add example description here }}
+Sets the wallpaper on the first monitor using the specified image.
 
 ## PARAMETERS
 
 ### -All
-{{ Fill All Description }}
+Apply the wallpaper to every monitor.
 
 ```yaml
 Type: SwitchParameter
@@ -60,7 +59,7 @@ Accept wildcard characters: False
 ```
 
 ### -Index
-{{ Fill Index Description }}
+Index of the monitor returned by `Get-DesktopMonitor`.
 
 ```yaml
 Type: Int32
@@ -75,7 +74,7 @@ Accept wildcard characters: False
 ```
 
 ### -MonitorID
-{{ Fill MonitorID Description }}
+Device identifier of the monitor.
 
 ```yaml
 Type: String
@@ -90,7 +89,7 @@ Accept wildcard characters: False
 ```
 
 ### -Position
-{{ Fill Position Description }}
+Wallpaper placement mode.
 
 ```yaml
 Type: DesktopWallpaperPosition
@@ -106,7 +105,7 @@ Accept wildcard characters: False
 ```
 
 ### -WallpaperPath
-{{ Fill WallpaperPath Description }}
+Path to the image file used as wallpaper.
 
 ```yaml
 Type: String
