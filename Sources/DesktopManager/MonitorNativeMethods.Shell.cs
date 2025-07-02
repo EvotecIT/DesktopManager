@@ -44,6 +44,11 @@ public static partial class MonitorNativeMethods
     public const uint SPIF_UPDATEINIFILE = 0x0001;
 
     /// <summary>
+    /// Maximum length of a Windows file path.
+    /// </summary>
+    public const int MAX_PATH = 260;
+
+    /// <summary>
     /// Broadcasts the WM_SETTINGCHANGE message after updating the user profile.
     /// </summary>
     public const uint SPIF_SENDWININICHANGE = 0x0002;

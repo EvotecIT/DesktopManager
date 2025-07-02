@@ -98,7 +98,7 @@ public partial class MonitorService {
     }
 
     private string GetSystemWallpaper() {
-        StringBuilder sb = new StringBuilder(260);
+        StringBuilder sb = new StringBuilder(MonitorNativeMethods.MAX_PATH);
         if (MonitorNativeMethods.SystemParametersInfo(MonitorNativeMethods.SPI_GETDESKWALLPAPER, (uint)sb.Capacity, sb, 0)) {
             return sb.ToString();
         }
