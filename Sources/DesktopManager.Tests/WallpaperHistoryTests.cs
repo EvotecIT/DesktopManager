@@ -30,4 +30,28 @@ public class WallpaperHistoryTests
             }
         }
     }
+
+    [TestMethod]
+    public void AddEntry_EnforcesMaximum()
+    {
+        var temp = Path.GetTempFileName();
+        Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", temp);
+        try
+        {
+            WallpaperHistory.SetHistory(Enumerable.Range(0, 60).Select(i => $"wall{i}"));
+            WallpaperHistory.AddEntry("new");
+            var history = WallpaperHistory.GetHistory();
+            Assert.AreEqual(50, history.Count);
+            Assert.AreEqual("new", history.First());
+            Assert.AreEqual("wall48", history.Last());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", null);
+            if (File.Exists(temp))
+            {
+                File.Delete(temp);
+            }
+        }
+    }
 }
