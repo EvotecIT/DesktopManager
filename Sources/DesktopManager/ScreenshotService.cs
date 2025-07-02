@@ -18,7 +18,12 @@ public static class ScreenshotService {
     public static Bitmap CaptureScreen() {
         Monitors monitors = new();
         var rects = monitors.GetMonitors(connectedOnly: true)
-                            .Select(m => m.GetMonitorBounds());
+                            .Select(m => m.GetMonitorBounds())
+                            .ToList();
+
+        if (!rects.Any()) {
+            throw new InvalidOperationException("No monitors detected");
+        }
 
         int left = rects.Min(r => r.Left);
         int top = rects.Min(r => r.Top);
