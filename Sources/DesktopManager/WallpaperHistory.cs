@@ -14,10 +14,48 @@ public static class WallpaperHistory
 {
     private static readonly object _lock = new();
 
+    private static string? _historyFilePath;
+
+    private static string DefaultHistoryFilePath =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "DesktopManager",
+            "wallpaper-history.json");
+
     private static string HistoryFilePath =>
-        Environment.GetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH") ??
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "DesktopManager", "wallpaper-history.json");
+        _historyFilePath ??= GetHistoryFilePath();
+
+    private static string GetHistoryFilePath()
+    {
+        string? envPath = Environment.GetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH");
+        if (!string.IsNullOrEmpty(envPath))
+        {
+            try
+            {
+                string? dir = Path.GetDirectoryName(envPath);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    if (!Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    string testFile = Path.Combine(dir, Path.GetRandomFileName());
+                    using (FileStream _ = File.Create(testFile, 1, FileOptions.DeleteOnClose))
+                    {
+                    }
+
+                    return envPath;
+                }
+            }
+            catch
+            {
+                // Ignore and fall back to default path
+            }
+        }
+
+        return DefaultHistoryFilePath;
+    }
 
     /// <summary>
     /// Reads the wallpaper history from the persistent storage.
