@@ -8,7 +8,7 @@ schema: 2.0.0
 # Get-DesktopMonitors
 
 ## SYNOPSIS
-{{ Fill in the Synopsis }}
+Retrieves information about the desktop monitors attached to the system.
 
 ## SYNTAX
 
@@ -17,16 +17,15 @@ Get-DesktopMonitors [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-{{ Fill in the Description }}
+Returns objects describing each desktop monitor. You can combine this cmdlet with other monitor-related commands to query or configure display settings.
 
 ## EXAMPLES
 
 ### Example 1
 ```powershell
-PS C:\> {{ Add example code here }}
+PS C:\> Get-DesktopMonitors
 ```
-
-{{ Add example description here }}
+Lists all detected monitors.
 
 ## PARAMETERS
 
