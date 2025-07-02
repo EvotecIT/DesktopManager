@@ -19,6 +19,9 @@ public static class WallpaperHistory
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "DesktopManager", "wallpaper-history.json");
 
+    /// <summary>Maximum number of entries persisted in history.</summary>
+    private const int MaxEntries = 50;
+
     /// <summary>
     /// Reads the wallpaper history from the persistent storage.
     /// </summary>
@@ -65,6 +68,7 @@ public static class WallpaperHistory
     /// <summary>
     /// Adds the specified path to the history placing it at the top.
     /// If the path already exists it is moved to the first position.
+    /// The history is truncated to <see cref="MaxEntries"/> items.
     /// </summary>
     /// <param name="path">The wallpaper file path to record.</param>
     public static void AddEntry(string path)
@@ -78,6 +82,10 @@ public static class WallpaperHistory
             var history = GetHistory();
             history.Remove(path);
             history.Insert(0, path);
+            if (history.Count > MaxEntries)
+            {
+                history.RemoveRange(MaxEntries, history.Count - MaxEntries);
+            }
             SetHistory(history);
         }
     }
