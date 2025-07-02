@@ -337,10 +337,10 @@ public partial class MonitorService {
             throw new InvalidOperationException("Unable to get display settings");
         }
 
-        if ((orientation == DisplayOrientation.Degrees90 || orientation == DisplayOrientation.Degrees270) &&
-            (devMode.dmDisplayOrientation == (int)DisplayOrientation.Default || devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees180) ||
-            (orientation == DisplayOrientation.Default || orientation == DisplayOrientation.Degrees180) &&
-            (devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees90 || devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees270)) {
+        if (((orientation == DisplayOrientation.Degrees90 || orientation == DisplayOrientation.Degrees270) &&
+                (devMode.dmDisplayOrientation == (int)DisplayOrientation.Default || devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees180)) ||
+            ((orientation == DisplayOrientation.Default || orientation == DisplayOrientation.Degrees180) &&
+                (devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees90 || devMode.dmDisplayOrientation == (int)DisplayOrientation.Degrees270))) {
             int temp = devMode.dmPelsWidth;
             devMode.dmPelsWidth = devMode.dmPelsHeight;
             devMode.dmPelsHeight = temp;
