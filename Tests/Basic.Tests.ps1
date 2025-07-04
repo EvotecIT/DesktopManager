@@ -36,4 +36,16 @@ Describe 'DesktopManager basic tests' {
     It 'Exports Set-DesktopWallpaperHistory' {
         Get-Command Set-DesktopWallpaperHistory | Should -Not -BeNullOrEmpty
     }
+
+    It 'Exports Start-DesktopWindowKeepAlive' {
+        Get-Command Start-DesktopWindowKeepAlive | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Stop-DesktopWindowKeepAlive' {
+        Get-Command Stop-DesktopWindowKeepAlive | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Get-DesktopWindowKeepAlive' {
+        Get-Command Get-DesktopWindowKeepAlive | Should -Not -BeNullOrEmpty
+    }
 }
