@@ -4,8 +4,14 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for MonitorResolutionOrientationTests.
+/// </summary>
 public class MonitorResolutionOrientationTests {
     [TestMethod]
+    /// <summary>
+    /// Test for SetResolutionAndOrientation_DoesNotThrow.
+    /// </summary>
     public void SetResolutionAndOrientation_DoesNotThrow() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");

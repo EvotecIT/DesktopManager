@@ -4,27 +4,81 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for MonitorFallbackTests.
+/// </summary>
 public class MonitorFallbackTests {
     private class FailingDesktopManager : IDesktopManager {
+        /// <summary>
+        /// Test for SetWallpaper.
+        /// </summary>
         public void SetWallpaper(string monitorId, string wallpaper) => throw new COMException();
+        /// <summary>
+        /// Test for GetWallpaper.
+        /// </summary>
         public string GetWallpaper(string monitorId) => throw new COMException();
+        /// <summary>
+        /// Test for GetMonitorDevicePathAt.
+        /// </summary>
         public string GetMonitorDevicePathAt(uint monitorIndex) => throw new COMException();
+        /// <summary>
+        /// Test for GetMonitorDevicePathCount.
+        /// </summary>
         public uint GetMonitorDevicePathCount() => throw new COMException();
+        /// <summary>
+        /// Test for GetMonitorBounds.
+        /// </summary>
         public RECT GetMonitorBounds(string monitorId) => throw new COMException();
+        /// <summary>
+        /// Test for SetBackgroundColor.
+        /// </summary>
         public void SetBackgroundColor(uint color) => throw new COMException();
+        /// <summary>
+        /// Test for GetBackgroundColor.
+        /// </summary>
         public uint GetBackgroundColor() => throw new COMException();
+        /// <summary>
+        /// Test for SetPosition.
+        /// </summary>
         public void SetPosition(DesktopWallpaperPosition position) => throw new COMException();
+        /// <summary>
+        /// Test for GetPosition.
+        /// </summary>
         public DesktopWallpaperPosition GetPosition() => throw new COMException();
+        /// <summary>
+        /// Test for SetSlideshow.
+        /// </summary>
         public void SetSlideshow(IntPtr items) => throw new COMException();
+        /// <summary>
+        /// Test for GetSlideshow.
+        /// </summary>
         public IntPtr GetSlideshow() => throw new COMException();
+        /// <summary>
+        /// Test for SetSlideshowOptions.
+        /// </summary>
         public void SetSlideshowOptions(DesktopSlideshowDirection options, uint slideshowTick) => throw new COMException();
+        /// <summary>
+        /// Test for GetSlideshowOptions.
+        /// </summary>
         public uint GetSlideshowOptions(out DesktopSlideshowDirection options, out uint slideshowTick) { throw new COMException(); }
+        /// <summary>
+        /// Test for AdvanceSlideshow.
+        /// </summary>
         public void AdvanceSlideshow(string monitorId, DesktopSlideshowDirection direction) => throw new COMException();
+        /// <summary>
+        /// Test for GetStatus.
+        /// </summary>
         public DesktopSlideshowDirection GetStatus() => throw new COMException();
+        /// <summary>
+        /// Test for Enable.
+        /// </summary>
         public bool Enable() => throw new COMException();
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for EnumeratesMonitors_WhenDesktopManagerFails.
+    /// </summary>
     public void EnumeratesMonitors_WhenDesktopManagerFails() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -40,6 +94,9 @@ public class MonitorFallbackTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetAndGetWallpaper_FallsBackToSystemParametersInfo.
+    /// </summary>
     public void SetAndGetWallpaper_FallsBackToSystemParametersInfo() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -64,6 +121,9 @@ public class MonitorFallbackTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetAndGetWallpaperPosition_FallsBackToRegistry.
+    /// </summary>
     public void SetAndGetWallpaperPosition_FallsBackToRegistry() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -82,6 +142,9 @@ public class MonitorFallbackTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetAndGetBackgroundColor_FallsBackToRegistry.
+    /// </summary>
     public void SetAndGetBackgroundColor_FallsBackToRegistry() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");

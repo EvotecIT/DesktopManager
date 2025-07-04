@@ -5,8 +5,14 @@ using DesktopManager;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for WindowLayoutTests.
+/// </summary>
 public class WindowLayoutTests {
     [TestMethod]
+    /// <summary>
+    /// Test for SaveAndLoadLayout_RoundTrips.
+    /// </summary>
     public void SaveAndLoadLayout_RoundTrips() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -41,6 +47,9 @@ public class WindowLayoutTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for LoadLayout_InvalidJson_Throws.
+    /// </summary>
     public void LoadLayout_InvalidJson_Throws() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -56,6 +65,9 @@ public class WindowLayoutTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for LoadLayout_ValidateMissingProperties_Throws.
+    /// </summary>
     public void LoadLayout_ValidateMissingProperties_Throws() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -77,6 +89,9 @@ public class WindowLayoutTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SaveLayout_RelativePath_CreatesFile.
+    /// </summary>
     public void SaveLayout_RelativePath_CreatesFile() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");

@@ -6,9 +6,15 @@ using System.Linq;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for WallpaperHistoryTests.
+/// </summary>
 public class WallpaperHistoryTests
 {
     [TestMethod]
+    /// <summary>
+    /// Test for AddEntry_WritesFile.
+    /// </summary>
     public void AddEntry_WritesFile()
     {
         var temp = Path.GetTempFileName();
@@ -32,6 +38,9 @@ public class WallpaperHistoryTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for AddEntry_EnforcesMaximum.
+    /// </summary>
     public void AddEntry_EnforcesMaximum()
     {
         var temp = Path.GetTempFileName();

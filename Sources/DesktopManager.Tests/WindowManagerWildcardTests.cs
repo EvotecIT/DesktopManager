@@ -5,6 +5,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for WindowManagerWildcardTests.
+/// </summary>
 public class WindowManagerWildcardTests {
     private static bool InvokeMatches(string text, string pattern) {
         var manager = (WindowManager)FormatterServices.GetUninitializedObject(typeof(WindowManager));
@@ -13,6 +16,9 @@ public class WindowManagerWildcardTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for MatchesWildcard_BasicPatterns.
+    /// </summary>
     public void MatchesWildcard_BasicPatterns() {
         Assert.IsTrue(InvokeMatches("hello", "*"));
         Assert.IsTrue(InvokeMatches("hello", "h*"));
@@ -23,6 +29,9 @@ public class WindowManagerWildcardTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for MatchesWildcard_ExtendedPatterns.
+    /// </summary>
     public void MatchesWildcard_ExtendedPatterns() {
         Assert.IsTrue(InvokeMatches("hello", "h*o"));
         Assert.IsTrue(InvokeMatches("hello", "h*l?"));

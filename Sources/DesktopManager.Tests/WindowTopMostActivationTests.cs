@@ -5,9 +5,15 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for WindowTopMostActivationTests.
+/// </summary>
 public class WindowTopMostActivationTests
 {
     [TestMethod]
+    /// <summary>
+    /// Test for SetWindowTopMost_TogglesState.
+    /// </summary>
     public void SetWindowTopMost_TogglesState()
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -36,6 +42,9 @@ public class WindowTopMostActivationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for ActivateWindow_BringsToFront.
+    /// </summary>
     public void ActivateWindow_BringsToFront()
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

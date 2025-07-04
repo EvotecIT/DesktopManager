@@ -3,8 +3,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for MonitorBoundsTests.
+/// </summary>
 public class MonitorBoundsTests {
     [TestMethod]
+    /// <summary>
+    /// Test for Constructor_SetsFields.
+    /// </summary>
     public void Constructor_SetsFields() {
         var rect = new RECT { Left = 1, Top = 2, Right = 3, Bottom = 4 };
 

@@ -5,8 +5,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for MonitorServiceTests.
+/// </summary>
 public class MonitorServiceTests {
     [TestMethod]
+    /// <summary>
+    /// Test for Constructor_CallsEnable.
+    /// </summary>
     public void Constructor_CallsEnable() {
         var fake = new FakeDesktopManager();
         _ = new MonitorService(fake);
@@ -14,6 +20,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaper_ForwardsCall.
+    /// </summary>
     public void SetWallpaper_ForwardsCall() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -22,6 +31,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetWallpaper_ForwardsCall.
+    /// </summary>
     public void GetWallpaper_ForwardsCall() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -31,6 +43,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaper_ByIndex_UsesDevicePath.
+    /// </summary>
     public void SetWallpaper_ByIndex_UsesDevicePath() {
         var fake = new FakeDesktopManager();
         fake.DevicePaths[0] = "dev";
@@ -39,6 +54,9 @@ public class MonitorServiceTests {
         Assert.AreEqual(("dev", "w"), fake.SetWallpaperCalls[0]);
     }
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaper_ByIndex_MissingPathUsesEmptyString.
+    /// </summary>
     public void SetWallpaper_ByIndex_MissingPathUsesEmptyString() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -48,6 +66,9 @@ public class MonitorServiceTests {
 
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaper_FromStream_DeletesTempFile.
+    /// </summary>
     public void SetWallpaper_FromStream_DeletesTempFile() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -58,6 +79,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaper_StreamNull_Throws.
+    /// </summary>
     public void SetWallpaper_StreamNull_Throws() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -65,6 +89,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaper_FromUrl_InvalidSchemeThrows.
+    /// </summary>
     public void SetWallpaper_FromUrl_InvalidSchemeThrows() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -78,6 +105,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetWallpaper_ByIndex_ForwardsCall.
+    /// </summary>
     public void GetWallpaper_ByIndex_ForwardsCall() {
         var fake = new FakeDesktopManager();
         fake.DevicePaths[0] = "d";
@@ -88,6 +118,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaperPosition_Forwards.
+    /// </summary>
     public void SetWallpaperPosition_Forwards() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -96,6 +129,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetWallpaperPosition_Forwards.
+    /// </summary>
     public void GetWallpaperPosition_Forwards() {
         var fake = new FakeDesktopManager();
         fake.WallpaperPosition = DesktopWallpaperPosition.Tile;
@@ -104,6 +140,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetBackgroundColor_Forwards.
+    /// </summary>
     public void SetBackgroundColor_Forwards() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -112,6 +151,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetBackgroundColor_Forwards.
+    /// </summary>
     public void GetBackgroundColor_Forwards() {
         var fake = new FakeDesktopManager { BackgroundColor = 7 };
         var service = new MonitorService(fake);
@@ -119,6 +161,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for StopWallpaperSlideshow_CallsSetSlideshowWithZero.
+    /// </summary>
     public void StopWallpaperSlideshow_CallsSetSlideshowWithZero() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -127,6 +172,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for AdvanceWallpaperSlide_ForwardsDirection.
+    /// </summary>
     public void AdvanceWallpaperSlide_ForwardsDirection() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -135,6 +183,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for StartWallpaperSlideshow_ThrowsOnNull.
+    /// </summary>
     public void StartWallpaperSlideshow_ThrowsOnNull() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -142,6 +193,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetMonitorDevicePathAt_Forwards.
+    /// </summary>
     public void GetMonitorDevicePathAt_Forwards() {
         var fake = new FakeDesktopManager();
         fake.DevicePaths[0] = "xx";
@@ -150,6 +204,9 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetMonitorBounds_Forwards.
+    /// </summary>
     public void GetMonitorBounds_Forwards() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);

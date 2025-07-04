@@ -4,9 +4,15 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for WindowTitleMatchingTests.
+/// </summary>
 public class WindowTitleMatchingTests
 {
     [TestMethod]
+    /// <summary>
+    /// Test for GetWindows_TitleMatchingIsCaseInsensitive.
+    /// </summary>
     public void GetWindows_TitleMatchingIsCaseInsensitive()
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
