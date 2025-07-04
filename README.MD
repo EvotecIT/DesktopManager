@@ -51,6 +51,8 @@ It has following features:
 - Save and restore window layouts
 - Snap or move windows between monitors
 - Subscribe to resolution, orientation or display changes
+- Keep inactive windows awake using periodic input
+- Manage keep-alive sessions for windows
 
 
 ### Available PowerShell Cmdlets
@@ -76,6 +78,9 @@ It has following features:
 | Get-DesktopWindow | Enumerate visible windows |
 | Set-DesktopWindow | Move, resize or control windows |
 | Set-DesktopWindowSnap | Snap window to common positions |
+| Start-DesktopWindowKeepAlive | Send periodic input to keep a window awake |
+| Stop-DesktopWindowKeepAlive | Stop sending keep-alive input |
+| Get-DesktopWindowKeepAlive | List windows with active keep-alive |
 | Save-DesktopWindowLayout | Save current window layout to file |
 | Restore-DesktopWindowLayout | Restore saved window layout |
 | Register-DesktopMonitorEvent | Subscribe to display configuration changes |
@@ -107,6 +112,9 @@ The table below shows the most relevant API methods behind each PowerShell cmdle
 | Get-DesktopWindow | `WindowManager.GetWindows` |
 | Set-DesktopWindow | `WindowManager.SetWindowPosition`, `MoveWindowToMonitor`, etc. |
 | Set-DesktopWindowSnap | `WindowManager.SnapWindow` |
+| Start-DesktopWindowKeepAlive | `WindowKeepAlive.Start` |
+| Stop-DesktopWindowKeepAlive | `WindowKeepAlive.Stop` or `StopAll` |
+| Get-DesktopWindowKeepAlive | `WindowKeepAlive.ActiveHandles` |
 | Save-DesktopWindowLayout | `WindowManager.SaveLayout` |
 | Restore-DesktopWindowLayout | `WindowManager.LoadLayout` |
 | Register-DesktopMonitorEvent | `MonitorWatcher.DisplaySettingsChanged` |
@@ -319,6 +327,61 @@ var manager = new WindowManager();
 manager.SaveLayout("layout.json");
 // ... move windows around ...
 manager.LoadLayout("layout.json", validate: true);
+```
+
+#### Examples in PowerShell - Window Keep-Alive Cmdlets
+
+```powershell
+# Keep Notepad alive for one minute
+Start-DesktopWindowKeepAlive -Name '*Notepad*' -Interval 00:01:00
+
+# List active sessions
+Get-DesktopWindowKeepAlive
+
+# Stop the session
+Stop-DesktopWindowKeepAlive -Name '*Notepad*'
+```
+
+```powershell
+# Keep Notepad and Calculator alive
+Start-DesktopWindowKeepAlive -Name '*Notepad*'
+Start-DesktopWindowKeepAlive -Name '*Calculator*' -Interval 00:00:30
+Start-Sleep -Seconds 5
+Get-DesktopWindowKeepAlive | Format-Table Title, Handle
+Stop-DesktopWindowKeepAlive -All
+```
+
+```powershell
+# Monitor RDP windows
+Start-DesktopWindowKeepAlive -Name '*RDP*' -Interval 00:00:30
+1..3 | ForEach-Object {
+    Start-Sleep -Seconds 10
+    Get-DesktopWindowKeepAlive | ForEach-Object { "Active: $($_.Title)" }
+}
+Stop-DesktopWindowKeepAlive -Name '*RDP*'
+```
+
+#### Examples in C# - Window Keep-Alive
+
+```csharp
+var manager = new WindowManager();
+var notepad = manager.GetWindows("*Notepad*").FirstOrDefault();
+if (notepad != null) {
+    WindowKeepAlive.Instance.Start(notepad, TimeSpan.FromMinutes(1));
+}
+```
+
+```csharp
+foreach (var window in new WindowManager().GetWindows("*Chrome*")) {
+    WindowKeepAlive.Instance.Start(window, TimeSpan.FromSeconds(30));
+}
+```
+
+```csharp
+foreach (var handle in WindowKeepAlive.Instance.ActiveHandles) {
+    Console.WriteLine($"Keeping {handle} alive");
+}
+WindowKeepAlive.Instance.StopAll();
 ```
 
 ### C# API Highlights

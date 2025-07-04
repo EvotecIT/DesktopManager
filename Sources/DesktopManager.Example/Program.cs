@@ -75,6 +75,9 @@ namespace DesktopManager.Example {
             // Demonstrate window management features
             WindowExamples.Run();
 
+            // Demonstrate window keep-alive features
+            WindowKeepAliveExample.Run();
+
             // Run monitor watcher example for 30 seconds
             MonitorWatcherExample.RunAsync(TimeSpan.FromSeconds(30)).Wait();
           
