@@ -43,6 +43,75 @@ It has following features:
 - Get/Set window position
 - Get/Set window state (minimize, maximize, restore)
  - Capture desktop screenshots from all monitors, a single monitor or a custom region
+- Manage monitor brightness
+- Start/Stop/Advance wallpaper slideshows
+- Track wallpaper history
+- Adjust monitor resolution, orientation and DPI scaling
+- Move monitors around the virtual desktop
+- Save and restore window layouts
+- Snap or move windows between monitors
+- Subscribe to resolution, orientation or display changes
+
+
+### Available PowerShell Cmdlets
+
+| Cmdlet | Description |
+| ------ | ----------- |
+| Get-DesktopMonitor | Retrieve monitor information with filtering options |
+| Get-DesktopWallpaper | Get current wallpaper path for monitors |
+| Set-DesktopWallpaper | Apply wallpaper from path, URL or stream |
+| Get-DesktopWallpaperHistory | List stored wallpaper history entries |
+| Set-DesktopWallpaperHistory | Update or clear wallpaper history file |
+| Start-DesktopSlideshow | Begin wallpaper slideshow across monitors |
+| Stop-DesktopSlideshow | Stop currently running slideshow |
+| Advance-DesktopSlideshow | Move slideshow forward or backward |
+| Get-DesktopBackgroundColor | Read current desktop background color |
+| Set-DesktopBackgroundColor | Change desktop background color |
+| Get-DesktopBrightness | Read monitor brightness level |
+| Set-DesktopBrightness | Set monitor brightness level |
+| Set-DesktopPosition | Configure monitor coordinates |
+| Set-DesktopResolution | Change monitor resolution or orientation |
+| Set-DesktopDpiScaling | Adjust DPI scaling percentage |
+| Invoke-DesktopScreenshot | Capture monitor or region screenshots |
+| Get-DesktopWindow | Enumerate visible windows |
+| Set-DesktopWindow | Move, resize or control windows |
+| Set-DesktopWindowSnap | Snap window to common positions |
+| Save-DesktopWindowLayout | Save current window layout to file |
+| Restore-DesktopWindowLayout | Restore saved window layout |
+| Register-DesktopMonitorEvent | Subscribe to display configuration changes |
+| Register-DesktopOrientationEvent | Subscribe to orientation changes |
+| Register-DesktopResolutionEvent | Subscribe to resolution changes |
+
+### Cmdlet to C# method map
+
+The table below shows the most relevant API methods behind each PowerShell cmdlet.
+
+| Cmdlet | Main C# methods |
+| ------ | --------------- |
+| Get-DesktopMonitor | `Monitors.GetMonitors` |
+| Get-DesktopWallpaper | `Monitors.GetWallpaper` or `Monitor.GetWallpaper` |
+| Set-DesktopWallpaper | `Monitors.SetWallpaper`, `Monitors.SetWallpaperFromUrl` |
+| Get-DesktopWallpaperHistory | `WallpaperHistory.GetHistory` |
+| Set-DesktopWallpaperHistory | `WallpaperHistory.SetHistory` |
+| Start-DesktopSlideshow | `Monitors.StartWallpaperSlideshow` |
+| Stop-DesktopSlideshow | `Monitors.StopWallpaperSlideshow` |
+| Advance-DesktopSlideshow | `Monitors.AdvanceWallpaperSlide` |
+| Get-DesktopBackgroundColor | `Monitors.GetBackgroundColor` |
+| Set-DesktopBackgroundColor | `Monitors.SetBackgroundColor` |
+| Get-DesktopBrightness | `Monitors.GetMonitorBrightness` |
+| Set-DesktopBrightness | `Monitors.SetMonitorBrightness` |
+| Set-DesktopPosition | `Monitor.SetMonitorPosition` or `Monitors.SetMonitorPosition` |
+| Set-DesktopResolution | `Monitors.SetMonitorResolution`, `Monitors.SetMonitorOrientation` |
+| Set-DesktopDpiScaling | `Monitors.SetMonitorDpiScaling` |
+| Invoke-DesktopScreenshot | `ScreenshotService.CaptureScreen`, `ScreenshotService.CaptureRegion` |
+| Get-DesktopWindow | `WindowManager.GetWindows` |
+| Set-DesktopWindow | `WindowManager.SetWindowPosition`, `MoveWindowToMonitor`, etc. |
+| Set-DesktopWindowSnap | `WindowManager.SnapWindow` |
+| Save-DesktopWindowLayout | `WindowManager.SaveLayout` |
+| Restore-DesktopWindowLayout | `WindowManager.LoadLayout` |
+| Register-DesktopMonitorEvent | `MonitorWatcher.DisplaySettingsChanged` |
+| Register-DesktopOrientationEvent | `MonitorWatcher.OrientationChanged` |
+| Register-DesktopResolutionEvent | `MonitorWatcher.ResolutionChanged` |
 
 ### Installation
 
@@ -251,3 +320,12 @@ manager.SaveLayout("layout.json");
 // ... move windows around ...
 manager.LoadLayout("layout.json", validate: true);
 ```
+
+### C# API Highlights
+
+DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0` and `net8.0`. The main entry points are:
+
+- `Monitors` for monitor enumeration, wallpaper management, brightness, resolution, orientation and slideshow control.
+- `WindowManager` for window enumeration, positioning, resizing and layout persistence.
+- `MonitorWatcher` to receive events when display settings change.
+- `ScreenshotService` to capture the desktop or custom regions.
