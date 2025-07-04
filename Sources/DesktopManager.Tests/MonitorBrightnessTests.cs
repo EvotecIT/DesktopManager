@@ -4,8 +4,14 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for MonitorBrightnessTests.
+/// </summary>
 public class MonitorBrightnessTests {
     [TestMethod]
+    /// <summary>
+    /// Test for GetAndSetBrightness_DoesNotThrow.
+    /// </summary>
     public void GetAndSetBrightness_DoesNotThrow() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");

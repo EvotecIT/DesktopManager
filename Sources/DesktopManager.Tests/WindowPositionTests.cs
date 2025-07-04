@@ -5,8 +5,14 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for WindowPositionTests.
+/// </summary>
 public class WindowPositionTests {
     [TestMethod]
+    /// <summary>
+    /// Test for GetAndSetWindowPosition_RoundTrips.
+    /// </summary>
     public void GetAndSetWindowPosition_RoundTrips() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -29,6 +35,9 @@ public class WindowPositionTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for MoveWindow_DoesNotChangeZOrder.
+    /// </summary>
     public void MoveWindow_DoesNotChangeZOrder() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -55,6 +64,9 @@ public class WindowPositionTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetWindowPosition_InvalidHandle_Throws.
+    /// </summary>
     public void GetWindowPosition_InvalidHandle_Throws() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");

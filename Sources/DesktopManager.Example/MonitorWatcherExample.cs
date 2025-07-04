@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 
 namespace DesktopManager.Example;
 
+/// <summary>
+/// Example class MonitorWatcherExample.
+/// </summary>
 internal static class MonitorWatcherExample {
     /// <summary>
     /// Runs the monitor watcher example for the specified duration.

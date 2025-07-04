@@ -5,8 +5,14 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for WindowActivationPositioningTests.
+/// </summary>
 public class WindowActivationPositioningTests {
     [TestMethod]
+    /// <summary>
+    /// Test for SetWindowPosition_ResizesWindow.
+    /// </summary>
     public void SetWindowPosition_ResizesWindow() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -33,6 +39,9 @@ public class WindowActivationPositioningTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for ActivateWindow_InvalidHandle_Throws.
+    /// </summary>
     public void ActivateWindow_InvalidHandle_Throws() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");

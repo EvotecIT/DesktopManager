@@ -4,12 +4,18 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for MonitorTests.
+/// </summary>
 public class MonitorTests {
     private static void SetId(Monitor m, string id) {
         typeof(Monitor).GetProperty("DeviceId")!.SetValue(m, id);
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for SetWallpaper_ForwardsCall.
+    /// </summary>
     public void SetWallpaper_ForwardsCall() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
@@ -23,6 +29,9 @@ public class MonitorTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for GetWallpaper_ForwardsCallAndReturnsValue.
+    /// </summary>
     public void GetWallpaper_ForwardsCallAndReturnsValue() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);

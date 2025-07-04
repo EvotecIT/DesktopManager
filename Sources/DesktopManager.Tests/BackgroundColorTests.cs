@@ -3,8 +3,14 @@ using System.Runtime.InteropServices;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for BackgroundColorTests.
+/// </summary>
 public class BackgroundColorTests {
     [TestMethod]
+    /// <summary>
+    /// Test for SetAndGetBackgroundColor_RoundTrips.
+    /// </summary>
     public void SetAndGetBackgroundColor_RoundTrips() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");

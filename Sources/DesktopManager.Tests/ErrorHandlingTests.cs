@@ -5,8 +5,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace DesktopManager.Tests;
 
 [TestClass]
+/// <summary>
+/// Test class for ErrorHandlingTests.
+/// </summary>
 public class ErrorHandlingTests {
     [TestMethod]
+    /// <summary>
+    /// Test for DeleteTempFile_NoThrowOnMissingFile.
+    /// </summary>
     public void DeleteTempFile_NoThrowOnMissingFile() {
         var method = typeof(MonitorService).GetMethod("DeleteTempFile", BindingFlags.NonPublic | BindingFlags.Static);
         Assert.IsNotNull(method);
@@ -14,6 +20,9 @@ public class ErrorHandlingTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Test for FallbackMethods_DoNotThrow.
+    /// </summary>
     public void FallbackMethods_DoNotThrow() {
         var service = new MonitorService(new FakeDesktopManager());
         if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {

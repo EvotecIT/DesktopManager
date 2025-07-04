@@ -2,6 +2,9 @@ using System.Linq;
 
 namespace DesktopManager.Example;
 
+/// <summary>
+/// Example class ResolutionOrientationDemo.
+/// </summary>
 internal static class ResolutionOrientationDemo {
     /// <summary>
     /// Demonstrates changing resolution and orientation on the first monitor.
