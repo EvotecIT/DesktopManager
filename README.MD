@@ -82,6 +82,37 @@ It has following features:
 | Register-DesktopOrientationEvent | Subscribe to orientation changes |
 | Register-DesktopResolutionEvent | Subscribe to resolution changes |
 
+### Cmdlet to C# method map
+
+The table below shows the most relevant API methods behind each PowerShell cmdlet.
+
+| Cmdlet | Main C# methods |
+| ------ | --------------- |
+| Get-DesktopMonitor | `Monitors.GetMonitors` |
+| Get-DesktopWallpaper | `Monitors.GetWallpaper` or `Monitor.GetWallpaper` |
+| Set-DesktopWallpaper | `Monitors.SetWallpaper`, `Monitors.SetWallpaperFromUrl` |
+| Get-DesktopWallpaperHistory | `WallpaperHistory.GetHistory` |
+| Set-DesktopWallpaperHistory | `WallpaperHistory.SetHistory` |
+| Start-DesktopSlideshow | `Monitors.StartWallpaperSlideshow` |
+| Stop-DesktopSlideshow | `Monitors.StopWallpaperSlideshow` |
+| Advance-DesktopSlideshow | `Monitors.AdvanceWallpaperSlide` |
+| Get-DesktopBackgroundColor | `Monitors.GetBackgroundColor` |
+| Set-DesktopBackgroundColor | `Monitors.SetBackgroundColor` |
+| Get-DesktopBrightness | `Monitors.GetMonitorBrightness` |
+| Set-DesktopBrightness | `Monitors.SetMonitorBrightness` |
+| Set-DesktopPosition | `Monitor.SetMonitorPosition` or `Monitors.SetMonitorPosition` |
+| Set-DesktopResolution | `Monitors.SetMonitorResolution`, `Monitors.SetMonitorOrientation` |
+| Set-DesktopDpiScaling | `Monitors.SetMonitorDpiScaling` |
+| Invoke-DesktopScreenshot | `ScreenshotService.CaptureScreen`, `ScreenshotService.CaptureRegion` |
+| Get-DesktopWindow | `WindowManager.GetWindows` |
+| Set-DesktopWindow | `WindowManager.SetWindowPosition`, `MoveWindowToMonitor`, etc. |
+| Set-DesktopWindowSnap | `WindowManager.SnapWindow` |
+| Save-DesktopWindowLayout | `WindowManager.SaveLayout` |
+| Restore-DesktopWindowLayout | `WindowManager.LoadLayout` |
+| Register-DesktopMonitorEvent | `MonitorWatcher.DisplaySettingsChanged` |
+| Register-DesktopOrientationEvent | `MonitorWatcher.OrientationChanged` |
+| Register-DesktopResolutionEvent | `MonitorWatcher.ResolutionChanged` |
+
 ### Installation
 
 For using in PowerShell you can install it from PowerShell Gallery
