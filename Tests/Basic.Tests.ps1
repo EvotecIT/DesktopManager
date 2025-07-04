@@ -48,4 +48,8 @@ Describe 'DesktopManager basic tests' {
     It 'Exports Get-DesktopWindowKeepAlive' {
         Get-Command Get-DesktopWindowKeepAlive | Should -Not -BeNullOrEmpty
     }
+
+    It 'Exports Set-DesktopWindowText' {
+        Get-Command Set-DesktopWindowText | Should -Not -BeNullOrEmpty
+    }
 }

@@ -78,6 +78,7 @@ It has following features:
 | Get-DesktopWindow | Enumerate visible windows |
 | Set-DesktopWindow | Move, resize or control windows |
 | Set-DesktopWindowSnap | Snap window to common positions |
+| Set-DesktopWindowText | Paste or type text into a window |
 | Start-DesktopWindowKeepAlive | Send periodic input to keep a window awake |
 | Stop-DesktopWindowKeepAlive | Stop sending keep-alive input |
 | Get-DesktopWindowKeepAlive | List windows with active keep-alive |
@@ -112,6 +113,7 @@ The table below shows the most relevant API methods behind each PowerShell cmdle
 | Get-DesktopWindow | `WindowManager.GetWindows` |
 | Set-DesktopWindow | `WindowManager.SetWindowPosition`, `MoveWindowToMonitor`, etc. |
 | Set-DesktopWindowSnap | `WindowManager.SnapWindow` |
+| Set-DesktopWindowText | `WindowInputService` |
 | Start-DesktopWindowKeepAlive | `WindowKeepAlive.Start` |
 | Stop-DesktopWindowKeepAlive | `WindowKeepAlive.Stop` or `StopAll` |
 | Get-DesktopWindowKeepAlive | `WindowKeepAlive.ActiveHandles` |
@@ -274,6 +276,10 @@ Get-DesktopWindow | Format-Table *
 ```powershell
 Set-DesktopWindow -Name '*Zadanie - Notepad' -Height 800 -Width 1200 -Left 100
 Set-DesktopWindow -Name '*Zadanie - Notepad' -State Maximize
+```
+
+```powershell
+Set-DesktopWindowText -Name '*Notepad*' -Text 'Hello world'
 ```
 
 ### Example in PowerShell - Activating and Setting Window Top-Most

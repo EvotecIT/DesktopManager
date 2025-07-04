@@ -115,6 +115,88 @@ public static partial class MonitorNativeMethods
     public static extern uint SendMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
 
     /// <summary>
+    /// Sends simulated input events to the system.
+    /// </summary>
+    /// <param name="nInputs">The number of structures in the array.</param>
+    /// <param name="pInputs">Array of <see cref="INPUT"/> structures.</param>
+    /// <param name="cbSize">Size of an <see cref="INPUT"/> structure.</param>
+    /// <returns>The number of events inserted.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    /// <summary>
+    /// Opens the clipboard for modification.
+    /// </summary>
+    /// <param name="hWndNewOwner">Handle to new clipboard owner.</param>
+    /// <returns>True if the clipboard was opened.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+    /// <summary>
+    /// Closes the clipboard.
+    /// </summary>
+    /// <returns>True if the clipboard was closed.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool CloseClipboard();
+
+    /// <summary>
+    /// Empties the clipboard.
+    /// </summary>
+    /// <returns>True if successful.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool EmptyClipboard();
+
+    /// <summary>
+    /// Places data on the clipboard.
+    /// </summary>
+    /// <param name="uFormat">Clipboard format.</param>
+    /// <param name="hMem">Handle to the data.</param>
+    /// <returns>Handle to the data on success.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+    /// <summary>
+    /// Retrieves data from the clipboard.
+    /// </summary>
+    /// <param name="uFormat">Clipboard format.</param>
+    /// <returns>Handle to the data.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr GetClipboardData(uint uFormat);
+
+    /// <summary>
+    /// Allocates global memory.
+    /// </summary>
+    /// <param name="uFlags">Allocation flags.</param>
+    /// <param name="dwBytes">Number of bytes.</param>
+    /// <returns>Handle to the allocated memory.</returns>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
+
+    /// <summary>
+    /// Locks a global memory block and returns a pointer to it.
+    /// </summary>
+    /// <param name="hMem">Handle to the memory.</param>
+    /// <returns>Pointer to the locked memory.</returns>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr GlobalLock(IntPtr hMem);
+
+    /// <summary>
+    /// Unlocks a global memory block.
+    /// </summary>
+    /// <param name="hMem">Handle to the memory.</param>
+    /// <returns>True if successful.</returns>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool GlobalUnlock(IntPtr hMem);
+
+    /// <summary>
+    /// Frees a global memory block.
+    /// </summary>
+    /// <param name="hMem">Handle to the memory.</param>
+    /// <returns>Handle to the memory.</returns>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr GlobalFree(IntPtr hMem);
+
+    /// <summary>
     /// 32-bit variant of <c>GetWindowLongPtr</c>.
     /// </summary>
     /// <param name="hWnd">Window handle.</param>
@@ -230,4 +312,71 @@ public static partial class MonitorNativeMethods
     /// Message sent when a system-wide setting changes.
     /// </summary>
     public const uint WM_SETTINGCHANGE = 0x001A;
+
+    /// <summary>
+    /// Message used to paste data from the clipboard.
+    /// </summary>
+    public const uint WM_PASTE = 0x0302;
+
+    /// <summary>
+    /// Clipboard format for Unicode text.
+    /// </summary>
+    public const uint CF_UNICODETEXT = 13;
+
+    /// <summary>
+    /// Memory allocation flag for movable memory.
+    /// </summary>
+    public const uint GMEM_MOVEABLE = 0x0002;
+
+    /// <summary>
+    /// Input type constant indicating keyboard input.
+    /// </summary>
+    public const uint INPUT_KEYBOARD = 1;
+
+    /// <summary>
+    /// Key event flag indicating key release.
+    /// </summary>
+    public const uint KEYEVENTF_KEYUP = 0x0002;
+
+    /// <summary>
+    /// Key event flag indicating Unicode scan code.
+    /// </summary>
+    public const uint KEYEVENTF_UNICODE = 0x0004;
+
+    /// <summary>
+    /// Represents an INPUT structure used with <see cref="SendInput"/>.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT {
+        /// <summary>Type of the input event.</summary>
+        public uint Type;
+        /// <summary>Input data.</summary>
+        public InputUnion Data;
+    }
+
+    /// <summary>
+    /// Union representing keyboard, mouse or hardware input data.
+    /// </summary>
+    [StructLayout(LayoutKind.Explicit)]
+    public struct InputUnion {
+        /// <summary>Keyboard input data.</summary>
+        [FieldOffset(0)] public KEYBDINPUT Keyboard;
+    }
+
+    /// <summary>
+    /// Defines keyboard input for <see cref="SendInput"/>.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KEYBDINPUT {
+        /// <summary>Virtual key code.</summary>
+        public ushort Vk;
+        /// <summary>Hardware scan code.</summary>
+        public ushort Scan;
+        /// <summary>Flags specifying various aspects of keystroke.</summary>
+        public uint Flags;
+        /// <summary>Event timestamp.</summary>
+        public uint Time;
+        /// <summary>Additional information associated with the keystroke.</summary>
+        public IntPtr ExtraInfo;
+    }
 }
