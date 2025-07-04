@@ -348,6 +348,25 @@ namespace DesktopManager {
         }
 
         /// <summary>
+        /// Pastes text into the specified window using the clipboard.
+        /// </summary>
+        /// <param name="windowInfo">The target window.</param>
+        /// <param name="text">Text to paste.</param>
+        public void PasteText(WindowInfo windowInfo, string text) {
+            WindowInputService.PasteText(windowInfo, text);
+        }
+
+        /// <summary>
+        /// Types text into the specified window by simulating keyboard input.
+        /// </summary>
+        /// <param name="windowInfo">The target window.</param>
+        /// <param name="text">Text to type.</param>
+        /// <param name="delay">Delay in milliseconds between characters.</param>
+        public void TypeText(WindowInfo windowInfo, string text, int delay = 0) {
+            WindowInputService.TypeText(windowInfo, text, delay);
+        }
+
+        /// <summary>
         /// Saves the current window layout to a JSON file.
         /// </summary>
         /// <param name="path">Destination path for the layout.</param>
