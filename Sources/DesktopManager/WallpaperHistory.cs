@@ -64,6 +64,9 @@ public static class WallpaperHistory
     /// Reads the wallpaper history from the persistent storage.
     /// </summary>
     /// <returns>A list of wallpaper paths with the most recent entry first.</returns>
+    /// <example>
+    ///   <code>Get-WallpaperHistory</code>
+    /// </example>
     public static List<string> GetHistory()
     {
         lock (_lock)
@@ -109,6 +112,9 @@ public static class WallpaperHistory
     /// The history is truncated to <see cref="MaxEntries"/> items.
     /// </summary>
     /// <param name="path">The wallpaper file path to record.</param>
+    /// <example>
+    ///   <code>Add-WallpaperHistory -Path "C:\\wallpaper.jpg"</code>
+    /// </example>
     public static void AddEntry(string path)
     {
         if (string.IsNullOrEmpty(path))

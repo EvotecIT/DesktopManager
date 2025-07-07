@@ -1,15 +1,13 @@
 namespace DesktopManager.PowerShell;
 
 /// <summary>
-/// Helper class for cmdlets.
+/// Helper methods used by the PowerShell cmdlets.
 /// </summary>
 public static class CmdletHelper {
     /// <summary>
-    /// Gets the effective <see cref="ActionPreference"/> value for the provided
-    /// cmdlet.
+    /// Gets the effective <see cref="ActionPreference"/> value for the specified cmdlet.
     /// </summary>
-    /// <param name="cmdlet">Cmdlet for which the error action should be
-    /// resolved.</param>
+    /// <param name="cmdlet">Cmdlet for which the error action should be resolved.</param>
     /// <returns>The resolved error action preference.</returns>
     public static ActionPreference GetErrorAction(PSCmdlet cmdlet) {
         // Get the error action preference as user requested

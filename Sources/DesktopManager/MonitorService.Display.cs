@@ -93,10 +93,18 @@ public partial class MonitorService {
         return rect;
     }
 
+    /// <summary>
+    /// Sets the system wallpaper path using <c>SystemParametersInfo</c>.
+    /// </summary>
+    /// <param name="path">Path to the wallpaper image.</param>
     private void SetSystemWallpaper(string path) {
         MonitorNativeMethods.SystemParametersInfo(MonitorNativeMethods.SPI_SETDESKWALLPAPER, 0, path, MonitorNativeMethods.SPIF_UPDATEINIFILE | MonitorNativeMethods.SPIF_SENDWININICHANGE);
     }
 
+    /// <summary>
+    /// Gets the current system wallpaper path.
+    /// </summary>
+    /// <returns>The wallpaper path if available; otherwise an empty string.</returns>
     private string GetSystemWallpaper() {
         StringBuilder sb = new StringBuilder(MonitorNativeMethods.MAX_PATH);
         if (MonitorNativeMethods.SystemParametersInfo(MonitorNativeMethods.SPI_GETDESKWALLPAPER, (uint)sb.Capacity, sb, 0)) {
