@@ -1,4 +1,4 @@
-﻿Import-Module PSPublishModule -Force
+Import-Module PSPublishModule -Force
 
 Build-Module -ModuleName 'DesktopManager' {
     # Usual defaults as per standard module
@@ -10,7 +10,7 @@ Build-Module -ModuleName 'DesktopManager' {
         # ID used to uniquely identify this module
         GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
         # Version number of this module.
-        ModuleVersion          = '3.2.X'
+        ModuleVersion          = '3.5.0'
         # Author of this module
         Author                 = 'Przemyslaw Klys'
         # Company or vendor of this module
