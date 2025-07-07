@@ -9,6 +9,9 @@ using Microsoft.Win32;
 
 namespace DesktopManager;
 
+/// <summary>
+/// Provides wallpaper management functionality for monitors.
+/// </summary>
 public partial class MonitorService {
     /// <summary>
     /// Sets the wallpaper for a specific monitor.

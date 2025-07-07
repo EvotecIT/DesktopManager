@@ -8,6 +8,9 @@ using Microsoft.Win32;
 
 namespace DesktopManager;
 
+/// <summary>
+/// Provides methods for managing display-related monitor settings.
+/// </summary>
 public partial class MonitorService {
     /// <summary>
     /// Gets the desktop background color.

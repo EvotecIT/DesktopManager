@@ -7,6 +7,10 @@ namespace System.Runtime.Versioning
                     AllowMultiple = true, Inherited = false)]
     internal sealed class SupportedOSPlatformAttribute : Attribute
     {
+        /// <summary>
+        /// Initializes a new instance for the specified platform name.
+        /// </summary>
+        /// <param name="platformName">Target platform name.</param>
         public SupportedOSPlatformAttribute(string platformName) { }
     }
 }

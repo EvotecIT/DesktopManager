@@ -11,6 +11,7 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class MonitorServiceCleanupTests {
     private class ThrowingWallpaperDesktopManager : IDesktopManager {
+        /// <summary>Temporary path used during testing.</summary>
         public string? TempPath;
         /// <summary>
         /// Test for SetWallpaper.
@@ -82,10 +83,19 @@ public class MonitorServiceCleanupTests {
     }
 
     private class ThrowingStream : Stream {
+        /// <inheritdoc />
         public override bool CanRead => true;
+
+        /// <inheritdoc />
         public override bool CanSeek => false;
+
+        /// <inheritdoc />
         public override bool CanWrite => false;
+
+        /// <inheritdoc />
         public override long Length => 0;
+
+        /// <inheritdoc />
         public override long Position { get => 0; set => throw new NotSupportedException(); }
         /// <summary>
         /// Test for Flush.
