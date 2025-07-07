@@ -4,6 +4,9 @@ using System.Text;
 
 namespace DesktopManager;
 
+/// <summary>
+/// Native window-related platform invocations.
+/// </summary>
 public static partial class MonitorNativeMethods
 {
     /// <summary>

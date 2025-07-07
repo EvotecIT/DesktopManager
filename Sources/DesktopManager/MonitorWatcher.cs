@@ -33,8 +33,13 @@ public sealed class MonitorWatcher : IDisposable {
     private bool _disposed;
 
     private struct MonitorState {
+        /// <summary>Current width of the monitor.</summary>
         public int Width;
+
+        /// <summary>Current height of the monitor.</summary>
         public int Height;
+
+        /// <summary>Current orientation of the monitor.</summary>
         public int Orientation;
     }
 

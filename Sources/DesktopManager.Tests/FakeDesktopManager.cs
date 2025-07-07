@@ -4,14 +4,31 @@ using System.Collections.Generic;
 namespace DesktopManager.Tests;
 
 internal class FakeDesktopManager : IDesktopManager {
+    /// <summary>Records parameters passed to <see cref="SetWallpaper"/>.</summary>
     public List<(string id, string path)> SetWallpaperCalls = new();
+
+    /// <summary>Stores monitor identifiers requested via <see cref="GetWallpaper"/>.</summary>
     public List<string> GetWallpaperIds = new();
+
+    /// <summary>Dictionary of device paths by index.</summary>
     public Dictionary<uint, string> DevicePaths = new();
+
+    /// <summary>Number of device paths available.</summary>
     public uint DevicePathCount = 1;
+
+    /// <summary>Value used when testing background color operations.</summary>
     public uint BackgroundColor;
+
+    /// <summary>Last set wallpaper position.</summary>
     public DesktopWallpaperPosition WallpaperPosition;
+
+    /// <summary>Tracks calls to slideshow operations.</summary>
     public List<IntPtr> SetSlideshowCalls = new();
+
+    /// <summary>Direction of the last AdvanceWallpaperSlide call.</summary>
     public DesktopSlideshowDirection LastAdvanceDirection;
+
+    /// <summary>Indicates whether <see cref="Enable"/> was invoked.</summary>
     public bool EnableCalled;
 
     /// <summary>

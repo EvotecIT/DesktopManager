@@ -3,6 +3,9 @@ using Microsoft.Win32;
 
 namespace DesktopManager;
 
+/// <summary>
+/// Provides access to Windows theme settings for monitors.
+/// </summary>
 public partial class MonitorService {
     /// <summary>
     /// Gets the current Windows color theme.
