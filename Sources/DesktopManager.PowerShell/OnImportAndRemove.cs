@@ -67,7 +67,10 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
         return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
     }
 
-    // Determine if the current runtime is .NET Core
+    /// <summary>
+    /// Determines whether the current runtime is .NET Core.
+    /// </summary>
+    /// <returns><c>true</c> if running on .NET Core; otherwise <c>false</c>.</returns>
     private bool IsNetCore() {
         return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET Core", StringComparison.OrdinalIgnoreCase);
     }

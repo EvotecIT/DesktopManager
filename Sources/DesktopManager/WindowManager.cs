@@ -370,6 +370,7 @@ namespace DesktopManager {
         /// Saves the current window layout to a JSON file.
         /// </summary>
         /// <param name="path">Destination path for the layout.</param>
+        /// <exception cref="System.IO.IOException">Thrown when writing to the file fails.</exception>
         public void SaveLayout(string path) {
             var layout = new WindowLayout {
                 Windows = GetWindows().Select(GetWindowPosition).ToList()
@@ -389,6 +390,8 @@ namespace DesktopManager {
         /// </summary>
         /// <param name="path">Path to the layout file.</param>
         /// <param name="validate">Validate layout before applying.</param>
+        /// <exception cref="System.IO.FileNotFoundException">Thrown when the layout file does not exist.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the file is not a valid layout.</exception>
         public void LoadLayout(string path, bool validate = false) {
             if (!System.IO.File.Exists(path)) {
                 throw new System.IO.FileNotFoundException("Layout file not found", path);

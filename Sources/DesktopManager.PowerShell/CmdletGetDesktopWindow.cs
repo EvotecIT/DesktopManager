@@ -21,7 +21,7 @@ namespace DesktopManager.PowerShell {
         public string Name { get; set; } = "*";
 
         /// <summary>
-        /// Begin processing
+        /// Retrieves and outputs matching windows.
         /// </summary>
         protected override void BeginProcessing() {
             var manager = new WindowManager();

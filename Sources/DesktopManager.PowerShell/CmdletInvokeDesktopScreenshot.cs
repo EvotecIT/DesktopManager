@@ -70,7 +70,7 @@ public sealed class CmdletInvokeDesktopScreenshot : PSCmdlet {
     public int? Height;
 
     /// <summary>
-    /// Begin processing the command.
+    /// Captures a screenshot and writes it to the pipeline or to a file.
     /// </summary>
     protected override void BeginProcessing() {
         bool hasRegion = MyInvocation.BoundParameters.ContainsKey(nameof(Left)) &&

@@ -24,7 +24,7 @@ namespace DesktopManager.PowerShell {
         public SnapPosition Position { get; set; }
 
         /// <summary>
-        /// Begin processing.
+        /// Snaps matching windows to the chosen position.
         /// </summary>
         protected override void BeginProcessing() {
             var manager = new WindowManager();

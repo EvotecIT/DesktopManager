@@ -17,6 +17,11 @@ public partial class MonitorService {
     private const int DM_LOGPIXELS = 0x00020000;
     private readonly IDesktopManager _desktopManager;
 
+    /// <summary>
+    /// Executes an action and translates COM exceptions to <see cref="DesktopManagerException"/>.
+    /// </summary>
+    /// <param name="action">Action to execute.</param>
+    /// <param name="operation">Name of the operation for context.</param>
     private void Execute(Action action, string operation) {
         try {
             action();
@@ -25,6 +30,13 @@ public partial class MonitorService {
         }
     }
 
+    /// <summary>
+    /// Executes a function and translates COM exceptions to <see cref="DesktopManagerException"/>.
+    /// </summary>
+    /// <typeparam name="T">Return type of the function.</typeparam>
+    /// <param name="func">Function to execute.</param>
+    /// <param name="operation">Name of the operation for context.</param>
+    /// <returns>The value returned by <paramref name="func"/>.</returns>
     private T Execute<T>(Func<T> func, string operation) {
         try {
             return func();

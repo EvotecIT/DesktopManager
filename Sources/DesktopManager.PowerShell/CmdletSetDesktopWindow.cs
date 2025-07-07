@@ -75,7 +75,7 @@ namespace DesktopManager.PowerShell {
         public SwitchParameter Activate { get; set; }
 
         /// <summary>
-        /// Begin processing
+        /// Applies the requested window modifications.
         /// </summary>
         protected override void BeginProcessing() {
             var manager = new WindowManager();
