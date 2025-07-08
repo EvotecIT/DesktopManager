@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.Versioning;
+using System.Linq;
 using System.Threading;
 
 namespace DesktopManager;
@@ -69,7 +70,8 @@ public sealed class WindowKeepAlive : IDisposable {
     /// Stops all keep alive sessions.
     /// </summary>
     public void StopAll() {
-        foreach (var handle in _timers.Keys) {
+        var handles = _timers.Keys.ToList();
+        foreach (var handle in handles) {
             Stop(handle);
         }
     }
