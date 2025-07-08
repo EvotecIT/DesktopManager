@@ -71,7 +71,13 @@
         <Using Include="System.Collections.Generic" />
     </ItemGroup>
 
-    <ItemGroup>
+  <ItemGroup>
       <PackageReference Include="Microsoft.Win32.SystemEvents" Version="8.0.0" />
-    </ItemGroup>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>DesktopManager.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>
