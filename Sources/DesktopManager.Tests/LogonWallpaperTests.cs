@@ -37,6 +37,34 @@ public class LogonWallpaperTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensure SetLogonWallpaper throws when not elevated.
+    /// </summary>
+    public void SetLogonWallpaper_ThrowsWhenNotElevated() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        if (PrivilegeChecker.IsElevated) {
+            Assert.Inconclusive("Test requires non-elevated context");
+        }
+
+        if (Type.GetType("Windows.System.UserProfile.LockScreen, Windows, ContentType=WindowsRuntime") == null ||
+            Type.GetType("Windows.Storage.StorageFile, Windows, ContentType=WindowsRuntime") == null) {
+            Assert.Inconclusive("Required Windows Runtime types not available");
+        }
+
+        var service = new MonitorService(new FakeDesktopManager());
+        string temp = Path.GetTempFileName();
+        File.WriteAllBytes(temp, new byte[] { 1 });
+        try {
+            Assert.ThrowsException<InvalidOperationException>(() => service.SetLogonWallpaper(temp));
+        } finally {
+            File.Delete(temp);
+        }
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensure SetLogonWallpaper throws when Windows Runtime types are missing.
     /// </summary>
     public void SetLogonWallpaper_ThrowsOnMissingRuntime() {
@@ -45,7 +73,7 @@ public class LogonWallpaperTests {
         }
 
         var service = new MonitorService(new FakeDesktopManager());
-        Assert.ThrowsException<InvalidOperationException>(() => service.SetLogonWallpaper("path"));
+        Assert.ThrowsException<PlatformNotSupportedException>(() => service.SetLogonWallpaper("path"));
     }
 
     [TestMethod]
