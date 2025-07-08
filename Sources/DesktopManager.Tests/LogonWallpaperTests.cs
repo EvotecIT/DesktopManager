@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -14,8 +15,13 @@ public class LogonWallpaperTests {
     /// Ensure SetLogonWallpaper does not throw for existing file.
     /// </summary>
     public void SetLogonWallpaper_NoThrow() {
-        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
+        }
+
+        if (Type.GetType("Windows.System.UserProfile.LockScreen, Windows, ContentType=WindowsRuntime") == null ||
+            Type.GetType("Windows.Storage.StorageFile, Windows, ContentType=WindowsRuntime") == null) {
+            Assert.Inconclusive("Required Windows Runtime types not available");
         }
 
         var service = new MonitorService(new FakeDesktopManager());
