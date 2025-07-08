@@ -22,6 +22,7 @@ public sealed class WindowKeepAlive : IDisposable {
     public static WindowKeepAlive Instance => _instance.Value;
 
     private readonly ConcurrentDictionary<IntPtr, Timer> _timers = new();
+    private readonly object _syncRoot = new();
 
     private WindowKeepAlive() {
     }
@@ -80,7 +81,9 @@ public sealed class WindowKeepAlive : IDisposable {
     /// Checks if keep alive is active for the specified window handle.
     /// </summary>
     public bool IsActive(IntPtr handle) {
-        return _timers.ContainsKey(handle);
+        lock (_syncRoot) {
+            return _timers.ContainsKey(handle);
+        }
     }
 
     /// <summary>

@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DesktopManager.Tests;
@@ -36,5 +38,33 @@ public class WindowKeepAliveTests {
         }
 
         Assert.IsTrue(true);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Verify start and stop can run concurrently without leaving timers active.
+    /// </summary>
+    public void StartStop_Concurrent_IsActiveReflectsState() {
+#if NET5_0_OR_GREATER
+        if (!OperatingSystem.IsWindows()) {
+#else
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+#endif
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var keepAlive = WindowKeepAlive.Instance;
+        var handle = new IntPtr(3);
+        var tasks = new List<Task>();
+
+        for (int i = 0; i < 20; i++) {
+            tasks.Add(Task.Run(() => keepAlive.Start(handle, TimeSpan.FromMilliseconds(10))));
+            tasks.Add(Task.Run(() => keepAlive.Stop(handle)));
+        }
+
+        Task.WaitAll(tasks.ToArray());
+
+        Assert.IsFalse(keepAlive.IsActive(handle));
+        keepAlive.Dispose();
     }
 }
