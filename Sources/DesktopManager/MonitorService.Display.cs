@@ -512,7 +512,11 @@ public partial class MonitorService {
                 if (string.IsNullOrEmpty(path)) continue;
                 int hr = MonitorNativeMethods.SHCreateItemFromParsingName(path, IntPtr.Zero, ref iidShellItem, out IntPtr item);
                 if (hr != 0) {
-                    Marshal.ThrowExceptionForHR(hr);
+                    try {
+                        Marshal.ThrowExceptionForHR(hr);
+                    } catch (Exception ex) {
+                        throw new InvalidOperationException($"SHCreateItemFromParsingName failed for '{path}'", ex);
+                    }
                 }
                 object obj = Marshal.GetObjectForIUnknown(item);
                 collection.AddObject(obj);
