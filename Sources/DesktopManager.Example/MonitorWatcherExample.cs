@@ -20,8 +20,13 @@ internal static class MonitorWatcherExample {
         using var watcher = new MonitorWatcher();
         watcher.DisplaySettingsChanged += (_, _) =>
             Helpers.AddLine("MonitorWatcher", "Display settings changed");
+        watcher.MonitorPoweredOff += (_, _) =>
+            Helpers.AddLine("MonitorWatcher", "Monitor power off");
+        watcher.MonitorPoweredOn += (_, _) =>
+            Helpers.AddLine("MonitorWatcher", "Monitor power on");
         Console.WriteLine($"Monitoring display changes for {duration.TotalSeconds} seconds...");
         await Task.Delay(duration);
     }
 }
+
 

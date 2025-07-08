@@ -18,7 +18,9 @@ public partial class MonitorService {
     /// <param name="imagePath">Path to the image file.</param>
     [SupportedOSPlatform("windows")]
     public void SetLogonWallpaper(string imagePath) {
+        PrivilegeChecker.EnsureElevated();
         bool comInitialized = InitializeCom();
+    
         try {
             Type lockScreenType = Type.GetType(
                 "Windows.System.UserProfile.LockScreen, Windows, ContentType=WindowsRuntime")
@@ -59,6 +61,7 @@ public partial class MonitorService {
     }
 
     private static void SetLogonWallpaperFallback(string imagePath) {
+        PrivilegeChecker.EnsureElevated();
         try {
             using RegistryKey? key = Registry.LocalMachine.CreateSubKey(RegistryPath);
             key?.SetValue(RegistryValue, imagePath, RegistryValueKind.String);

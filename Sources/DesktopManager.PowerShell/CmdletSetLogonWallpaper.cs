@@ -1,5 +1,6 @@
 using System.IO;
 using System.Management.Automation;
+using DesktopManager;
 
 namespace DesktopManager.PowerShell;
 
@@ -23,6 +24,7 @@ public sealed class CmdletSetLogonWallpaper : PSCmdlet {
         }
 
         if (ShouldProcess("System", $"Set logon wallpaper to '{ImagePath}'")) {
+            PrivilegeChecker.EnsureElevated();
             Monitors monitors = new Monitors();
             monitors.SetLogonWallpaper(ImagePath);
         }
