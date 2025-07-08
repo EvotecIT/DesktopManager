@@ -233,6 +233,22 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Sets the logon (lock screen) wallpaper.
+    /// </summary>
+    /// <param name="imagePath">Path to the image file.</param>
+    public void SetLogonWallpaper(string imagePath) {
+        _monitorService.SetLogonWallpaper(imagePath);
+    }
+
+    /// <summary>
+    /// Gets the current logon (lock screen) wallpaper path if available.
+    /// </summary>
+    /// <returns>Path to the wallpaper or empty string.</returns>
+    public string GetLogonWallpaper() {
+        return _monitorService.GetLogonWallpaper();
+    }
+
+    /// <summary>
     /// Gets the bounds of a monitor by its ID.
     /// </summary>
     /// <param name="monitorId">The ID of the monitor.</param>
