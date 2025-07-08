@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DesktopManager.Tests;
@@ -32,5 +34,20 @@ public class ErrorHandlingTests {
         typeof(MonitorService).GetMethod("SetWallpaperPositionFallback", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(service, new object?[] { DesktopWallpaperPosition.Center });
         typeof(MonitorService).GetMethod("GetBackgroundColorFallback", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(service, null);
         typeof(MonitorService).GetMethod("SetBackgroundColorFallback", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(service, new object?[] { 0u });
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for StartWallpaperSlideshow_InvalidPath_ThrowsInvalidOperationException.
+    /// </summary>
+    public void StartWallpaperSlideshow_InvalidPath_ThrowsInvalidOperationException() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var service = new MonitorService(new FakeDesktopManager());
+        string invalidPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "missing.jpg");
+
+        Assert.ThrowsException<InvalidOperationException>(() => service.StartWallpaperSlideshow(new[] { invalidPath }));
     }
 }
