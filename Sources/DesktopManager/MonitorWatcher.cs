@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace DesktopManager;
 
@@ -27,10 +28,23 @@ public sealed class MonitorWatcher : IDisposable {
     /// </summary>
     public event EventHandler ResolutionChanged;
 
+    /// <summary>
+    /// Raised when monitor power is turned off.
+    /// </summary>
+    public event EventHandler MonitorPoweredOff;
+
+    /// <summary>
+    /// Raised when monitor power is turned on.
+    /// </summary>
+    public event EventHandler MonitorPoweredOn;
+
     private const int ENUM_CURRENT_SETTINGS = -1;
 
     private Dictionary<string, MonitorState> _state = new();
     private bool _disposed;
+    private PowerBroadcastWindow? _powerWindow;
+
+    private static readonly Guid GUID_MONITOR_POWER_ON = new("02731015-4510-4526-99E6-E5A17EBD1AEA");
 
     private struct MonitorState {
         /// <summary>Current width of the monitor.</summary>
@@ -54,6 +68,7 @@ public sealed class MonitorWatcher : IDisposable {
 
         _state = GetCurrentStates();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        _powerWindow = new PowerBroadcastWindow(this);
     }
 
     private void OnDisplaySettingsChanged(object sender, EventArgs e) {
@@ -83,6 +98,14 @@ public sealed class MonitorWatcher : IDisposable {
         }
         if (resolutionChanged) {
             ResolutionChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    internal void ProcessPowerBroadcast(int state) {
+        if (state == 0) {
+            MonitorPoweredOff?.Invoke(this, EventArgs.Empty);
+        } else {
+            MonitorPoweredOn?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -129,10 +152,76 @@ public sealed class MonitorWatcher : IDisposable {
 
         if (disposing) {
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            _powerWindow?.Dispose();
             GC.SuppressFinalize(this);
         }
 
         _disposed = true;
     }
+
+    private sealed class PowerBroadcastWindow : IDisposable {
+        private readonly MonitorWatcher _parent;
+        private IntPtr _hwnd;
+        private IntPtr _notificationHandle;
+        private Thread _thread;
+        private MonitorNativeMethods.WndProc? _wndProc;
+        private readonly ManualResetEventSlim _ready = new(false);
+
+        public PowerBroadcastWindow(MonitorWatcher parent) {
+            _parent = parent;
+            _thread = new Thread(MessageLoop) { IsBackground = true };
+            _thread.Start();
+            _ready.Wait();
+        }
+
+        private void MessageLoop() {
+            _wndProc = WndProc;
+            _hwnd = MonitorNativeMethods.CreateWindowExW(0, "Static", string.Empty, 0, 0, 0, 0, 0,
+                IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
+                Marshal.GetFunctionPointerForDelegate(_wndProc));
+            var guid = GUID_MONITOR_POWER_ON;
+            _notificationHandle = MonitorNativeMethods.RegisterPowerSettingNotification(
+                _hwnd,
+                ref guid,
+                MonitorNativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+            _ready.Set();
+
+            MonitorNativeMethods.MSG msg;
+            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) != 0) {
+                MonitorNativeMethods.TranslateMessage(ref msg);
+                MonitorNativeMethods.DispatchMessage(ref msg);
+            }
+
+            if (_notificationHandle != IntPtr.Zero) {
+                MonitorNativeMethods.UnregisterPowerSettingNotification(_notificationHandle);
+                _notificationHandle = IntPtr.Zero;
+            }
+            if (_hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.DestroyWindow(_hwnd);
+                _hwnd = IntPtr.Zero;
+            }
+        }
+
+        private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam) {
+            if (msg == (uint)WindowMessage.WM_POWERBROADCAST && wParam.ToInt32() == MonitorNativeMethods.PBT_POWERSETTINGCHANGE) {
+                var setting = Marshal.PtrToStructure<MonitorNativeMethods.POWERBROADCAST_SETTING>(lParam);
+                if (setting.PowerSetting == GUID_MONITOR_POWER_ON) {
+                    _parent.ProcessPowerBroadcast(setting.Data);
+                }
+            }
+            return MonitorNativeMethods.DefWindowProcW(hWnd, msg, wParam, lParam);
+        }
+
+        public void Dispose() {
+            if (_hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+                _thread.Join();
+            }
+            _ready.Dispose();
+        }
+    }
 }
+
+
 #endif
