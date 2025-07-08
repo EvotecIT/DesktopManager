@@ -76,4 +76,59 @@ public class WindowPositionTests {
         var dummy = new WindowInfo { Handle = IntPtr.Zero };
         Assert.ThrowsException<InvalidOperationException>(() => manager.GetWindowPosition(dummy));
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for MoveWindowToMonitor_OnSameMonitor_ReturnsFalse.
+    /// </summary>
+    public void MoveWindowToMonitor_OnSameMonitor_ReturnsFalse() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var manager = new WindowManager();
+        var windows = manager.GetWindows();
+        if (windows.Count == 0) {
+            Assert.Inconclusive("No windows found to test");
+        }
+
+        var window = windows.First();
+        var monitors = new Monitors().GetMonitors(index: window.MonitorIndex);
+        var monitor = monitors.FirstOrDefault();
+        if (monitor == null) {
+            Assert.Inconclusive("Monitor not found");
+        }
+
+        bool moved = manager.MoveWindowToMonitor(window, monitor);
+
+        Assert.IsFalse(moved);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for MoveWindowToMonitor_OnDifferentMonitor_ReturnsTrue.
+    /// </summary>
+    public void MoveWindowToMonitor_OnDifferentMonitor_ReturnsTrue() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var monitors = new Monitors().GetMonitors();
+        if (monitors.Count < 2) {
+            Assert.Inconclusive("Need at least two monitors");
+        }
+
+        var manager = new WindowManager();
+        var windows = manager.GetWindows();
+        if (windows.Count == 0) {
+            Assert.Inconclusive("No windows found to test");
+        }
+
+        var window = windows.First();
+        var target = monitors.First(m => m.Index != window.MonitorIndex);
+
+        bool moved = manager.MoveWindowToMonitor(window, target);
+
+        Assert.IsTrue(moved);
+    }
 }
