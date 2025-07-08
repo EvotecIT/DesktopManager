@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Win32;
+using Microsoft.Extensions.Logging;
 
 namespace DesktopManager;
 
@@ -21,7 +22,7 @@ public partial class MonitorService {
                 }
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetSystemTheme failed: {ex.Message}");
+            _logger.LogError(ex, "GetSystemTheme failed");
         }
         return SystemTheme.Light;
     }
@@ -40,15 +41,15 @@ public partial class MonitorService {
             }
             RefreshTheme();
         } catch (Exception ex) {
-            Console.WriteLine($"SetSystemTheme failed: {ex.Message}");
+            _logger.LogError(ex, "SetSystemTheme failed");
         }
     }
 
-    private static void RefreshTheme() {
+    private void RefreshTheme() {
         try {
             MonitorNativeMethods.SendMessage(MonitorNativeMethods.HWND_BROADCAST, MonitorNativeMethods.WM_SETTINGCHANGE, 0, 0);
         } catch (Exception ex) {
-            Console.WriteLine($"RefreshTheme failed: {ex.Message}");
+            _logger.LogError(ex, "RefreshTheme failed");
         }
     }
 }

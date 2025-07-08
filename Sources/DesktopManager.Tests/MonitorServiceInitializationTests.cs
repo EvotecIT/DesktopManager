@@ -1,5 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Linq;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DesktopManager.Tests;
@@ -88,10 +90,11 @@ public class MonitorServiceInitializationTests {
         using var sw = new System.IO.StringWriter();
         var original = Console.Out;
         Console.SetOut(sw);
-        new MonitorService(new FailingEnableDesktopManager());
+        var logger = new FakeLogger<MonitorService>();
+        _ = new MonitorService(new FailingEnableDesktopManager(), logger);
         Console.SetOut(original);
-
-        StringAssert.Contains(sw.ToString(), "DesktopManager initialization failed");
+        Assert.AreEqual(string.Empty, sw.ToString());
+        Assert.IsTrue(logger.Entries.Any(e => e.Message.Contains("DesktopManager initialization failed")));
     }
 }
 

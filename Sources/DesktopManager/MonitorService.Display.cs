@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
 using Microsoft.Win32;
+using Microsoft.Extensions.Logging;
 
 namespace DesktopManager;
 
@@ -116,7 +117,7 @@ public partial class MonitorService {
         return string.Empty;
     }
 
-    private static string WriteStreamToTempFile(Stream stream) {
+    private string WriteStreamToTempFile(Stream stream) {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         try {
             using FileStream fs = File.Create(path);
@@ -128,11 +129,11 @@ public partial class MonitorService {
         }
     }
 
-    private static void DeleteTempFile(string path) {
+    private void DeleteTempFile(string path) {
         try {
             File.Delete(path);
         } catch (Exception ex) {
-            Console.WriteLine($"DeleteTempFile failed: {ex.Message}");
+            _logger.LogError(ex, "DeleteTempFile failed");
         }
     }
 
@@ -155,7 +156,7 @@ public partial class MonitorService {
                 };
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetWallpaperPositionFallback failed: {ex.Message}");
+            _logger.LogError(ex, "GetWallpaperPositionFallback failed");
         }
         return DesktopWallpaperPosition.Center;
     }
@@ -193,7 +194,7 @@ public partial class MonitorService {
                 SetSystemWallpaper(GetSystemWallpaper());
             }
         } catch (Exception ex) {
-            Console.WriteLine($"SetWallpaperPositionFallback failed: {ex.Message}");
+            _logger.LogError(ex, "SetWallpaperPositionFallback failed");
         }
     }
 
@@ -213,7 +214,7 @@ public partial class MonitorService {
                 }
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetBackgroundColorFallback failed: {ex.Message}");
+            _logger.LogError(ex, "GetBackgroundColorFallback failed");
         }
         return 0;
     }
@@ -228,7 +229,7 @@ public partial class MonitorService {
                 key.SetValue("Background", $"{r} {g} {b}");
             }
         } catch (Exception ex) {
-            Console.WriteLine($"SetBackgroundColorFallback failed: {ex.Message}");
+            _logger.LogError(ex, "SetBackgroundColorFallback failed");
         }
     }
 
@@ -293,11 +294,11 @@ public partial class MonitorService {
                         // Apply the changes directly
                         DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(d.DeviceName, ref devMode, IntPtr.Zero, 0, IntPtr.Zero);
                         if (result != DisplayChangeConfirmation.Successful) {
-                            Console.WriteLine($"ChangeDisplaySettingsEx failed with error code: {result}");
+                            _logger.LogError("ChangeDisplaySettingsEx failed with error code: {Result}", result);
                             throw new InvalidOperationException("Unable to set monitor position");
                         }
 
-                        Console.WriteLine($"Monitor position set successfully for {d.DeviceName}");
+                        _logger.LogInformation("Monitor position set successfully for {Device}", d.DeviceName);
                         return;
                     }
                 }
@@ -406,7 +407,7 @@ public partial class MonitorService {
             return true;
         };
         if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero)) {
-            Console.WriteLine("EnumDisplayMonitors failed");
+            _logger.LogError("EnumDisplayMonitors failed");
             return Array.Empty<PHYSICAL_MONITOR>();
         }
         if (found == IntPtr.Zero) {
@@ -439,7 +440,7 @@ public partial class MonitorService {
             throw new InvalidOperationException("GetMonitorBrightness failed");
         } finally {
             if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
-                Console.WriteLine("DestroyPhysicalMonitors failed");
+                _logger.LogError("DestroyPhysicalMonitors failed");
             }
         }
     }
@@ -460,7 +461,7 @@ public partial class MonitorService {
             }
         } finally {
             if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
-                Console.WriteLine("DestroyPhysicalMonitors failed");
+                _logger.LogError("DestroyPhysicalMonitors failed");
             }
         }
     }
@@ -542,12 +543,11 @@ public partial class MonitorService {
 
         int deviceNum = 0;
         while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
-            Console.WriteLine($"Device Name: {d.DeviceName}");
-            Console.WriteLine($"Device String: {d.DeviceString}");
-            Console.WriteLine($"State Flags: {d.StateFlags}");
-            Console.WriteLine($"Device ID: {d.DeviceID}");
-            Console.WriteLine($"Device Key: {d.DeviceKey}");
-            Console.WriteLine();
+            _logger.LogInformation("Device Name: {DeviceName}", d.DeviceName);
+            _logger.LogInformation("Device String: {DeviceString}", d.DeviceString);
+            _logger.LogInformation("State Flags: {StateFlags}", d.StateFlags);
+            _logger.LogInformation("Device ID: {DeviceID}", d.DeviceID);
+            _logger.LogInformation("Device Key: {DeviceKey}", d.DeviceKey);
             deviceNum++;
             devices.Add(d);
         }

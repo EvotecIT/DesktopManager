@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
+using Microsoft.Extensions.Logging;
 
 namespace DesktopManager;
 
@@ -40,12 +41,12 @@ public partial class MonitorService {
         SetLogonWallpaperFallback(imagePath);
     }
 
-    private static void SetLogonWallpaperFallback(string imagePath) {
+    private void SetLogonWallpaperFallback(string imagePath) {
         try {
             using RegistryKey? key = Registry.LocalMachine.CreateSubKey(RegistryPath);
             key?.SetValue(RegistryValue, imagePath, RegistryValueKind.String);
         } catch (Exception ex) {
-            Console.WriteLine($"SetLogonWallpaperFallback failed: {ex.Message}");
+            _logger.LogError(ex, "SetLogonWallpaperFallback failed");
         }
     }
 
@@ -77,14 +78,14 @@ public partial class MonitorService {
         return GetLogonWallpaperFallback();
     }
 
-    private static string GetLogonWallpaperFallback() {
+    private string GetLogonWallpaperFallback() {
         try {
             using RegistryKey? key = Registry.LocalMachine.OpenSubKey(RegistryPath);
             if (key != null && key.GetValue(RegistryValue) is string value) {
                 return value;
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetLogonWallpaperFallback failed: {ex.Message}");
+            _logger.LogError(ex, "GetLogonWallpaperFallback failed");
         }
         return string.Empty;
     }

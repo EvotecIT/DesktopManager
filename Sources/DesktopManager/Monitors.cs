@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace DesktopManager;
 
@@ -13,9 +14,17 @@ public class Monitors {
     /// <summary>
     /// Initializes a new instance of the <see cref="Monitors"/> class.
     /// </summary>
-    public Monitors() {
-        IDesktopManager desktopManager = (IDesktopManager)new DesktopManagerWrapper(); // Explicit cast
-        _monitorService = new MonitorService(desktopManager);
+    public Monitors() : this(null, null) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Monitors"/> class with optional dependencies.
+    /// </summary>
+    /// <param name="desktopManager">Custom <see cref="IDesktopManager"/> implementation.</param>
+    /// <param name="logger">Optional logger instance.</param>
+    public Monitors(IDesktopManager? desktopManager = null, ILogger<MonitorService>? logger = null) {
+        IDesktopManager dm = desktopManager ?? (IDesktopManager)new DesktopManagerWrapper();
+        _monitorService = new MonitorService(dm, logger);
     }
 
     /// <summary>

@@ -6,6 +6,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
 using Microsoft.Win32;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DesktopManager;
 
@@ -16,6 +18,7 @@ public partial class MonitorService {
     private const int ENUM_CURRENT_SETTINGS = -1;
     private const int DM_LOGPIXELS = 0x00020000;
     private readonly IDesktopManager _desktopManager;
+    private readonly ILogger<MonitorService> _logger;
 
     /// <summary>
     /// Executes an action and translates COM exceptions to <see cref="DesktopManagerException"/>.
@@ -49,13 +52,15 @@ public partial class MonitorService {
     /// Initializes a new instance of the <see cref="MonitorService"/> class.
     /// </summary>
     /// <param name="desktopManager">The desktop manager interface.</param>
-    public MonitorService(IDesktopManager desktopManager) {
+    /// <param name="logger">Optional logger instance.</param>
+    public MonitorService(IDesktopManager desktopManager, ILogger<MonitorService>? logger = null) {
         _desktopManager = desktopManager;
+        _logger = logger ?? NullLogger<MonitorService>.Instance;
 
         try {
             Execute(() => _desktopManager.Enable(), nameof(IDesktopManager.Enable));
         } catch (DesktopManagerException ex) {
-            Console.WriteLine($"DesktopManager initialization failed: {ex.Message}");
+            _logger.LogError(ex, "DesktopManager initialization failed.");
         }
     }
 
@@ -125,7 +130,7 @@ public partial class MonitorService {
             return true;
         };
         if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero)) {
-            Console.WriteLine("EnumDisplayMonitors failed");
+            _logger.LogError("EnumDisplayMonitors failed");
         }
         
         return monitors;
