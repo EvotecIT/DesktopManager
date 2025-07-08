@@ -43,7 +43,7 @@ namespace DesktopManager {
             foreach (var handle in handles) {
                 var titleLength = MonitorNativeMethods.GetWindowTextLength(handle);
                 if (titleLength > 0) {
-                    var titleBuilder = new StringBuilder(titleLength);
+                    var titleBuilder = new StringBuilder(titleLength + 1);
                     MonitorNativeMethods.GetWindowText(handle, titleBuilder, titleLength + 1);
                     var title = titleBuilder.ToString();
 
