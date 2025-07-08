@@ -176,8 +176,19 @@ public sealed class MonitorWatcher : IDisposable {
 
         private void MessageLoop() {
             _wndProc = WndProc;
-            _hwnd = MonitorNativeMethods.CreateWindowExW(0, "Static", string.Empty, 0, 0, 0, 0, 0,
-                IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            _hwnd = MonitorNativeMethods.CreateWindowExW(
+                0,
+                "Message",
+                string.Empty,
+                0,
+                0,
+                0,
+                0,
+                0,
+                MonitorNativeMethods.HWND_MESSAGE,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero);
             MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
                 Marshal.GetFunctionPointerForDelegate(_wndProc));
             var guid = GUID_MONITOR_POWER_ON;
