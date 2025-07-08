@@ -52,4 +52,20 @@ Describe 'DesktopManager basic tests' {
     It 'Exports Set-DesktopWindowText' {
         Get-Command Set-DesktopWindowText | Should -Not -BeNullOrEmpty
     }
+
+    It 'Exports Set-LogonWallpaper' {
+        Get-Command Set-LogonWallpaper | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Get-LogonWallpaper' {
+        Get-Command Get-LogonWallpaper | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Set-LockScreenWallpaper alias' {
+        Get-Command Set-LockScreenWallpaper | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Get-LockScreenWallpaper alias' {
+        Get-Command Get-LockScreenWallpaper | Should -Not -BeNullOrEmpty
+    }
 }

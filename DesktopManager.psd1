@@ -1,7 +1,7 @@
-﻿@{
-    AliasesToExport        = @('Get-DesktopMonitors')
+@{
+    AliasesToExport        = @('Get-DesktopMonitors', 'Set-LockScreenWallpaper', 'Get-LockScreenWallpaper')
     Author                 = 'Przemyslaw Klys'
-    CmdletsToExport        = @('Advance-DesktopSlideshow', 'Get-DesktopBackgroundColor', 'Get-DesktopBrightness', 'Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Get-DesktopWallpaperHistory', 'Get-DesktopWindow', 'Get-DesktopWindowKeepAlive', 'Invoke-DesktopScreenshot', 'Register-DesktopMonitorEvent', 'Register-DesktopOrientationEvent', 'Register-DesktopResolutionEvent', 'Restore-DesktopWindowLayout', 'Save-DesktopWindowLayout', 'Set-DesktopBackgroundColor', 'Set-DesktopBrightness', 'Set-DesktopDpiScaling', 'Set-DesktopPosition', 'Set-DesktopResolution', 'Set-DesktopWallpaper', 'Set-DesktopWallpaperHistory', 'Set-DesktopWindow', 'Set-DesktopWindowSnap', 'Set-DesktopWindowText', 'Start-DesktopSlideshow', 'Start-DesktopWindowKeepAlive', 'Stop-DesktopSlideshow', 'Stop-DesktopWindowKeepAlive')
+    CmdletsToExport        = @('Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Get-DesktopWindow', 'Invoke-DesktopScreenshot', 'Register-DesktopMonitorEvent', 'Register-DesktopOrientationEvent', 'Register-DesktopResolutionEvent', 'Set-DesktopPosition', 'Set-DesktopResolution', 'Set-DesktopDpiScaling', 'Set-DesktopWallpaper', 'Set-DesktopWindow', 'Set-DesktopWindowText', 'Save-DesktopWindowLayout', 'Restore-DesktopWindowLayout', 'Get-DesktopBackgroundColor', 'Set-DesktopBackgroundColor', 'Start-DesktopSlideshow', 'Stop-DesktopSlideshow', 'Advance-DesktopSlideshow', 'Get-LogonWallpaper', 'Set-LogonWallpaper')
     CompanyName            = 'Evotec'
     CompatiblePSEditions   = @('Desktop', 'Core')
     Copyright              = '(c) 2011 - 2025 Przemyslaw Klys @ Evotec. All rights reserved.'
