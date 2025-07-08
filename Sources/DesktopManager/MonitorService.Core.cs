@@ -81,7 +81,7 @@ public partial class MonitorService {
                     // Populate new properties
                     DISPLAY_DEVICE d = new DISPLAY_DEVICE();
                     d.cb = Marshal.SizeOf(d);
-                    if (MonitorNativeMethods.EnumDisplayDevices(null, i, ref d, 0)) {
+                    if (MonitorNativeMethods.EnumDisplayDevices(null, i, ref d, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
                         monitor.DeviceName = d.DeviceName;
                         monitor.DeviceString = d.DeviceString;
                         monitor.StateFlags = d.StateFlags;
@@ -108,7 +108,7 @@ public partial class MonitorService {
             if (MonitorNativeMethods.GetMonitorInfo(hMonitor, ref info)) {
                 DISPLAY_DEVICE device = new DISPLAY_DEVICE();
                 device.cb = Marshal.SizeOf(device);
-                if (MonitorNativeMethods.EnumDisplayDevices(info.szDevice, 0, ref device, 0)) {
+                if (MonitorNativeMethods.EnumDisplayDevices(info.szDevice, 0, ref device, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
                     var monitor = new Monitor(this) {
                         Index = index,
                         DeviceId = info.szDevice,

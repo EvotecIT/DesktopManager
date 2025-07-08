@@ -275,7 +275,7 @@ public partial class MonitorService {
         d.cb = Marshal.SizeOf(d);
         int deviceNum = 0;
 
-        while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
+        while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
             if ((d.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
                 DEVMODE devMode = new DEVMODE();
                 devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
@@ -541,7 +541,7 @@ public partial class MonitorService {
         d.cb = Marshal.SizeOf(d);
 
         int deviceNum = 0;
-        while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, 0)) {
+        while (MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
             Console.WriteLine($"Device Name: {d.DeviceName}");
             Console.WriteLine($"Device String: {d.DeviceString}");
             Console.WriteLine($"State Flags: {d.StateFlags}");
@@ -564,7 +564,7 @@ public partial class MonitorService {
         device.cb = Marshal.SizeOf(device);
 
         uint deviceNum = 0;
-        while (MonitorNativeMethods.EnumDisplayDevices(null, deviceNum, ref device, 0)) {
+        while (MonitorNativeMethods.EnumDisplayDevices(null, deviceNum, ref device, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
             if ((device.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
                 devices.Add(device);
             }
