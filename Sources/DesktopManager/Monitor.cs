@@ -1,3 +1,6 @@
+using System;
+using Microsoft.Win32;
+
 namespace DesktopManager;
 
 /// <summary>
@@ -82,6 +85,16 @@ public class Monitor {
     public string DeviceKey { get; internal set; }
 
     /// <summary>
+    /// Gets the manufacturer ID parsed from EDID if available.
+    /// </summary>
+    public string? Manufacturer { get; private set; }
+
+    /// <summary>
+    /// Gets the serial number parsed from EDID if available.
+    /// </summary>
+    public string? SerialNumber { get; private set; }
+
+    /// <summary>
     /// Gets or sets the rectangle that defines the bounds of the monitor.
     /// </summary>
     internal RECT Rect { get; set; }
@@ -143,5 +156,39 @@ public class Monitor {
     /// <returns>The bounds of the monitor.</returns>
     internal RECT GetMonitorBounds() {
         return _monitorService.GetMonitorBounds(DeviceId);
+    }
+
+    /// <summary>
+    /// Reads EDID information from the registry and populates manufacturer and serial.
+    /// </summary>
+    internal void LoadEdidInfo() {
+        const string prefix = "\\Registry\\Machine\\";
+        try {
+            if (string.IsNullOrEmpty(DeviceKey) || !DeviceKey.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                return;
+            }
+
+            string path = DeviceKey.Substring(prefix.Length);
+            using RegistryKey? key = Registry.LocalMachine.OpenSubKey(path + "\\Device Parameters");
+            if (key?.GetValue("EDID") is byte[] edid && edid.Length >= 16) {
+                Manufacturer = ParseManufacturerFromEdid(edid);
+                SerialNumber = ParseSerialNumberFromEdid(edid);
+            }
+        } catch (Exception ex) {
+            Console.WriteLine($"LoadEdidInfo failed: {ex.Message}");
+        }
+    }
+
+    internal static string ParseManufacturerFromEdid(byte[] edid) {
+        int code = (edid[8] << 8) | edid[9];
+        char m1 = (char)(((code >> 10) & 0x1F) + 0x40);
+        char m2 = (char)(((code >> 5) & 0x1F) + 0x40);
+        char m3 = (char)((code & 0x1F) + 0x40);
+        return new string(new[] { m1, m2, m3 });
+    }
+
+    internal static string ParseSerialNumberFromEdid(byte[] edid) {
+        uint serial = BitConverter.ToUInt32(edid, 12);
+        return serial != 0 ? serial.ToString() : string.Empty;
     }
 }
