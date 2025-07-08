@@ -54,11 +54,9 @@ public partial class MonitorService {
     }
 
     private static void SetLogonWallpaperFallback(string imagePath) {
-        try {
-            using RegistryKey? key = Registry.LocalMachine.CreateSubKey(RegistryPath);
-            key?.SetValue(RegistryValue, imagePath, RegistryValueKind.String);
-        } catch (Exception ex) {
-            Console.WriteLine($"SetLogonWallpaperFallback failed: {ex.Message}");
+        using RegistryKey? key = RegistryUtil.CreateSubKey(Registry.LocalMachine, RegistryPath, "SetLogonWallpaperFallback");
+        if (key != null) {
+            RegistryUtil.SetValue(key, RegistryValue, imagePath, RegistryValueKind.String);
         }
     }
 
@@ -93,13 +91,9 @@ public partial class MonitorService {
     }
 
     private static string GetLogonWallpaperFallback() {
-        try {
-            using RegistryKey? key = Registry.LocalMachine.OpenSubKey(RegistryPath);
-            if (key != null && key.GetValue(RegistryValue) is string value) {
-                return value;
-            }
-        } catch (Exception ex) {
-            Console.WriteLine($"GetLogonWallpaperFallback failed: {ex.Message}");
+        using RegistryKey? key = RegistryUtil.OpenSubKey(Registry.LocalMachine, RegistryPath, "GetLogonWallpaperFallback");
+        if (key != null && RegistryUtil.GetValue(key, RegistryValue) is string value) {
+            return value;
         }
         return string.Empty;
     }

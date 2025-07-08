@@ -12,16 +12,12 @@ public partial class MonitorService {
     /// </summary>
     /// <returns>The current <see cref="SystemTheme"/>.</returns>
     public SystemTheme GetSystemTheme() {
-        try {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false);
-            if (key != null) {
-                object? value = key.GetValue("SystemUsesLightTheme");
-                if (value is int dword) {
-                    return dword == 0 ? SystemTheme.Dark : SystemTheme.Light;
-                }
+        using RegistryKey? key = RegistryUtil.OpenSubKey(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "GetSystemTheme");
+        if (key != null) {
+            object? value = RegistryUtil.GetValue(key, "SystemUsesLightTheme");
+            if (value is int dword) {
+                return dword == 0 ? SystemTheme.Dark : SystemTheme.Light;
             }
-        } catch (Exception ex) {
-            Console.WriteLine($"GetSystemTheme failed: {ex.Message}");
         }
         return SystemTheme.Light;
     }
@@ -31,17 +27,13 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="theme">Desired theme.</param>
     public void SetSystemTheme(SystemTheme theme) {
-        try {
-            using RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            if (key != null) {
-                int value = theme == SystemTheme.Dark ? 0 : 1;
-                key.SetValue("SystemUsesLightTheme", value, RegistryValueKind.DWord);
-                key.SetValue("AppsUseLightTheme", value, RegistryValueKind.DWord);
-            }
-            RefreshTheme();
-        } catch (Exception ex) {
-            Console.WriteLine($"SetSystemTheme failed: {ex.Message}");
+        using RegistryKey? key = RegistryUtil.CreateSubKey(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "SetSystemTheme");
+        if (key != null) {
+            int value = theme == SystemTheme.Dark ? 0 : 1;
+            RegistryUtil.SetValue(key, "SystemUsesLightTheme", value, RegistryValueKind.DWord);
+            RegistryUtil.SetValue(key, "AppsUseLightTheme", value, RegistryValueKind.DWord);
         }
+        RefreshTheme();
     }
 
     private static void RefreshTheme() {

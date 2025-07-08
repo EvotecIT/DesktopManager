@@ -50,9 +50,6 @@
       <PackageReference Include="System.Net.Http" Version="4.3.4" />
   </ItemGroup>
 
-  <ItemGroup>
-      <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
-  </ItemGroup>
 
     <ItemGroup>
         <None Include="..\..\Assets\Icons\DesktopManager.png">

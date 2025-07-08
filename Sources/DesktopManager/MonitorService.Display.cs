@@ -137,98 +137,82 @@ public partial class MonitorService {
     }
 
     private DesktopWallpaperPosition GetWallpaperPositionFallback() {
-        try {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Desktop", false);
-            if (key != null) {
-                string style = key.GetValue("WallpaperStyle", "0")?.ToString() ?? "0";
-                string tile = key.GetValue("TileWallpaper", "0")?.ToString() ?? "0";
-                if (tile == "1") {
-                    return DesktopWallpaperPosition.Tile;
-                }
-                return style switch {
-                    "0" => DesktopWallpaperPosition.Center,
-                    "2" => DesktopWallpaperPosition.Stretch,
-                    "6" => DesktopWallpaperPosition.Fit,
-                    "10" => DesktopWallpaperPosition.Fill,
-                    "22" => DesktopWallpaperPosition.Span,
-                    _ => DesktopWallpaperPosition.Center
-                };
+        using RegistryKey? key = RegistryUtil.OpenSubKey(Registry.CurrentUser, @"Control Panel\\Desktop", "GetWallpaperPositionFallback");
+        if (key != null) {
+            string style = RegistryUtil.GetValue(key, "WallpaperStyle")?.ToString() ?? "0";
+            string tile = RegistryUtil.GetValue(key, "TileWallpaper")?.ToString() ?? "0";
+            if (tile == "1") {
+                return DesktopWallpaperPosition.Tile;
             }
-        } catch (Exception ex) {
-            Console.WriteLine($"GetWallpaperPositionFallback failed: {ex.Message}");
+            return style switch {
+                "0" => DesktopWallpaperPosition.Center,
+                "2" => DesktopWallpaperPosition.Stretch,
+                "6" => DesktopWallpaperPosition.Fit,
+                "10" => DesktopWallpaperPosition.Fill,
+                "22" => DesktopWallpaperPosition.Span,
+                _ => DesktopWallpaperPosition.Center
+            };
         }
         return DesktopWallpaperPosition.Center;
     }
 
     private void SetWallpaperPositionFallback(DesktopWallpaperPosition position) {
-        try {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Desktop", true);
-            if (key != null) {
-                switch (position) {
-                    case DesktopWallpaperPosition.Tile:
-                        key.SetValue("WallpaperStyle", "0");
-                        key.SetValue("TileWallpaper", "1");
-                        break;
-                    case DesktopWallpaperPosition.Center:
-                        key.SetValue("WallpaperStyle", "0");
-                        key.SetValue("TileWallpaper", "0");
-                        break;
-                    case DesktopWallpaperPosition.Stretch:
-                        key.SetValue("WallpaperStyle", "2");
-                        key.SetValue("TileWallpaper", "0");
-                        break;
-                    case DesktopWallpaperPosition.Fit:
-                        key.SetValue("WallpaperStyle", "6");
-                        key.SetValue("TileWallpaper", "0");
-                        break;
-                    case DesktopWallpaperPosition.Fill:
-                        key.SetValue("WallpaperStyle", "10");
-                        key.SetValue("TileWallpaper", "0");
-                        break;
-                    case DesktopWallpaperPosition.Span:
-                        key.SetValue("WallpaperStyle", "22");
-                        key.SetValue("TileWallpaper", "0");
-                        break;
-                }
-                SetSystemWallpaper(GetSystemWallpaper());
+        using RegistryKey? key = RegistryUtil.OpenSubKey(Registry.CurrentUser, @"Control Panel\\Desktop", true, "SetWallpaperPositionFallback");
+        if (key != null) {
+            switch (position) {
+                case DesktopWallpaperPosition.Tile:
+                    RegistryUtil.SetValue(key, "WallpaperStyle", "0");
+                    RegistryUtil.SetValue(key, "TileWallpaper", "1");
+                    break;
+                case DesktopWallpaperPosition.Center:
+                    RegistryUtil.SetValue(key, "WallpaperStyle", "0");
+                    RegistryUtil.SetValue(key, "TileWallpaper", "0");
+                    break;
+                case DesktopWallpaperPosition.Stretch:
+                    RegistryUtil.SetValue(key, "WallpaperStyle", "2");
+                    RegistryUtil.SetValue(key, "TileWallpaper", "0");
+                    break;
+                case DesktopWallpaperPosition.Fit:
+                    RegistryUtil.SetValue(key, "WallpaperStyle", "6");
+                    RegistryUtil.SetValue(key, "TileWallpaper", "0");
+                    break;
+                case DesktopWallpaperPosition.Fill:
+                    RegistryUtil.SetValue(key, "WallpaperStyle", "10");
+                    RegistryUtil.SetValue(key, "TileWallpaper", "0");
+                    break;
+                case DesktopWallpaperPosition.Span:
+                    RegistryUtil.SetValue(key, "WallpaperStyle", "22");
+                    RegistryUtil.SetValue(key, "TileWallpaper", "0");
+                    break;
             }
-        } catch (Exception ex) {
-            Console.WriteLine($"SetWallpaperPositionFallback failed: {ex.Message}");
+            SetSystemWallpaper(GetSystemWallpaper());
         }
     }
 
     private uint GetBackgroundColorFallback() {
-        try {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Colors", false);
-            if (key != null) {
-                string value = key.GetValue("Background")?.ToString();
-                if (!string.IsNullOrEmpty(value)) {
-                    var parts = value.Split(' ');
-                    if (parts.Length == 3 &&
-                        byte.TryParse(parts[0], out var r) &&
-                        byte.TryParse(parts[1], out var g) &&
-                        byte.TryParse(parts[2], out var b)) {
-                        return (uint)(r | (g << 8) | (b << 16));
-                    }
+        using RegistryKey? key = RegistryUtil.OpenSubKey(Registry.CurrentUser, @"Control Panel\\Colors", "GetBackgroundColorFallback");
+        if (key != null) {
+            string value = RegistryUtil.GetValue(key, "Background")?.ToString();
+            if (!string.IsNullOrEmpty(value)) {
+                var parts = value.Split(' ');
+                if (parts.Length == 3 &&
+                    byte.TryParse(parts[0], out var r) &&
+                    byte.TryParse(parts[1], out var g) &&
+                    byte.TryParse(parts[2], out var b)) {
+                    return (uint)(r | (g << 8) | (b << 16));
                 }
             }
-        } catch (Exception ex) {
-            Console.WriteLine($"GetBackgroundColorFallback failed: {ex.Message}");
         }
         return 0;
     }
 
     private void SetBackgroundColorFallback(uint color) {
-        try {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\\Colors", true);
-            if (key != null) {
-                byte r = (byte)(color & 0xFF);
-                byte g = (byte)((color >> 8) & 0xFF);
-                byte b = (byte)((color >> 16) & 0xFF);
-                key.SetValue("Background", $"{r} {g} {b}");
-            }
-        } catch (Exception ex) {
-            Console.WriteLine($"SetBackgroundColorFallback failed: {ex.Message}");
+        using RegistryKey? key = RegistryUtil.OpenSubKey(Registry.CurrentUser, @"Control Panel\\Colors", true, "SetBackgroundColorFallback");
+        if (key != null) {
+            byte r = (byte)(color & 0xFF);
+            byte g = (byte)((color >> 8) & 0xFF);
+            byte b = (byte)((color >> 16) & 0xFF);
+            RegistryUtil.SetValue(key, "Background", $"{r} {g} {b}");
         }
     }
 

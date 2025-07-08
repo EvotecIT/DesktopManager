@@ -17,7 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-      <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
   </ItemGroup>
 
     <PropertyGroup>

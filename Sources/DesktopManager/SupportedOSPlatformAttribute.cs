@@ -5,7 +5,7 @@ namespace System.Runtime.Versioning
                     AttributeTargets.Enum | AttributeTargets.Constructor | AttributeTargets.Method | AttributeTargets.Property |
                     AttributeTargets.Field | AttributeTargets.Event | AttributeTargets.Interface | AttributeTargets.Delegate,
                     AllowMultiple = true, Inherited = false)]
-    internal sealed class SupportedOSPlatformAttribute : Attribute
+    public sealed class SupportedOSPlatformAttribute : Attribute
     {
         /// <summary>
         /// Initializes a new instance for the specified platform name.
