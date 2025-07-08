@@ -19,6 +19,8 @@ public partial class MonitorService {
     [SupportedOSPlatform("windows")]
     public void SetLogonWallpaper(string imagePath) {
         PrivilegeChecker.EnsureElevated();
+        bool comInitialized = InitializeCom();
+    
         try {
             Type lockScreenType = Type.GetType(
                 "Windows.System.UserProfile.LockScreen, Windows, ContentType=WindowsRuntime")
@@ -49,6 +51,10 @@ public partial class MonitorService {
             throw;
         } catch {
             // ignore and use fallback
+        } finally {
+            if (comInitialized) {
+                UninitializeCom();
+            }
         }
 
         SetLogonWallpaperFallback(imagePath);
@@ -70,6 +76,7 @@ public partial class MonitorService {
     /// <returns>Path to the logon wallpaper or empty string.</returns>
     [SupportedOSPlatform("windows")]
     public string GetLogonWallpaper() {
+        bool comInitialized = InitializeCom();
         try {
             Type lockScreenType = Type.GetType(
                 "Windows.System.UserProfile.LockScreen, Windows, ContentType=WindowsRuntime")
@@ -90,6 +97,11 @@ public partial class MonitorService {
         } catch {
             // ignore and use fallback
         }
+        finally {
+            if (comInitialized) {
+                UninitializeCom();
+            }
+        }
 
         return GetLogonWallpaperFallback();
     }
@@ -106,3 +118,4 @@ public partial class MonitorService {
         return string.Empty;
     }
 }
+
