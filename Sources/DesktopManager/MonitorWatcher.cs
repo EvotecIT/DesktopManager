@@ -91,7 +91,7 @@ public sealed class MonitorWatcher : IDisposable {
         DISPLAY_DEVICE device = new();
         device.cb = Marshal.SizeOf(device);
         uint index = 0;
-        while (MonitorNativeMethods.EnumDisplayDevices(null, index, ref device, 0)) {
+        while (MonitorNativeMethods.EnumDisplayDevices(null, index, ref device, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
             if ((device.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
                 DEVMODE mode = new();
                 mode.dmSize = (short)Marshal.SizeOf<DEVMODE>();

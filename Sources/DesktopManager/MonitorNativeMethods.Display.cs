@@ -23,7 +23,7 @@ public static partial class MonitorNativeMethods {
     /// <param name="lpDevice">The device name.</param>
     /// <param name="iDevNum">The index of the display device.</param>
     /// <param name="lpDisplayDevice">A pointer to a <see cref="DISPLAY_DEVICE"/> structure that receives the information.</param>
-    /// <param name="dwFlags">Set this flag to 0.</param>
+    /// <param name="dwFlags">Combination of <see cref="EnumDisplayDevicesFlags"/> values.</param>
     /// <returns>True if the function succeeds; otherwise, false.</returns>
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
