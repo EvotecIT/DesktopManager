@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DesktopManager.Tests;
@@ -19,7 +20,7 @@ public class LogonWallpaperTests {
 
         var monitors = new Monitors();
         string temp = Path.GetTempFileName();
-        File.WriteAllBytes(temp, new byte[] {1});
+        File.WriteAllBytes(temp, new byte[] { 1 });
         try {
             monitors.SetLogonWallpaper(temp);
         } finally {

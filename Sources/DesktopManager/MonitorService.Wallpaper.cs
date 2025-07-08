@@ -35,14 +35,11 @@ public partial class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="imageStream">Stream containing image data.</param>
     public void SetWallpaper(string monitorId, Stream imageStream) {
-        string? temp = null;
+        string temp = WriteStreamToTempFile(imageStream);
         try {
-            temp = WriteStreamToTempFile(imageStream);
             SetWallpaper(monitorId, temp);
         } finally {
-            if (temp is not null) {
-                DeleteTempFile(temp);
-            }
+            DeleteTempFile(temp);
         }
     }
 
@@ -144,14 +141,11 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="imageStream">Stream containing image data.</param>
     public void SetWallpaper(Stream imageStream) {
-        string? temp = null;
+        string temp = WriteStreamToTempFile(imageStream);
         try {
-            temp = WriteStreamToTempFile(imageStream);
             SetWallpaper(temp);
         } finally {
-            if (temp is not null) {
-                DeleteTempFile(temp);
-            }
+            DeleteTempFile(temp);
         }
     }
 

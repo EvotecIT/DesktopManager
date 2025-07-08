@@ -1,6 +1,10 @@
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
+#if NETFRAMEWORK
+using System.Windows.Forms;
+#endif
+using DesktopManager;
 
 namespace DesktopManager.Tests;
 
@@ -15,6 +19,29 @@ public class ScreenshotServiceTests {
     /// </summary>
     public void CaptureRegion_InvalidDimensions_Throws() {
         Assert.ThrowsException<ArgumentException>(() => ScreenshotService.CaptureRegion(0, 0, 0, 0));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for CaptureRegion_OutOfBounds_Throws.
+    /// </summary>
+    public void CaptureRegion_OutOfBounds_Throws() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        Rectangle bounds;
+#if NETFRAMEWORK
+        bounds = SystemInformation.VirtualScreen;
+#else
+        bounds = new Rectangle(
+            MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_XVIRTUALSCREEN),
+            MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_YVIRTUALSCREEN),
+            MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CXVIRTUALSCREEN),
+            MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CYVIRTUALSCREEN));
+#endif
+        Assert.ThrowsException<ArgumentOutOfRangeException>(
+            () => ScreenshotService.CaptureRegion(bounds.Right + 1, bounds.Bottom + 1, 10, 10));
     }
 
     [TestMethod]
