@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DesktopManager.Tests;
@@ -13,6 +14,10 @@ public class LogonWallpaperTests {
     /// Ensure SetLogonWallpaper does not throw for existing file.
     /// </summary>
     public void SetLogonWallpaper_NoThrow() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
         var monitors = new Monitors();
         string temp = Path.GetTempFileName();
         File.WriteAllBytes(temp, new byte[] {1});

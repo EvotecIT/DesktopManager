@@ -113,7 +113,6 @@ public sealed class MonitorWatcher : IDisposable {
     /// </summary>
     public void Dispose() {
         Dispose(true);
-        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -124,10 +123,16 @@ public sealed class MonitorWatcher : IDisposable {
     }
 
     private void Dispose(bool disposing) {
-        if (!_disposed) {
-            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
-            _disposed = true;
+        if (_disposed) {
+            return;
         }
+
+        if (disposing) {
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            GC.SuppressFinalize(this);
+        }
+
+        _disposed = true;
     }
 }
 #endif
