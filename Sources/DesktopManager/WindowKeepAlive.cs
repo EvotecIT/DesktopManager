@@ -48,12 +48,7 @@ public sealed class WindowKeepAlive : IDisposable {
             throw new ArgumentOutOfRangeException(nameof(interval));
         }
 
-        if (_timers.ContainsKey(handle)) {
-            return;
-        }
-
-        var timer = new Timer(KeepAliveCallback, handle, interval, interval);
-        _timers[handle] = timer;
+        _timers.GetOrAdd(handle, h => new Timer(KeepAliveCallback, h, interval, interval));
     }
 
     /// <summary>
