@@ -87,6 +87,7 @@ public partial class MonitorService {
                         monitor.StateFlags = d.StateFlags;
                         monitor.DeviceKey = d.DeviceKey;
                     }
+                    monitor.LoadEdidInfo();
                 }
                 list.Add(monitor);
             }
@@ -118,6 +119,7 @@ public partial class MonitorService {
                         DeviceKey = device.DeviceKey,
                         Rect = info.rcMonitor
                     };
+                    monitor.LoadEdidInfo();
                     monitors.Add(monitor);
                 }
             }
