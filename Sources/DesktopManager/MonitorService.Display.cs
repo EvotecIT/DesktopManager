@@ -520,9 +520,18 @@ public partial class MonitorService {
             }
 
             IntPtr unk = Marshal.GetIUnknownForObject(collection);
-            Marshal.QueryInterface(unk, ref iidShellItemArray, out IntPtr arrayPtr);
-            Marshal.Release(unk);
-            return arrayPtr;
+            IntPtr arrayPtr = IntPtr.Zero;
+            bool success = false;
+            try {
+                Marshal.QueryInterface(unk, ref iidShellItemArray, out arrayPtr);
+                success = true;
+                return arrayPtr;
+            } finally {
+                Marshal.Release(unk);
+                if (!success && arrayPtr != IntPtr.Zero) {
+                    Marshal.Release(arrayPtr);
+                }
+            }
         } finally {
             if (collection != null) {
                 Marshal.ReleaseComObject(collection);
