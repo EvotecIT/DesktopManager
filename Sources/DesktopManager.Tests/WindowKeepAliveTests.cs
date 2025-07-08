@@ -58,8 +58,10 @@ public class WindowKeepAliveTests {
         var tasks = new List<Task>();
 
         for (int i = 0; i < 20; i++) {
-            tasks.Add(Task.Run(() => keepAlive.Start(handle, TimeSpan.FromMilliseconds(10))));
-            tasks.Add(Task.Run(() => keepAlive.Stop(handle)));
+            tasks.Add(Task.Run(() => {
+                keepAlive.Start(handle, TimeSpan.FromMilliseconds(10));
+                keepAlive.Stop(handle);
+            }));
         }
 
         Task.WaitAll(tasks.ToArray());

@@ -22,7 +22,6 @@ public sealed class WindowKeepAlive : IDisposable {
     public static WindowKeepAlive Instance => _instance.Value;
 
     private readonly ConcurrentDictionary<IntPtr, Timer> _timers = new();
-    private readonly object _syncRoot = new();
 
     private WindowKeepAlive() {
     }
@@ -49,12 +48,7 @@ public sealed class WindowKeepAlive : IDisposable {
             throw new ArgumentOutOfRangeException(nameof(interval));
         }
 
-        if (_timers.ContainsKey(handle)) {
-            return;
-        }
-
-        var timer = new Timer(KeepAliveCallback, handle, interval, interval);
-        _timers[handle] = timer;
+        _timers.GetOrAdd(handle, h => new Timer(KeepAliveCallback, h, interval, interval));
     }
 
     /// <summary>
@@ -81,9 +75,7 @@ public sealed class WindowKeepAlive : IDisposable {
     /// Checks if keep alive is active for the specified window handle.
     /// </summary>
     public bool IsActive(IntPtr handle) {
-        lock (_syncRoot) {
-            return _timers.ContainsKey(handle);
-        }
+        return _timers.ContainsKey(handle);
     }
 
     /// <summary>
