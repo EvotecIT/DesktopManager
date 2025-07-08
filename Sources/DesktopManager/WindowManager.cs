@@ -245,7 +245,11 @@ namespace DesktopManager {
         /// </summary>
         /// <param name="windowInfo">The window to move.</param>
         /// <param name="targetMonitor">The monitor to move the window to.</param>
-        public void MoveWindowToMonitor(WindowInfo windowInfo, Monitor targetMonitor) {
+        /// <returns>
+        /// True if the window was repositioned; false if the window was already on the target monitor
+        /// at the same coordinates.
+        /// </returns>
+        public bool MoveWindowToMonitor(WindowInfo windowInfo, Monitor targetMonitor) {
             if (targetMonitor == null) {
                 throw new ArgumentNullException(nameof(targetMonitor));
             }
@@ -271,7 +275,15 @@ namespace DesktopManager {
             int newLeft = targetBounds.Left + offsetX;
             int newTop = targetBounds.Top + offsetY;
 
+            if (currentBounds.Left == targetBounds.Left &&
+                currentBounds.Top == targetBounds.Top &&
+                currentBounds.Right == targetBounds.Right &&
+                currentBounds.Bottom == targetBounds.Bottom) {
+                return false;
+            }
+
             SetWindowPosition(windowInfo, newLeft, newTop);
+            return true;
         }
 
         /// <summary>
