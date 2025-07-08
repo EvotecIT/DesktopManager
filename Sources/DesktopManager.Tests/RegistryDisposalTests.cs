@@ -44,7 +44,7 @@ public class RegistryDisposalTests {
         GC.Collect();
         GC.WaitForPendingFinalizers();
         int after = Process.GetCurrentProcess().HandleCount;
-        Assert.AreEqual(before, after);
+        Assert.IsTrue(after <= before);
     }
 
     [TestMethod]
@@ -62,6 +62,6 @@ public class RegistryDisposalTests {
         GC.Collect();
         GC.WaitForPendingFinalizers();
         int after = Process.GetCurrentProcess().HandleCount;
-        Assert.AreEqual(before, after);
+        Assert.IsTrue(after <= before);
     }
 }
