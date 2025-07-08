@@ -241,7 +241,7 @@ public partial class MonitorService {
     public MonitorPosition GetMonitorPosition(string deviceId) {
         var monitors = GetMonitors();
         foreach (var monitor in monitors) {
-            if (monitor.DeviceId == deviceId) {
+            if (string.Equals(monitor.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase)) {
                 return new MonitorPosition(monitor.Rect.Left, monitor.Rect.Top, monitor.Rect.Right, monitor.Rect.Bottom);
             }
         }
