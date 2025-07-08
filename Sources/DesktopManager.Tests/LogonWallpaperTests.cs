@@ -14,7 +14,7 @@ public class LogonWallpaperTests {
     /// Ensure SetLogonWallpaper does not throw for existing file.
     /// </summary>
     public void SetLogonWallpaper_NoThrow() {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
         }
 
