@@ -12,6 +12,11 @@ public enum WindowMessage {
     /// <summary>
     /// Broadcast of power-management events.
     /// </summary>
-    WM_POWERBROADCAST = 0x0218
+    WM_POWERBROADCAST = 0x0218,
+
+    /// <summary>
+    /// Broadcast of device add or remove events.
+    /// </summary>
+    WM_DEVICECHANGE = 0x0219
 }
 

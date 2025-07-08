@@ -38,11 +38,22 @@ public sealed class MonitorWatcher : IDisposable {
     /// </summary>
     public event EventHandler MonitorPoweredOn;
 
+    /// <summary>
+    /// Raised when a monitor is connected.
+    /// </summary>
+    public event EventHandler MonitorConnected;
+
+    /// <summary>
+    /// Raised when a monitor is disconnected.
+    /// </summary>
+    public event EventHandler MonitorDisconnected;
+
     private const int ENUM_CURRENT_SETTINGS = -1;
 
     private Dictionary<string, MonitorState> _state = new();
     private bool _disposed;
     private PowerBroadcastWindow? _powerWindow;
+    private DeviceChangeWindow? _deviceWindow;
 
     private static readonly Guid GUID_MONITOR_POWER_ON = new("02731015-4510-4526-99E6-E5A17EBD1AEA");
 
@@ -69,6 +80,7 @@ public sealed class MonitorWatcher : IDisposable {
         _state = GetCurrentStates();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         _powerWindow = new PowerBroadcastWindow(this);
+        _deviceWindow = new DeviceChangeWindow(this);
     }
 
     private void OnDisplaySettingsChanged(object sender, EventArgs e) {
@@ -106,6 +118,20 @@ public sealed class MonitorWatcher : IDisposable {
             MonitorPoweredOff?.Invoke(this, EventArgs.Empty);
         } else {
             MonitorPoweredOn?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    internal void ProcessDeviceChange(IntPtr lParam, bool connected) {
+        var hdr = Marshal.PtrToStructure<MonitorNativeMethods.DEV_BROADCAST_HDR>(lParam);
+        if (hdr.dbch_devicetype == MonitorNativeMethods.DBT_DEVTYP_DEVICEINTERFACE) {
+            var info = Marshal.PtrToStructure<MonitorNativeMethods.DEV_BROADCAST_DEVICEINTERFACE>(lParam);
+            if (info.dbcc_classguid == MonitorNativeMethods.GUID_DEVINTERFACE_MONITOR) {
+                if (connected) {
+                    MonitorConnected?.Invoke(this, EventArgs.Empty);
+                } else {
+                    MonitorDisconnected?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
     }
 
@@ -153,6 +179,7 @@ public sealed class MonitorWatcher : IDisposable {
         if (disposing) {
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             _powerWindow?.Dispose();
+            _deviceWindow?.Dispose();
             GC.SuppressFinalize(this);
         }
 
@@ -219,6 +246,88 @@ public sealed class MonitorWatcher : IDisposable {
                 var setting = Marshal.PtrToStructure<MonitorNativeMethods.POWERBROADCAST_SETTING>(lParam);
                 if (setting.PowerSetting == GUID_MONITOR_POWER_ON) {
                     _parent.ProcessPowerBroadcast(setting.Data);
+                }
+            }
+            return MonitorNativeMethods.DefWindowProcW(hWnd, msg, wParam, lParam);
+        }
+
+        public void Dispose() {
+            if (_hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+                _thread.Join();
+            }
+            _ready.Dispose();
+        }
+    }
+
+    private sealed class DeviceChangeWindow : IDisposable {
+        private readonly MonitorWatcher _parent;
+        private IntPtr _hwnd;
+        private IntPtr _notificationHandle;
+        private Thread _thread;
+        private MonitorNativeMethods.WndProc? _wndProc;
+        private readonly ManualResetEventSlim _ready = new(false);
+
+        public DeviceChangeWindow(MonitorWatcher parent) {
+            _parent = parent;
+            _thread = new Thread(MessageLoop) { IsBackground = true };
+            _thread.Start();
+            _ready.Wait();
+        }
+
+        private void MessageLoop() {
+            _wndProc = WndProc;
+            _hwnd = MonitorNativeMethods.CreateWindowExW(
+                0,
+                "Message",
+                string.Empty,
+                0,
+                0,
+                0,
+                0,
+                0,
+                MonitorNativeMethods.HWND_MESSAGE,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero);
+            MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
+                Marshal.GetFunctionPointerForDelegate(_wndProc));
+            MonitorNativeMethods.DEV_BROADCAST_DEVICEINTERFACE filter = new() {
+                dbcc_size = (uint)Marshal.SizeOf<MonitorNativeMethods.DEV_BROADCAST_DEVICEINTERFACE>(),
+                dbcc_devicetype = MonitorNativeMethods.DBT_DEVTYP_DEVICEINTERFACE,
+                dbcc_classguid = MonitorNativeMethods.GUID_DEVINTERFACE_MONITOR
+            };
+            IntPtr pFilter = Marshal.AllocHGlobal(Marshal.SizeOf(filter));
+            Marshal.StructureToPtr(filter, pFilter, false);
+            _notificationHandle = MonitorNativeMethods.RegisterDeviceNotification(
+                _hwnd,
+                pFilter,
+                MonitorNativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+            Marshal.FreeHGlobal(pFilter);
+            _ready.Set();
+
+            MonitorNativeMethods.MSG msg;
+            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) != 0) {
+                MonitorNativeMethods.TranslateMessage(ref msg);
+                MonitorNativeMethods.DispatchMessage(ref msg);
+            }
+
+            if (_notificationHandle != IntPtr.Zero) {
+                MonitorNativeMethods.UnregisterDeviceNotification(_notificationHandle);
+                _notificationHandle = IntPtr.Zero;
+            }
+            if (_hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.DestroyWindow(_hwnd);
+                _hwnd = IntPtr.Zero;
+            }
+        }
+
+        private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam) {
+            if (msg == (uint)WindowMessage.WM_DEVICECHANGE) {
+                if (wParam.ToInt32() == MonitorNativeMethods.DBT_DEVICEARRIVAL) {
+                    _parent.ProcessDeviceChange(lParam, true);
+                } else if (wParam.ToInt32() == MonitorNativeMethods.DBT_DEVICEREMOVECOMPLETE) {
+                    _parent.ProcessDeviceChange(lParam, false);
                 }
             }
             return MonitorNativeMethods.DefWindowProcW(hWnd, msg, wParam, lParam);
