@@ -3,6 +3,9 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime.Versioning;
+#if NETFRAMEWORK
+using System.Windows.Forms;
+#endif
 
 namespace DesktopManager;
 
@@ -78,9 +81,29 @@ public static class ScreenshotService {
             throw new ArgumentException("Width and height must be greater than zero");
         }
 
+        Rectangle bounds;
+#if NETFRAMEWORK
+        bounds = SystemInformation.VirtualScreen;
+#else
+        bounds = GetVirtualScreenBounds();
+#endif
+        if (left < bounds.Left || top < bounds.Top || left + width > bounds.Right || top + height > bounds.Bottom) {
+            throw new ArgumentOutOfRangeException(nameof(left), "Region is outside the bounds of the virtual screen");
+        }
+
         Bitmap bitmap = new Bitmap(width, height);
         using Graphics g = Graphics.FromImage(bitmap);
         g.CopyFromScreen(left, top, 0, 0, new Size(width, height));
         return bitmap;
     }
+
+#if !NETFRAMEWORK
+    private static Rectangle GetVirtualScreenBounds() {
+        int left = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_XVIRTUALSCREEN);
+        int top = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_YVIRTUALSCREEN);
+        int width = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CXVIRTUALSCREEN);
+        int height = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CYVIRTUALSCREEN);
+        return new Rectangle(left, top, width, height);
+    }
+#endif
 }

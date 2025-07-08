@@ -25,6 +25,10 @@
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+        <UseWindowsForms>true</UseWindowsForms>
+    </PropertyGroup>
+
     <PropertyGroup>
         <PackageId>DesktopManager</PackageId>
         <PackageIcon>DesktopManager.png</PackageIcon>
