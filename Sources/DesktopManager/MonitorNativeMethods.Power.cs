@@ -28,7 +28,7 @@ public static partial class MonitorNativeMethods {
     public const int PBT_POWERSETTINGCHANGE = 0x8013;
 
     /// <summary>Parent handle for message-only windows.</summary>
-    public static readonly IntPtr HWND_MESSAGE = (IntPtr)(-3);
+    public static readonly IntPtr HWND_MESSAGE = new IntPtr(-3);
 
     /// <summary>
     /// Data structure for power broadcast settings.
