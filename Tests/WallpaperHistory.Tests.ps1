@@ -1,7 +1,3 @@
-BeforeAll {
-    Import-Module "$PSScriptRoot/../DesktopManager.psd1" -Force
-}
-
 describe 'Wallpaper history cmdlets' {
     it 'exports Get-DesktopWallpaperHistory' {
         Get-Command Get-DesktopWallpaperHistory | Should -Not -BeNullOrEmpty
