@@ -51,13 +51,14 @@ public sealed class MonitorWatcher : IDisposable {
     private const int ENUM_CURRENT_SETTINGS = -1;
 
     private Dictionary<string, MonitorState> _state = new();
+    internal Func<Dictionary<string, MonitorState>> StateProvider { get; set; }
     private bool _disposed;
     private PowerBroadcastWindow? _powerWindow;
     private DeviceChangeWindow? _deviceWindow;
 
     private static readonly Guid GUID_MONITOR_POWER_ON = new("02731015-4510-4526-99E6-E5A17EBD1AEA");
 
-    private struct MonitorState {
+    internal struct MonitorState {
         /// <summary>Current width of the monitor.</summary>
         public int Width;
 
@@ -77,14 +78,21 @@ public sealed class MonitorWatcher : IDisposable {
             throw new PlatformNotSupportedException("MonitorWatcher is supported only on Windows.");
         }
 
-        _state = GetCurrentStates();
+        StateProvider = GetCurrentStates;
+        _state = StateProvider();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         _powerWindow = new PowerBroadcastWindow(this);
         _deviceWindow = new DeviceChangeWindow(this);
     }
 
     private void OnDisplaySettingsChanged(object sender, EventArgs e) {
-        var current = GetCurrentStates();
+        Dictionary<string, MonitorState> current;
+        try {
+            current = StateProvider();
+        } catch (Exception ex) {
+            Console.WriteLine($"GetCurrentStates failed: {ex.Message}");
+            return;
+        }
         bool orientationChanged = false;
         bool resolutionChanged = false;
 
