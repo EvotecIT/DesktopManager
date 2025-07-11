@@ -69,7 +69,7 @@ public partial class WindowManager {
 
                             // Get window state using the IntPtr wrapper to work on x86 and x64
                             IntPtr stylePtr = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE);
-                            int style = unchecked((int)(long)stylePtr);
+                            long style = stylePtr.ToInt64();
                             if ((style & MonitorNativeMethods.WS_MINIMIZE) != 0) {
                                 windowInfo.State = WindowState.Minimize;
                             } else if ((style & MonitorNativeMethods.WS_MAXIMIZE) != 0) {
@@ -115,7 +115,7 @@ public partial class WindowManager {
             if (MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out rect)) {
                 // Re-evaluate the current state directly from the window to avoid stale data
                 IntPtr stylePtr = MonitorNativeMethods.GetWindowLongPtr(windowInfo.Handle, MonitorNativeMethods.GWL_STYLE);
-                int style = unchecked((int)(long)stylePtr);
+                long style = stylePtr.ToInt64();
                 var state = WindowState.Normal;
                 if ((style & MonitorNativeMethods.WS_MINIMIZE) != 0) {
                     state = WindowState.Minimize;
