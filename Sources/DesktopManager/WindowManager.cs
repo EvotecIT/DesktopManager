@@ -126,7 +126,6 @@ public partial class WindowManager {
                         windows.Add(windowInfo);
                     }
                 }
-            }
 
             return windows;
         }
