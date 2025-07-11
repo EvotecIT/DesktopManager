@@ -443,4 +443,25 @@ public static partial class MonitorNativeMethods
         /// <summary>Additional information associated with the keystroke.</summary>
         public IntPtr ExtraInfo;
     }
+
+    /// <summary>
+    /// Delegate for WinEvent callbacks.
+    /// </summary>
+    public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+        int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+    /// <summary>Hook flag to receive events out of context.</summary>
+    public const uint WINEVENT_OUTOFCONTEXT = 0;
+
+    /// <summary>Event fired when a window move/size operation ends.</summary>
+    public const uint EVENT_SYSTEM_MOVESIZEEND = 0x000B;
+
+    /// <summary>Installs an event hook.</summary>
+    [DllImport("user32.dll")]
+    public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
+        WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    /// <summary>Removes an event hook.</summary>
+    [DllImport("user32.dll")]
+    public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 }

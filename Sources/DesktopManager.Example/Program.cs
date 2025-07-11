@@ -75,6 +75,9 @@ namespace DesktopManager.Example {
             // Demonstrate window management features
             WindowExamples.Run();
 
+            // Demonstrate automatic window snapping
+            WindowSnapExample.Run();
+
             // Demonstrate window keep-alive features
             WindowKeepAliveExample.Run();
 
