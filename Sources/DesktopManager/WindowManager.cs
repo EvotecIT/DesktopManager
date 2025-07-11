@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace DesktopManager;
 
@@ -26,8 +27,11 @@ public partial class WindowManager {
         /// Gets all visible windows.
         /// </summary>
         /// <param name="name">Optional window title filter. Supports wildcards.</param>
+        /// <param name="processName">Optional process name filter. Supports wildcards.</param>
+        /// <param name="className">Optional window class name filter. Supports wildcards.</param>
+        /// <param name="regex">Optional regular expression to match the window title.</param>
         /// <returns>A list of WindowInfo objects.</returns>
-        public List<WindowInfo> GetWindows(string name = "*") {
+        public List<WindowInfo> GetWindows(string name = "*", string processName = "*", string className = "*", Regex regex = null) {
             var handles = new List<IntPtr>();
             var shellWindowhWnd = MonitorNativeMethods.GetShellWindow();
 
@@ -49,15 +53,38 @@ public partial class WindowManager {
                     MonitorNativeMethods.GetWindowText(handle, titleBuilder, titleLength + 1);
                     var title = titleBuilder.ToString();
 
-                    if (MatchesWildcard(title, name)) {
-                        uint processId = 0;
-                        MonitorNativeMethods.GetWindowThreadProcessId(handle, out processId);
+                    bool titleMatches = regex != null ? regex.IsMatch(title) : MatchesWildcard(title, name);
+                    if (!titleMatches) {
+                        continue;
+                    }
 
-                        var windowInfo = new WindowInfo {
-                            Title = title,
-                            Handle = handle,
-                            ProcessId = processId
-                        };
+                    uint processId = 0;
+                    MonitorNativeMethods.GetWindowThreadProcessId(handle, out processId);
+
+                    if (!string.IsNullOrEmpty(processName) && processName != "*") {
+                        try {
+                            var process = Process.GetProcessById((int)processId);
+                            if (!MatchesWildcard(process.ProcessName, processName)) {
+                                continue;
+                            }
+                        } catch {
+                            continue;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(className) && className != "*") {
+                        var classBuilder = new StringBuilder(256);
+                        MonitorNativeMethods.GetClassName(handle, classBuilder, classBuilder.Capacity);
+                        if (!MatchesWildcard(classBuilder.ToString(), className)) {
+                            continue;
+                        }
+                    }
+
+                    var windowInfo = new WindowInfo {
+                        Title = title,
+                        Handle = handle,
+                        ProcessId = processId
+                    };
 
                         // Get window position and state
                         RECT rect = new RECT();
@@ -100,7 +127,6 @@ public partial class WindowManager {
                         windows.Add(windowInfo);
                     }
                 }
-            }
 
             return windows;
         }
