@@ -1,4 +1,5 @@
 ﻿using System.Management.Automation;
+using System.Text.RegularExpressions;
 
 namespace DesktopManager.PowerShell {
     /// <summary>Gets information about desktop windows.</summary>
@@ -21,11 +22,29 @@ namespace DesktopManager.PowerShell {
         public string Name { get; set; } = "*";
 
         /// <summary>
+        /// <para type="description">Filter windows by process name. Supports wildcards.</para>
+        /// </summary>
+        [Parameter]
+        public string ProcessName { get; set; } = "*";
+
+        /// <summary>
+        /// <para type="description">Filter windows by window class name. Supports wildcards.</para>
+        /// </summary>
+        [Parameter]
+        public string ClassName { get; set; } = "*";
+
+        /// <summary>
+        /// <para type="description">Filter window titles using a regular expression.</para>
+        /// </summary>
+        [Parameter]
+        public Regex Regex { get; set; }
+
+        /// <summary>
         /// Retrieves and outputs matching windows.
         /// </summary>
         protected override void BeginProcessing() {
             var manager = new WindowManager();
-            var windows = manager.GetWindows(Name);
+            var windows = manager.GetWindows(Name, ProcessName, ClassName, Regex);
             WriteObject(windows, true);
         }
     }
