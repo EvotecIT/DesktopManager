@@ -50,4 +50,20 @@ public class ErrorHandlingTests {
 
         Assert.ThrowsException<InvalidOperationException>(() => service.StartWallpaperSlideshow(new[] { invalidPath }));
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for SetSystemWallpaper_ThrowsOnNullOrEmpty.
+    /// </summary>
+    public void SetSystemWallpaper_ThrowsOnNullOrEmpty() {
+        var service = new MonitorService(new FakeDesktopManager());
+        var method = typeof(MonitorService).GetMethod("SetSystemWallpaper", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.IsNotNull(method);
+
+        var ex1 = Assert.ThrowsException<TargetInvocationException>(() => method!.Invoke(service, new object?[] { null }));
+        Assert.IsInstanceOfType(ex1.InnerException, typeof(ArgumentNullException));
+
+        var ex2 = Assert.ThrowsException<TargetInvocationException>(() => method!.Invoke(service, new object?[] { string.Empty }));
+        Assert.IsInstanceOfType(ex2.InnerException, typeof(ArgumentNullException));
+    }
 }
