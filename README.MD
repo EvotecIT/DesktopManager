@@ -74,6 +74,13 @@ It has following features:
 | Set-DesktopPosition | Configure monitor coordinates |
 | Set-DesktopResolution | Change monitor resolution or orientation |
 | Set-DesktopDpiScaling | Adjust DPI scaling percentage |
+| Set-DefaultAudioDevice | Set the default audio playback device |
+| Get-LogonWallpaper | Get the lock screen wallpaper path |
+| Set-LogonWallpaper | Set the lock screen wallpaper |
+| Set-TaskbarPosition | Move or hide the taskbar |
+| Invoke-DesktopMouseMove | Move the mouse cursor |
+| Invoke-DesktopMouseClick | Simulate a mouse click |
+| Invoke-DesktopMouseScroll | Scroll the mouse wheel |
 | Invoke-DesktopScreenshot | Capture monitor or region screenshots |
 | Get-DesktopWindow | Enumerate visible windows |
 | Set-DesktopWindow | Move, resize or control windows |
@@ -109,6 +116,13 @@ The table below shows the most relevant API methods behind each PowerShell cmdle
 | Set-DesktopPosition | `Monitor.SetMonitorPosition` or `Monitors.SetMonitorPosition` |
 | Set-DesktopResolution | `Monitors.SetMonitorResolution`, `Monitors.SetMonitorOrientation` |
 | Set-DesktopDpiScaling | `Monitors.SetMonitorDpiScaling` |
+| Set-DefaultAudioDevice | `AudioService.SetDefaultAudioDevice` |
+| Get-LogonWallpaper | `Monitors.GetLogonWallpaper` |
+| Set-LogonWallpaper | `Monitors.SetLogonWallpaper` |
+| Set-TaskbarPosition | `TaskbarService.SetTaskbarPosition` / `SetTaskbarVisibility` |
+| Invoke-DesktopMouseMove | `WindowManager.MoveMouse` |
+| Invoke-DesktopMouseClick | `WindowManager.ClickMouse` |
+| Invoke-DesktopMouseScroll | `WindowManager.ScrollMouse` |
 | Invoke-DesktopScreenshot | `ScreenshotService.CaptureScreen`, `ScreenshotService.CaptureRegion` |
 | Get-DesktopWindow | `WindowManager.GetWindows` |
 | Set-DesktopWindow | `WindowManager.SetWindowPosition`, `MoveWindowToMonitor`, etc. |
