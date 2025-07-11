@@ -207,5 +207,105 @@ public enum VirtualKey : ushort {
     /// <summary>F23 key.</summary>
     VK_F23 = 0x86,
     /// <summary>F24 key.</summary>
-    VK_F24 = 0x87
+    VK_F24 = 0x87,
+    /// <summary>Num Lock key.</summary>
+    VK_NUMLOCK = 0x90,
+    /// <summary>Scroll Lock key.</summary>
+    VK_SCROLL = 0x91,
+    /// <summary>Left Shift key.</summary>
+    VK_LSHIFT = 0xA0,
+    /// <summary>Right Shift key.</summary>
+    VK_RSHIFT = 0xA1,
+    /// <summary>Left Control key.</summary>
+    VK_LCONTROL = 0xA2,
+    /// <summary>Right Control key.</summary>
+    VK_RCONTROL = 0xA3,
+    /// <summary>Left Alt key.</summary>
+    VK_LMENU = 0xA4,
+    /// <summary>Right Alt key.</summary>
+    VK_RMENU = 0xA5,
+    /// <summary>Browser Back key.</summary>
+    VK_BROWSER_BACK = 0xA6,
+    /// <summary>Browser Forward key.</summary>
+    VK_BROWSER_FORWARD = 0xA7,
+    /// <summary>Browser Refresh key.</summary>
+    VK_BROWSER_REFRESH = 0xA8,
+    /// <summary>Browser Stop key.</summary>
+    VK_BROWSER_STOP = 0xA9,
+    /// <summary>Browser Search key.</summary>
+    VK_BROWSER_SEARCH = 0xAA,
+    /// <summary>Browser Favorites key.</summary>
+    VK_BROWSER_FAVORITES = 0xAB,
+    /// <summary>Browser Home key.</summary>
+    VK_BROWSER_HOME = 0xAC,
+    /// <summary>Volume Mute key.</summary>
+    VK_VOLUME_MUTE = 0xAD,
+    /// <summary>Volume Down key.</summary>
+    VK_VOLUME_DOWN = 0xAE,
+    /// <summary>Volume Up key.</summary>
+    VK_VOLUME_UP = 0xAF,
+    /// <summary>Next Track key.</summary>
+    VK_MEDIA_NEXT_TRACK = 0xB0,
+    /// <summary>Previous Track key.</summary>
+    VK_MEDIA_PREV_TRACK = 0xB1,
+    /// <summary>Stop Media key.</summary>
+    VK_MEDIA_STOP = 0xB2,
+    /// <summary>Play/Pause Media key.</summary>
+    VK_MEDIA_PLAY_PAUSE = 0xB3,
+    /// <summary>Launch Mail key.</summary>
+    VK_LAUNCH_MAIL = 0xB4,
+    /// <summary>Launch Media Select key.</summary>
+    VK_LAUNCH_MEDIA_SELECT = 0xB5,
+    /// <summary>Launch App1 key.</summary>
+    VK_LAUNCH_APP1 = 0xB6,
+    /// <summary>Launch App2 key.</summary>
+    VK_LAUNCH_APP2 = 0xB7,
+    /// <summary>OEM 1 key.</summary>
+    VK_OEM_1 = 0xBA,
+    /// <summary>OEM Plus key.</summary>
+    VK_OEM_PLUS = 0xBB,
+    /// <summary>OEM Comma key.</summary>
+    VK_OEM_COMMA = 0xBC,
+    /// <summary>OEM Minus key.</summary>
+    VK_OEM_MINUS = 0xBD,
+    /// <summary>OEM Period key.</summary>
+    VK_OEM_PERIOD = 0xBE,
+    /// <summary>OEM 2 key.</summary>
+    VK_OEM_2 = 0xBF,
+    /// <summary>OEM 3 key.</summary>
+    VK_OEM_3 = 0xC0,
+    /// <summary>OEM 4 key.</summary>
+    VK_OEM_4 = 0xDB,
+    /// <summary>OEM 5 key.</summary>
+    VK_OEM_5 = 0xDC,
+    /// <summary>OEM 6 key.</summary>
+    VK_OEM_6 = 0xDD,
+    /// <summary>OEM 7 key.</summary>
+    VK_OEM_7 = 0xDE,
+    /// <summary>OEM 8 key.</summary>
+    VK_OEM_8 = 0xDF,
+    /// <summary>OEM 102 key.</summary>
+    VK_OEM_102 = 0xE2,
+    /// <summary>Process key.</summary>
+    VK_PROCESSKEY = 0xE5,
+    /// <summary>Packet key.</summary>
+    VK_PACKET = 0xE7,
+    /// <summary>Attention key.</summary>
+    VK_ATTN = 0xF6,
+    /// <summary>CrSel key.</summary>
+    VK_CRSEL = 0xF7,
+    /// <summary>ExSel key.</summary>
+    VK_EXSEL = 0xF8,
+    /// <summary>Erase EOF key.</summary>
+    VK_EREOF = 0xF9,
+    /// <summary>Play key.</summary>
+    VK_PLAY = 0xFA,
+    /// <summary>Zoom key.</summary>
+    VK_ZOOM = 0xFB,
+    /// <summary>NoName key.</summary>
+    VK_NONAME = 0xFC,
+    /// <summary>PA1 key.</summary>
+    VK_PA1 = 0xFD,
+    /// <summary>Clear key.</summary>
+    VK_OEM_CLEAR = 0xFE
 }

@@ -16,7 +16,7 @@ public class KeyboardInputServiceTests {
             Assert.Inconclusive("Test requires Windows");
         }
 
-        KeyboardInputService.PressKey(VirtualKey.VK_ESCAPE);
+        KeyboardInputService.PressKey(VirtualKey.VK_F24);
     }
 
     [TestMethod]
@@ -28,6 +28,6 @@ public class KeyboardInputServiceTests {
             Assert.Inconclusive("Test requires Windows");
         }
 
-        KeyboardInputService.PressShortcut(VirtualKey.VK_CONTROL, VirtualKey.VK_C);
+        KeyboardInputService.PressShortcut(VirtualKey.VK_F23, VirtualKey.VK_F24);
     }
 }
