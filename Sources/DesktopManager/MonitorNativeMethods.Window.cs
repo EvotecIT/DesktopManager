@@ -332,9 +332,49 @@ public static partial class MonitorNativeMethods
     public const uint GMEM_MOVEABLE = 0x0002;
 
     /// <summary>
+    /// Input type constant indicating mouse input.
+    /// </summary>
+    public const uint INPUT_MOUSE = 0;
+
+    /// <summary>
     /// Input type constant indicating keyboard input.
     /// </summary>
     public const uint INPUT_KEYBOARD = 1;
+
+    /// <summary>
+    /// Mouse event flag for movement.
+    /// </summary>
+    public const uint MOUSEEVENTF_MOVE = 0x0001;
+
+    /// <summary>
+    /// Mouse event flag for left button press.
+    /// </summary>
+    public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+
+    /// <summary>
+    /// Mouse event flag for left button release.
+    /// </summary>
+    public const uint MOUSEEVENTF_LEFTUP = 0x0004;
+
+    /// <summary>
+    /// Mouse event flag for right button press.
+    /// </summary>
+    public const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+
+    /// <summary>
+    /// Mouse event flag for right button release.
+    /// </summary>
+    public const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+
+    /// <summary>
+    /// Mouse event flag for vertical scrolling.
+    /// </summary>
+    public const uint MOUSEEVENTF_WHEEL = 0x0800;
+
+    /// <summary>
+    /// Mouse event flag indicating absolute coordinates.
+    /// </summary>
+    public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
 
     /// <summary>
     /// Key event flag indicating key release.
@@ -364,6 +404,27 @@ public static partial class MonitorNativeMethods
     public struct InputUnion {
         /// <summary>Keyboard input data.</summary>
         [FieldOffset(0)] public KEYBDINPUT Keyboard;
+        /// <summary>Mouse input data.</summary>
+        [FieldOffset(0)] public MOUSEINPUT Mouse;
+    }
+
+    /// <summary>
+    /// Defines mouse input for <see cref="SendInput"/>.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT {
+        /// <summary>Absolute or relative X coordinate.</summary>
+        public int Dx;
+        /// <summary>Absolute or relative Y coordinate.</summary>
+        public int Dy;
+        /// <summary>Mouse-specific data such as wheel movement.</summary>
+        public uint MouseData;
+        /// <summary>Flags specifying various aspects of mouse event.</summary>
+        public uint DwFlags;
+        /// <summary>Event timestamp.</summary>
+        public uint Time;
+        /// <summary>Additional information associated with the mouse event.</summary>
+        public IntPtr ExtraInfo;
     }
 
     /// <summary>
