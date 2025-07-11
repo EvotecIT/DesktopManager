@@ -21,6 +21,9 @@ public class ComInitializationTests {
     /// Ensure SetLogonWallpaper initializes and uninitializes COM.
     /// </summary>
     public void SetLogonWallpaper_InitializesCom() {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
         var service = new ComTrackingService();
         try { service.SetLogonWallpaper("path"); } catch { }
         Assert.IsTrue(service.InitCalled);
@@ -32,6 +35,9 @@ public class ComInitializationTests {
     /// Ensure GetLogonWallpaper initializes and uninitializes COM.
     /// </summary>
     public void GetLogonWallpaper_InitializesCom() {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
         var service = new ComTrackingService();
         try { _ = service.GetLogonWallpaper(); } catch { }
         Assert.IsTrue(service.InitCalled);
