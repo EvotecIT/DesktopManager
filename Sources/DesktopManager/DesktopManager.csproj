@@ -52,6 +52,8 @@
 
   <ItemGroup>
       <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
+      <Compile Update="KeyboardInputService.cs" />
+      <Compile Update="VirtualKey.cs" />
   </ItemGroup>
 
     <ItemGroup>
