@@ -102,7 +102,15 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="path">Path to the wallpaper image.</param>
     private void SetSystemWallpaper(string path) {
-        MonitorNativeMethods.SystemParametersInfo(MonitorNativeMethods.SPI_SETDESKWALLPAPER, 0, path, MonitorNativeMethods.SPIF_UPDATEINIFILE | MonitorNativeMethods.SPIF_SENDWININICHANGE);
+        if (string.IsNullOrEmpty(path)) {
+            throw new ArgumentNullException(nameof(path));
+        }
+
+        MonitorNativeMethods.SystemParametersInfo(
+            MonitorNativeMethods.SPI_SETDESKWALLPAPER,
+            0,
+            path,
+            MonitorNativeMethods.SPIF_UPDATEINIFILE | MonitorNativeMethods.SPIF_SENDWININICHANGE);
     }
 
     /// <summary>
