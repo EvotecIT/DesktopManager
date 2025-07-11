@@ -19,6 +19,7 @@ public partial class WindowManager {
         /// </summary>
         public WindowManager() {
             _monitors = new Monitors();
+            SnapOptions = new WindowSnapOptions();
         }
 
         /// <summary>
