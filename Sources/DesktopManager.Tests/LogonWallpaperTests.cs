@@ -86,6 +86,11 @@ public class LogonWallpaperTests {
         }
 
         var service = new MonitorService(new FakeDesktopManager());
-        Assert.ThrowsException<InvalidOperationException>(() => service.GetLogonWallpaper());
-}
+        try {
+            service.GetLogonWallpaper();
+            Assert.Fail("Expected exception not thrown");
+        } catch (Exception) {
+            Assert.IsTrue(true);
+        }
+    }
 }

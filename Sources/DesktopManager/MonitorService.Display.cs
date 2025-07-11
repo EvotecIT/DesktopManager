@@ -12,6 +12,7 @@ namespace DesktopManager;
 /// Provides methods for managing display-related monitor settings.
 /// </summary>
 public partial class MonitorService {
+    private readonly List<PHYSICAL_MONITOR> _monitorHandles = new();
     /// <summary>
     /// Gets the desktop background color.
     /// </summary>
@@ -116,25 +117,6 @@ public partial class MonitorService {
         return string.Empty;
     }
 
-    private static string WriteStreamToTempFile(Stream stream) {
-        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        try {
-            using FileStream fs = File.Create(path);
-            stream.CopyTo(fs);
-            return path;
-        } catch {
-            DeleteTempFile(path);
-            throw;
-        }
-    }
-
-    private static void DeleteTempFile(string path) {
-        try {
-            File.Delete(path);
-        } catch (Exception ex) {
-            Console.WriteLine($"DeleteTempFile failed: {ex.Message}");
-        }
-    }
 
     private DesktopWallpaperPosition GetWallpaperPositionFallback() {
         try {
@@ -417,8 +399,13 @@ public partial class MonitorService {
         }
         PHYSICAL_MONITOR[] monitors = new PHYSICAL_MONITOR[count];
         if (!MonitorNativeMethods.GetPhysicalMonitorsFromHMONITOR(found, count, monitors)) {
+            uint released = (uint)monitors.Count(m => m.hPhysicalMonitor != IntPtr.Zero);
+            if (released > 0) {
+                MonitorNativeMethods.DestroyPhysicalMonitors(released, monitors);
+            }
             return Array.Empty<PHYSICAL_MONITOR>();
         }
+        _monitorHandles.AddRange(monitors);
         return monitors;
     }
 
@@ -441,6 +428,9 @@ public partial class MonitorService {
             if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
                 Console.WriteLine("DestroyPhysicalMonitors failed");
             }
+            foreach (var m in monitors) {
+                _monitorHandles.Remove(m);
+            }
         }
     }
 
@@ -461,6 +451,9 @@ public partial class MonitorService {
         } finally {
             if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
                 Console.WriteLine("DestroyPhysicalMonitors failed");
+            }
+            foreach (var m in monitors) {
+                _monitorHandles.Remove(m);
             }
         }
     }
