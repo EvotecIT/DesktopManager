@@ -42,4 +42,16 @@ public class MouseInputServiceTests {
 
         MouseInputService.Scroll(0);
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for MouseDrag_DoesNotThrow.
+    /// </summary>
+    public void MouseDrag_DoesNotThrow() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        MouseInputService.MouseDrag(MouseButton.Left, 0, 0, 1, 1, 0);
+    }
 }
