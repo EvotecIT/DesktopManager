@@ -16,5 +16,9 @@ internal static class KeyboardInputExample {
 
         Console.WriteLine("Pressing WIN+R to open Run dialog...");
         KeyboardInputService.PressShortcut(VirtualKey.VK_LWIN, VirtualKey.VK_R);
+
+        Console.WriteLine("Pressing and releasing F24 using KeyDown/KeyUp...");
+        KeyboardInputService.KeyDown(VirtualKey.VK_F24);
+        KeyboardInputService.KeyUp(VirtualKey.VK_F24);
     }
 }
