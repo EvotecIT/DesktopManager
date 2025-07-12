@@ -296,6 +296,16 @@ Set-DesktopWindow -Name '*Zadanie - Notepad' -State Maximize
 Set-DesktopWindowText -Name '*Notepad*' -Text 'Hello world'
 ```
 
+```powershell
+# Send Ctrl+S to Notepad
+$notepad = Get-DesktopWindow -Name '*Notepad*'
+Invoke-DesktopKeyPress -Window $notepad -Keys @(
+    [DesktopManager.VirtualKey]::VK_CONTROL,
+    [DesktopManager.VirtualKey]::VK_S
+)
+# See Examples/KeyboardActions.ps1
+```
+
 ### Example in PowerShell - Activating and Setting Window Top-Most
 
 ```powershell
