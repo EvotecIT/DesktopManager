@@ -107,6 +107,28 @@ public static partial class MonitorNativeMethods
     public static extern IntPtr GetForegroundWindow();
 
     /// <summary>
+    /// Sets the transparency attributes of a layered window.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="crKey">Transparency color key.</param>
+    /// <param name="bAlpha">Alpha value.</param>
+    /// <param name="dwFlags">Layered window attributes flags.</param>
+    /// <returns>True if successful.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetLayeredWindowAttributes(IntPtr hWnd, uint crKey, byte bAlpha, uint dwFlags);
+
+    /// <summary>
+    /// Retrieves the transparency attributes of a layered window.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="pcrKey">Transparency color key.</param>
+    /// <param name="pbAlpha">Alpha value.</param>
+    /// <param name="pdwFlags">Layered window attributes flags.</param>
+    /// <returns>True if successful.</returns>
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool GetLayeredWindowAttributes(IntPtr hWnd, out uint pcrKey, out byte pbAlpha, out uint pdwFlags);
+
+    /// <summary>
     /// Sends a message to a window.
     /// </summary>
     /// <param name="hWnd">The window handle.</param>
@@ -257,6 +279,16 @@ public static partial class MonitorNativeMethods
     /// Extended window style that marks a window as topmost.
     /// </summary>
     public const int WS_EX_TOPMOST = 0x00000008;
+
+    /// <summary>
+    /// Extended window style enabling layered window attributes.
+    /// </summary>
+    public const int WS_EX_LAYERED = 0x00080000;
+
+    /// <summary>
+    /// Layered window attribute flag for alpha values.
+    /// </summary>
+    public const uint LWA_ALPHA = 0x00000002;
 
     /// <summary>
     /// Handle used with <see cref="SetWindowPos"/> to place a window above all non-topmost windows.

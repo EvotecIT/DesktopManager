@@ -228,4 +228,21 @@ public partial class WindowManager
                 throw new InvalidOperationException("Failed to activate window");
             }
         }
+
+        /// <summary>
+        /// Sets the transparency level of a window.
+        /// </summary>
+        /// <param name="windowInfo">The window information.</param>
+        /// <param name="alpha">Transparency alpha from 0 (transparent) to 255 (opaque).</param>
+        public void SetWindowTransparency(WindowInfo windowInfo, byte alpha) {
+            IntPtr stylePtr = MonitorNativeMethods.GetWindowLongPtr(windowInfo.Handle, MonitorNativeMethods.GWL_EXSTYLE);
+            int style = stylePtr.ToInt32();
+            if ((style & MonitorNativeMethods.WS_EX_LAYERED) == 0) {
+                MonitorNativeMethods.SetWindowLongPtr(windowInfo.Handle, MonitorNativeMethods.GWL_EXSTYLE, new IntPtr(style | MonitorNativeMethods.WS_EX_LAYERED));
+            }
+
+            if (!MonitorNativeMethods.SetLayeredWindowAttributes(windowInfo.Handle, 0, alpha, MonitorNativeMethods.LWA_ALPHA)) {
+                throw new InvalidOperationException("Failed to set window transparency");
+            }
+        }
 }
