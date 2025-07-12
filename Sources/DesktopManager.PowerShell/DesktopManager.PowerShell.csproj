@@ -18,6 +18,7 @@
 
   <ItemGroup>
       <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
+      <Compile Update="CmdletInvokeDesktopKeyPress.cs" />
   </ItemGroup>
 
     <PropertyGroup>
