@@ -57,6 +57,10 @@ Describe 'DesktopManager basic tests' {
         Get-Command Set-DesktopWindowText | Should -Not -BeNullOrEmpty
     }
 
+    It 'Exports Set-DesktopWindowTransparency' {
+        Get-Command Set-DesktopWindowTransparency | Should -Not -BeNullOrEmpty
+    }
+
     It 'Exports Set-LogonWallpaper' {
         Get-Command Set-LogonWallpaper | Should -Not -BeNullOrEmpty
     }
