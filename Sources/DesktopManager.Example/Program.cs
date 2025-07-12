@@ -84,6 +84,9 @@ namespace DesktopManager.Example {
             // Demonstrate keyboard input features
             KeyboardInputExample.Run();
 
+            // Demonstrate mouse input features
+            MouseInputExample.Run();
+
             // Run monitor watcher example for 30 seconds
             MonitorWatcherExample.RunAsync(TimeSpan.FromSeconds(30)).Wait();
           

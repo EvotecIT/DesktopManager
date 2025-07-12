@@ -83,4 +83,52 @@ public static class MouseInputService {
         };
         MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
     }
+
+    /// <summary>
+    /// Drags the mouse from a start position to an end position.
+    /// </summary>
+    /// <param name="button">Button to hold during the drag.</param>
+    /// <param name="startX">Starting X coordinate.</param>
+    /// <param name="startY">Starting Y coordinate.</param>
+    /// <param name="endX">Ending X coordinate.</param>
+    /// <param name="endY">Ending Y coordinate.</param>
+    /// <param name="stepDelay">Delay in milliseconds between steps.</param>
+    public static void MouseDrag(MouseButton button, int startX, int startY, int endX, int endY, int stepDelay) {
+        uint down = button == MouseButton.Left ? MonitorNativeMethods.MOUSEEVENTF_LEFTDOWN : MonitorNativeMethods.MOUSEEVENTF_RIGHTDOWN;
+        uint up = button == MouseButton.Left ? MonitorNativeMethods.MOUSEEVENTF_LEFTUP : MonitorNativeMethods.MOUSEEVENTF_RIGHTUP;
+
+        MoveCursor(startX, startY);
+
+        MonitorNativeMethods.INPUT[] input = new MonitorNativeMethods.INPUT[1];
+        input[0].Type = MonitorNativeMethods.INPUT_MOUSE;
+        input[0].Data.Mouse = new MonitorNativeMethods.MOUSEINPUT {
+            Dx = 0,
+            Dy = 0,
+            MouseData = 0,
+            DwFlags = down,
+            Time = 0,
+            ExtraInfo = IntPtr.Zero
+        };
+        MonitorNativeMethods.SendInput(1, input, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+
+        const int steps = 20;
+        for (int i = 1; i <= steps; i++) {
+            int x = startX + (endX - startX) * i / steps;
+            int y = startY + (endY - startY) * i / steps;
+            MoveCursor(x, y);
+            if (stepDelay > 0) {
+                System.Threading.Thread.Sleep(stepDelay);
+            }
+        }
+
+        input[0].Data.Mouse = new MonitorNativeMethods.MOUSEINPUT {
+            Dx = 0,
+            Dy = 0,
+            MouseData = 0,
+            DwFlags = up,
+            Time = 0,
+            ExtraInfo = IntPtr.Zero
+        };
+        MonitorNativeMethods.SendInput(1, input, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+    }
 }
