@@ -48,6 +48,9 @@ Describe 'DesktopManager basic tests' {
     It 'Exports Get-DesktopWindowKeepAlive' {
         Get-Command Get-DesktopWindowKeepAlive | Should -Not -BeNullOrEmpty
     }
+    It 'Exports Wait-DesktopWindow' {
+        Get-Command Wait-DesktopWindow | Should -Not -BeNullOrEmpty
+    }
     It 'Exports Set-DefaultAudioDevice' {
         Get-Command Set-DefaultAudioDevice | Should -Not -BeNullOrEmpty
     }
