@@ -7,7 +7,7 @@ namespace DesktopManager.PowerShell;
 /// <para type="synopsis">Simulates pressing keyboard keys or key combinations.</para>
 /// <para type="description">When a window is provided it is brought to the foreground prior to sending the key presses.</para>
 /// <example>
-///   <code>Invoke-DesktopKeyPress -Keys @([VirtualKey]::VK_LWIN, [VirtualKey]::VK_R)</code>
+///   <code>Invoke-DesktopKeyPress -Keys @([DesktopManager.VirtualKey]::VK_LWIN, [DesktopManager.VirtualKey]::VK_R)</code>
 /// </example>
 [Cmdlet(VerbsLifecycle.Invoke, "DesktopKeyPress", SupportsShouldProcess = true)]
 [SupportedOSPlatform("windows")]
