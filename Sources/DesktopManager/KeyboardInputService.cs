@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Threading;
 
 namespace DesktopManager;
 
@@ -55,38 +56,25 @@ public static class KeyboardInputService {
     /// <summary>
     /// Presses a shortcut combination of keys.
     /// </summary>
+    /// <param name="delay">Delay in milliseconds between each key event.</param>
     /// <param name="keys">Keys to press in order.</param>
-    public static void PressShortcut(params VirtualKey[] keys) {
+    public static void PressShortcut(int delay, params VirtualKey[] keys) {
         if (keys == null || keys.Length == 0) {
             throw new ArgumentException("No keys specified", nameof(keys));
         }
 
-        MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[keys.Length * 2];
-        int index = 0;
         foreach (VirtualKey key in keys) {
-            inputs[index].Type = MonitorNativeMethods.INPUT_KEYBOARD;
-            inputs[index].Data.Keyboard = new MonitorNativeMethods.KEYBDINPUT {
-                Vk = (ushort)key,
-                Scan = 0,
-                Flags = 0,
-                Time = 0,
-                ExtraInfo = IntPtr.Zero
-            };
-            index++;
+            KeyDown(key);
+            if (delay > 0) {
+                Thread.Sleep(delay);
+            }
         }
 
         for (int i = keys.Length - 1; i >= 0; i--) {
-            inputs[index].Type = MonitorNativeMethods.INPUT_KEYBOARD;
-            inputs[index].Data.Keyboard = new MonitorNativeMethods.KEYBDINPUT {
-                Vk = (ushort)keys[i],
-                Scan = 0,
-                Flags = MonitorNativeMethods.KEYEVENTF_KEYUP,
-                Time = 0,
-                ExtraInfo = IntPtr.Zero
-            };
-            index++;
+            KeyUp(keys[i]);
+            if (delay > 0) {
+                Thread.Sleep(delay);
+            }
         }
-
-        MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
     }
 }

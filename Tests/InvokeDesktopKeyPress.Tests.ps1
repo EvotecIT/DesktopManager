@@ -10,4 +10,8 @@ describe 'Invoke-DesktopKeyPress' {
     it 'supports KeyUp mode' -Skip:(-not $IsWindows) {
         { Invoke-DesktopKeyPress -Keys @([DesktopManager.VirtualKey]::VK_F24) -KeyUp -WhatIf } | Should -Not -Throw
     }
+
+    it 'accepts Delay parameter' -Skip:(-not $IsWindows) {
+        { Invoke-DesktopKeyPress -Keys @([DesktopManager.VirtualKey]::VK_F24) -Delay 50 -WhatIf } | Should -Not -Throw
+    }
 }

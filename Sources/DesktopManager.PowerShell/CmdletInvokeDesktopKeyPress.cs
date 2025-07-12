@@ -7,7 +7,7 @@ namespace DesktopManager.PowerShell;
 /// <para type="synopsis">Simulates pressing keyboard keys or key combinations.</para>
 /// <para type="description">When a window is provided it is brought to the foreground prior to sending the key presses.</para>
 /// <example>
-///   <code>Invoke-DesktopKeyPress -Keys @([DesktopManager.VirtualKey]::VK_LWIN, [DesktopManager.VirtualKey]::VK_R)</code>
+///   <code>Invoke-DesktopKeyPress -Keys @([DesktopManager.VirtualKey]::VK_LWIN, [DesktopManager.VirtualKey]::VK_R) -Delay 100</code>
 /// </example>
 [Cmdlet(VerbsLifecycle.Invoke, "DesktopKeyPress", SupportsShouldProcess = true)]
 [SupportedOSPlatform("windows")]
@@ -17,6 +17,12 @@ public sealed class CmdletInvokeDesktopKeyPress : PSCmdlet {
     /// </summary>
     [Parameter(Mandatory = true, Position = 0)]
     public VirtualKey[] Keys { get; set; } = Array.Empty<VirtualKey>();
+
+    /// <summary>
+    /// <para type="description">Delay in milliseconds between each key event.</para>
+    /// </summary>
+    [Parameter(Mandatory = false)]
+    public int Delay { get; set; }
 
     /// <summary>
     /// <para type="description">Send key down event only.</para>
@@ -54,7 +60,7 @@ public sealed class CmdletInvokeDesktopKeyPress : PSCmdlet {
                     KeyboardInputService.KeyUp(key);
                 }
             } else {
-                KeyboardInputService.PressShortcut(Keys);
+                KeyboardInputService.PressShortcut(Delay, Keys);
             }
         }
     }
