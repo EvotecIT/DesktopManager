@@ -10,28 +10,46 @@ namespace DesktopManager;
 [SupportedOSPlatform("windows")]
 public static class KeyboardInputService {
     /// <summary>
-    /// Presses a single key using SendInput.
+    /// Presses a single key by sending a down and up event.
     /// </summary>
     /// <param name="key">Key to press.</param>
     public static void PressKey(VirtualKey key) {
-        MonitorNativeMethods.INPUT[] inputs = new MonitorNativeMethods.INPUT[2];
-        inputs[0].Type = MonitorNativeMethods.INPUT_KEYBOARD;
-        inputs[0].Data.Keyboard = new MonitorNativeMethods.KEYBDINPUT {
+        KeyDown(key);
+        KeyUp(key);
+    }
+
+    /// <summary>
+    /// Sends a key down event for the specified key.
+    /// </summary>
+    /// <param name="key">Key to press down.</param>
+    public static void KeyDown(VirtualKey key) {
+        MonitorNativeMethods.INPUT input = new();
+        input.Type = MonitorNativeMethods.INPUT_KEYBOARD;
+        input.Data.Keyboard = new MonitorNativeMethods.KEYBDINPUT {
             Vk = (ushort)key,
             Scan = 0,
             Flags = 0,
             Time = 0,
             ExtraInfo = IntPtr.Zero
         };
-        inputs[1].Type = MonitorNativeMethods.INPUT_KEYBOARD;
-        inputs[1].Data.Keyboard = new MonitorNativeMethods.KEYBDINPUT {
+        MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+    }
+
+    /// <summary>
+    /// Sends a key up event for the specified key.
+    /// </summary>
+    /// <param name="key">Key to release.</param>
+    public static void KeyUp(VirtualKey key) {
+        MonitorNativeMethods.INPUT input = new();
+        input.Type = MonitorNativeMethods.INPUT_KEYBOARD;
+        input.Data.Keyboard = new MonitorNativeMethods.KEYBDINPUT {
             Vk = (ushort)key,
             Scan = 0,
             Flags = MonitorNativeMethods.KEYEVENTF_KEYUP,
             Time = 0,
             ExtraInfo = IntPtr.Zero
         };
-        MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
     }
 
     /// <summary>

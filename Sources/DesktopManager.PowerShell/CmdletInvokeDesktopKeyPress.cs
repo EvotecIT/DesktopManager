@@ -19,6 +19,18 @@ public sealed class CmdletInvokeDesktopKeyPress : PSCmdlet {
     public VirtualKey[] Keys { get; set; } = Array.Empty<VirtualKey>();
 
     /// <summary>
+    /// <para type="description">Send key down event only.</para>
+    /// </summary>
+    [Parameter(Mandatory = false)]
+    public SwitchParameter KeyDown { get; set; }
+
+    /// <summary>
+    /// <para type="description">Send key up event only.</para>
+    /// </summary>
+    [Parameter(Mandatory = false)]
+    public SwitchParameter KeyUp { get; set; }
+
+    /// <summary>
     /// <para type="description">Optional target window to activate before pressing keys.</para>
     /// </summary>
     [Parameter(Mandatory = false)]
@@ -26,11 +38,24 @@ public sealed class CmdletInvokeDesktopKeyPress : PSCmdlet {
 
     /// <inheritdoc />
     protected override void BeginProcessing() {
-        if (ShouldProcess(Window != null ? Window.Title : "Desktop", "Press keys")) {
+        if (ShouldProcess(Window != null ? Window.Title : "Desktop", KeyDown.IsPresent ? "Key down" : KeyUp.IsPresent ? "Key up" : "Press keys")) {
             if (Window != null) {
                 MonitorNativeMethods.SetForegroundWindow(Window.Handle);
             }
-            KeyboardInputService.PressShortcut(Keys);
+            if (KeyDown.IsPresent && KeyUp.IsPresent) {
+                ThrowTerminatingError(new ErrorRecord(new ArgumentException("Specify only KeyDown or KeyUp."), "ParameterConflict", ErrorCategory.InvalidArgument, null));
+            }
+            if (KeyDown.IsPresent) {
+                foreach (var key in Keys) {
+                    KeyboardInputService.KeyDown(key);
+                }
+            } else if (KeyUp.IsPresent) {
+                foreach (var key in Keys) {
+                    KeyboardInputService.KeyUp(key);
+                }
+            } else {
+                KeyboardInputService.PressShortcut(Keys);
+            }
         }
     }
 }

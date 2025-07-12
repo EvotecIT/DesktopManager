@@ -30,4 +30,28 @@ public class KeyboardInputServiceTests {
 
         KeyboardInputService.PressShortcut(VirtualKey.VK_F23, VirtualKey.VK_F24);
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for KeyDown_DoesNotThrow.
+    /// </summary>
+    public void KeyDown_DoesNotThrow() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        KeyboardInputService.KeyDown(VirtualKey.VK_F24);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for KeyUp_DoesNotThrow.
+    /// </summary>
+    public void KeyUp_DoesNotThrow() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        KeyboardInputService.KeyUp(VirtualKey.VK_F24);
+    }
 }
