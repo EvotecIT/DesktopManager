@@ -475,6 +475,10 @@ public partial class MonitorService {
             throw new ArgumentNullException(nameof(wallpaperPaths));
         }
 
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            throw new PlatformNotSupportedException("Wallpaper slideshow is only supported on Windows.");
+        }
+
         List<string> valid = new();
         foreach (var path in wallpaperPaths) {
             if (string.IsNullOrEmpty(path)) {
@@ -536,6 +540,7 @@ public partial class MonitorService {
                 }
                 object obj = Marshal.GetObjectForIUnknown(item);
                 collection.AddObject(obj);
+                Marshal.ReleaseComObject(obj);
                 Marshal.Release(item);
             }
 
