@@ -64,6 +64,14 @@ Describe 'DesktopManager basic tests' {
         Get-Command Set-DesktopWindowText | Should -Not -BeNullOrEmpty
     }
 
+    It 'Exports Get-DesktopControlText' {
+        Get-Command Get-DesktopControlText | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Set-DesktopControlText' {
+        Get-Command Set-DesktopControlText | Should -Not -BeNullOrEmpty
+    }
+
     It 'Exports Set-DesktopWindowTransparency' {
         Get-Command Set-DesktopWindowTransparency | Should -Not -BeNullOrEmpty
     }

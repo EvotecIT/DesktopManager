@@ -140,6 +140,28 @@ public static partial class MonitorNativeMethods
     public static extern uint SendMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
 
     /// <summary>
+    /// Sends a message with a string buffer parameter.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="Msg">Message identifier.</param>
+    /// <param name="wParam">Additional parameter.</param>
+    /// <param name="lParam">String builder buffer.</param>
+    /// <returns>Result of message processing.</returns>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, StringBuilder lParam);
+
+    /// <summary>
+    /// Sends a message with a string parameter.
+    /// </summary>
+    /// <param name="hWnd">Window handle.</param>
+    /// <param name="Msg">Message identifier.</param>
+    /// <param name="wParam">Additional parameter.</param>
+    /// <param name="lParam">String parameter.</param>
+    /// <returns>Result of message processing.</returns>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
+
+    /// <summary>
     /// Sends simulated input events to the system.
     /// </summary>
     /// <param name="nInputs">The number of structures in the array.</param>
@@ -362,6 +384,21 @@ public static partial class MonitorNativeMethods
     /// Button message to programmatically click a control.
     /// </summary>
     public const uint BM_CLICK = 0x00F5;
+
+    /// <summary>
+    /// Message to retrieve text from a window or control.
+    /// </summary>
+    public const uint WM_GETTEXT = 0x000D;
+
+    /// <summary>
+    /// Message to query the length of the text associated with a window or control.
+    /// </summary>
+    public const uint WM_GETTEXTLENGTH = 0x000E;
+
+    /// <summary>
+    /// Message to set the text of a window or control.
+    /// </summary>
+    public const uint WM_SETTEXT = 0x000C;
 
     /// <summary>
     /// Memory allocation flag for movable memory.

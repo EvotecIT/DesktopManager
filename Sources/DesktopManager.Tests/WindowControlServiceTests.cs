@@ -40,4 +40,35 @@ public class WindowControlServiceTests {
             }
         }
     }
+
+    [TestMethod]
+    public void GetSetControlText_EditControl_RoundTrips() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var process = Process.Start("notepad.exe");
+        if (process == null) {
+            Assert.Inconclusive("Failed to start Notepad");
+        }
+
+        try {
+            var manager = new WindowManager();
+            var window = manager.WaitWindow("*Notepad*", 10000);
+            var enumerator = new ControlEnumerator();
+            var controls = enumerator.EnumerateControls(window.Handle);
+            var edit = controls.FirstOrDefault(c => c.ClassName == "Edit");
+            Assert.IsNotNull(edit, "Edit control not found");
+
+            const string sample = "Hello";
+            WindowControlService.SetControlText(edit, sample);
+            Thread.Sleep(200);
+            string read = WindowControlService.GetControlText(edit);
+            Assert.AreEqual(sample, read);
+        } finally {
+            if (process != null && !process.HasExited) {
+                process.Kill();
+            }
+        }
+    }
 }
