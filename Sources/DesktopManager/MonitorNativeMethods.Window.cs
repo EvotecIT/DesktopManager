@@ -140,6 +140,18 @@ public static partial class MonitorNativeMethods
     public static extern uint SendMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
 
     /// <summary>
+    /// Sends a message with a string parameter.
+    /// </summary>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, StringBuilder lParam);
+
+    /// <summary>
+    /// Sends a message with a string parameter.
+    /// </summary>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
+
+    /// <summary>
     /// Sends a message with a timeout.
     /// </summary>
     /// <param name="hWnd">Window handle.</param>
@@ -395,6 +407,11 @@ public static partial class MonitorNativeMethods
     /// Retrieves text from a window.
     /// </summary>
     public const uint WM_GETTEXT = 0x000D;
+
+    /// <summary>
+    /// Sets text of a window or control.
+    /// </summary>
+    public const uint WM_SETTEXT = 0x000C;
 
     /// <summary>
     /// Message used to paste data from the clipboard.
