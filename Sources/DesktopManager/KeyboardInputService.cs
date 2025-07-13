@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Collections.Generic;
 using System.Runtime.Versioning;
 using System.Threading;
 
@@ -83,15 +84,24 @@ public static class KeyboardInputService {
     /// </summary>
     /// <param name="control">Target control.</param>
     /// <param name="keys">Keys to send.</param>
-    public static void SendToControl(WindowControlInfo control, params VirtualKey[] keys) {
+    public static void SendToControl(WindowControlInfo control, VirtualKey[] keys) {
+        SendToControl(control, (IEnumerable<VirtualKey>)keys);
+    }
+
+    /// <summary>
+    /// Sends key presses directly to a background control.
+    /// </summary>
+    /// <param name="control">Target control.</param>
+    /// <param name="keys">Keys to send.</param>
+    public static void SendToControl(WindowControlInfo control, IEnumerable<VirtualKey> keys) {
         if (control == null) {
             throw new ArgumentNullException(nameof(control));
         }
         if (control.Handle == IntPtr.Zero) {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
-        if (keys == null || keys.Length == 0) {
-            throw new ArgumentException("No keys specified", nameof(keys));
+        if (keys == null) {
+            throw new ArgumentNullException(nameof(keys));
         }
 
         foreach (VirtualKey key in keys) {

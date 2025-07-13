@@ -29,7 +29,7 @@ public class KeyboardInputControlTests {
 
             var enumerator = new ControlEnumerator();
             var ctrl = enumerator.EnumerateControls(win1.Handle).First(c => c.ClassName == "Edit");
-            KeyboardInputService.SendToControl(ctrl, VirtualKey.VK_H, VirtualKey.VK_I);
+            KeyboardInputService.SendToControl(ctrl, new[] { VirtualKey.VK_H, VirtualKey.VK_I });
             Thread.Sleep(500);
 
             int len = MonitorNativeMethods.GetWindowTextLength(ctrl.Handle);
