@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.Versioning;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace DesktopManager;
@@ -18,6 +19,10 @@ public partial class MonitorService {
     /// <param name="imagePath">Path to the image file.</param>
     [SupportedOSPlatform("windows")]
     public void SetLogonWallpaper(string imagePath) {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            throw new PlatformNotSupportedException();
+        }
+
         PrivilegeChecker.EnsureElevated();
         bool comInitialized = InitializeCom();
     
@@ -76,6 +81,10 @@ public partial class MonitorService {
     /// <returns>Path to the logon wallpaper or empty string.</returns>
     [SupportedOSPlatform("windows")]
     public string GetLogonWallpaper() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            throw new PlatformNotSupportedException();
+        }
+
         bool comInitialized = InitializeCom();
         try {
             Type lockScreenType = Type.GetType(

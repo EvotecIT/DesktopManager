@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 
 namespace DesktopManager;
@@ -20,9 +21,14 @@ public static class PrivilegeChecker {
     }
 
     /// <summary>
-    /// Throws <see cref="InvalidOperationException"/> if the current process is not elevated.
+    /// Throws <see cref="InvalidOperationException"/> if the current process is
+    /// not elevated.
     /// </summary>
     public static void EnsureElevated() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            throw new PlatformNotSupportedException();
+        }
+
         if (!IsElevated) {
             throw new InvalidOperationException("Operation requires administrative privileges.");
         }
