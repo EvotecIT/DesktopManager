@@ -79,9 +79,14 @@ public class WallpaperHistoryTests
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
 
-        string valid = Path.GetTempFileName();
+        string valid = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".bmp");
         try
         {
+            using (var bmp = new System.Drawing.Bitmap(1, 1))
+            {
+                bmp.Save(valid, System.Drawing.Imaging.ImageFormat.Bmp);
+            }
+
             string invalid = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "missing.jpg");
             service.StartWallpaperSlideshow(new[] { invalid, valid });
             Assert.AreEqual(1, fake.SetSlideshowCalls.Count);
