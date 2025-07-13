@@ -1,5 +1,5 @@
-@{
-    AliasesToExport        = @('Get-DesktopMonitors', 'Set-LockScreenWallpaper', 'Get-LockScreenWallpaper')
+﻿@{
+    AliasesToExport        = @('Get-DesktopMonitors', 'Get-LockScreenWallpaper', 'Set-LockScreenWallpaper')
     Author                 = 'Przemyslaw Klys'
     CmdletsToExport        = @('Get-DesktopMonitor', 'Get-DesktopWallpaper', 'Get-DesktopWindow', 'Invoke-DesktopScreenshot', 'Register-DesktopMonitorEvent', 'Register-DesktopOrientationEvent', 'Register-DesktopResolutionEvent', 'Set-DesktopPosition', 'Set-DesktopResolution', 'Set-DesktopDpiScaling', 'Set-DesktopWallpaper', 'Set-DesktopWindow', 'Set-DesktopWindowTransparency', 'Set-DesktopWindowText', 'Save-DesktopWindowLayout', 'Restore-DesktopWindowLayout', 'Get-DesktopBackgroundColor', 'Set-DesktopBackgroundColor', 'Start-DesktopSlideshow', 'Stop-DesktopSlideshow', 'Advance-DesktopSlideshow', 'Get-LogonWallpaper', 'Set-LogonWallpaper', 'Set-TaskbarPosition', 'Invoke-DesktopMouseMove', 'Invoke-DesktopMouseClick', 'Invoke-DesktopControlClick', 'Invoke-DesktopMouseScroll', 'Invoke-DesktopMouseDrag', 'Invoke-DesktopKeyPress', 'Get-DesktopWallpaperHistory', 'Set-DesktopWallpaperHistory', 'Start-DesktopWindowKeepAlive', 'Stop-DesktopWindowKeepAlive', 'Get-DesktopWindowKeepAlive', 'Wait-DesktopWindow', 'Set-DefaultAudioDevice', 'Get-DesktopBrightness', 'Set-DesktopBrightness','Get-DesktopWindowControl', 'Get-DesktopControlText', 'Set-DesktopControlText')
     CompanyName            = 'Evotec'
@@ -9,7 +9,7 @@
     DotNetFrameworkVersion = '4.7.2'
     FunctionsToExport      = @()
     GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
-    ModuleVersion          = '3.5.0'
+    ModuleVersion          = '3.6.0'
     PowerShellVersion      = '5.1'
     PrivateData            = @{
         PSData = @{

@@ -97,6 +97,32 @@ public static class ScreenshotService {
         return bitmap;
     }
 
+    /// <summary>
+    /// Captures a screenshot of a window.
+    /// </summary>
+    /// <param name="hwnd">Window handle.</param>
+    /// <returns>Bitmap with the screenshot.</returns>
+    public static Bitmap CaptureWindow(IntPtr hwnd) {
+        if (hwnd == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle", nameof(hwnd));
+        }
+
+        if (!MonitorNativeMethods.GetWindowRect(hwnd, out RECT rect)) {
+            throw new InvalidOperationException("Failed to get window bounds");
+        }
+
+        return CaptureRegion(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+    }
+
+    /// <summary>
+    /// Captures a screenshot of a window control.
+    /// </summary>
+    /// <param name="hwnd">Control handle.</param>
+    /// <returns>Bitmap with the screenshot.</returns>
+    public static Bitmap CaptureControl(IntPtr hwnd) {
+        return CaptureWindow(hwnd);
+    }
+
 #if !NETFRAMEWORK
     private static Rectangle GetVirtualScreenBounds() {
         int left = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_XVIRTUALSCREEN);
