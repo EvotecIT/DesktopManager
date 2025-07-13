@@ -93,6 +93,11 @@ public static class KeyboardInputService {
     /// </summary>
     /// <param name="control">Target control.</param>
     /// <param name="keys">Keys to send.</param>
+    /// <summary>
+    /// Sends key presses directly to a background control.
+    /// </summary>
+    /// <param name="control">Target control.</param>
+    /// <param name="keys">Keys to send.</param>
     public static void SendToControl(WindowControlInfo control, IEnumerable<VirtualKey> keys) {
         if (control == null) {
             throw new ArgumentNullException(nameof(control));

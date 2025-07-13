@@ -12,8 +12,6 @@ public partial class WindowManager {
         }
 
         int command = show ? MonitorNativeMethods.SW_SHOW : MonitorNativeMethods.SW_HIDE;
-        if (!MonitorNativeMethods.ShowWindow(window.Handle, command)) {
-            throw new InvalidOperationException("ShowWindow failed");
-        }
+        MonitorNativeMethods.ShowWindow(window.Handle, command);
     }
 }

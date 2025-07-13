@@ -22,9 +22,12 @@ public class KeyboardInputControlTests {
         }
 
         try {
+            proc1!.WaitForInputIdle(2000);
+            proc2!.WaitForInputIdle(2000);
+
             var manager = new WindowManager();
-            var win1 = manager.GetWindowsForProcess(proc1!).First();
-            var win2 = manager.GetWindowsForProcess(proc2!).First();
+            var win1 = manager.GetWindowsForProcess(proc1).First();
+            var win2 = manager.GetWindowsForProcess(proc2).First();
             MonitorNativeMethods.SetForegroundWindow(win2.Handle);
 
             var enumerator = new ControlEnumerator();

@@ -1,4 +1,4 @@
-Describe 'DesktopManager basic tests' {
+Describe 'DesktopManager basic tests' -Skip:(-not $IsWindows) {
     BeforeAll {
         Import-Module "$PSScriptRoot/..\DesktopManager.psd1" -Force
     }
