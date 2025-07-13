@@ -475,9 +475,24 @@ public partial class MonitorService {
             throw new ArgumentNullException(nameof(wallpaperPaths));
         }
 
+        List<string> valid = new();
+        foreach (var path in wallpaperPaths) {
+            if (string.IsNullOrEmpty(path)) {
+                continue;
+            }
+
+            if (File.Exists(path)) {
+                valid.Add(path);
+            }
+        }
+
+        if (valid.Count == 0) {
+            throw new InvalidOperationException("No valid wallpaper paths were provided.");
+        }
+
         IntPtr arrayPtr = IntPtr.Zero;
         try {
-            arrayPtr = CreateShellItemArray(wallpaperPaths);
+            arrayPtr = CreateShellItemArray(valid);
             Execute(() => _desktopManager.SetSlideshow(arrayPtr), nameof(IDesktopManager.SetSlideshow));
         } finally {
             if (arrayPtr != IntPtr.Zero) {

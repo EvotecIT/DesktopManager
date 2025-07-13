@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace DesktopManager.Tests;
 
@@ -60,6 +61,36 @@ public class WallpaperHistoryTests
             if (File.Exists(temp))
             {
                 File.Delete(temp);
+            }
+        }
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for StartWallpaperSlideshow_IgnoresInvalidPaths.
+    /// </summary>
+    public void StartWallpaperSlideshow_IgnoresInvalidPaths()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var fake = new FakeDesktopManager();
+        var service = new MonitorService(fake);
+
+        string valid = Path.GetTempFileName();
+        try
+        {
+            string invalid = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "missing.jpg");
+            service.StartWallpaperSlideshow(new[] { invalid, valid });
+            Assert.AreEqual(1, fake.SetSlideshowCalls.Count);
+        }
+        finally
+        {
+            if (File.Exists(valid))
+            {
+                File.Delete(valid);
             }
         }
     }
