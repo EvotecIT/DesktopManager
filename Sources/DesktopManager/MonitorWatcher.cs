@@ -94,10 +94,12 @@ public sealed class MonitorWatcher : IDisposable {
     }
 
     private static void OnDisplaySettingsChangedStatic(object sender, EventArgs e) {
+        MonitorWatcher[] watchers;
         lock (_syncRoot) {
-            foreach (var watcher in _instances.ToArray()) {
-                watcher.OnDisplaySettingsChanged(sender, e);
-            }
+            watchers = _instances.ToArray();
+        }
+        foreach (var watcher in watchers) {
+            watcher.OnDisplaySettingsChanged(sender, e);
         }
     }
 
@@ -146,10 +148,12 @@ public sealed class MonitorWatcher : IDisposable {
     }
 
     private static void StaticProcessPowerBroadcast(int state) {
+        MonitorWatcher[] watchers;
         lock (_syncRoot) {
-            foreach (var watcher in _instances.ToArray()) {
-                watcher.ProcessPowerBroadcast(state);
-            }
+            watchers = _instances.ToArray();
+        }
+        foreach (var watcher in watchers) {
+            watcher.ProcessPowerBroadcast(state);
         }
     }
 
@@ -168,10 +172,12 @@ public sealed class MonitorWatcher : IDisposable {
     }
 
     private static void StaticProcessDeviceChange(IntPtr lParam, bool connected) {
+        MonitorWatcher[] watchers;
         lock (_syncRoot) {
-            foreach (var watcher in _instances.ToArray()) {
-                watcher.ProcessDeviceChange(lParam, connected);
-            }
+            watchers = _instances.ToArray();
+        }
+        foreach (var watcher in watchers) {
+            watcher.ProcessDeviceChange(lParam, connected);
         }
     }
 
