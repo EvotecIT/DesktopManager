@@ -8,8 +8,10 @@ namespace DesktopManager.Tests;
 
 [TestClass]
 [SupportedOSPlatform("windows")]
+/// <summary>Tests for event subscriptions across multiple watchers.</summary>
 public class MonitorWatcherSubscriptionTests {
     [TestMethod]
+    /// <summary>Verify events fire only once when multiple watchers exist.</summary>
     public void DisplaySettingsChanged_NotDuplicated_ForMultipleWatchers() {
 #if NET5_0_OR_GREATER
         if (!OperatingSystem.IsWindows()) {
@@ -33,6 +35,7 @@ public class MonitorWatcherSubscriptionTests {
     }
 
     [TestMethod]
+    /// <summary>Ensure events stop after all watchers are disposed.</summary>
     public void DisplaySettingsChanged_NotRaised_WhenAllWatchersDisposed() {
 #if NET5_0_OR_GREATER
         if (!OperatingSystem.IsWindows()) {
