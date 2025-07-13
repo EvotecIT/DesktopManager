@@ -49,11 +49,14 @@ public sealed class WindowKeepAlive : IDisposable {
         if (interval <= TimeSpan.Zero) {
             throw new ArgumentOutOfRangeException(nameof(interval));
         }
-        if (_disposed) {
-            throw new ObjectDisposedException(nameof(WindowKeepAlive));
-        }
 
-        _timers.GetOrAdd(handle, h => new Timer(KeepAliveCallback, h, interval, interval));
+        lock (_lock) {
+            if (_disposed) {
+                throw new ObjectDisposedException(nameof(WindowKeepAlive));
+            }
+
+            _timers.GetOrAdd(handle, h => new Timer(KeepAliveCallback, h, interval, interval));
+        }
     }
 
     /// <summary>
