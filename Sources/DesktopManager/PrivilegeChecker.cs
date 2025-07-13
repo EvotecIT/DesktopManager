@@ -23,6 +23,10 @@ public static class PrivilegeChecker {
     /// Throws <see cref="InvalidOperationException"/> if the current process is not elevated.
     /// </summary>
     public static void EnsureElevated() {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            throw new PlatformNotSupportedException("Elevated privilege checks are only supported on Windows.");
+        }
+
         if (!IsElevated) {
             throw new InvalidOperationException("Operation requires administrative privileges.");
         }
