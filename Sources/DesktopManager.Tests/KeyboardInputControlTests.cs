@@ -9,6 +9,18 @@ namespace DesktopManager.Tests;
 
 [TestClass]
 public class KeyboardInputControlTests {
+    private static WindowInfo WaitForWindow(Process process) {
+        var manager = new WindowManager();
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < 10000) {
+            var win = manager.GetWindowsForProcess(process!).FirstOrDefault();
+            if (win != null) {
+                return win;
+            }
+            Thread.Sleep(100);
+        }
+        throw new InvalidOperationException("Window not found");
+    }
     [TestMethod]
     public void SendToControl_TypesIntoBackgroundControl() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
@@ -22,9 +34,8 @@ public class KeyboardInputControlTests {
         }
 
         try {
-            var manager = new WindowManager();
-            var win1 = manager.GetWindowsForProcess(proc1!).First();
-            var win2 = manager.GetWindowsForProcess(proc2!).First();
+            var win1 = WaitForWindow(proc1!);
+            var win2 = WaitForWindow(proc2!);
             MonitorNativeMethods.SetForegroundWindow(win2.Handle);
 
             var enumerator = new ControlEnumerator();
