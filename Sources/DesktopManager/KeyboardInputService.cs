@@ -79,23 +79,14 @@ public static class KeyboardInputService {
         }
     }
 
-    /// <summary>
-    /// Sends key presses directly to a background control.
-    /// </summary>
+    /// <summary>Sends key presses directly to a background control.</summary>
     /// <param name="control">Target control.</param>
     /// <param name="keys">Keys to send.</param>
     public static void SendToControl(WindowControlInfo control, VirtualKey[] keys) {
         SendToControl(control, (IEnumerable<VirtualKey>)keys);
     }
 
-    /// <summary>
-    /// Sends key presses directly to a background control.
-    /// </summary>
-    /// <param name="control">Target control.</param>
-    /// <param name="keys">Keys to send.</param>
-    /// <summary>
-    /// Sends key presses directly to a background control.
-    /// </summary>
+    /// <summary>Sends key presses directly to a background control.</summary>
     /// <param name="control">Target control.</param>
     /// <param name="keys">Keys to send.</param>
     public static void SendToControl(WindowControlInfo control, IEnumerable<VirtualKey> keys) {
