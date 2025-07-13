@@ -30,6 +30,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DesktopManager\DesktopManager.csproj" />
+    <ProjectReference Include="..\WindowTextHelper32\WindowTextHelper32.csproj" OutputItemType="Content" ReferenceOutputAssembly="false">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

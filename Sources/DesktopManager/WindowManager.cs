@@ -49,11 +49,8 @@ public partial class WindowManager {
 
             var windows = new List<WindowInfo>();
             foreach (var handle in handles) {
-                var titleLength = MonitorNativeMethods.GetWindowTextLength(handle);
-                if (titleLength > 0) {
-                    var titleBuilder = new StringBuilder(titleLength + 1);
-                    MonitorNativeMethods.GetWindowText(handle, titleBuilder, titleLength + 1);
-                    var title = titleBuilder.ToString();
+                var title = WindowTextHelper.GetWindowText(handle);
+                if (!string.IsNullOrEmpty(title)) {
 
                     bool titleMatches = regex != null ? regex.IsMatch(title) : MatchesWildcard(title, name);
                     if (!titleMatches) {

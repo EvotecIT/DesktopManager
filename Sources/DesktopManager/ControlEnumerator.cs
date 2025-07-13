@@ -19,14 +19,7 @@ public class ControlEnumerator {
                 Id = MonitorNativeMethods.GetDlgCtrlID(hWnd)
             };
 
-            int len = MonitorNativeMethods.GetWindowTextLength(hWnd);
-            if (len > 0) {
-                StringBuilder sb = new StringBuilder(len + 1);
-                MonitorNativeMethods.GetWindowText(hWnd, sb, sb.Capacity);
-                info.Text = sb.ToString();
-            } else {
-                info.Text = string.Empty;
-            }
+            info.Text = WindowTextHelper.GetWindowText(hWnd);
 
             StringBuilder classSb = new StringBuilder(256);
             MonitorNativeMethods.GetClassName(hWnd, classSb, classSb.Capacity);

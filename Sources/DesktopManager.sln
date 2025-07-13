@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DesktopManager.PowerShell",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DesktopManager.Tests", "DesktopManager.Tests\DesktopManager.Tests.csproj", "{9A33D810-3E64-4E42-9BA3-0862551A59B1}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WindowTextHelper32", "WindowTextHelper32\WindowTextHelper32.csproj", "{0B95EC2C-A6A8-4E3D-85E4-58842BDCAD79}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,9 +33,13 @@ Global
 		{6CB4E9D1-F924-4CFE-AF68-B32BA0D1132F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9A33D810-3E64-4E42-9BA3-0862551A59B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9A33D810-3E64-4E42-9BA3-0862551A59B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9A33D810-3E64-4E42-9BA3-0862551A59B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9A33D810-3E64-4E42-9BA3-0862551A59B1}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
+                {9A33D810-3E64-4E42-9BA3-0862551A59B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {9A33D810-3E64-4E42-9BA3-0862551A59B1}.Release|Any CPU.Build.0 = Release|Any CPU
+                {0B95EC2C-A6A8-4E3D-85E4-58842BDCAD79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {0B95EC2C-A6A8-4E3D-85E4-58842BDCAD79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {0B95EC2C-A6A8-4E3D-85E4-58842BDCAD79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {0B95EC2C-A6A8-4E3D-85E4-58842BDCAD79}.Release|Any CPU.Build.0 = Release|Any CPU
+        EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
