@@ -69,4 +69,30 @@ public class WindowKeepAliveTests {
         Assert.IsFalse(keepAlive.IsActive(handle));
         keepAlive.Dispose();
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Disposing while callbacks execute should not throw exceptions.
+    /// </summary>
+    public void Dispose_DuringCallback_DoesNotThrow() {
+#if NET5_0_OR_GREATER
+        if (!OperatingSystem.IsWindows()) {
+#else
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+#endif
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        var keepAlive = WindowKeepAlive.Instance;
+        var handle = new IntPtr(4);
+        keepAlive.Start(handle, TimeSpan.FromMilliseconds(1));
+
+        Thread.Sleep(5);
+
+        keepAlive.Dispose();
+
+        Thread.Sleep(5);
+
+        Assert.IsFalse(keepAlive.IsActive(handle));
+    }
 }

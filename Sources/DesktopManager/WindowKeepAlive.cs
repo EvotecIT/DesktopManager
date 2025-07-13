@@ -22,6 +22,8 @@ public sealed class WindowKeepAlive : IDisposable {
     public static WindowKeepAlive Instance => _instance.Value;
 
     private readonly ConcurrentDictionary<IntPtr, Timer> _timers = new();
+    private readonly object _lock = new();
+    private bool _disposed;
 
     private WindowKeepAlive() {
     }
@@ -46,6 +48,9 @@ public sealed class WindowKeepAlive : IDisposable {
     public void Start(IntPtr handle, TimeSpan interval) {
         if (interval <= TimeSpan.Zero) {
             throw new ArgumentOutOfRangeException(nameof(interval));
+        }
+        if (_disposed) {
+            throw new ObjectDisposedException(nameof(WindowKeepAlive));
         }
 
         _timers.GetOrAdd(handle, h => new Timer(KeepAliveCallback, h, interval, interval));
@@ -84,6 +89,9 @@ public sealed class WindowKeepAlive : IDisposable {
     public IEnumerable<IntPtr> ActiveHandles => _timers.Keys;
 
     private void KeepAliveCallback(object? state) {
+        if (_disposed) {
+            return;
+        }
         if (state is not IntPtr handle) {
             return;
         }
@@ -97,10 +105,21 @@ public sealed class WindowKeepAlive : IDisposable {
 
     /// <inheritdoc/>
     public void Dispose() {
-        foreach (var timer in _timers.Values) {
-            timer.Dispose();
+        lock (_lock) {
+            if (_disposed) {
+                return;
+            }
+            _disposed = true;
+
+            foreach (var timer in _timers.Values) {
+                try {
+                    timer.Dispose();
+                } catch {
+                    // Ignore exceptions from timers during disposal
+                }
+            }
+            _timers.Clear();
         }
-        _timers.Clear();
     }
 
     private const uint WM_MOUSEMOVE = 0x0200;
