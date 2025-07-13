@@ -45,7 +45,7 @@ public static class WindowControlService {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
 
-        int length = (int)MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_GETTEXTLENGTH, IntPtr.Zero, IntPtr.Zero);
+        int length = (int)MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_GETTEXTLENGTH, 0u, 0u);
         if (length == 0) {
             return string.Empty;
         }
