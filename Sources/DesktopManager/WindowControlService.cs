@@ -64,4 +64,54 @@ public static class WindowControlService {
 
         MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.BM_SETCHECK, check ? 1u : 0u, 0u);
     }
+
+    /// <summary>
+    /// Gets the text displayed by a control.
+    /// </summary>
+    /// <param name="control">Control to query.</param>
+    /// <returns>Control text or empty string.</returns>
+    public static string GetControlText(WindowControlInfo control) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+        if (control.Handle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid control handle", nameof(control));
+        }
+
+        int length = (int)MonitorNativeMethods.SendMessage(
+            control.Handle,
+            MonitorNativeMethods.WM_GETTEXTLENGTH,
+            0,
+            0);
+        var sb = new System.Text.StringBuilder(length + 1);
+        MonitorNativeMethods.SendMessage(
+            control.Handle,
+            MonitorNativeMethods.WM_GETTEXT,
+            new IntPtr(sb.Capacity),
+            sb);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Sets the text of a control.
+    /// </summary>
+    /// <param name="control">Control to modify.</param>
+    /// <param name="text">Text to set.</param>
+    public static void SetControlText(WindowControlInfo control, string text) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+        if (control.Handle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid control handle", nameof(control));
+        }
+        if (text == null) {
+            throw new ArgumentNullException(nameof(text));
+        }
+
+        MonitorNativeMethods.SendMessage(
+            control.Handle,
+            MonitorNativeMethods.WM_SETTEXT,
+            IntPtr.Zero,
+            text);
+    }
 }

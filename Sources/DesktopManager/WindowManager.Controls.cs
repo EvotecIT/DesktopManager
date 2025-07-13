@@ -27,4 +27,22 @@ public partial class WindowManager {
     public void SetControlCheckState(WindowControlInfo control, bool check) {
         WindowControlService.SetCheckState(control, check);
     }
+
+    /// <summary>
+    /// Gets the text of a control.
+    /// </summary>
+    /// <param name="control">Control to query.</param>
+    /// <returns>Control text.</returns>
+    public string GetControlText(WindowControlInfo control) {
+        return WindowControlService.GetControlText(control);
+    }
+
+    /// <summary>
+    /// Sets the text of a control.
+    /// </summary>
+    /// <param name="control">Control to modify.</param>
+    /// <param name="text">Text to set.</param>
+    public void SetControlText(WindowControlInfo control, string text) {
+        WindowControlService.SetControlText(control, text);
+    }
 }
