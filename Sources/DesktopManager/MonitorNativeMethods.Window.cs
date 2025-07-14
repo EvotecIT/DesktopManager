@@ -469,6 +469,20 @@ public static partial class MonitorNativeMethods
     public const uint GMEM_MOVEABLE = 0x0002;
 
     /// <summary>
+    /// Translates a virtual-key code into a scan code.
+    /// </summary>
+    /// <param name="uCode">The virtual-key code to be translated.</param>
+    /// <param name="uMapType">Specifies the translation to perform.</param>
+    /// <returns>The translated value.</returns>
+    [DllImport("user32.dll")]
+    public static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    /// <summary>
+    /// MapVirtualKey flag converting a virtual key to a scan code.
+    /// </summary>
+    public const uint MAPVK_VK_TO_VSC = 0;
+
+    /// <summary>
     /// Input type constant indicating mouse input.
     /// </summary>
     public const uint INPUT_MOUSE = 0;
