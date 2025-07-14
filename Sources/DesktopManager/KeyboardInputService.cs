@@ -96,14 +96,14 @@ public static class KeyboardInputService {
 
         foreach (VirtualKey key in keys) {
             uint scan = MonitorNativeMethods.MapVirtualKey((uint)key, MonitorNativeMethods.MAPVK_VK_TO_VSC);
-            uint lParamDown = 1 | (scan << 16);
-            MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_KEYDOWN, (uint)key, lParamDown);
+            IntPtr lParamDown = new IntPtr(1 | (scan << 16));
+            MonitorNativeMethods.PostMessage(control.Handle, MonitorNativeMethods.WM_KEYDOWN, new IntPtr((int)key), lParamDown);
             if ((key >= VirtualKey.VK_SPACE && key <= VirtualKey.VK_Z) ||
                 (key >= VirtualKey.VK_0 && key <= VirtualKey.VK_9)) {
-                MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_CHAR, (uint)key, lParamDown);
+                MonitorNativeMethods.PostMessage(control.Handle, MonitorNativeMethods.WM_CHAR, new IntPtr((int)key), lParamDown);
             }
-            uint lParamUp = lParamDown | 0xC0000000;
-            MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_KEYUP, (uint)key, lParamUp);
+            IntPtr lParamUp = new IntPtr((int)(lParamDown.ToInt64() | 0xC0000000));
+            MonitorNativeMethods.PostMessage(control.Handle, MonitorNativeMethods.WM_KEYUP, new IntPtr((int)key), lParamUp);
         }
     }
 }
