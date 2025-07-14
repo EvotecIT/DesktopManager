@@ -38,9 +38,16 @@ public class WindowTextFallbackTests {
             var window = manager.GetWindows(processId: proc.Id).First();
             string expected = window.Title;
 
-            string helperPath = Path.Combine(TestContext.DeploymentDirectory, "WindowTextHelper32.exe");
+#if DEBUG
+            const string configuration = "Debug";
+#else
+            const string configuration = "Release";
+#endif
+
+            string helperPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "WindowTextHelper32", "bin", configuration, "net472", "WindowTextHelper32.exe");
+            helperPath = Path.GetFullPath(helperPath);
             if (!File.Exists(helperPath)) {
-                helperPath = Path.Combine(AppContext.BaseDirectory, "WindowTextHelper32.exe");
+                helperPath = Path.Combine(TestContext.DeploymentDirectory, "WindowTextHelper32.exe");
             }
 
             using var helper = Process.Start(new ProcessStartInfo(helperPath, window.Handle.ToInt64().ToString()) {

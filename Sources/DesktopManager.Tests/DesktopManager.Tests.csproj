@@ -28,12 +28,10 @@
     <Compile Include="..\Shared\SupportedOSPlatformAttribute.cs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\DesktopManager\DesktopManager.csproj" />
-    <ProjectReference Include="..\WindowTextHelper32\WindowTextHelper32.csproj" OutputItemType="Content" ReferenceOutputAssembly="false">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </ProjectReference>
-  </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\DesktopManager\DesktopManager.csproj" />
+      <ProjectReference Include="..\WindowTextHelper32\WindowTextHelper32.csproj" />
+    </ItemGroup>
 
   <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
