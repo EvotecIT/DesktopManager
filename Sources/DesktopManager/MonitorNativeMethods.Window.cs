@@ -407,6 +407,11 @@ public static partial class MonitorNativeMethods
     public const uint WM_KEYDOWN = 0x0100;
 
     /// <summary>
+    /// Message used for key up events.
+    /// </summary>
+    public const uint WM_KEYUP = 0x0101;
+
+    /// <summary>
     /// Message used for character input events.
     /// </summary>
     public const uint WM_CHAR = 0x0102;
