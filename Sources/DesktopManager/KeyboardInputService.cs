@@ -99,6 +99,7 @@ public static class KeyboardInputService {
             if ((key >= VirtualKey.VK_SPACE && key <= VirtualKey.VK_Z) || (key >= VirtualKey.VK_0 && key <= VirtualKey.VK_9)) {
                 MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_CHAR, (uint)key, 0);
             }
+            MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_KEYUP, (uint)key, 0);
         }
     }
 }

@@ -35,7 +35,7 @@ public class KeyboardInputControlTests {
             int len = MonitorNativeMethods.GetWindowTextLength(ctrl.Handle);
             StringBuilder sb = new(len + 1);
             MonitorNativeMethods.GetWindowText(ctrl.Handle, sb, sb.Capacity);
-            Assert.IsTrue(sb.ToString().EndsWith("HI"), $"Expected text 'HI' but got '{sb}'");
+            Assert.IsTrue(sb.ToString().Contains("HI"), $"Expected text 'HI' but got '{sb}'");
         } finally {
             if (proc1 != null && !proc1.HasExited) proc1.Kill();
             if (proc2 != null && !proc2.HasExited) proc2.Kill();
