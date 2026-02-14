@@ -8,7 +8,7 @@ DesktopManager is available as NuGet from the Nuget Gallery.
 You can also download it from PowerShell Gallery
 
 [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/DesktopManager.svg?style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
-[![PowerShell Gallery Preview Version](https://img.shields.io/powershellgallery/vpre/DesktopManager.svg?label=powershell%20gallery%20preview&colorB=yellow&style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
+[![PowerShell Gallery Preview Version](https://img.shields.io/powershellgallery/v/DesktopManager.svg?label=powershell%20gallery%20preview&colorB=yellow&style=flat-square&include_prereleases)](https://www.powershellgallery.com/packages/DesktopManager)
 [![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/DesktopManager.svg?style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
 
 [![PowerShell Gallery Platform](https://img.shields.io/powershellgallery/p/DesktopManager.svg?style=flat-square)](https://www.powershellgallery.com/packages/DesktopManager)
