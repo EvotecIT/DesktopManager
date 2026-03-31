@@ -320,6 +320,32 @@ public class CliApplicationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures window topmost rejects contradictory on and off flags through the CLI entrypoint.
+    /// </summary>
+    public void Run_WindowTopMostWithOnAndOff_WritesCombinationError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("window", "topmost", "--on", "--off");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Specify exactly one of '--on' or '--off'.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures window transparency validates alpha bounds through the CLI entrypoint.
+    /// </summary>
+    public void Run_WindowTransparencyWithOutOfRangeAlpha_WritesValidationError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("window", "transparency", "--alpha", "300");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Option '--alpha' expects a value from 0 to 255.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures the hosted-session diagnostic CLI command reads the newest artifact via repository-root resolution.
     /// </summary>
     public void Run_DiagnosticHostedSessionSummaryOnly_WritesSummaryToStandardOutput() {

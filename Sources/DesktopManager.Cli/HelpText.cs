@@ -74,6 +74,12 @@ Window commands:
   desktopmanager window scroll [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name>) --delta <value> [--activate] [--client-area] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window focus [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window minimize [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window maximize [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window restore [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window close [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window topmost [selector] (--on | --off) [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window visibility [selector] (--show | --hide) [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window transparency [selector] --alpha <value> [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window snap [selector] --position <left|right|top-left|top-right|bottom-left|bottom-right> [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window type [selector] --text <value> [--paste] [--foreground-input] [--physical-keys] [--hosted-session] [--script] [--chunk-size <value>] [--line-delay-ms <value>] [--delay-ms <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window keys [selector] --keys <value>[,<value>...] [--no-activate] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
@@ -114,6 +120,12 @@ Examples:
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "Write-Host 'hi'`nGet-Date" --script --foreground-input --line-delay-ms 20
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --activate
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --verify --verify-tolerance-px 12
+  desktopmanager window maximize --process notepad --verify
+  desktopmanager window restore --process notepad
+  desktopmanager window close --process notepad --verify
+  desktopmanager window topmost --process notepad --on
+  desktopmanager window visibility --process notepad --hide
+  desktopmanager window transparency --process notepad --alpha 180
   desktopmanager window snap --process notepad --position left
   desktopmanager window type --process notepad --text "Hello world"
   desktopmanager window keys --process msedge --keys VK_RETURN

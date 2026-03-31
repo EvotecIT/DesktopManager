@@ -49,6 +49,12 @@ internal static class McpCatalog {
         "send_window_keys",
         "focus_window",
         "minimize_windows",
+        "maximize_windows",
+        "restore_windows",
+        "close_windows",
+        "set_window_topmost",
+        "set_window_visibility",
+        "set_window_transparency",
         "snap_window",
         "list_monitors",
         "get_monitor_brightness",
@@ -105,6 +111,12 @@ internal static class McpCatalog {
         "send_window_keys",
         "focus_window",
         "minimize_windows",
+        "maximize_windows",
+        "restore_windows",
+        "close_windows",
+        "set_window_topmost",
+        "set_window_visibility",
+        "set_window_transparency",
         "snap_window",
         "set_monitor_brightness",
         "set_monitor_wallpaper",
@@ -140,6 +152,12 @@ internal static class McpCatalog {
         "send_window_keys",
         "focus_window",
         "minimize_windows",
+        "maximize_windows",
+        "restore_windows",
+        "close_windows",
+        "set_window_topmost",
+        "set_window_visibility",
+        "set_window_transparency",
         "snap_window",
         "launch_process",
         "launch_and_wait_for_window",
@@ -197,6 +215,12 @@ internal static class McpCatalog {
             case "send_window_keys":
             case "focus_window":
             case "minimize_windows":
+            case "maximize_windows":
+            case "restore_windows":
+            case "close_windows":
+            case "set_window_topmost":
+            case "set_window_visibility":
+            case "set_window_transparency":
             case "snap_window":
                 string? processName = ReadOptionalString(arguments, "processName");
                 if (!string.IsNullOrWhiteSpace(processName) && !string.Equals(processName.Trim(), "*", StringComparison.Ordinal)) {
@@ -775,6 +799,51 @@ internal static class McpCatalog {
                 }), new[] { "keys" }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("focus_window", "Focus Window", "Bring a matching window to the foreground.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
             CreateTool("minimize_windows", "Minimize Windows", "Minimize one or more matching windows.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("maximize_windows", "Maximize Windows", "Maximize one or more matching windows.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("restore_windows", "Restore Windows", "Restore one or more matching windows to their normal state.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("close_windows", "Close Windows", "Close one or more matching windows.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: true, idempotent: false),
+            CreateTool("set_window_topmost", "Set Window Topmost", "Enable or disable the topmost flag for matching windows.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["topMost"] = CreateBooleanSchema("Whether the matching windows should become topmost."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
+                }), new[] { "topMost" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_window_visibility", "Set Window Visibility", "Show or hide matching windows.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["visible"] = CreateBooleanSchema("Whether the matching windows should be visible."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
+                }), new[] { "visible" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_window_transparency", "Set Window Transparency", "Set window transparency for matching windows.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["alpha"] = CreateIntegerSchema("Transparency alpha from 0 to 255."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
+                }), new[] { "alpha" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("snap_window", "Snap Window", "Snap one or more matching windows to a predefined monitor region.", CreateObjectSchema(
                 AddMutationArtifactProperties(new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),
@@ -1175,6 +1244,21 @@ internal static class McpCatalog {
                 "scroll_window_point" => CallScrollWindowPoint(arguments),
                 "focus_window" => DesktopOperations.FocusWindow(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
                 "minimize_windows" => DesktopOperations.MinimizeWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
+                "maximize_windows" => DesktopOperations.MaximizeWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
+                "restore_windows" => DesktopOperations.RestoreWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
+                "close_windows" => DesktopOperations.CloseWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
+                "set_window_topmost" => DesktopOperations.SetWindowTopMost(
+                    ReadWindowCriteria(arguments, true),
+                    ReadRequiredBool(arguments, "topMost"),
+                    ReadMutationArtifactOptions(arguments)),
+                "set_window_visibility" => DesktopOperations.SetWindowVisibility(
+                    ReadWindowCriteria(arguments, true),
+                    ReadRequiredBool(arguments, "visible"),
+                    ReadMutationArtifactOptions(arguments)),
+                "set_window_transparency" => DesktopOperations.SetWindowTransparency(
+                    ReadWindowCriteria(arguments, true),
+                    ReadByte(arguments, "alpha"),
+                    ReadMutationArtifactOptions(arguments)),
                 "snap_window" => DesktopOperations.SnapWindow(ReadWindowCriteria(arguments, true), ReadRequiredString(arguments, "position"), ReadMutationArtifactOptions(arguments)),
                 "list_monitors" => DesktopOperations.ListMonitors(
                     ReadNullableBool(arguments, "connectedOnly"),
@@ -1890,6 +1974,15 @@ internal static class McpCatalog {
         }
 
         throw new CommandLineException($"Property '{propertyName}' expects a numeric value.");
+    }
+
+    private static byte ReadByte(JsonElement element, string propertyName) {
+        int value = ReadInt(element, propertyName) ?? throw new CommandLineException($"Property '{propertyName}' is required.");
+        if (value < byte.MinValue || value > byte.MaxValue) {
+            throw new CommandLineException($"Property '{propertyName}' expects a value from 0 to 255.");
+        }
+
+        return (byte)value;
     }
 
     private static DisplayOrientation? ReadDisplayOrientation(JsonElement element, string propertyName) {

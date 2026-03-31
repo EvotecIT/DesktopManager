@@ -261,6 +261,137 @@ internal static partial class DesktopOperations {
                 options.VerificationTolerancePixels));
     }
 
+    public static WindowChangeResult MaximizeWindows(WindowSelectionCriteria criteria, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            "maximize",
+            criteria,
+            "window-management",
+            artifactOptions,
+            automation => {
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                foreach (WindowInfo window in windows) {
+                    automation.MaximizeWindow(window.Handle);
+                }
+
+                return windows;
+            },
+            verify: (automation, windows, options) => BuildWindowStateVerificationResult(
+                "maximize",
+                windows.Select(MapWindow).ToArray(),
+                ObserveWindowsByHandle(automation, windows).Select(MapWindow).ToArray(),
+                SafeGetActiveWindowInfo(automation) == null ? null : MapWindow(SafeGetActiveWindowInfo(automation)!),
+                options.VerificationTolerancePixels,
+                "Maximize"));
+    }
+
+    public static WindowChangeResult RestoreWindows(WindowSelectionCriteria criteria, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            "restore",
+            criteria,
+            "window-management",
+            artifactOptions,
+            automation => {
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                foreach (WindowInfo window in windows) {
+                    automation.RestoreWindow(window.Handle);
+                }
+
+                return windows;
+            },
+            verify: (automation, windows, options) => BuildWindowStateVerificationResult(
+                "restore",
+                windows.Select(MapWindow).ToArray(),
+                ObserveWindowsByHandle(automation, windows).Select(MapWindow).ToArray(),
+                SafeGetActiveWindowInfo(automation) == null ? null : MapWindow(SafeGetActiveWindowInfo(automation)!),
+                options.VerificationTolerancePixels,
+                "Normal"));
+    }
+
+    public static WindowChangeResult CloseWindows(WindowSelectionCriteria criteria, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            "close",
+            criteria,
+            "window-management",
+            artifactOptions,
+            automation => {
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                foreach (WindowInfo window in windows) {
+                    automation.CloseWindow(window.Handle);
+                }
+
+                return windows;
+            },
+            verify: (automation, windows, options) => BuildWindowClosedVerificationResult(
+                "close",
+                windows.Select(MapWindow).ToArray(),
+                ObserveWindowsByHandle(automation, windows).Select(MapWindow).ToArray(),
+                options.VerificationTolerancePixels));
+    }
+
+    public static WindowChangeResult SetWindowTopMost(WindowSelectionCriteria criteria, bool topMost, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            topMost ? "set-topmost" : "clear-topmost",
+            criteria,
+            "window-management",
+            artifactOptions,
+            automation => {
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                foreach (WindowInfo window in windows) {
+                    automation.SetWindowTopMost(window.Handle, topMost);
+                }
+
+                return windows;
+            },
+            verify: (automation, windows, options) => BuildWindowBooleanVerificationResult(
+                topMost ? "set-topmost" : "clear-topmost",
+                windows.Select(MapWindow).ToArray(),
+                ObserveWindowsByHandle(automation, windows).Select(MapWindow).ToArray(),
+                options.VerificationTolerancePixels,
+                "topmost",
+                window => window.IsTopMost,
+                topMost));
+    }
+
+    public static WindowChangeResult SetWindowVisibility(WindowSelectionCriteria criteria, bool visible, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            visible ? "show-window" : "hide-window",
+            criteria,
+            "window-management",
+            artifactOptions,
+            automation => {
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                foreach (WindowInfo window in windows) {
+                    automation.SetWindowVisibility(window.Handle, visible);
+                }
+
+                return windows;
+            },
+            verify: (automation, windows, options) => BuildWindowBooleanVerificationResult(
+                visible ? "show-window" : "hide-window",
+                windows.Select(MapWindow).ToArray(),
+                ObserveWindowsByHandle(automation, windows).Select(MapWindow).ToArray(),
+                options.VerificationTolerancePixels,
+                "visible",
+                window => window.IsVisible,
+                visible));
+    }
+
+    public static WindowChangeResult SetWindowTransparency(WindowSelectionCriteria criteria, byte alpha, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            "set-transparency",
+            criteria,
+            "window-management",
+            artifactOptions,
+            automation => {
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                foreach (WindowInfo window in windows) {
+                    automation.SetWindowTransparency(window.Handle, alpha);
+                }
+
+                return windows;
+            });
+    }
+
     public static WindowChangeResult SnapWindow(WindowSelectionCriteria criteria, string position, MutationArtifactOptions? artifactOptions = null) {
         if (!TryParseSnapPosition(position, out SnapPosition snapPosition)) {
             throw new CommandLineException($"Unsupported snap position '{position}'.");
@@ -1072,6 +1203,31 @@ internal static partial class DesktopOperations {
         };
     }
 
+    private static WindowMutationVerificationResult BuildWindowClosedVerificationResult(string action, IReadOnlyList<WindowResult> expected, IReadOnlyList<WindowResult> observed, int tolerancePixels) {
+        int observedMatches = CountObservedHandles(expected, observed);
+        bool verified = observedMatches == 0;
+
+        return new WindowMutationVerificationResult {
+            Verified = verified,
+            Mode = "closed",
+            Summary = verified
+                ? $"Observed all requested window(s) closed after '{action}'."
+                : $"Observed {observedMatches} requested window(s) still present after '{action}'.",
+            ExpectedCount = expected.Count,
+            ObservedCount = observed.Count,
+            MatchedCount = Math.Max(0, expected.Count - observedMatches),
+            MismatchCount = observedMatches,
+            TolerancePixels = tolerancePixels,
+            Notes = verified
+                ? Array.Empty<string>()
+                : observed
+                    .Where(window => expected.Any(expectedWindow => string.Equals(expectedWindow.Handle, window.Handle, StringComparison.OrdinalIgnoreCase)))
+                    .Select(window => $"Window {window.Handle} remained observable after '{action}'.")
+                    .ToArray(),
+            ObservedWindows = observed
+        };
+    }
+
     internal static WindowMutationVerificationResult BuildWindowPostconditionVerificationResult(string action, IReadOnlyList<WindowInfo> expectedWindows, IReadOnlyList<WindowInfo> observedWindows, WindowInfo? activeWindow, int tolerancePixels, int? monitorIndex = null, int? x = null, int? y = null, int? width = null, int? height = null, bool requireForegroundMatch = false) {
         WindowResult[] expected = expectedWindows.Select(MapWindow).ToArray();
         WindowResult[] observed = observedWindows.Select(MapWindow).ToArray();
@@ -1212,6 +1368,40 @@ internal static partial class DesktopOperations {
             MismatchCount = Math.Max(0, expected.Count - matchedCount),
             TolerancePixels = tolerancePixels,
             ActiveWindow = activeWindow,
+            Notes = notes,
+            ObservedWindows = observed
+        };
+    }
+
+    private static WindowMutationVerificationResult BuildWindowBooleanVerificationResult(string action, IReadOnlyList<WindowResult> expected, IReadOnlyList<WindowResult> observed, int tolerancePixels, string propertyName, Func<WindowResult, bool> selector, bool expectedValue) {
+        var observedByHandle = observed.ToDictionary(window => window.Handle, StringComparer.OrdinalIgnoreCase);
+        var notes = new List<string>();
+        int matchedCount = 0;
+        foreach (WindowResult expectedWindow in expected) {
+            if (!observedByHandle.TryGetValue(expectedWindow.Handle, out WindowResult? observedWindow)) {
+                notes.Add($"Window {expectedWindow.Handle} is no longer observable after '{action}'.");
+                continue;
+            }
+
+            if (selector(observedWindow) == expectedValue) {
+                matchedCount++;
+            } else {
+                notes.Add($"Window {observedWindow.Handle} reported {propertyName}={selector(observedWindow)} instead of {expectedValue}.");
+            }
+        }
+
+        bool verified = matchedCount == expected.Count;
+        return new WindowMutationVerificationResult {
+            Verified = verified,
+            Mode = propertyName,
+            Summary = verified
+                ? $"Observed {matchedCount} of {expected.Count} mutated window(s) with {propertyName}={expectedValue}."
+                : $"Only {matchedCount} of {expected.Count} mutated window(s) reported {propertyName}={expectedValue}.",
+            ExpectedCount = expected.Count,
+            ObservedCount = observed.Count,
+            MatchedCount = matchedCount,
+            MismatchCount = Math.Max(0, expected.Count - matchedCount),
+            TolerancePixels = tolerancePixels,
             Notes = notes,
             ObservedWindows = observed
         };

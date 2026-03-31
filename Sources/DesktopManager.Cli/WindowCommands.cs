@@ -18,6 +18,12 @@ internal static class WindowCommands {
             "scroll" => Scroll(arguments),
             "focus" => Focus(arguments),
             "minimize" => Minimize(arguments),
+            "maximize" => Maximize(arguments),
+            "restore" => Restore(arguments),
+            "close" => Close(arguments),
+            "topmost" => TopMost(arguments),
+            "visibility" => Visibility(arguments),
+            "transparency" => Transparency(arguments),
             "snap" => Snap(arguments),
             "type" => Type(arguments),
             "keys" => Keys(arguments),
@@ -197,6 +203,53 @@ internal static class WindowCommands {
 
     private static int Minimize(CommandLineArguments arguments) {
         return WriteWindowMutationResult(arguments, DesktopOperations.MinimizeWindows(CreateCriteria(arguments, includeEmptyDefault: true), CreateArtifactOptions(arguments)));
+    }
+
+    private static int Maximize(CommandLineArguments arguments) {
+        return WriteWindowMutationResult(arguments, DesktopOperations.MaximizeWindows(CreateCriteria(arguments, includeEmptyDefault: true), CreateArtifactOptions(arguments)));
+    }
+
+    private static int Restore(CommandLineArguments arguments) {
+        return WriteWindowMutationResult(arguments, DesktopOperations.RestoreWindows(CreateCriteria(arguments, includeEmptyDefault: true), CreateArtifactOptions(arguments)));
+    }
+
+    private static int Close(CommandLineArguments arguments) {
+        return WriteWindowMutationResult(arguments, DesktopOperations.CloseWindows(CreateCriteria(arguments, includeEmptyDefault: true), CreateArtifactOptions(arguments)));
+    }
+
+    private static int TopMost(CommandLineArguments arguments) {
+        bool on = arguments.GetBoolFlag("on");
+        bool off = arguments.GetBoolFlag("off");
+        if (on == off) {
+            throw new CommandLineException("Specify exactly one of '--on' or '--off'.");
+        }
+
+        return WriteWindowMutationResult(
+            arguments,
+            DesktopOperations.SetWindowTopMost(CreateCriteria(arguments, includeEmptyDefault: true), on, CreateArtifactOptions(arguments)));
+    }
+
+    private static int Visibility(CommandLineArguments arguments) {
+        bool show = arguments.GetBoolFlag("show");
+        bool hide = arguments.GetBoolFlag("hide");
+        if (show == hide) {
+            throw new CommandLineException("Specify exactly one of '--show' or '--hide'.");
+        }
+
+        return WriteWindowMutationResult(
+            arguments,
+            DesktopOperations.SetWindowVisibility(CreateCriteria(arguments, includeEmptyDefault: true), show, CreateArtifactOptions(arguments)));
+    }
+
+    private static int Transparency(CommandLineArguments arguments) {
+        int alpha = arguments.GetRequiredIntOption("alpha");
+        if (alpha < 0 || alpha > 255) {
+            throw new CommandLineException("Option '--alpha' expects a value from 0 to 255.");
+        }
+
+        return WriteWindowMutationResult(
+            arguments,
+            DesktopOperations.SetWindowTransparency(CreateCriteria(arguments, includeEmptyDefault: true), (byte)alpha, CreateArtifactOptions(arguments)));
     }
 
     private static int Snap(CommandLineArguments arguments) {

@@ -74,6 +74,12 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("assert_control_value"));
         Assert.IsTrue(toolNames.Contains("assert_window_layout"));
         Assert.IsTrue(toolNames.Contains("launch_and_wait_for_window"));
+        Assert.IsTrue(toolNames.Contains("maximize_windows"));
+        Assert.IsTrue(toolNames.Contains("restore_windows"));
+        Assert.IsTrue(toolNames.Contains("close_windows"));
+        Assert.IsTrue(toolNames.Contains("set_window_topmost"));
+        Assert.IsTrue(toolNames.Contains("set_window_visibility"));
+        Assert.IsTrue(toolNames.Contains("set_window_transparency"));
         Assert.IsTrue(toolNames.Contains("get_monitor_brightness"));
         Assert.IsTrue(toolNames.Contains("get_monitor_wallpaper"));
         Assert.IsTrue(toolNames.Contains("set_monitor_wallpaper"));
@@ -89,6 +95,12 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("set_clipboard_text"));
         AssertToolHasArtifactProperties(toolsByName["move_window"]);
         AssertToolHasArtifactProperties(toolsByName["focus_window"]);
+        AssertToolHasArtifactProperties(toolsByName["maximize_windows"]);
+        AssertToolHasArtifactProperties(toolsByName["restore_windows"]);
+        AssertToolHasArtifactProperties(toolsByName["close_windows"]);
+        AssertToolHasArtifactProperties(toolsByName["set_window_topmost"]);
+        AssertToolHasArtifactProperties(toolsByName["set_window_visibility"]);
+        AssertToolHasArtifactProperties(toolsByName["set_window_transparency"]);
         AssertToolHasArtifactProperties(toolsByName["click_control"]);
         AssertToolHasArtifactProperties(toolsByName["focus_control"]);
         AssertToolHasArtifactProperties(toolsByName["set_control_enabled"]);
@@ -134,6 +146,9 @@ public class McpServerTests {
         AssertToolHasProperty(toolsByName["set_control_enabled"], "enabled");
         AssertToolHasProperty(toolsByName["set_control_visibility"], "visible");
         AssertToolHasProperty(toolsByName["send_window_keys"], "keys");
+        AssertToolHasProperty(toolsByName["set_window_topmost"], "topMost");
+        AssertToolHasProperty(toolsByName["set_window_visibility"], "visible");
+        AssertToolHasProperty(toolsByName["set_window_transparency"], "alpha");
         AssertToolHasProperty(toolsByName["assert_window_layout"], "positionTolerancePx");
 
         JsonElement promptsResult = client.SendRequest(3, "prompts/list");

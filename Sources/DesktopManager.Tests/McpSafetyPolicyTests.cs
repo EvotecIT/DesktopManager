@@ -261,6 +261,47 @@ public class McpSafetyPolicyTests {
         StringAssert.Contains(decision.Message, "read-only mode");
     }
 
+    [TestMethod]
+    /// <summary>
+    /// Ensures topmost window mutations are blocked when the server is read-only.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_SetWindowTopMostInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "set_window_topmost",
+            CreateArguments(new {
+                processName = "notepad",
+                topMost = true
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures close-window mutations are blocked when the server is read-only.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_CloseWindowsInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "close_windows",
+            CreateArguments(new {
+                processName = "notepad"
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
     private static JsonElement CreateArguments(object value) {
         using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(value));
         return document.RootElement.Clone();

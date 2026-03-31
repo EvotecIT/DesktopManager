@@ -94,5 +94,20 @@ public class HelpTextTests {
         StringAssert.Contains(help, "desktopmanager desktop start-slideshow");
         StringAssert.Contains(help, "desktopmanager desktop advance-slideshow");
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures window help advertises the newer window mutation commands.
+    /// </summary>
+    public void GetWindowHelp_ListsAdditionalMutationCommands() {
+        string help = global::DesktopManager.Cli.HelpText.GetWindowHelp();
+
+        StringAssert.Contains(help, "desktopmanager window maximize");
+        StringAssert.Contains(help, "desktopmanager window restore");
+        StringAssert.Contains(help, "desktopmanager window close");
+        StringAssert.Contains(help, "desktopmanager window topmost");
+        StringAssert.Contains(help, "desktopmanager window visibility");
+        StringAssert.Contains(help, "desktopmanager window transparency");
+    }
 }
 #endif
