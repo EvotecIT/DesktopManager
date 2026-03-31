@@ -61,5 +61,59 @@ public class MonitorCommandOutputTests {
         StringAssert.Contains(output, @"\\.\DISPLAY2");
         StringAssert.Contains(output, "Dock Display");
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor brightness output renders the expected table headers and row values.
+    /// </summary>
+    public void WriteMonitorBrightnessResults_WritesBrightnessTable() {
+        var monitors = new List<global::DesktopManager.Cli.MonitorBrightnessResult> {
+            new() {
+                Index = 1,
+                IsPrimary = true,
+                Brightness = 65,
+                DeviceName = @"\\.\DISPLAY1",
+                DeviceId = "DISPLAY\\ABC123"
+            }
+        };
+
+        using var writer = new StringWriter();
+
+        int exitCode = global::DesktopManager.Cli.MonitorCommands.WriteMonitorBrightnessResults(monitors, writer);
+        string output = writer.ToString();
+
+        Assert.AreEqual(0, exitCode);
+        StringAssert.Contains(output, "Brightness");
+        StringAssert.Contains(output, @"\\.\DISPLAY1");
+        StringAssert.Contains(output, "DISPLAY\\ABC123");
+        StringAssert.Contains(output, "65");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor wallpaper output renders the expected table headers and row values.
+    /// </summary>
+    public void WriteMonitorWallpaperResults_WritesWallpaperTable() {
+        var monitors = new List<global::DesktopManager.Cli.MonitorWallpaperResult> {
+            new() {
+                Index = 1,
+                IsPrimary = true,
+                DeviceName = @"\\.\DISPLAY1",
+                DeviceId = "DISPLAY\\ABC123",
+                Wallpaper = @"C:\Wallpapers\Aurora.jpg"
+            }
+        };
+
+        using var writer = new StringWriter();
+
+        int exitCode = global::DesktopManager.Cli.MonitorCommands.WriteMonitorWallpaperResults(monitors, writer);
+        string output = writer.ToString();
+
+        Assert.AreEqual(0, exitCode);
+        StringAssert.Contains(output, "Wallpaper");
+        StringAssert.Contains(output, @"\\.\DISPLAY1");
+        StringAssert.Contains(output, "DISPLAY\\ABC123");
+        StringAssert.Contains(output, @"C:\Wallpapers\Aurora.jpg");
+    }
 }
 #endif

@@ -47,6 +47,10 @@ internal static class McpCatalog {
         "get_monitor_brightness",
         "get_monitor_wallpaper",
         "set_monitor_brightness",
+        "set_monitor_position",
+        "set_monitor_resolution",
+        "set_monitor_dpi_scaling",
+        "set_taskbar_position",
         "screenshot_desktop",
         "screenshot_window",
         "launch_process",
@@ -90,6 +94,10 @@ internal static class McpCatalog {
         "minimize_windows",
         "snap_window",
         "set_monitor_brightness",
+        "set_monitor_position",
+        "set_monitor_resolution",
+        "set_monitor_dpi_scaling",
+        "set_taskbar_position",
         "launch_process",
         "launch_and_wait_for_window",
         "save_window_target",
@@ -746,38 +754,37 @@ internal static class McpCatalog {
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 }), new[] { "position" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("list_monitors", "List Monitors", "List connected monitors and their bounds.", CreateObjectSchema(
-                new Dictionary<string, object> {
-                    ["connectedOnly"] = CreateBooleanSchema("Return only connected monitors."),
-                    ["primaryOnly"] = CreateBooleanSchema("Return only the primary monitor."),
-                    ["index"] = CreateIntegerSchema("Specific monitor index to return."),
-                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to return."),
-                    ["deviceName"] = CreateStringSchema("Specific monitor device name to return.")
-                }), readOnly: true),
+                CreateMonitorSelectorProperties()), readOnly: true),
             CreateTool("get_monitor_brightness", "Get Monitor Brightness", "Return brightness values for one or more matching monitors.", CreateObjectSchema(
-                new Dictionary<string, object> {
-                    ["connectedOnly"] = CreateBooleanSchema("Return only connected monitors."),
-                    ["primaryOnly"] = CreateBooleanSchema("Return only the primary monitor."),
-                    ["index"] = CreateIntegerSchema("Specific monitor index to return."),
-                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to return."),
-                    ["deviceName"] = CreateStringSchema("Specific monitor device name to return.")
-                }), readOnly: true),
+                CreateMonitorSelectorProperties()), readOnly: true),
             CreateTool("get_monitor_wallpaper", "Get Monitor Wallpaper", "Return wallpaper paths for one or more matching monitors.", CreateObjectSchema(
-                new Dictionary<string, object> {
-                    ["connectedOnly"] = CreateBooleanSchema("Return only connected monitors."),
-                    ["primaryOnly"] = CreateBooleanSchema("Return only the primary monitor."),
-                    ["index"] = CreateIntegerSchema("Specific monitor index to return."),
-                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to return."),
-                    ["deviceName"] = CreateStringSchema("Specific monitor device name to return.")
-                }), readOnly: true),
+                CreateMonitorSelectorProperties()), readOnly: true),
             CreateTool("set_monitor_brightness", "Set Monitor Brightness", "Set brightness for one or more matching monitors.", CreateObjectSchema(
-                new Dictionary<string, object> {
-                    ["brightness"] = CreateIntegerSchema("Brightness level to apply from 0 to 100."),
-                    ["connectedOnly"] = CreateBooleanSchema("Target only connected monitors."),
-                    ["primaryOnly"] = CreateBooleanSchema("Target only the primary monitor."),
-                    ["index"] = CreateIntegerSchema("Specific monitor index to target."),
-                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to target."),
-                    ["deviceName"] = CreateStringSchema("Specific monitor device name to target.")
-                }, new[] { "brightness" }), readOnly: false, destructive: false, idempotent: true),
+                CreateMonitorMutationProperties(new Dictionary<string, object> {
+                    ["brightness"] = CreateIntegerSchema("Brightness level to apply from 0 to 100.")
+                }), new[] { "brightness" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_monitor_position", "Set Monitor Position", "Set monitor bounds for one or more matching monitors.", CreateObjectSchema(
+                CreateMonitorMutationProperties(new Dictionary<string, object> {
+                    ["left"] = CreateIntegerSchema("Monitor left coordinate."),
+                    ["top"] = CreateIntegerSchema("Monitor top coordinate."),
+                    ["right"] = CreateIntegerSchema("Monitor right coordinate."),
+                    ["bottom"] = CreateIntegerSchema("Monitor bottom coordinate.")
+                }), new[] { "left", "top", "right", "bottom" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_monitor_resolution", "Set Monitor Resolution", "Set monitor resolution and optional orientation for one or more matching monitors.", CreateObjectSchema(
+                CreateMonitorMutationProperties(new Dictionary<string, object> {
+                    ["width"] = CreateIntegerSchema("Monitor width in pixels."),
+                    ["height"] = CreateIntegerSchema("Monitor height in pixels."),
+                    ["orientation"] = CreateStringSchema("Optional display orientation: default, degrees90, degrees180, or degrees270.")
+                }), new[] { "width", "height" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_monitor_dpi_scaling", "Set Monitor Dpi Scaling", "Set monitor DPI scaling for one or more matching monitors.", CreateObjectSchema(
+                CreateMonitorMutationProperties(new Dictionary<string, object> {
+                    ["scalingPercent"] = CreateIntegerSchema("Scaling percentage to apply, such as 100, 125, or 150.")
+                }), new[] { "scalingPercent" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_taskbar_position", "Set Taskbar Position", "Set taskbar edge and optional visibility for one or more matching monitors.", CreateObjectSchema(
+                CreateMonitorMutationProperties(new Dictionary<string, object> {
+                    ["position"] = CreateStringSchema("Optional taskbar edge: left, top, right, or bottom."),
+                    ["visible"] = CreateBooleanSchema("Optional taskbar visibility flag.")
+                })), readOnly: false, destructive: false, idempotent: true),
             CreateTool("screenshot_desktop", "Screenshot Desktop", "Capture the desktop, a monitor, or a region to a PNG file.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["monitor"] = CreateIntegerSchema("Target monitor index."),
@@ -1139,6 +1146,40 @@ internal static class McpCatalog {
                     ReadOptionalString(arguments, "deviceName")),
                 "set_monitor_brightness" => DesktopOperations.SetMonitorBrightness(
                     ReadInt(arguments, "brightness") ?? throw new CommandLineException("Property 'brightness' is required."),
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "set_monitor_position" => DesktopOperations.SetMonitorPosition(
+                    ReadInt(arguments, "left") ?? throw new CommandLineException("Property 'left' is required."),
+                    ReadInt(arguments, "top") ?? throw new CommandLineException("Property 'top' is required."),
+                    ReadInt(arguments, "right") ?? throw new CommandLineException("Property 'right' is required."),
+                    ReadInt(arguments, "bottom") ?? throw new CommandLineException("Property 'bottom' is required."),
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "set_monitor_resolution" => DesktopOperations.SetMonitorResolution(
+                    ReadInt(arguments, "width") ?? throw new CommandLineException("Property 'width' is required."),
+                    ReadInt(arguments, "height") ?? throw new CommandLineException("Property 'height' is required."),
+                    ReadDisplayOrientation(arguments, "orientation"),
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "set_monitor_dpi_scaling" => DesktopOperations.SetMonitorDpiScaling(
+                    ReadInt(arguments, "scalingPercent") ?? throw new CommandLineException("Property 'scalingPercent' is required."),
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "set_taskbar_position" => DesktopOperations.SetTaskbarPosition(
+                    ReadTaskbarPosition(arguments, "position"),
+                    ReadNullableBool(arguments, "visible"),
                     ReadNullableBool(arguments, "connectedOnly"),
                     ReadNullableBool(arguments, "primaryOnly"),
                     ReadInt(arguments, "index"),
@@ -1628,6 +1669,24 @@ internal static class McpCatalog {
         return CreateObjectSchema(AddMutationArtifactProperties(properties));
     }
 
+    private static Dictionary<string, object> CreateMonitorSelectorProperties() {
+        return new Dictionary<string, object> {
+            ["connectedOnly"] = CreateBooleanSchema("Return only connected monitors."),
+            ["primaryOnly"] = CreateBooleanSchema("Return only the primary monitor."),
+            ["index"] = CreateIntegerSchema("Specific monitor index to return."),
+            ["deviceId"] = CreateStringSchema("Specific monitor device identifier to return."),
+            ["deviceName"] = CreateStringSchema("Specific monitor device name to return.")
+        };
+    }
+
+    private static Dictionary<string, object> CreateMonitorMutationProperties(Dictionary<string, object> properties) {
+        foreach (KeyValuePair<string, object> property in CreateMonitorSelectorProperties()) {
+            properties[property.Key] = property.Value;
+        }
+
+        return properties;
+    }
+
     private static Dictionary<string, object> AddMutationArtifactProperties(Dictionary<string, object> properties) {
         properties["captureBefore"] = CreateBooleanSchema("Capture a best-effort screenshot before the mutation.");
         properties["captureAfter"] = CreateBooleanSchema("Capture a best-effort screenshot after the mutation.");
@@ -1774,6 +1833,10 @@ internal static class McpCatalog {
         throw new CommandLineException($"Property '{propertyName}' expects a numeric value.");
     }
 
+    private static DisplayOrientation? ReadDisplayOrientation(JsonElement element, string propertyName) {
+        return MonitorValueParser.ParseOptionalDisplayOrientation(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
+    }
+
     private static bool ReadBool(JsonElement element, string propertyName) {
         return ReadNullableBool(element, propertyName) ?? false;
     }
@@ -1820,6 +1883,10 @@ internal static class McpCatalog {
         }
 
         throw new CommandLineException($"Property '{propertyName}' expects a boolean value.");
+    }
+
+    private static TaskbarPosition? ReadTaskbarPosition(JsonElement element, string propertyName) {
+        return MonitorValueParser.ParseOptionalTaskbarPosition(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
     }
 
     private static bool TryReadProperty(JsonElement element, string propertyName, out JsonElement property) {

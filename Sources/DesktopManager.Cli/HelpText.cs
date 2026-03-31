@@ -11,7 +11,7 @@ Usage:
 Groups:
   window     List and control windows
   control    Inspect and interact with child controls
-  monitor    Inspect connected monitors
+  monitor    Inspect and configure monitors
   process    Start desktop applications
   screenshot Capture the desktop, monitors, or windows
   target     Save and resolve reusable window-relative targets
@@ -34,6 +34,7 @@ Examples:
   desktopmanager control-target save edge-address --control-type Edit --background-text --uia
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400
   desktopmanager monitor list --json
+  desktopmanager monitor set-resolution --primary --width 2560 --height 1440 --orientation default
   desktopmanager layout save coding
   desktopmanager layout apply coding --validate
   desktopmanager layout assert coding --position-tolerance-px 50 --size-tolerance-px 50
@@ -300,12 +301,26 @@ Examples:
     public static string GetMonitorHelp() {
         return """
 Monitor commands:
-  desktopmanager monitor list [--connected] [--primary] [--index <value>] [--json]
+  desktopmanager monitor list [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor brightness [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor wallpaper [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-brightness --brightness <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-position --left <value> --top <value> --right <value> --bottom <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-resolution --width <value> --height <value> [--orientation <default|degrees90|degrees180|degrees270>] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-dpi-scaling --scaling-percent <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-taskbar [--position <left|top|right|bottom>] [--show|--hide] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
 
 Examples:
   desktopmanager monitor list
   desktopmanager monitor list --json
   desktopmanager monitor list --primary
+  desktopmanager monitor brightness --primary
+  desktopmanager monitor wallpaper --index 1 --json
+  desktopmanager monitor set-brightness --primary --brightness 65
+  desktopmanager monitor set-position --device-name \\.\DISPLAY2 --left 1920 --top 0 --right 3840 --bottom 1440
+  desktopmanager monitor set-resolution --primary --width 2560 --height 1440 --orientation default
+  desktopmanager monitor set-dpi-scaling --primary --scaling-percent 150
+  desktopmanager monitor set-taskbar --primary --position bottom --show
 """;
     }
 

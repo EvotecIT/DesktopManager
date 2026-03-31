@@ -415,6 +415,68 @@ internal static partial class DesktopOperations {
         });
     }
 
+    public static IReadOnlyList<MonitorResult> SetMonitorPosition(int left, int top, int right, int bottom, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName, refresh: true);
+            MonitorPosition position = new(left, top, right, bottom);
+            foreach (Monitor monitor in monitors) {
+                automation.SetMonitorPosition(monitor.DeviceId, position);
+            }
+
+            return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);
+        });
+    }
+
+    public static IReadOnlyList<MonitorResult> SetMonitorResolution(int width, int height, DisplayOrientation? orientation = null, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName, refresh: true);
+            foreach (Monitor monitor in monitors) {
+                automation.SetMonitorResolution(monitor.DeviceId, width, height);
+                if (orientation.HasValue) {
+                    automation.SetMonitorOrientation(monitor.DeviceId, orientation.Value);
+                }
+            }
+
+            return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);
+        });
+    }
+
+    public static IReadOnlyList<MonitorResult> SetMonitorDpiScaling(int scalingPercent, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName, refresh: true);
+            foreach (Monitor monitor in monitors) {
+                automation.SetMonitorDpiScaling(monitor.DeviceId, scalingPercent);
+            }
+
+            return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);
+        });
+    }
+
+    public static IReadOnlyList<MonitorResult> SetTaskbarPosition(TaskbarPosition? position, bool? visible = null, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        if (!position.HasValue && !visible.HasValue) {
+            throw new CommandLineException("At least one of position or visible must be provided.");
+        }
+
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName, refresh: true);
+            foreach (Monitor monitor in monitors) {
+                if (position.HasValue) {
+                    automation.SetTaskbarPosition(monitor.Index, position.Value);
+                }
+
+                if (visible.HasValue) {
+                    automation.SetTaskbarVisibility(monitor.Index, visible.Value);
+                }
+            }
+
+            return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);
+        });
+    }
+
     public static IReadOnlyList<ControlResult> ListControls(WindowSelectionCriteria windowCriteria, ControlSelectionCriteria controlCriteria, bool allWindows) {
         return ExecuteCore(() => new DesktopAutomationService()
             .GetControls(CreateWindowQuery(windowCriteria), CreateControlQuery(controlCriteria), allWindows, allControls: true)

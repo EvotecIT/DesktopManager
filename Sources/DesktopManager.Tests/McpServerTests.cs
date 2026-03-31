@@ -70,6 +70,10 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("get_monitor_brightness"));
         Assert.IsTrue(toolNames.Contains("get_monitor_wallpaper"));
         Assert.IsTrue(toolNames.Contains("set_monitor_brightness"));
+        Assert.IsTrue(toolNames.Contains("set_monitor_position"));
+        Assert.IsTrue(toolNames.Contains("set_monitor_resolution"));
+        Assert.IsTrue(toolNames.Contains("set_monitor_dpi_scaling"));
+        Assert.IsTrue(toolNames.Contains("set_taskbar_position"));
         Assert.IsTrue(toolNames.Contains("send_window_keys"));
         Assert.IsTrue(toolNames.Contains("prepare_for_coding"));
         Assert.IsTrue(toolNames.Contains("prepare_for_screen_sharing"));
@@ -99,6 +103,12 @@ public class McpServerTests {
         AssertToolHasProperty(toolsByName["get_monitor_brightness"], "deviceId");
         AssertToolHasProperty(toolsByName["get_monitor_wallpaper"], "deviceName");
         AssertToolHasProperty(toolsByName["set_monitor_brightness"], "brightness");
+        AssertToolHasProperty(toolsByName["set_monitor_position"], "left");
+        AssertToolHasProperty(toolsByName["set_monitor_position"], "right");
+        AssertToolHasProperty(toolsByName["set_monitor_resolution"], "orientation");
+        AssertToolHasProperty(toolsByName["set_monitor_dpi_scaling"], "scalingPercent");
+        AssertToolHasProperty(toolsByName["set_taskbar_position"], "position");
+        AssertToolHasProperty(toolsByName["set_taskbar_position"], "visible");
         AssertToolHasProperty(toolsByName["observe_window_text"], "expectedText");
         AssertToolHasProperty(toolsByName["wait_for_observed_text"], "expectedText");
         AssertToolHasProperty(toolsByName["wait_for_focused_control"], "timeoutMs");

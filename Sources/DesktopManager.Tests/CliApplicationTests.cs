@@ -240,6 +240,45 @@ public class CliApplicationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures monitor set-position reports missing required bounds through the CLI entrypoint.
+    /// </summary>
+    public void Run_MonitorSetPositionWithoutRight_WritesMissingRequiredOptionError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("monitor", "set-position", "--left", "0", "--top", "0", "--bottom", "1080");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Missing required option '--right'.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor set-resolution reports invalid integer values through the CLI entrypoint.
+    /// </summary>
+    public void Run_MonitorSetResolutionWithInvalidWidth_WritesIntegerError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("monitor", "set-resolution", "--width", "wide", "--height", "1080");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Option '--width' expects an integer value.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor set-taskbar rejects contradictory visibility flags through the CLI entrypoint.
+    /// </summary>
+    public void Run_MonitorSetTaskbarWithShowAndHide_WritesCombinationError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("monitor", "set-taskbar", "--show", "--hide");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Cannot combine '--show' with '--hide'.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures the hosted-session diagnostic CLI command reads the newest artifact via repository-root resolution.
     /// </summary>
     public void Run_DiagnosticHostedSessionSummaryOnly_WritesSummaryToStandardOutput() {

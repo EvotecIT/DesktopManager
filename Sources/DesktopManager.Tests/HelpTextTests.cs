@@ -63,5 +63,19 @@ public class HelpTextTests {
             StringAssert.Contains(help, $"desktopmanager help {topic}");
         }
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor help advertises the newer monitor configuration commands.
+    /// </summary>
+    public void GetMonitorHelp_ListsConfigurationCommands() {
+        string help = global::DesktopManager.Cli.HelpText.GetMonitorHelp();
+
+        StringAssert.Contains(help, "desktopmanager monitor brightness");
+        StringAssert.Contains(help, "desktopmanager monitor set-position");
+        StringAssert.Contains(help, "desktopmanager monitor set-resolution");
+        StringAssert.Contains(help, "desktopmanager monitor set-dpi-scaling");
+        StringAssert.Contains(help, "desktopmanager monitor set-taskbar");
+    }
 }
 #endif
