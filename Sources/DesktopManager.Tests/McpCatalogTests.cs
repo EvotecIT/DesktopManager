@@ -1,3 +1,4 @@
+#if !NET472
 using System.Text.Json;
 
 namespace DesktopManager.Tests;
@@ -29,3 +30,4 @@ public class McpCatalogTests {
         return document.RootElement.Clone();
     }
 }
+#endif

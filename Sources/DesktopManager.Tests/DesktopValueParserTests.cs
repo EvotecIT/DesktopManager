@@ -1,3 +1,4 @@
+#if !NET472
 namespace DesktopManager.Tests;
 
 [TestClass]
@@ -25,3 +26,4 @@ public class DesktopValueParserTests {
         Assert.AreEqual(0x00FF10u, color);
     }
 }
+#endif
