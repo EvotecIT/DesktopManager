@@ -67,6 +67,9 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("assert_control_value"));
         Assert.IsTrue(toolNames.Contains("assert_window_layout"));
         Assert.IsTrue(toolNames.Contains("launch_and_wait_for_window"));
+        Assert.IsTrue(toolNames.Contains("get_monitor_brightness"));
+        Assert.IsTrue(toolNames.Contains("get_monitor_wallpaper"));
+        Assert.IsTrue(toolNames.Contains("set_monitor_brightness"));
         Assert.IsTrue(toolNames.Contains("send_window_keys"));
         Assert.IsTrue(toolNames.Contains("prepare_for_coding"));
         Assert.IsTrue(toolNames.Contains("prepare_for_screen_sharing"));
@@ -93,6 +96,9 @@ public class McpServerTests {
         AssertToolHasProperty(toolsByName["get_clipboard_text"], "retryCount");
         AssertToolHasProperty(toolsByName["get_clipboard_text"], "retryDelayMs");
         AssertToolHasProperty(toolsByName["set_clipboard_text"], "text");
+        AssertToolHasProperty(toolsByName["get_monitor_brightness"], "deviceId");
+        AssertToolHasProperty(toolsByName["get_monitor_wallpaper"], "deviceName");
+        AssertToolHasProperty(toolsByName["set_monitor_brightness"], "brightness");
         AssertToolHasProperty(toolsByName["observe_window_text"], "expectedText");
         AssertToolHasProperty(toolsByName["wait_for_observed_text"], "expectedText");
         AssertToolHasProperty(toolsByName["wait_for_focused_control"], "timeoutMs");

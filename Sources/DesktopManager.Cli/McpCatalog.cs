@@ -44,6 +44,9 @@ internal static class McpCatalog {
         "minimize_windows",
         "snap_window",
         "list_monitors",
+        "get_monitor_brightness",
+        "get_monitor_wallpaper",
+        "set_monitor_brightness",
         "screenshot_desktop",
         "screenshot_window",
         "launch_process",
@@ -86,6 +89,7 @@ internal static class McpCatalog {
         "focus_window",
         "minimize_windows",
         "snap_window",
+        "set_monitor_brightness",
         "launch_process",
         "launch_and_wait_for_window",
         "save_window_target",
@@ -745,8 +749,35 @@ internal static class McpCatalog {
                 new Dictionary<string, object> {
                     ["connectedOnly"] = CreateBooleanSchema("Return only connected monitors."),
                     ["primaryOnly"] = CreateBooleanSchema("Return only the primary monitor."),
-                    ["index"] = CreateIntegerSchema("Specific monitor index to return.")
+                    ["index"] = CreateIntegerSchema("Specific monitor index to return."),
+                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to return."),
+                    ["deviceName"] = CreateStringSchema("Specific monitor device name to return.")
                 }), readOnly: true),
+            CreateTool("get_monitor_brightness", "Get Monitor Brightness", "Return brightness values for one or more matching monitors.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["connectedOnly"] = CreateBooleanSchema("Return only connected monitors."),
+                    ["primaryOnly"] = CreateBooleanSchema("Return only the primary monitor."),
+                    ["index"] = CreateIntegerSchema("Specific monitor index to return."),
+                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to return."),
+                    ["deviceName"] = CreateStringSchema("Specific monitor device name to return.")
+                }), readOnly: true),
+            CreateTool("get_monitor_wallpaper", "Get Monitor Wallpaper", "Return wallpaper paths for one or more matching monitors.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["connectedOnly"] = CreateBooleanSchema("Return only connected monitors."),
+                    ["primaryOnly"] = CreateBooleanSchema("Return only the primary monitor."),
+                    ["index"] = CreateIntegerSchema("Specific monitor index to return."),
+                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to return."),
+                    ["deviceName"] = CreateStringSchema("Specific monitor device name to return.")
+                }), readOnly: true),
+            CreateTool("set_monitor_brightness", "Set Monitor Brightness", "Set brightness for one or more matching monitors.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["brightness"] = CreateIntegerSchema("Brightness level to apply from 0 to 100."),
+                    ["connectedOnly"] = CreateBooleanSchema("Target only connected monitors."),
+                    ["primaryOnly"] = CreateBooleanSchema("Target only the primary monitor."),
+                    ["index"] = CreateIntegerSchema("Specific monitor index to target."),
+                    ["deviceId"] = CreateStringSchema("Specific monitor device identifier to target."),
+                    ["deviceName"] = CreateStringSchema("Specific monitor device name to target.")
+                }, new[] { "brightness" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("screenshot_desktop", "Screenshot Desktop", "Capture the desktop, a monitor, or a region to a PNG file.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["monitor"] = CreateIntegerSchema("Target monitor index."),
@@ -1088,7 +1119,31 @@ internal static class McpCatalog {
                 "focus_window" => DesktopOperations.FocusWindow(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
                 "minimize_windows" => DesktopOperations.MinimizeWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
                 "snap_window" => DesktopOperations.SnapWindow(ReadWindowCriteria(arguments, true), ReadRequiredString(arguments, "position"), ReadMutationArtifactOptions(arguments)),
-                "list_monitors" => DesktopOperations.ListMonitors(ReadNullableBool(arguments, "connectedOnly"), ReadNullableBool(arguments, "primaryOnly"), ReadInt(arguments, "index")),
+                "list_monitors" => DesktopOperations.ListMonitors(
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "get_monitor_brightness" => DesktopOperations.GetMonitorBrightness(
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "get_monitor_wallpaper" => DesktopOperations.GetMonitorWallpaper(
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "set_monitor_brightness" => DesktopOperations.SetMonitorBrightness(
+                    ReadInt(arguments, "brightness") ?? throw new CommandLineException("Property 'brightness' is required."),
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
                 "screenshot_desktop" => DesktopOperations.CaptureDesktopScreenshot(
                     ReadInt(arguments, "monitor"),
                     ReadOptionalString(arguments, "deviceId"),

@@ -240,6 +240,22 @@ internal sealed class MonitorResult {
     public string? SerialNumber { get; set; }
 }
 
+internal sealed class MonitorBrightnessResult {
+    public int Index { get; set; }
+    public string DeviceName { get; set; } = string.Empty;
+    public string DeviceId { get; set; } = string.Empty;
+    public bool IsPrimary { get; set; }
+    public int Brightness { get; set; }
+}
+
+internal sealed class MonitorWallpaperResult {
+    public int Index { get; set; }
+    public string DeviceName { get; set; } = string.Empty;
+    public string DeviceId { get; set; } = string.Empty;
+    public bool IsPrimary { get; set; }
+    public string Wallpaper { get; set; } = string.Empty;
+}
+
 internal sealed class MouseStateResult {
     public int X { get; set; }
     public int Y { get; set; }

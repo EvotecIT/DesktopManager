@@ -348,8 +348,8 @@ internal static partial class DesktopOperations {
             automation => automation.SendWindowKeys(CreateWindowQuery(criteria), virtualKeys, activate, criteria.All));
     }
 
-    public static IReadOnlyList<MonitorResult> ListMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null) {
-        return ExecuteCore(() => new DesktopAutomationService().GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index)
+    public static IReadOnlyList<MonitorResult> ListMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => new DesktopAutomationService().GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName)
             .Select(monitor => new MonitorResult {
                 Index = monitor.Index,
                 DeviceName = monitor.DeviceName,
@@ -365,6 +365,54 @@ internal static partial class DesktopOperations {
                 SerialNumber = monitor.SerialNumber
             })
             .ToArray());
+    }
+
+    public static IReadOnlyList<MonitorBrightnessResult> GetMonitorBrightness(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            return automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName)
+                .Select(monitor => new MonitorBrightnessResult {
+                    Index = monitor.Index,
+                    DeviceName = monitor.DeviceName,
+                    DeviceId = monitor.DeviceId,
+                    IsPrimary = monitor.IsPrimary,
+                    Brightness = automation.GetMonitorBrightness(monitor.DeviceId)
+                })
+                .ToArray();
+        });
+    }
+
+    public static IReadOnlyList<MonitorWallpaperResult> GetMonitorWallpaper(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            return automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName)
+                .Select(monitor => new MonitorWallpaperResult {
+                    Index = monitor.Index,
+                    DeviceName = monitor.DeviceName,
+                    DeviceId = monitor.DeviceId,
+                    IsPrimary = monitor.IsPrimary,
+                    Wallpaper = automation.GetMonitorWallpaper(monitor.DeviceId)
+                })
+                .ToArray();
+        });
+    }
+
+    public static IReadOnlyList<MonitorBrightnessResult> SetMonitorBrightness(int brightness, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+            foreach (Monitor monitor in monitors) {
+                automation.SetMonitorBrightness(monitor.DeviceId, brightness);
+            }
+
+            return monitors.Select(monitor => new MonitorBrightnessResult {
+                Index = monitor.Index,
+                DeviceName = monitor.DeviceName,
+                DeviceId = monitor.DeviceId,
+                IsPrimary = monitor.IsPrimary,
+                Brightness = automation.GetMonitorBrightness(monitor.DeviceId)
+            }).ToArray();
+        });
     }
 
     public static IReadOnlyList<ControlResult> ListControls(WindowSelectionCriteria windowCriteria, ControlSelectionCriteria controlCriteria, bool allWindows) {

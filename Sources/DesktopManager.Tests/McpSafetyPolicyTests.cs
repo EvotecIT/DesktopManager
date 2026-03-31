@@ -153,6 +153,27 @@ public class McpSafetyPolicyTests {
         StringAssert.Contains(decision.Message, "read-only mode");
     }
 
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor brightness mutations are blocked when the server is read-only.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_SetMonitorBrightnessInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "set_monitor_brightness",
+            CreateArguments(new {
+                brightness = 60,
+                primaryOnly = true
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
     private static JsonElement CreateArguments(object value) {
         using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(value));
         return document.RootElement.Clone();
