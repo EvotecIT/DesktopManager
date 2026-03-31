@@ -853,7 +853,7 @@ public sealed class DesktopAutomationService {
             ? window.Title
             : process.ProcessName;
 
-        process.Kill(entireProcessTree);
+        KillProcess(process, entireProcessTree);
         bool exited = process.WaitForExit(waitForExitMilliseconds);
         if (!exited) {
             throw new TimeoutException($"Timed out waiting for process '{processName}' to exit.");
@@ -878,6 +878,14 @@ public sealed class DesktopAutomationService {
     /// <returns>The termination result.</returns>
     public DesktopProcessTerminationResult TerminateWindowProcess(IntPtr windowHandle, bool entireProcessTree = false, int waitForExitMilliseconds = 5000) {
         return TerminateWindowProcess(ResolveWindowByHandle(windowHandle), entireProcessTree, waitForExitMilliseconds);
+    }
+
+    private static void KillProcess(Process process, bool entireProcessTree) {
+#if NET5_0_OR_GREATER
+        process.Kill(entireProcessTree);
+#else
+        process.Kill();
+#endif
     }
 
     /// <summary>
@@ -2507,7 +2515,7 @@ public sealed class DesktopAutomationService {
             };
         }
 
-        criteria.ProcessNamePattern = processNameHint;
+        criteria.ProcessNamePattern = processNameHint!;
         return new DesktopLaunchWaitBindingPlan {
             Criteria = criteria,
             WaitBinding = "process-name-family",
