@@ -145,6 +145,83 @@ internal static partial class DesktopOperations {
             .ToArray());
     }
 
+    public static IReadOnlyList<WindowProcessInfoResult> GetWindowProcessInfo(WindowSelectionCriteria criteria, bool owner) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<WindowInfo> windows = automation.GetWindows(CreateWindowQuery(criteria));
+            if (!criteria.All && windows.Count > 1) {
+                windows = new[] { windows[0] };
+            }
+
+            var results = new List<WindowProcessInfoResult>(windows.Count);
+            foreach (WindowInfo window in windows) {
+                WindowProcessInfo? info = owner
+                    ? automation.GetOwnerWindowProcessInfo(window)
+                    : automation.GetWindowProcessInfo(window);
+                if (info == null) {
+                    continue;
+                }
+
+                results.Add(MapWindowProcessInfo(window, info, owner));
+            }
+
+            return results.ToArray();
+        });
+    }
+
+    public static IReadOnlyList<WindowResult> ListWindowKeepAlive() {
+        return ExecuteCore(() => new DesktopAutomationService()
+            .GetWindowKeepAliveWindows()
+            .Select(MapWindow)
+            .ToArray());
+    }
+
+    public static WindowChangeResult StartWindowKeepAlive(WindowSelectionCriteria criteria, int intervalMilliseconds) {
+        if (intervalMilliseconds <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds), "The keep-alive interval must be greater than zero.");
+        }
+
+        return ExecuteWindowMutation(
+            "keep-alive-start",
+            criteria,
+            "window-keep-alive",
+            artifactOptions: null,
+            automation => automation.StartWindowKeepAlive(
+                CreateWindowQuery(criteria),
+                TimeSpan.FromMilliseconds(intervalMilliseconds),
+                criteria.All));
+    }
+
+    public static WindowChangeResult StopWindowKeepAlive(WindowSelectionCriteria criteria) {
+        return ExecuteWindowMutation(
+            "keep-alive-stop",
+            criteria,
+            "window-keep-alive",
+            artifactOptions: null,
+            automation => automation.StopWindowKeepAlive(CreateWindowQuery(criteria), criteria.All));
+    }
+
+    public static WindowChangeResult StopAllWindowKeepAlive() {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            IReadOnlyList<WindowInfo> windows = automation.GetWindowKeepAliveWindows();
+            automation.StopAllWindowKeepAlive();
+            stopwatch.Stop();
+            return BuildWindowChangeResult(
+                "keep-alive-stop",
+                windows,
+                (int)stopwatch.ElapsedMilliseconds,
+                "window-keep-alive",
+                targetName: null,
+                targetKind: null,
+                beforeScreenshots: Array.Empty<ScreenshotResult>(),
+                afterScreenshots: Array.Empty<ScreenshotResult>(),
+                artifactWarnings: Array.Empty<string>(),
+                verification: null);
+        });
+    }
+
     public static WindowChangeResult MoveWindow(WindowSelectionCriteria criteria, int? monitorIndex, int? x, int? y, int? width, int? height, bool activate, MutationArtifactOptions? artifactOptions = null) {
         return ExecuteWindowMutation(
             "move",
@@ -1447,6 +1524,19 @@ internal static partial class DesktopOperations {
             Height = window.Height,
             MonitorIndex = window.MonitorIndex,
             MonitorDeviceName = window.MonitorDeviceName
+        };
+    }
+
+    internal static WindowProcessInfoResult MapWindowProcessInfo(WindowInfo window, WindowProcessInfo info, bool owner) {
+        return new WindowProcessInfoResult {
+            Window = MapWindow(window),
+            IsOwnerProcess = owner,
+            ProcessId = info.ProcessId,
+            ThreadId = info.ThreadId,
+            ProcessName = info.ProcessName,
+            ProcessPath = info.ProcessPath,
+            IsElevated = info.IsElevated,
+            IsWow64 = info.IsWow64
         };
     }
 

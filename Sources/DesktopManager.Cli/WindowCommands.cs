@@ -10,6 +10,8 @@ internal static class WindowCommands {
         return action switch {
             "list" => List(arguments),
             "geometry" => Geometry(arguments),
+            "process-info" => ProcessInfo(arguments, owner: false),
+            "owner-process-info" => ProcessInfo(arguments, owner: true),
             "exists" => Exists(arguments),
             "active-matches" => ActiveMatches(arguments),
             "move" => Move(arguments),
@@ -17,6 +19,9 @@ internal static class WindowCommands {
             "drag" => Drag(arguments),
             "scroll" => Scroll(arguments),
             "focus" => Focus(arguments),
+            "keep-alive-list" => KeepAliveList(arguments),
+            "keep-alive-start" => KeepAliveStart(arguments),
+            "keep-alive-stop" => KeepAliveStop(arguments),
             "minimize" => Minimize(arguments),
             "maximize" => Maximize(arguments),
             "restore" => Restore(arguments),
@@ -51,6 +56,22 @@ internal static class WindowCommands {
         return WriteWindowListResults(windows, Console.Out);
     }
 
+    private static int ProcessInfo(CommandLineArguments arguments, bool owner) {
+        IReadOnlyList<WindowProcessInfoResult> results = DesktopOperations.GetWindowProcessInfo(
+            CreateCriteria(arguments, includeEmptyDefault: true),
+            owner);
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(results);
+            return 0;
+        }
+
+        if (results.Count == 0) {
+            return WriteNoMatchingWindows(Console.Out);
+        }
+
+        return WriteWindowProcessInfoResults(results, Console.Out);
+    }
+
     internal static int WriteWindowListResults(IReadOnlyList<WindowResult> windows, TextWriter writer) {
         IReadOnlyList<IReadOnlyList<string>> rows = windows
             .Select(window => (IReadOnlyList<string>)new[] {
@@ -65,6 +86,37 @@ internal static class WindowCommands {
 
         OutputFormatter.WriteTable(writer, new[] { "PID", "Handle", "Mon", "Visible", "State", "Title" }, rows);
         return 0;
+    }
+
+    internal static int WriteWindowProcessInfoResults(IReadOnlyList<WindowProcessInfoResult> results, TextWriter writer) {
+        for (int index = 0; index < results.Count; index++) {
+            WindowProcessInfoResult result = results[index];
+            if (index > 0) {
+                writer.WriteLine();
+            }
+
+            writer.WriteLine($"window: {result.Window.Title} ({result.Window.Handle})");
+            writer.WriteLine($"- Scope: {(result.IsOwnerProcess ? "Owner" : "Window")}");
+            writer.WriteLine($"- ProcessId: {result.ProcessId}");
+            writer.WriteLine($"- ThreadId: {result.ThreadId}");
+            writer.WriteLine($"- ProcessName: {result.ProcessName}");
+            writer.WriteLine($"- IsElevated: {FormatNullableBoolean(result.IsElevated)}");
+            writer.WriteLine($"- IsWow64: {FormatNullableBoolean(result.IsWow64)}");
+            if (!string.IsNullOrWhiteSpace(result.ProcessPath)) {
+                writer.WriteLine($"- ProcessPath: {result.ProcessPath}");
+            }
+        }
+
+        return 0;
+    }
+
+    internal static int WriteWindowKeepAliveResults(IReadOnlyList<WindowResult> windows, TextWriter writer) {
+        writer.WriteLine($"keep-alive: {windows.Count} window(s)");
+        if (windows.Count == 0) {
+            return 0;
+        }
+
+        return WriteWindowListResults(windows, writer);
     }
 
     private static int Exists(CommandLineArguments arguments) {
@@ -89,6 +141,40 @@ internal static class WindowCommands {
     private static int ActiveMatches(CommandLineArguments arguments) {
         WindowAssertionResult result = DesktopOperations.ActiveWindowMatches(CreateCriteria(arguments, includeEmptyDefault: true));
         return WriteAssertionResult(arguments, result, "Active window matches.", "Active window does not match.");
+    }
+
+    private static int KeepAliveList(CommandLineArguments arguments) {
+        IReadOnlyList<WindowResult> windows = DesktopOperations.ListWindowKeepAlive();
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(windows);
+            return 0;
+        }
+
+        return WriteWindowKeepAliveResults(windows, Console.Out);
+    }
+
+    private static int KeepAliveStart(CommandLineArguments arguments) {
+        int intervalMilliseconds = arguments.GetIntOption("interval-ms") ?? 60000;
+        if (intervalMilliseconds <= 0) {
+            throw new CommandLineException("Option '--interval-ms' expects a value greater than 0.");
+        }
+
+        return WriteWindowMutationResult(
+            arguments,
+            DesktopOperations.StartWindowKeepAlive(CreateCriteria(arguments, includeEmptyDefault: true), intervalMilliseconds));
+    }
+
+    private static int KeepAliveStop(CommandLineArguments arguments) {
+        bool allSessions = arguments.GetBoolFlag("all-sessions");
+        if (allSessions) {
+            if (HasWindowSelector(arguments) || arguments.GetBoolFlag("all")) {
+                throw new CommandLineException("Cannot combine '--all-sessions' with window selectors or '--all'.");
+            }
+
+            return WriteWindowMutationResult(arguments, DesktopOperations.StopAllWindowKeepAlive());
+        }
+
+        return WriteWindowMutationResult(arguments, DesktopOperations.StopWindowKeepAlive(CreateCriteria(arguments, includeEmptyDefault: true)));
     }
 
     private static int Move(CommandLineArguments arguments) {
@@ -438,5 +524,26 @@ internal static class WindowCommands {
             ScriptChunkLength = arguments.GetIntOption("chunk-size") ?? 120,
             ScriptLineDelayMilliseconds = scriptLineDelayMilliseconds ?? (hostedSession && scriptMode ? 120 : 0)
         };
+    }
+
+    private static bool HasWindowSelector(CommandLineArguments arguments) {
+        return !string.IsNullOrWhiteSpace(arguments.GetOption("title")) ||
+               !string.IsNullOrWhiteSpace(arguments.GetOption("process")) ||
+               !string.IsNullOrWhiteSpace(arguments.GetOption("class")) ||
+               arguments.GetIntOption("pid").HasValue ||
+               !string.IsNullOrWhiteSpace(arguments.GetOption("handle")) ||
+               arguments.GetBoolFlag("active") ||
+               arguments.GetBoolFlag("include-empty") ||
+               arguments.GetBoolFlag("include-hidden") ||
+               arguments.GetBoolFlag("exclude-cloaked") ||
+               arguments.GetBoolFlag("exclude-owned");
+    }
+
+    private static string FormatNullableBoolean(bool? value) {
+        if (!value.HasValue) {
+            return "Unknown";
+        }
+
+        return value.Value ? "True" : "False";
     }
 }

@@ -102,6 +102,11 @@ public class HelpTextTests {
     public void GetWindowHelp_ListsAdditionalMutationCommands() {
         string help = global::DesktopManager.Cli.HelpText.GetWindowHelp();
 
+        StringAssert.Contains(help, "desktopmanager window process-info");
+        StringAssert.Contains(help, "desktopmanager window owner-process-info");
+        StringAssert.Contains(help, "desktopmanager window keep-alive-list");
+        StringAssert.Contains(help, "desktopmanager window keep-alive-start");
+        StringAssert.Contains(help, "desktopmanager window keep-alive-stop");
         StringAssert.Contains(help, "desktopmanager window maximize");
         StringAssert.Contains(help, "desktopmanager window restore");
         StringAssert.Contains(help, "desktopmanager window close");

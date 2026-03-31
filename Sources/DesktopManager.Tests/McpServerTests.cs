@@ -51,6 +51,8 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("resolve_control_target"));
         Assert.IsTrue(toolNames.Contains("diagnose_window_controls"));
         Assert.IsTrue(toolNames.Contains("get_window_geometry"));
+        Assert.IsTrue(toolNames.Contains("get_window_process_info"));
+        Assert.IsTrue(toolNames.Contains("get_owner_window_process_info"));
         Assert.IsTrue(toolNames.Contains("get_mouse_state"));
         Assert.IsTrue(toolNames.Contains("get_clipboard_text"));
         Assert.IsTrue(toolNames.Contains("get_elevation_status"));
@@ -89,6 +91,9 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("set_monitor_dpi_scaling"));
         Assert.IsTrue(toolNames.Contains("set_taskbar_position"));
         Assert.IsTrue(toolNames.Contains("send_window_keys"));
+        Assert.IsTrue(toolNames.Contains("list_window_keep_alive"));
+        Assert.IsTrue(toolNames.Contains("start_window_keep_alive"));
+        Assert.IsTrue(toolNames.Contains("stop_window_keep_alive"));
         Assert.IsTrue(toolNames.Contains("prepare_for_coding"));
         Assert.IsTrue(toolNames.Contains("prepare_for_screen_sharing"));
         Assert.IsTrue(toolNames.Contains("clean_up_distractions"));
@@ -139,6 +144,10 @@ public class McpServerTests {
         AssertToolHasProperty(toolsByName["wait_for_observed_text"], "expectedText");
         AssertToolHasProperty(toolsByName["wait_for_focused_control"], "timeoutMs");
         AssertToolHasProperty(toolsByName["wait_for_focused_control"], "intervalMs");
+        AssertToolHasProperty(toolsByName["get_window_process_info"], "processName");
+        AssertToolHasProperty(toolsByName["get_owner_window_process_info"], "handle");
+        AssertToolHasProperty(toolsByName["start_window_keep_alive"], "intervalMs");
+        AssertToolHasProperty(toolsByName["stop_window_keep_alive"], "allSessions");
         AssertToolHasProperty(toolsByName["get_control_state"], "windowHandle");
         AssertToolHasProperty(toolsByName["get_control_state"], "controlHandle");
         AssertToolHasProperty(toolsByName["focus_control"], "windowHandle");

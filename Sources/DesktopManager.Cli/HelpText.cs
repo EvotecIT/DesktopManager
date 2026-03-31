@@ -66,6 +66,8 @@ Use:
 Window commands:
   desktopmanager window list [--title <pattern>] [--process <pattern>] [--class <pattern>] [--pid <id>] [--handle <value>] [--active] [--include-empty] [--include-hidden] [--exclude-cloaked] [--exclude-owned] [--json]
   desktopmanager window geometry [selector] [--all] [--json]
+  desktopmanager window process-info [selector] [--all] [--json]
+  desktopmanager window owner-process-info [selector] [--all] [--json]
   desktopmanager window exists [selector] [--json]
   desktopmanager window active-matches [selector] [--json]
   desktopmanager window move [selector] [--monitor <index>] [--x <value>] [--y <value>] [--width <value>] [--height <value>] [--activate] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
@@ -73,6 +75,9 @@ Window commands:
   desktopmanager window drag [selector] (((--start-x <value> --start-y <value>) | (--start-x-ratio <value> --start-y-ratio <value>)) ((--end-x <value> --end-y <value>) | (--end-x-ratio <value> --end-y-ratio <value>)) | (--start-target <name> --end-target <name>)) [--button <left|right>] [--step-delay-ms <value>] [--activate] [--client-area] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window scroll [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name>) --delta <value> [--activate] [--client-area] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window focus [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window keep-alive-list [--json]
+  desktopmanager window keep-alive-start [selector] [--interval-ms <value>] [--all] [--json]
+  desktopmanager window keep-alive-stop [selector] [--all | --all-sessions] [--json]
   desktopmanager window minimize [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window maximize [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window restore [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
@@ -102,6 +107,8 @@ Selectors:
 Examples:
   desktopmanager window list --title "*Notepad*" --json
   desktopmanager window geometry --handle 0xFF1802 --json
+  desktopmanager window process-info --process notepad
+  desktopmanager window owner-process-info --handle 0xFF1802 --json
   desktopmanager window exists --process notepad
   desktopmanager window active-matches --title "Codex"
   desktopmanager window click --process notepad --x 200 --y 200 --client-area
@@ -120,6 +127,9 @@ Examples:
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "Write-Host 'hi'`nGet-Date" --script --foreground-input --line-delay-ms 20
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --activate
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --verify --verify-tolerance-px 12
+  desktopmanager window keep-alive-list
+  desktopmanager window keep-alive-start --process notepad --interval-ms 30000
+  desktopmanager window keep-alive-stop --all-sessions
   desktopmanager window maximize --process notepad --verify
   desktopmanager window restore --process notepad
   desktopmanager window close --process notepad --verify

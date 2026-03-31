@@ -55,6 +55,48 @@ public class ProcessAndWorkflowMappingTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures CLI window-process mapping preserves the associated window and process metadata.
+    /// </summary>
+    public void MapWindowProcessInfo_MapsAssociatedWindowAndProcessMetadata() {
+        var window = new WindowInfo {
+            Title = "Untitled - Notepad",
+            Handle = new IntPtr(0x1234),
+            ProcessId = 987,
+            ThreadId = 654,
+            IsVisible = true,
+            IsTopMost = false,
+            State = WindowState.Normal,
+            Left = 10,
+            Top = 20,
+            Right = 810,
+            Bottom = 620,
+            MonitorIndex = 1,
+            MonitorDeviceName = @"\\.\\DISPLAY1"
+        };
+        var info = new WindowProcessInfo {
+            ProcessId = 987,
+            ThreadId = 654,
+            ProcessName = "notepad",
+            ProcessPath = @"C:\Windows\System32\notepad.exe",
+            IsElevated = false,
+            IsWow64 = false
+        };
+
+        global::DesktopManager.Cli.WindowProcessInfoResult result = global::DesktopManager.Cli.DesktopOperations.MapWindowProcessInfo(window, info, owner: true);
+
+        Assert.AreEqual("Untitled - Notepad", result.Window.Title);
+        Assert.AreEqual("0x1234", result.Window.Handle);
+        Assert.IsTrue(result.IsOwnerProcess);
+        Assert.AreEqual((uint)987, result.ProcessId);
+        Assert.AreEqual((uint)654, result.ThreadId);
+        Assert.AreEqual("notepad", result.ProcessName);
+        Assert.AreEqual(@"C:\Windows\System32\notepad.exe", result.ProcessPath);
+        Assert.AreEqual(false, result.IsElevated);
+        Assert.AreEqual(false, result.IsWow64);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures CLI workflow result assembly preserves notes, artifacts, and the derived minimized count.
     /// </summary>
     public void BuildWorkflowResult_MapsNotesArtifactsAndMinimizedCount() {

@@ -190,6 +190,32 @@ public class CliApplicationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures keep-alive start rejects non-positive interval values through the CLI entrypoint.
+    /// </summary>
+    public void Run_WindowKeepAliveStartWithZeroInterval_WritesPositiveIntervalError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("window", "keep-alive-start", "--process", "notepad", "--interval-ms", "0");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Option '--interval-ms' expects a value greater than 0.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures keep-alive stop rejects conflicting global-stop and selector options through the CLI entrypoint.
+    /// </summary>
+    public void Run_WindowKeepAliveStopWithAllSessionsAndSelector_WritesCombinationError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("window", "keep-alive-stop", "--all-sessions", "--process", "notepad");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Cannot combine '--all-sessions' with window selectors or '--all'.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures malformed empty option names are reported through the CLI entrypoint.
     /// </summary>
     public void Run_WithMalformedEmptyOptionName_WritesParseError() {

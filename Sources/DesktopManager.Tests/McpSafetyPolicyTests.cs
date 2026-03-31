@@ -302,6 +302,48 @@ public class McpSafetyPolicyTests {
         StringAssert.Contains(decision.Message, "read-only mode");
     }
 
+    [TestMethod]
+    /// <summary>
+    /// Ensures keep-alive mutations are blocked when the server is read-only.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_StartWindowKeepAliveInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "start_window_keep_alive",
+            CreateArguments(new {
+                processName = "notepad",
+                intervalMs = 30000
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures global keep-alive stop requests are blocked while process filters are active.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_StopWindowKeepAliveAllSessionsWithProcessFilters_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: true,
+            allowForegroundInput: false,
+            dryRun: false,
+            allowedProcessPatterns: new[] { "notepad" });
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "stop_window_keep_alive",
+            CreateArguments(new {
+                allSessions = true
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "multiple applications");
+    }
+
     private static JsonElement CreateArguments(object value) {
         using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(value));
         return document.RootElement.Clone();

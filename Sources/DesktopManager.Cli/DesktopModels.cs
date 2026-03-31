@@ -95,6 +95,17 @@ internal sealed class WindowGeometryResult {
     public int ClientOffsetTop { get; set; }
 }
 
+internal sealed class WindowProcessInfoResult {
+    public WindowResult Window { get; set; } = new WindowResult();
+    public bool IsOwnerProcess { get; set; }
+    public uint ProcessId { get; set; }
+    public uint ThreadId { get; set; }
+    public string ProcessName { get; set; } = string.Empty;
+    public string? ProcessPath { get; set; }
+    public bool? IsElevated { get; set; }
+    public bool? IsWow64 { get; set; }
+}
+
 internal sealed class ControlResult {
     public string Handle { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;

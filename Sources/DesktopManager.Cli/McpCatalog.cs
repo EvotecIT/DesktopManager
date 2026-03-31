@@ -20,6 +20,8 @@ internal static class McpCatalog {
         "advance_desktop_slideshow",
         "list_windows",
         "get_window_geometry",
+        "get_window_process_info",
+        "get_owner_window_process_info",
         "window_exists",
         "active_window_matches",
         "wait_for_window",
@@ -48,6 +50,9 @@ internal static class McpCatalog {
         "type_window_text",
         "send_window_keys",
         "focus_window",
+        "list_window_keep_alive",
+        "start_window_keep_alive",
+        "stop_window_keep_alive",
         "minimize_windows",
         "maximize_windows",
         "restore_windows",
@@ -110,6 +115,8 @@ internal static class McpCatalog {
         "type_window_text",
         "send_window_keys",
         "focus_window",
+        "start_window_keep_alive",
+        "stop_window_keep_alive",
         "minimize_windows",
         "maximize_windows",
         "restore_windows",
@@ -151,6 +158,8 @@ internal static class McpCatalog {
         "type_window_text",
         "send_window_keys",
         "focus_window",
+        "start_window_keep_alive",
+        "stop_window_keep_alive",
         "minimize_windows",
         "maximize_windows",
         "restore_windows",
@@ -214,6 +223,7 @@ internal static class McpCatalog {
             case "type_window_text":
             case "send_window_keys":
             case "focus_window":
+            case "start_window_keep_alive":
             case "minimize_windows":
             case "maximize_windows":
             case "restore_windows":
@@ -225,6 +235,20 @@ internal static class McpCatalog {
                 string? processName = ReadOptionalString(arguments, "processName");
                 if (!string.IsNullOrWhiteSpace(processName) && !string.Equals(processName.Trim(), "*", StringComparison.Ordinal)) {
                     processPatterns = new[] { processName.Trim() };
+                    return true;
+                }
+
+                error = "Process-scoped MCP safety filters require an explicit 'processName' selector for this tool.";
+                return false;
+            case "stop_window_keep_alive":
+                if (ReadBool(arguments, "allSessions")) {
+                    error = "This tool can affect multiple applications and is blocked while MCP process allow/deny filters are active.";
+                    return false;
+                }
+
+                string? keepAliveProcessName = ReadOptionalString(arguments, "processName");
+                if (!string.IsNullOrWhiteSpace(keepAliveProcessName) && !string.Equals(keepAliveProcessName.Trim(), "*", StringComparison.Ordinal)) {
+                    processPatterns = new[] { keepAliveProcessName.Trim() };
                     return true;
                 }
 
@@ -309,6 +333,8 @@ internal static class McpCatalog {
                 }, new[] { "direction" }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("list_windows", "List Windows", "List visible desktop windows with optional filtering.", CreateWindowSelectorSchema(includeAll: false, includeEmpty: true), readOnly: true),
             CreateTool("get_window_geometry", "Get Window Geometry", "Return outer-window and client-area geometry for matching windows.", CreateWindowSelectorSchema(includeAll: true, includeEmpty: true), readOnly: true),
+            CreateTool("get_window_process_info", "Get Window Process Info", "Return process metadata for one or more matching windows.", CreateWindowSelectorSchema(includeAll: true, includeEmpty: true), readOnly: true),
+            CreateTool("get_owner_window_process_info", "Get Owner Window Process Info", "Return owner-window process metadata for one or more matching windows when available.", CreateWindowSelectorSchema(includeAll: true, includeEmpty: true), readOnly: true),
             CreateTool("window_exists", "Window Exists", "Check whether a matching window currently exists.", CreateWindowSelectorSchema(includeAll: false, includeEmpty: true), readOnly: true),
             CreateTool("active_window_matches", "Active Window Matches", "Check whether the current foreground window matches the selector.", CreateWindowSelectorSchema(includeAll: false, includeEmpty: true), readOnly: true),
             CreateTool("wait_for_window", "Wait For Window", "Wait for a matching window to appear.", CreateObjectSchema(
@@ -798,6 +824,37 @@ internal static class McpCatalog {
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 }), new[] { "keys" }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("focus_window", "Focus Window", "Bring a matching window to the foreground.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("list_window_keep_alive", "List Window Keep Alive", "List windows that currently have active keep-alive timers.", CreateObjectSchema(), readOnly: true),
+            CreateTool("start_window_keep_alive", "Start Window Keep Alive", "Start periodic keep-alive activity for one or more matching windows.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["intervalMs"] = CreateIntegerSchema("Keep-alive interval in milliseconds. Defaults to 60000."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
+                }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("stop_window_keep_alive", "Stop Window Keep Alive", "Stop keep-alive activity for matching windows or all active keep-alive sessions.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match."),
+                    ["allSessions"] = CreateBooleanSchema("Stop every active keep-alive session across the desktop.")
+                }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("minimize_windows", "Minimize Windows", "Minimize one or more matching windows.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
             CreateTool("maximize_windows", "Maximize Windows", "Maximize one or more matching windows.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
             CreateTool("restore_windows", "Restore Windows", "Restore one or more matching windows to their normal state.", CreateWindowMutationSelectorSchema(includeAll: true, includeEmpty: false), readOnly: false, destructive: false, idempotent: true),
@@ -1194,6 +1251,8 @@ internal static class McpCatalog {
                     ReadSlideshowDirection(arguments, "direction") ?? throw new CommandLineException("Property 'direction' is required.")),
                 "list_windows" => DesktopOperations.ListWindows(ReadWindowCriteria(arguments, false)),
                 "get_window_geometry" => DesktopOperations.GetWindowGeometry(ReadWindowCriteria(arguments, true)),
+                "get_window_process_info" => DesktopOperations.GetWindowProcessInfo(ReadWindowCriteria(arguments, true), owner: false),
+                "get_owner_window_process_info" => DesktopOperations.GetWindowProcessInfo(ReadWindowCriteria(arguments, true), owner: true),
                 "window_exists" => DesktopOperations.WindowExists(ReadWindowCriteria(arguments, true)),
                 "active_window_matches" => DesktopOperations.ActiveWindowMatches(ReadWindowCriteria(arguments, true)),
                 "wait_for_window" => DesktopOperations.WaitForWindow(
@@ -1243,6 +1302,13 @@ internal static class McpCatalog {
                 "drag_window_points" => CallDragWindowPoints(arguments),
                 "scroll_window_point" => CallScrollWindowPoint(arguments),
                 "focus_window" => DesktopOperations.FocusWindow(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
+                "list_window_keep_alive" => DesktopOperations.ListWindowKeepAlive(),
+                "start_window_keep_alive" => DesktopOperations.StartWindowKeepAlive(
+                    ReadWindowCriteria(arguments, true),
+                    ReadPositiveInteger(arguments, "intervalMs") ?? 60000),
+                "stop_window_keep_alive" => ReadBool(arguments, "allSessions")
+                    ? DesktopOperations.StopAllWindowKeepAlive()
+                    : DesktopOperations.StopWindowKeepAlive(ReadWindowCriteria(arguments, true)),
                 "minimize_windows" => DesktopOperations.MinimizeWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
                 "maximize_windows" => DesktopOperations.MaximizeWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
                 "restore_windows" => DesktopOperations.RestoreWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
@@ -1958,6 +2024,15 @@ internal static class McpCatalog {
         }
 
         throw new CommandLineException($"Property '{propertyName}' expects an integer value.");
+    }
+
+    private static int? ReadPositiveInteger(JsonElement element, string propertyName) {
+        int? value = ReadInt(element, propertyName);
+        if (value.HasValue && value.Value <= 0) {
+            throw new CommandLineException($"Property '{propertyName}' expects a value greater than 0.");
+        }
+
+        return value;
     }
 
     private static double? ReadDouble(JsonElement element, string propertyName) {
