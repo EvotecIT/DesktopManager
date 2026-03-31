@@ -9,6 +9,7 @@ Usage:
   desktopmanager <group> <command> [options]
 
 Groups:
+  desktop    Manage desktop-wide personalization
   window     List and control windows
   control    Inspect and interact with child controls
   monitor    Inspect and configure monitors
@@ -24,6 +25,7 @@ Groups:
   help       Show help for a command group
 
 Examples:
+  desktopmanager desktop background-color
   desktopmanager window list
   desktopmanager window wait --process notepad --timeout-ms 5000
   desktopmanager control list --window-process notepad
@@ -43,6 +45,7 @@ Examples:
   desktopmanager diagnostic hosted-session --summary-only
 
 Use:
+  desktopmanager help desktop
   desktopmanager help window
   desktopmanager help control
   desktopmanager help monitor
@@ -121,6 +124,28 @@ Notes:
   Hosted-session typing stops immediately if foreground ownership changes mid-input.
   Hosted-session harness diagnostics are written under Artifacts\HostedSessionTyping with a .json snapshot and a companion .summary.txt file.
   --verify re-queries the mutated window and reports observed postconditions instead of only the request outcome.
+""";
+    }
+
+    public static string GetDesktopHelp() {
+        return """
+Desktop commands:
+  desktopmanager desktop background-color [--json]
+  desktopmanager desktop set-background-color --color <decimal|0xRRGGBB|#RRGGBB> [--json]
+  desktopmanager desktop wallpaper-position [--json]
+  desktopmanager desktop set-wallpaper-position --position <center|tile|stretch|fit|fill|span> [--json]
+  desktopmanager desktop start-slideshow --image <path> [--image <path>...] [--json]
+  desktopmanager desktop stop-slideshow [--json]
+  desktopmanager desktop advance-slideshow --direction <forward|backward> [--json]
+
+Examples:
+  desktopmanager desktop background-color
+  desktopmanager desktop set-background-color --color 0x102040
+  desktopmanager desktop wallpaper-position --json
+  desktopmanager desktop set-wallpaper-position --position fill
+  desktopmanager desktop start-slideshow --image C:\Wallpapers\img1.jpg --image C:\Wallpapers\img2.jpg
+  desktopmanager desktop stop-slideshow
+  desktopmanager desktop advance-slideshow --direction forward
 """;
     }
 
@@ -304,6 +329,7 @@ Monitor commands:
   desktopmanager monitor list [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor brightness [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor wallpaper [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-wallpaper [--wallpaper-path <path> | --url <value>] [--position <center|tile|stretch|fit|fill|span>] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-brightness --brightness <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-position --left <value> --top <value> --right <value> --bottom <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-resolution --width <value> --height <value> [--orientation <default|degrees90|degrees180|degrees270>] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
@@ -316,6 +342,7 @@ Examples:
   desktopmanager monitor list --primary
   desktopmanager monitor brightness --primary
   desktopmanager monitor wallpaper --index 1 --json
+  desktopmanager monitor set-wallpaper --primary --wallpaper-path C:\Wallpapers\Aurora.jpg --position fill
   desktopmanager monitor set-brightness --primary --brightness 65
   desktopmanager monitor set-position --device-name \\.\DISPLAY2 --left 1920 --top 0 --right 3840 --bottom 1440
   desktopmanager monitor set-resolution --primary --width 2560 --height 1440 --orientation default

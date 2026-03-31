@@ -256,6 +256,22 @@ internal sealed class MonitorWallpaperResult {
     public string Wallpaper { get; set; } = string.Empty;
 }
 
+internal sealed class DesktopColorResult {
+    public uint Value { get; set; }
+    public string HexValue { get; set; } = string.Empty;
+}
+
+internal sealed class DesktopWallpaperPositionResult {
+    public string Position { get; set; } = string.Empty;
+}
+
+internal sealed class DesktopSlideshowResult {
+    public string Action { get; set; } = string.Empty;
+    public bool IsRunning { get; set; }
+    public string? Direction { get; set; }
+    public int? ImageCount { get; set; }
+}
+
 internal sealed class MouseStateResult {
     public int X { get; set; }
     public int Y { get; set; }

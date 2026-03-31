@@ -32,6 +32,7 @@ internal static class CliApplication {
             }
 
             return group switch {
+                "desktop" => DesktopCommands.Run(action, parsed),
                 "window" => WindowCommands.Run(action, parsed),
                 "control" => ControlCommands.Run(action, parsed),
                 "monitor" => MonitorCommands.Run(action, parsed),
@@ -67,6 +68,7 @@ internal static class CliApplication {
 
     internal static bool RequiresAction(string? group) {
         return group?.ToLowerInvariant() switch {
+            "desktop" => true,
             "window" => true,
             "control" => true,
             "monitor" => true,
@@ -85,6 +87,7 @@ internal static class CliApplication {
 
     internal static string GetHelpText(string? topic) {
         return topic?.ToLowerInvariant() switch {
+            "desktop" => HelpText.GetDesktopHelp(),
             "window" => HelpText.GetWindowHelp(),
             "control" => HelpText.GetControlHelp(),
             "monitor" => HelpText.GetMonitorHelp(),

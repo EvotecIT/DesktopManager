@@ -10,6 +10,7 @@ internal static class MonitorCommands {
             "list" => List(arguments),
             "brightness" => Brightness(arguments),
             "wallpaper" => Wallpaper(arguments),
+            "set-wallpaper" => SetWallpaper(arguments),
             "set-brightness" => SetBrightness(arguments),
             "set-position" => SetPosition(arguments),
             "set-resolution" => SetResolution(arguments),
@@ -108,7 +109,7 @@ internal static class MonitorCommands {
         IReadOnlyList<MonitorResult> results = DesktopOperations.SetMonitorResolution(
             arguments.GetRequiredIntOption("width"),
             arguments.GetRequiredIntOption("height"),
-            MonitorValueParser.ParseOptionalDisplayOrientation(arguments.GetOption("orientation"), "Option '--orientation'"),
+            DesktopValueParser.ParseOptionalDisplayOrientation(arguments.GetOption("orientation"), "Option '--orientation'"),
             connectedOnly: GetConnectedOnly(arguments),
             primaryOnly: GetPrimaryOnly(arguments),
             index: arguments.GetIntOption("index"),
@@ -148,7 +149,7 @@ internal static class MonitorCommands {
         }
 
         bool? visible = show ? true : hide ? false : null;
-        TaskbarPosition? position = MonitorValueParser.ParseOptionalTaskbarPosition(arguments.GetOption("position"), "Option '--position'");
+        TaskbarPosition? position = DesktopValueParser.ParseOptionalTaskbarPosition(arguments.GetOption("position"), "Option '--position'");
         IReadOnlyList<MonitorResult> results = DesktopOperations.SetTaskbarPosition(
             position,
             visible,
@@ -164,6 +165,25 @@ internal static class MonitorCommands {
         }
 
         return WriteMonitorResults(results, Console.Out);
+    }
+
+    private static int SetWallpaper(CommandLineArguments arguments) {
+        IReadOnlyList<MonitorWallpaperResult> results = DesktopOperations.SetMonitorWallpaper(
+            arguments.GetOption("wallpaper-path"),
+            arguments.GetOption("url"),
+            DesktopValueParser.ParseOptionalWallpaperPosition(arguments.GetOption("position"), "Option '--position'"),
+            connectedOnly: GetConnectedOnly(arguments),
+            primaryOnly: GetPrimaryOnly(arguments),
+            index: arguments.GetIntOption("index"),
+            deviceId: arguments.GetOption("device-id"),
+            deviceName: arguments.GetOption("device-name"));
+
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(results);
+            return 0;
+        }
+
+        return WriteMonitorWallpaperResults(results, Console.Out);
     }
 
     internal static int WriteMonitorBrightnessResults(IReadOnlyList<MonitorBrightnessResult> results, TextWriter writer) {

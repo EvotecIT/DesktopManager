@@ -61,6 +61,7 @@ public class CliApplicationTests {
     [DataTestMethod]
     [DataRow("window")]
     [DataRow("control")]
+    [DataRow("desktop")]
     [DataRow("monitor")]
     [DataRow("process")]
     [DataRow("screenshot")]
@@ -86,6 +87,7 @@ public class CliApplicationTests {
     [DataTestMethod]
     [DataRow("window")]
     [DataRow("control")]
+    [DataRow("desktop")]
     [DataRow("monitor")]
     [DataRow("process")]
     [DataRow("screenshot")]
@@ -274,6 +276,45 @@ public class CliApplicationTests {
         Assert.AreEqual(1, exitCode);
         Assert.AreEqual(string.Empty, standardOutput);
         StringAssert.Contains(standardError, "Error: Cannot combine '--show' with '--hide'.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures desktop set-background-color reports a missing color through the CLI entrypoint.
+    /// </summary>
+    public void Run_DesktopSetBackgroundColorWithoutColor_WritesMissingRequiredOptionError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("desktop", "set-background-color");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Option '--color' is required.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures desktop set-wallpaper-position rejects unsupported position values through the CLI entrypoint.
+    /// </summary>
+    public void Run_DesktopSetWallpaperPositionWithInvalidValue_WritesValidationError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("desktop", "set-wallpaper-position", "--position", "sideways");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Option '--position' expects one of: center, tile, stretch, fit, fill, span.");
+        StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor set-wallpaper requires a path or URL through the CLI entrypoint.
+    /// </summary>
+    public void Run_MonitorSetWallpaperWithoutSource_WritesValidationError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("monitor", "set-wallpaper", "--primary");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Either wallpaperPath or url must be provided.");
         StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
     }
 

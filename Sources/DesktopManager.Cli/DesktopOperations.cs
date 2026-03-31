@@ -397,6 +397,40 @@ internal static partial class DesktopOperations {
         });
     }
 
+    public static IReadOnlyList<MonitorWallpaperResult> SetMonitorWallpaper(string? wallpaperPath, string? url, DesktopWallpaperPosition? wallpaperPosition = null, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        if (string.IsNullOrWhiteSpace(wallpaperPath) && string.IsNullOrWhiteSpace(url)) {
+            throw new CommandLineException("Either wallpaperPath or url must be provided.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(wallpaperPath) && !string.IsNullOrWhiteSpace(url)) {
+            throw new CommandLineException("Specify only one of wallpaperPath or url.");
+        }
+
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+            foreach (Monitor monitor in monitors) {
+                if (!string.IsNullOrWhiteSpace(wallpaperPath)) {
+                    automation.SetMonitorWallpaper(monitor.DeviceId, wallpaperPath);
+                } else {
+                    automation.SetMonitorWallpaperFromUrl(monitor.DeviceId, url!);
+                }
+            }
+
+            if (wallpaperPosition.HasValue) {
+                automation.SetDesktopWallpaperPosition(wallpaperPosition.Value);
+            }
+
+            return monitors.Select(monitor => new MonitorWallpaperResult {
+                Index = monitor.Index,
+                DeviceName = monitor.DeviceName,
+                DeviceId = monitor.DeviceId,
+                IsPrimary = monitor.IsPrimary,
+                Wallpaper = automation.GetMonitorWallpaper(monitor.DeviceId)
+            }).ToArray();
+        });
+    }
+
     public static IReadOnlyList<MonitorBrightnessResult> SetMonitorBrightness(int brightness, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
         return ExecuteCore(() => {
             var automation = new DesktopAutomationService();
@@ -412,6 +446,66 @@ internal static partial class DesktopOperations {
                 IsPrimary = monitor.IsPrimary,
                 Brightness = automation.GetMonitorBrightness(monitor.DeviceId)
             }).ToArray();
+        });
+    }
+
+    public static DesktopColorResult GetDesktopBackgroundColor() {
+        return ExecuteCore(() => MapDesktopColor(new DesktopAutomationService().GetDesktopBackgroundColor()));
+    }
+
+    public static DesktopColorResult SetDesktopBackgroundColor(uint color) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            automation.SetDesktopBackgroundColor(color);
+            return MapDesktopColor(automation.GetDesktopBackgroundColor());
+        });
+    }
+
+    public static DesktopWallpaperPositionResult GetDesktopWallpaperPosition() {
+        return ExecuteCore(() => MapDesktopWallpaperPosition(new DesktopAutomationService().GetDesktopWallpaperPosition()));
+    }
+
+    public static DesktopWallpaperPositionResult SetDesktopWallpaperPosition(DesktopWallpaperPosition position) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            automation.SetDesktopWallpaperPosition(position);
+            return MapDesktopWallpaperPosition(automation.GetDesktopWallpaperPosition());
+        });
+    }
+
+    public static DesktopSlideshowResult StartDesktopSlideshow(IReadOnlyList<string> imagePaths) {
+        if (imagePaths == null || imagePaths.Count == 0) {
+            throw new CommandLineException("At least one slideshow image path is required.");
+        }
+
+        return ExecuteCore(() => {
+            new DesktopAutomationService().StartDesktopSlideshow(imagePaths);
+            return new DesktopSlideshowResult {
+                Action = "start-desktop-slideshow",
+                IsRunning = true,
+                ImageCount = imagePaths.Count
+            };
+        });
+    }
+
+    public static DesktopSlideshowResult StopDesktopSlideshow() {
+        return ExecuteCore(() => {
+            new DesktopAutomationService().StopDesktopSlideshow();
+            return new DesktopSlideshowResult {
+                Action = "stop-desktop-slideshow",
+                IsRunning = false
+            };
+        });
+    }
+
+    public static DesktopSlideshowResult AdvanceDesktopSlideshow(DesktopSlideshowDirection direction) {
+        return ExecuteCore(() => {
+            new DesktopAutomationService().AdvanceDesktopSlideshow(direction);
+            return new DesktopSlideshowResult {
+                Action = "advance-desktop-slideshow",
+                IsRunning = true,
+                Direction = direction.ToString()
+            };
         });
     }
 
@@ -1552,6 +1646,19 @@ internal static partial class DesktopOperations {
             AllowForegroundInputFallback = criteria.AllowForegroundInputFallback,
             UseUiAutomation = criteria.UiAutomation,
             IncludeUiAutomation = criteria.IncludeUiAutomation
+        };
+    }
+
+    private static DesktopColorResult MapDesktopColor(uint color) {
+        return new DesktopColorResult {
+            Value = color,
+            HexValue = "0x" + color.ToString("X6")
+        };
+    }
+
+    private static DesktopWallpaperPositionResult MapDesktopWallpaperPosition(DesktopWallpaperPosition position) {
+        return new DesktopWallpaperPositionResult {
+            Position = position.ToString()
         };
     }
 

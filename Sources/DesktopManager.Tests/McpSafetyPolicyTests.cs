@@ -220,6 +220,47 @@ public class McpSafetyPolicyTests {
         StringAssert.Contains(decision.Message, "read-only mode");
     }
 
+    [TestMethod]
+    /// <summary>
+    /// Ensures desktop background color mutations are blocked when the server is read-only.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_SetDesktopBackgroundColorInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "set_desktop_background_color",
+            CreateArguments(new {
+                color = "0x102040"
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor wallpaper mutations are blocked when the server is read-only.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_SetMonitorWallpaperInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "set_monitor_wallpaper",
+            CreateArguments(new {
+                wallpaperPath = @"C:\Wallpapers\Aurora.jpg",
+                primaryOnly = true
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
     private static JsonElement CreateArguments(object value) {
         using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(value));
         return document.RootElement.Clone();

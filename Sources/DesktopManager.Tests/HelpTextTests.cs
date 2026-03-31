@@ -7,6 +7,7 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class HelpTextTests {
     [DataTestMethod]
+    [DataRow("desktop", "Desktop commands:")]
     [DataRow("window", "Window commands:")]
     [DataRow("control", "Control commands:")]
     [DataRow("monitor", "Monitor commands:")]
@@ -47,6 +48,7 @@ public class HelpTextTests {
         string help = global::DesktopManager.Cli.HelpText.GetGeneralHelp();
 
         foreach (string topic in new[] {
+            "desktop",
             "window",
             "control",
             "monitor",
@@ -76,6 +78,21 @@ public class HelpTextTests {
         StringAssert.Contains(help, "desktopmanager monitor set-resolution");
         StringAssert.Contains(help, "desktopmanager monitor set-dpi-scaling");
         StringAssert.Contains(help, "desktopmanager monitor set-taskbar");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures desktop help advertises the personalization commands.
+    /// </summary>
+    public void GetDesktopHelp_ListsPersonalizationCommands() {
+        string help = global::DesktopManager.Cli.HelpText.GetDesktopHelp();
+
+        StringAssert.Contains(help, "desktopmanager desktop background-color");
+        StringAssert.Contains(help, "desktopmanager desktop set-background-color");
+        StringAssert.Contains(help, "desktopmanager desktop wallpaper-position");
+        StringAssert.Contains(help, "desktopmanager desktop set-wallpaper-position");
+        StringAssert.Contains(help, "desktopmanager desktop start-slideshow");
+        StringAssert.Contains(help, "desktopmanager desktop advance-slideshow");
     }
 }
 #endif

@@ -11,6 +11,13 @@ internal static class McpCatalog {
         "get_mouse_state",
         "get_clipboard_text",
         "get_elevation_status",
+        "get_desktop_background_color",
+        "set_desktop_background_color",
+        "get_desktop_wallpaper_position",
+        "set_desktop_wallpaper_position",
+        "start_desktop_slideshow",
+        "stop_desktop_slideshow",
+        "advance_desktop_slideshow",
         "list_windows",
         "get_window_geometry",
         "window_exists",
@@ -46,6 +53,7 @@ internal static class McpCatalog {
         "list_monitors",
         "get_monitor_brightness",
         "get_monitor_wallpaper",
+        "set_monitor_wallpaper",
         "set_monitor_brightness",
         "set_monitor_position",
         "set_monitor_resolution",
@@ -78,6 +86,11 @@ internal static class McpCatalog {
 
     private static readonly HashSet<string> MutatingToolNames = new(StringComparer.Ordinal) {
         "set_clipboard_text",
+        "set_desktop_background_color",
+        "set_desktop_wallpaper_position",
+        "start_desktop_slideshow",
+        "stop_desktop_slideshow",
+        "advance_desktop_slideshow",
         "click_control",
         "focus_control",
         "set_control_enabled",
@@ -94,6 +107,7 @@ internal static class McpCatalog {
         "minimize_windows",
         "snap_window",
         "set_monitor_brightness",
+        "set_monitor_wallpaper",
         "set_monitor_position",
         "set_monitor_resolution",
         "set_monitor_dpi_scaling",
@@ -250,6 +264,25 @@ internal static class McpCatalog {
                     ["retryDelayMs"] = CreateIntegerSchema("Delay between clipboard retry attempts in milliseconds.")
                 }), readOnly: true),
             CreateTool("get_elevation_status", "Get Elevation Status", "Return whether the current DesktopManager host process is elevated.", CreateObjectSchema(), readOnly: true),
+            CreateTool("get_desktop_background_color", "Get Desktop Background Color", "Return the current desktop background color.", CreateObjectSchema(), readOnly: true),
+            CreateTool("set_desktop_background_color", "Set Desktop Background Color", "Set the desktop background color.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["color"] = CreateStringSchema("RGB color value as decimal, 0xRRGGBB, or #RRGGBB.")
+                }, new[] { "color" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("get_desktop_wallpaper_position", "Get Desktop Wallpaper Position", "Return the current desktop wallpaper position.", CreateObjectSchema(), readOnly: true),
+            CreateTool("set_desktop_wallpaper_position", "Set Desktop Wallpaper Position", "Set the desktop wallpaper position.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["position"] = CreateStringSchema("Wallpaper position: center, tile, stretch, fit, fill, or span.")
+                }, new[] { "position" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("start_desktop_slideshow", "Start Desktop Slideshow", "Start a desktop wallpaper slideshow.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["imagePaths"] = CreateArraySchema("Wallpaper image paths for the slideshow.", CreateStringSchema("Image path."))
+                }, new[] { "imagePaths" }), readOnly: false, destructive: false, idempotent: false),
+            CreateTool("stop_desktop_slideshow", "Stop Desktop Slideshow", "Stop the active desktop wallpaper slideshow.", CreateObjectSchema(), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("advance_desktop_slideshow", "Advance Desktop Slideshow", "Advance the desktop wallpaper slideshow.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["direction"] = CreateStringSchema("Advance direction: forward or backward.")
+                }, new[] { "direction" }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("list_windows", "List Windows", "List visible desktop windows with optional filtering.", CreateWindowSelectorSchema(includeAll: false, includeEmpty: true), readOnly: true),
             CreateTool("get_window_geometry", "Get Window Geometry", "Return outer-window and client-area geometry for matching windows.", CreateWindowSelectorSchema(includeAll: true, includeEmpty: true), readOnly: true),
             CreateTool("window_exists", "Window Exists", "Check whether a matching window currently exists.", CreateWindowSelectorSchema(includeAll: false, includeEmpty: true), readOnly: true),
@@ -759,6 +792,12 @@ internal static class McpCatalog {
                 CreateMonitorSelectorProperties()), readOnly: true),
             CreateTool("get_monitor_wallpaper", "Get Monitor Wallpaper", "Return wallpaper paths for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorSelectorProperties()), readOnly: true),
+            CreateTool("set_monitor_wallpaper", "Set Monitor Wallpaper", "Set wallpaper for one or more matching monitors.", CreateObjectSchema(
+                CreateMonitorMutationProperties(new Dictionary<string, object> {
+                    ["wallpaperPath"] = CreateStringSchema("Wallpaper file path."),
+                    ["url"] = CreateStringSchema("Wallpaper URL."),
+                    ["position"] = CreateStringSchema("Optional wallpaper position: center, tile, stretch, fit, fill, or span.")
+                })), readOnly: false, destructive: false, idempotent: true),
             CreateTool("set_monitor_brightness", "Set Monitor Brightness", "Set brightness for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["brightness"] = CreateIntegerSchema("Brightness level to apply from 0 to 100.")
@@ -1073,6 +1112,17 @@ internal static class McpCatalog {
                     ReadInt(arguments, "retryCount"),
                     ReadInt(arguments, "retryDelayMs")),
                 "get_elevation_status" => DesktopOperations.GetElevationStatus(),
+                "get_desktop_background_color" => DesktopOperations.GetDesktopBackgroundColor(),
+                "set_desktop_background_color" => DesktopOperations.SetDesktopBackgroundColor(
+                    ReadColor(arguments, "color")),
+                "get_desktop_wallpaper_position" => DesktopOperations.GetDesktopWallpaperPosition(),
+                "set_desktop_wallpaper_position" => DesktopOperations.SetDesktopWallpaperPosition(
+                    ReadWallpaperPosition(arguments, "position") ?? throw new CommandLineException("Property 'position' is required.")),
+                "start_desktop_slideshow" => DesktopOperations.StartDesktopSlideshow(
+                    ReadStringList(arguments, "imagePaths")),
+                "stop_desktop_slideshow" => DesktopOperations.StopDesktopSlideshow(),
+                "advance_desktop_slideshow" => DesktopOperations.AdvanceDesktopSlideshow(
+                    ReadSlideshowDirection(arguments, "direction") ?? throw new CommandLineException("Property 'direction' is required.")),
                 "list_windows" => DesktopOperations.ListWindows(ReadWindowCriteria(arguments, false)),
                 "get_window_geometry" => DesktopOperations.GetWindowGeometry(ReadWindowCriteria(arguments, true)),
                 "window_exists" => DesktopOperations.WindowExists(ReadWindowCriteria(arguments, true)),
@@ -1139,6 +1189,15 @@ internal static class McpCatalog {
                     ReadOptionalString(arguments, "deviceId"),
                     ReadOptionalString(arguments, "deviceName")),
                 "get_monitor_wallpaper" => DesktopOperations.GetMonitorWallpaper(
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "set_monitor_wallpaper" => DesktopOperations.SetMonitorWallpaper(
+                    ReadOptionalString(arguments, "wallpaperPath"),
+                    ReadOptionalString(arguments, "url"),
+                    ReadWallpaperPosition(arguments, "position"),
                     ReadNullableBool(arguments, "connectedOnly"),
                     ReadNullableBool(arguments, "primaryOnly"),
                     ReadInt(arguments, "index"),
@@ -1834,7 +1893,11 @@ internal static class McpCatalog {
     }
 
     private static DisplayOrientation? ReadDisplayOrientation(JsonElement element, string propertyName) {
-        return MonitorValueParser.ParseOptionalDisplayOrientation(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
+        return DesktopValueParser.ParseOptionalDisplayOrientation(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
+    }
+
+    private static uint ReadColor(JsonElement element, string propertyName) {
+        return DesktopValueParser.ParseRequiredColor(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
     }
 
     private static bool ReadBool(JsonElement element, string propertyName) {
@@ -1886,7 +1949,15 @@ internal static class McpCatalog {
     }
 
     private static TaskbarPosition? ReadTaskbarPosition(JsonElement element, string propertyName) {
-        return MonitorValueParser.ParseOptionalTaskbarPosition(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
+        return DesktopValueParser.ParseOptionalTaskbarPosition(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
+    }
+
+    private static DesktopWallpaperPosition? ReadWallpaperPosition(JsonElement element, string propertyName) {
+        return DesktopValueParser.ParseOptionalWallpaperPosition(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
+    }
+
+    private static DesktopSlideshowDirection? ReadSlideshowDirection(JsonElement element, string propertyName) {
+        return DesktopValueParser.ParseOptionalSlideshowDirection(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
     }
 
     private static bool TryReadProperty(JsonElement element, string propertyName, out JsonElement property) {

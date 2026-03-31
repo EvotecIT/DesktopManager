@@ -54,6 +54,13 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("get_mouse_state"));
         Assert.IsTrue(toolNames.Contains("get_clipboard_text"));
         Assert.IsTrue(toolNames.Contains("get_elevation_status"));
+        Assert.IsTrue(toolNames.Contains("get_desktop_background_color"));
+        Assert.IsTrue(toolNames.Contains("set_desktop_background_color"));
+        Assert.IsTrue(toolNames.Contains("get_desktop_wallpaper_position"));
+        Assert.IsTrue(toolNames.Contains("set_desktop_wallpaper_position"));
+        Assert.IsTrue(toolNames.Contains("start_desktop_slideshow"));
+        Assert.IsTrue(toolNames.Contains("stop_desktop_slideshow"));
+        Assert.IsTrue(toolNames.Contains("advance_desktop_slideshow"));
         Assert.IsTrue(toolNames.Contains("wait_for_window_close"));
         Assert.IsTrue(toolNames.Contains("wait_for_window_to_lose_focus"));
         Assert.IsTrue(toolNames.Contains("observe_window_text"));
@@ -69,6 +76,7 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("launch_and_wait_for_window"));
         Assert.IsTrue(toolNames.Contains("get_monitor_brightness"));
         Assert.IsTrue(toolNames.Contains("get_monitor_wallpaper"));
+        Assert.IsTrue(toolNames.Contains("set_monitor_wallpaper"));
         Assert.IsTrue(toolNames.Contains("set_monitor_brightness"));
         Assert.IsTrue(toolNames.Contains("set_monitor_position"));
         Assert.IsTrue(toolNames.Contains("set_monitor_resolution"));
@@ -100,8 +108,14 @@ public class McpServerTests {
         AssertToolHasProperty(toolsByName["get_clipboard_text"], "retryCount");
         AssertToolHasProperty(toolsByName["get_clipboard_text"], "retryDelayMs");
         AssertToolHasProperty(toolsByName["set_clipboard_text"], "text");
+        AssertToolHasProperty(toolsByName["set_desktop_background_color"], "color");
+        AssertToolHasProperty(toolsByName["set_desktop_wallpaper_position"], "position");
+        AssertToolHasProperty(toolsByName["start_desktop_slideshow"], "imagePaths");
+        AssertToolHasProperty(toolsByName["advance_desktop_slideshow"], "direction");
         AssertToolHasProperty(toolsByName["get_monitor_brightness"], "deviceId");
         AssertToolHasProperty(toolsByName["get_monitor_wallpaper"], "deviceName");
+        AssertToolHasProperty(toolsByName["set_monitor_wallpaper"], "wallpaperPath");
+        AssertToolHasProperty(toolsByName["set_monitor_wallpaper"], "url");
         AssertToolHasProperty(toolsByName["set_monitor_brightness"], "brightness");
         AssertToolHasProperty(toolsByName["set_monitor_position"], "left");
         AssertToolHasProperty(toolsByName["set_monitor_position"], "right");
