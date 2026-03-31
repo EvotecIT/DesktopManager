@@ -59,18 +59,16 @@ internal static class DesktopValueParser {
 
         string trimmed = value.Trim();
         if (trimmed.StartsWith("#", StringComparison.Ordinal)) {
-            trimmed = trimmed.Substring(1);
-        }
-
-        if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) {
-            trimmed = trimmed.Substring(2);
-        }
-
-        if (uint.TryParse(trimmed, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint hexValue)) {
-            return hexValue;
-        }
-
-        if (uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint numericValue)) {
+            string hexValue = trimmed.Substring(1);
+            if (uint.TryParse(hexValue, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint parsedHexValue)) {
+                return parsedHexValue;
+            }
+        } else if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) {
+            string hexValue = trimmed.Substring(2);
+            if (uint.TryParse(hexValue, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint parsedHexValue)) {
+                return parsedHexValue;
+            }
+        } else if (uint.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint numericValue)) {
             return numericValue;
         }
 

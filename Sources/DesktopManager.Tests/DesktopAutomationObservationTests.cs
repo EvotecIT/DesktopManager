@@ -75,12 +75,40 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures focused-control observation returns null when no window matches the selector.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_MissingWindow_ReturnsNull() {
+        var automation = new DesktopAutomationService();
+
+        DesktopFocusedControlObservation? observation = automation.GetFocusedControlObservation(new WindowQueryOptions {
+            TitlePattern = "__DesktopManager_NoSuchWindow__"
+        });
+
+        Assert.IsNull(observation);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures handle-based text observation rejects invalid handles.
     /// </summary>
     public void DesktopAutomationService_ObserveWindowText_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
         Assert.ThrowsException<ArgumentException>(() => automation.ObserveWindowText(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures text observation returns null when no window matches the selector.
+    /// </summary>
+    public void DesktopAutomationService_ObserveWindowText_MissingWindow_ReturnsNull() {
+        var automation = new DesktopAutomationService();
+
+        DesktopWindowTextObservation? observation = automation.ObserveWindowText(new WindowQueryOptions {
+            TitlePattern = "__DesktopManager_NoSuchWindow__"
+        });
+
+        Assert.IsNull(observation);
     }
 
     [TestMethod]

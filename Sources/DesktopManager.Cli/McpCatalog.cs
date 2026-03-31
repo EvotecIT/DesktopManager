@@ -1306,9 +1306,7 @@ internal static class McpCatalog {
                 "start_window_keep_alive" => DesktopOperations.StartWindowKeepAlive(
                     ReadWindowCriteria(arguments, true),
                     ReadPositiveInteger(arguments, "intervalMs") ?? 60000),
-                "stop_window_keep_alive" => ReadBool(arguments, "allSessions")
-                    ? DesktopOperations.StopAllWindowKeepAlive()
-                    : DesktopOperations.StopWindowKeepAlive(ReadWindowCriteria(arguments, true)),
+                "stop_window_keep_alive" => StopWindowKeepAlive(arguments),
                 "minimize_windows" => DesktopOperations.MinimizeWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
                 "maximize_windows" => DesktopOperations.MaximizeWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
                 "restore_windows" => DesktopOperations.RestoreWindows(ReadWindowCriteria(arguments, true), ReadMutationArtifactOptions(arguments)),
@@ -1708,6 +1706,32 @@ internal static class McpCatalog {
             IncludeEmptyTitles = ReadNullableBool(element, "includeEmpty") ?? includeEmptyDefault,
             All = ReadBool(element, "all")
         };
+    }
+
+    private static object StopWindowKeepAlive(JsonElement arguments) {
+        bool allSessions = ReadBool(arguments, "allSessions");
+        if (allSessions) {
+            if (HasWindowSelector(arguments) || ReadBool(arguments, "all")) {
+                throw new CommandLineException("Cannot combine 'allSessions' with window selectors or 'all'.");
+            }
+
+            return DesktopOperations.StopAllWindowKeepAlive();
+        }
+
+        return DesktopOperations.StopWindowKeepAlive(ReadWindowCriteria(arguments, true));
+    }
+
+    private static bool HasWindowSelector(JsonElement arguments) {
+        return !string.IsNullOrWhiteSpace(ReadOptionalString(arguments, "windowTitle")) ||
+               !string.IsNullOrWhiteSpace(ReadOptionalString(arguments, "processName")) ||
+               !string.IsNullOrWhiteSpace(ReadOptionalString(arguments, "className")) ||
+               ReadInt(arguments, "processId").HasValue ||
+               !string.IsNullOrWhiteSpace(ReadOptionalString(arguments, "handle")) ||
+               ReadBool(arguments, "activeWindow") ||
+               ReadNullableBool(arguments, "includeEmpty").HasValue ||
+               ReadBool(arguments, "includeHidden") ||
+               ReadBool(arguments, "excludeCloaked") ||
+               ReadBool(arguments, "excludeOwned");
     }
 
     private static ControlSelectionCriteria ReadControlCriteria(JsonElement element) {

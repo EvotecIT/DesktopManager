@@ -522,7 +522,11 @@ public sealed class DesktopAutomationService {
             throw new ArgumentNullException(nameof(options));
         }
 
-        WindowInfo window = ResolveWindows(options, all: false)[0];
+        WindowInfo? window = TryResolveSingleWindow(options);
+        if (window == null) {
+            return null;
+        }
+
         IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
         if (focusedHandle == IntPtr.Zero) {
             return null;
@@ -903,7 +907,11 @@ public sealed class DesktopAutomationService {
         DesktopTextObservationOptions settings = observationOptions ?? new DesktopTextObservationOptions();
         ValidateTextObservationOptions(settings);
 
-        WindowInfo window = ResolveSingleWindow(options);
+        WindowInfo? window = TryResolveSingleWindow(options);
+        if (window == null) {
+            return null;
+        }
+
         DesktopWindowTextObservation? fallbackObservation = null;
         for (int attempt = 0; attempt < settings.RetryCount; attempt++) {
             DesktopWindowTextObservation? observation = TryObserveWindowText(window, expectedText, settings);
@@ -2754,6 +2762,11 @@ public sealed class DesktopAutomationService {
 
     private WindowInfo ResolveSingleWindow(WindowQueryOptions options) {
         return ResolveWindows(options, all: false)[0];
+    }
+
+    private WindowInfo? TryResolveSingleWindow(WindowQueryOptions options) {
+        IReadOnlyList<WindowInfo> windows = GetMatchingWindows(options, all: false);
+        return windows.Count > 0 ? windows[0] : null;
     }
 
     private WindowInfo ResolveParentWindow(WindowControlInfo control) {

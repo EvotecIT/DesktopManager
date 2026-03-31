@@ -537,7 +537,6 @@ public class McpServerTests {
         StringAssert.Contains(toolError.GetProperty("message").GetString() ?? string.Empty, "explicit 'processName' selector");
     }
 
-    [TestMethod]
     /// <summary>
     /// Ensures denied-process filters block launch requests before the executable is started.
     /// </summary>
