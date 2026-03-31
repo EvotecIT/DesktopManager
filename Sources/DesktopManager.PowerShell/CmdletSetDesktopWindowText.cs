@@ -155,9 +155,14 @@ public sealed class CmdletSetDesktopWindowText : PSCmdlet {
 
     /// <inheritdoc />
     protected override void BeginProcessing() {
-        var manager = new WindowManager();
         var automation = new DesktopAutomationService();
-        var windows = manager.GetWindows(Name);
+        IReadOnlyList<WindowInfo> windows = automation.GetWindows(new WindowQueryOptions {
+            TitlePattern = Name,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
 
         foreach (var window in windows) {
             string action = ParameterSetName == "Type" ? "Type text" : "Paste text";
@@ -195,7 +200,7 @@ public sealed class CmdletSetDesktopWindowText : PSCmdlet {
                 DesktopWindowMutationRecord result = null;
                 if (ParameterSetName == "Type") {
                     try {
-                        manager.TypeText(window, Text, options);
+                        automation.TypeWindowText(window.Handle, Text, options);
                         if (Verify.IsPresent || PassThru.IsPresent) {
                             result = DesktopWindowMutationVerifier.Verify(
                                 automation,
@@ -216,7 +221,7 @@ public sealed class CmdletSetDesktopWindowText : PSCmdlet {
                     }
                 } else {
                     try {
-                        manager.PasteText(window, Text, options);
+                        automation.PasteWindowText(window.Handle, Text, options);
                         if (Verify.IsPresent || PassThru.IsPresent) {
                             result = DesktopWindowMutationVerifier.Verify(
                                 automation,

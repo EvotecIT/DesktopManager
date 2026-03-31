@@ -39,12 +39,18 @@ public sealed class CmdletSetDesktopWindowVisibility : PSCmdlet {
     /// </summary>
     protected override void BeginProcessing() {
         bool visible = ParameterSetName == "Show";
-        var manager = new WindowManager();
-        var windows = manager.GetWindows(Name);
+        var automation = new DesktopAutomationService();
+        IReadOnlyList<WindowInfo> windows = automation.GetWindows(new WindowQueryOptions {
+            TitlePattern = Name,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
         foreach (var window in windows) {
             if (ShouldProcess($"Window '{window.Title}'", visible ? "Show" : "Hide")) {
                 try {
-                    manager.ShowWindow(window, visible);
+                    automation.SetWindowVisibility(window.Handle, visible);
                 } catch (Exception ex) {
                     WriteWarning($"Failed to change visibility for '{window.Title}': {ex.Message}");
                 }

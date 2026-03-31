@@ -24,6 +24,120 @@ internal static partial class DesktopOperations {
         });
     }
 
+    public static MouseStateResult GetMouseState() {
+        return ExecuteCore(() => MapMouseState(new DesktopAutomationService().GetMouseState()));
+    }
+
+    public static ClipboardTextResult GetClipboardText(int? retryCount = null, int? retryDelayMilliseconds = null) {
+        return ExecuteCore(() => {
+            string? text = new DesktopAutomationService().GetClipboardText(retryCount ?? 5, retryDelayMilliseconds ?? 50);
+            return new ClipboardTextResult {
+                HasText = text != null,
+                Text = text
+            };
+        });
+    }
+
+    public static ClipboardTextResult SetClipboardText(string text, int? retryCount = null, int? retryDelayMilliseconds = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            automation.SetClipboardText(text, retryCount ?? 5, retryDelayMilliseconds ?? 50);
+            return new ClipboardTextResult {
+                HasText = true,
+                Text = automation.GetClipboardText(retryCount ?? 5, retryDelayMilliseconds ?? 50)
+            };
+        });
+    }
+
+    public static ElevationStatusResult GetElevationStatus() {
+        return ExecuteCore(() => new ElevationStatusResult {
+            IsElevated = new DesktopAutomationService().IsElevated()
+        });
+    }
+
+    public static FocusedControlObservationResult? GetFocusedControl(WindowSelectionCriteria criteria) {
+        return ExecuteCore(() => {
+            DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(CreateWindowQuery(criteria));
+            return observation == null ? null : MapFocusedControlObservation(observation);
+        });
+    }
+
+    public static FocusedControlObservationResult WaitForFocusedControl(WindowSelectionCriteria criteria, int timeoutMilliseconds, int intervalMilliseconds) {
+        return ExecuteCore(() => MapFocusedControlObservation(new DesktopAutomationService().WaitForFocusedControlObservation(
+            CreateWindowQuery(criteria),
+            timeoutMilliseconds,
+            intervalMilliseconds)));
+    }
+
+    public static WindowTextObservationResult? ObserveWindowText(WindowSelectionCriteria criteria, string? expectedText = null, int? maxLength = null, int? retryCount = null, int? retryDelayMilliseconds = null) {
+        return ExecuteCore(() => {
+            DesktopWindowTextObservation? observation = new DesktopAutomationService().ObserveWindowText(
+                CreateWindowQuery(criteria),
+                expectedText,
+                CreateTextObservationOptions(maxLength, retryCount, retryDelayMilliseconds));
+            return observation == null ? null : MapWindowTextObservation(observation);
+        });
+    }
+
+    public static WindowTextObservationResult WaitForObservedText(WindowSelectionCriteria criteria, string expectedText, int timeoutMilliseconds, int intervalMilliseconds, int? maxLength = null, int? retryCount = null, int? retryDelayMilliseconds = null) {
+        return ExecuteCore(() => MapWindowTextObservation(new DesktopAutomationService().WaitForObservedText(
+            CreateWindowQuery(criteria),
+            expectedText,
+            timeoutMilliseconds,
+            intervalMilliseconds,
+            CreateTextObservationOptions(maxLength, retryCount, retryDelayMilliseconds))));
+    }
+
+    public static WaitCompletionResult WaitForWindowToClose(WindowSelectionCriteria criteria, int timeoutMilliseconds, int intervalMilliseconds) {
+        return ExecuteCore(() => MapWaitCompletion(new DesktopAutomationService().WaitForWindowToClose(
+            CreateWindowQuery(criteria),
+            timeoutMilliseconds,
+            intervalMilliseconds,
+            criteria.All)));
+    }
+
+    public static WaitCompletionResult WaitForWindowToLoseFocus(WindowSelectionCriteria criteria, int timeoutMilliseconds, int intervalMilliseconds) {
+        return ExecuteCore(() => MapWaitCompletion(new DesktopAutomationService().WaitForWindowToLoseFocus(
+            CreateWindowQuery(criteria),
+            timeoutMilliseconds,
+            intervalMilliseconds,
+            criteria.All)));
+    }
+
+    public static ControlStateResult GetControlState(string windowHandle, string controlHandle) {
+        return ExecuteCore(() => {
+            DesktopControlState? state = new DesktopAutomationService().GetControlState(
+                DesktopHandleParser.Parse(windowHandle),
+                DesktopHandleParser.Parse(controlHandle));
+            if (state == null) {
+                throw new InvalidOperationException("The requested control could not be resolved.");
+            }
+
+            return MapControlState(state);
+        });
+    }
+
+    public static ControlStateResult FocusControl(string windowHandle, string controlHandle, bool ensureForegroundWindow) {
+        return ExecuteCore(() => MapControlState(new DesktopAutomationService().FocusControl(
+            DesktopHandleParser.Parse(windowHandle),
+            DesktopHandleParser.Parse(controlHandle),
+            ensureForegroundWindow)));
+    }
+
+    public static ControlStateResult SetControlEnabled(string windowHandle, string controlHandle, bool enabled) {
+        return ExecuteCore(() => MapControlState(new DesktopAutomationService().SetControlEnabled(
+            DesktopHandleParser.Parse(windowHandle),
+            DesktopHandleParser.Parse(controlHandle),
+            enabled)));
+    }
+
+    public static ControlStateResult SetControlVisibility(string windowHandle, string controlHandle, bool visible) {
+        return ExecuteCore(() => MapControlState(new DesktopAutomationService().SetControlVisibility(
+            DesktopHandleParser.Parse(windowHandle),
+            DesktopHandleParser.Parse(controlHandle),
+            visible)));
+    }
+
     public static IReadOnlyList<WindowGeometryResult> GetWindowGeometry(WindowSelectionCriteria criteria) {
         return ExecuteCore(() => new DesktopAutomationService()
             .GetWindowGeometry(CreateWindowQuery(criteria), criteria.All)
@@ -939,6 +1053,90 @@ internal static partial class DesktopOperations {
             Height = window.Height,
             MonitorIndex = window.MonitorIndex,
             MonitorDeviceName = window.MonitorDeviceName
+        };
+    }
+
+    private static MouseStateResult MapMouseState(DesktopMouseState state) {
+        return new MouseStateResult {
+            X = state.X,
+            Y = state.Y,
+            IsLeftButtonDown = state.IsLeftButtonDown,
+            IsRightButtonDown = state.IsRightButtonDown,
+            IsCursorVisible = state.IsCursorVisible,
+            CursorHandle = state.CursorHandle == IntPtr.Zero ? string.Empty : $"0x{state.CursorHandle.ToInt64():X}"
+        };
+    }
+
+    private static FocusedControlObservationResult MapFocusedControlObservation(DesktopFocusedControlObservation observation) {
+        return new FocusedControlObservationResult {
+            WindowHandle = $"0x{observation.WindowHandle.ToInt64():X}",
+            WindowTitle = observation.WindowTitle,
+            FocusedHandle = $"0x{observation.FocusedHandle.ToInt64():X}",
+            ClassName = observation.ClassName,
+            AutomationId = observation.AutomationId,
+            ControlType = observation.ControlType,
+            Text = observation.Text,
+            Value = observation.Value,
+            IsKeyboardFocusable = observation.IsKeyboardFocusable,
+            IsEnabled = observation.IsEnabled
+        };
+    }
+
+    private static WindowTextObservationResult MapWindowTextObservation(DesktopWindowTextObservation observation) {
+        return new WindowTextObservationResult {
+            WindowHandle = $"0x{observation.WindowHandle.ToInt64():X}",
+            WindowTitle = observation.WindowTitle,
+            ControlHandle = observation.ControlHandle == IntPtr.Zero ? string.Empty : $"0x{observation.ControlHandle.ToInt64():X}",
+            ControlClassName = observation.ControlClassName,
+            ControlAutomationId = observation.ControlAutomationId,
+            ControlType = observation.ControlType,
+            Value = observation.Value,
+            Source = observation.Source,
+            ContainsExpected = observation.ContainsExpected,
+            IsTruncated = observation.IsTruncated
+        };
+    }
+
+    private static WaitCompletionResult MapWaitCompletion(DesktopWaitResult result) {
+        return new WaitCompletionResult {
+            ElapsedMilliseconds = result.ElapsedMilliseconds
+        };
+    }
+
+    private static ControlStateResult MapControlState(DesktopControlState state) {
+        return new ControlStateResult {
+            WindowHandle = state.WindowHandle == IntPtr.Zero ? string.Empty : $"0x{state.WindowHandle.ToInt64():X}",
+            ControlHandle = state.ControlHandle == IntPtr.Zero ? string.Empty : $"0x{state.ControlHandle.ToInt64():X}",
+            ClassName = state.ClassName,
+            AutomationId = state.AutomationId,
+            ControlType = state.ControlType,
+            Text = state.Text,
+            Value = state.Value,
+            IsEnabled = state.IsEnabled,
+            IsVisible = state.IsVisible,
+            IsFocused = state.IsFocused,
+            IsKeyboardFocusable = state.IsKeyboardFocusable,
+            IsOffscreen = state.IsOffscreen,
+            SupportsBackgroundClick = state.SupportsBackgroundClick,
+            SupportsBackgroundText = state.SupportsBackgroundText,
+            SupportsBackgroundKeys = state.SupportsBackgroundKeys,
+            SupportsForegroundInputFallback = state.SupportsForegroundInputFallback,
+            Left = state.Left,
+            Top = state.Top,
+            Width = state.Width,
+            Height = state.Height
+        };
+    }
+
+    private static DesktopTextObservationOptions? CreateTextObservationOptions(int? maxLength, int? retryCount, int? retryDelayMilliseconds) {
+        if (!maxLength.HasValue && !retryCount.HasValue && !retryDelayMilliseconds.HasValue) {
+            return null;
+        }
+
+        return new DesktopTextObservationOptions {
+            MaxObservedTextLength = maxLength ?? 2048,
+            RetryCount = retryCount ?? 5,
+            RetryDelayMilliseconds = retryDelayMilliseconds ?? 50
         };
     }
 

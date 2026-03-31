@@ -109,5 +109,26 @@ public class PowerShellControlMutationTests {
         Assert.IsNotNull(verifyProperty);
         Assert.IsNotNull(passThruProperty);
     }
+
+    [DataTestMethod]
+    [DataRow("CmdletGetDesktopControlState", "Control")]
+    [DataRow("CmdletSetDesktopControlFocus", "Control", "EnsureForeground", "PassThru")]
+    [DataRow("CmdletSetDesktopControlEnabled", "Control", "Enabled", "PassThru")]
+    [DataRow("CmdletSetDesktopControlVisibility", "Control", "Visible", "PassThru")]
+    /// <summary>
+    /// Ensures the newer handle-first control cmdlets expose the expected PowerShell parameters.
+    /// </summary>
+    public void ControlStateCmdlets_ExposeExpectedParameters(string typeName, params string[] parameterNames) {
+        Type? cmdletType = Type.GetType($"DesktopManager.PowerShell.{typeName}, DesktopManager.PowerShell", throwOnError: true);
+        Assert.IsNotNull(cmdletType);
+
+        object? instance = Activator.CreateInstance(cmdletType);
+        Assert.IsNotNull(instance);
+
+        foreach (string parameterName in parameterNames) {
+            System.Reflection.PropertyInfo? property = cmdletType.GetProperty(parameterName);
+            Assert.IsNotNull(property, $"Expected parameter '{parameterName}' on '{typeName}'.");
+        }
+    }
 }
 #endif

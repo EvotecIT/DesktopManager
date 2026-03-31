@@ -15,7 +15,7 @@ public sealed class CmdletSetLogonWallpaper : PSCmdlet {
     /// <para type="description">Path to the image file.</para>
     /// </summary>
     [Parameter(Mandatory = true, Position = 0)]
-    public string ImagePath;
+    public string ImagePath { get; set; }
 
     /// <summary>
     /// Begin processing the command.
@@ -26,9 +26,7 @@ public sealed class CmdletSetLogonWallpaper : PSCmdlet {
         }
 
         if (ShouldProcess("System", $"Set logon wallpaper to '{ImagePath}'")) {
-            PrivilegeChecker.EnsureElevated();
-            Monitors monitors = new Monitors();
-            monitors.SetLogonWallpaper(ImagePath);
+            new DesktopAutomationService().SetLogonWallpaper(ImagePath);
         }
     }
 }

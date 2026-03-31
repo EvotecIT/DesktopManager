@@ -133,6 +133,26 @@ public class McpSafetyPolicyTests {
         Assert.IsNull(decision.Message);
     }
 
+    [TestMethod]
+    /// <summary>
+    /// Ensures clipboard mutations are still blocked when the server is read-only.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_SetClipboardTextInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "set_clipboard_text",
+            CreateArguments(new {
+                text = "Hello from DesktopManager"
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
     private static JsonElement CreateArguments(object value) {
         using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(value));
         return document.RootElement.Clone();

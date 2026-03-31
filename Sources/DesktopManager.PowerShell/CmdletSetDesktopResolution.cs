@@ -12,44 +12,44 @@ public sealed class CmdletSetDesktopResolution : PSCmdlet {
     /// <para type="description">The index of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 0, ParameterSetName = "Index")]
-    public int? Index;
+    public int? Index { get; set; }
 
     /// <summary>
     /// <para type="description">The device ID of the monitor.</para>
     /// </summary>
     [Alias("MonitorID")]
     [Parameter(Mandatory = false, Position = 1, ParameterSetName = "DeviceID")]
-    public string DeviceId;
+    public string DeviceId { get; set; }
 
     /// <summary>
     /// <para type="description">The device name of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 2, ParameterSetName = "DeviceName")]
-    public string DeviceName;
+    public string DeviceName { get; set; }
 
     /// <summary>
     /// <para type="description">Set resolution for the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "PrimaryOnly")]
-    public SwitchParameter PrimaryOnly;
+    public SwitchParameter PrimaryOnly { get; set; }
 
     /// <summary>
     /// <para type="description">Resolution width.</para>
     /// </summary>
     [Parameter(Mandatory = true, Position = 4)]
-    public int Width;
+    public int Width { get; set; }
 
     /// <summary>
     /// <para type="description">Resolution height.</para>
     /// </summary>
     [Parameter(Mandatory = true, Position = 5)]
-    public int Height;
+    public int Height { get; set; }
 
     /// <summary>
     /// <para type="description">Optional display orientation.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 6)]
-    public DisplayOrientation? Orientation;
+    public DisplayOrientation? Orientation { get; set; }
 
     private ActionPreference ErrorAction;
 
@@ -58,21 +58,21 @@ public sealed class CmdletSetDesktopResolution : PSCmdlet {
     /// </summary>
     protected override void BeginProcessing() {
         ErrorAction = CmdletHelper.GetErrorAction(this);
-        Monitors monitors = new Monitors();
+        var automation = new DesktopAutomationService();
 
         bool? primaryOnly = MyInvocation.BoundParameters.ContainsKey(nameof(PrimaryOnly)) ? (bool?)PrimaryOnly : null;
         int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
         string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
 
-        var getMonitors = monitors.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+        var getMonitors = automation.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
             var action = $"Set resolution to {Width}x{Height}" + (Orientation != null ? $" orientation {Orientation}" : string.Empty);
             if (ShouldProcess($"Monitor {monitor.DeviceName}", action)) {
                 try {
-                    monitors.SetMonitorResolution(monitor.DeviceId, Width, Height);
+                    automation.SetMonitorResolution(monitor.DeviceId, Width, Height);
                     if (Orientation != null) {
-                        monitors.SetMonitorOrientation(monitor.DeviceId, Orientation.Value);
+                        automation.SetMonitorOrientation(monitor.DeviceId, Orientation.Value);
                     }
                 } catch (Exception ex) {
                     if (ErrorAction == ActionPreference.Stop) { throw; }

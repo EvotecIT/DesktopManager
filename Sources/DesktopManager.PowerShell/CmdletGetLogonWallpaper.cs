@@ -13,7 +13,6 @@ public sealed class CmdletGetLogonWallpaper : PSCmdlet {
     /// Begin processing the command.
     /// </summary>
     protected override void BeginProcessing() {
-        Monitors monitors = new Monitors();
-        WriteObject(monitors.GetLogonWallpaper());
+        WriteObject(new DesktopAutomationService().GetLogonWallpaper());
     }
 }

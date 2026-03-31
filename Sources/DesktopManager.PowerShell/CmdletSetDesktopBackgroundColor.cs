@@ -11,15 +11,14 @@ public sealed class CmdletSetDesktopBackgroundColor : PSCmdlet {
     /// <para type="description">Color as RGB value.</para>
     /// </summary>
     [Parameter(Mandatory = true, Position = 0)]
-    public uint Color;
+    public uint Color { get; set; }
 
     /// <summary>
     /// Begin processing the command.
     /// </summary>
     protected override void BeginProcessing() {
         if (ShouldProcess("Desktop", $"Change desktop background color to 0x{Color:X6}")) {
-            Monitors monitors = new Monitors();
-            monitors.SetBackgroundColor(Color);
+            new DesktopAutomationService().SetDesktopBackgroundColor(Color);
         }
     }
 }

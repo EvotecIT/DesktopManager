@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Runtime.Versioning;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -37,6 +38,26 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Gets a single matching monitor when it can be resolved.
+    /// </summary>
+    /// <param name="connectedOnly">Whether to limit matches to connected monitors.</param>
+    /// <param name="primaryOnly">Whether to limit matches to the primary monitor.</param>
+    /// <param name="index">Monitor index.</param>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="deviceName">Monitor device name.</param>
+    /// <param name="refresh">Whether to refresh the cached monitor snapshot first.</param>
+    /// <returns>The matching monitor when found; otherwise null.</returns>
+    public Monitor? GetMonitor(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null, bool refresh = false) {
+        return _monitors.GetMonitors(
+            connectedOnly: connectedOnly,
+            primaryOnly: primaryOnly,
+            index: index,
+            deviceId: deviceId,
+            deviceName: deviceName,
+            refresh: refresh).FirstOrDefault();
+    }
+
+    /// <summary>
     /// Forces monitor enumeration and refreshes the cached monitor snapshot.
     /// </summary>
     public void RefreshMonitors() {
@@ -44,10 +65,405 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Gets the desktop background color.
+    /// </summary>
+    /// <returns>The background color as an RGB value.</returns>
+    public uint GetDesktopBackgroundColor() {
+        return _monitors.GetBackgroundColor();
+    }
+
+    /// <summary>
+    /// Sets the desktop background color.
+    /// </summary>
+    /// <param name="color">The background color as an RGB value.</param>
+    public void SetDesktopBackgroundColor(uint color) {
+        _monitors.SetBackgroundColor(color);
+    }
+
+    /// <summary>
+    /// Gets the wallpaper path for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <returns>The wallpaper path.</returns>
+    public string GetMonitorWallpaper(string deviceId) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        return _monitors.GetWallpaper(deviceId);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper path for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="wallpaperPath">Wallpaper file path.</param>
+    public void SetMonitorWallpaper(string deviceId, string wallpaperPath) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        if (string.IsNullOrWhiteSpace(wallpaperPath)) {
+            throw new ArgumentException("A wallpaper path is required.", nameof(wallpaperPath));
+        }
+
+        _monitors.SetWallpaper(deviceId, wallpaperPath);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for a monitor from a stream.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="imageStream">Wallpaper image stream.</param>
+    public void SetMonitorWallpaper(string deviceId, Stream imageStream) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        if (imageStream == null) {
+            throw new ArgumentNullException(nameof(imageStream));
+        }
+
+        _monitors.SetWallpaper(deviceId, imageStream);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for a monitor from a URL.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="url">Wallpaper URL.</param>
+    public void SetMonitorWallpaperFromUrl(string deviceId, string url) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        if (string.IsNullOrWhiteSpace(url)) {
+            throw new ArgumentException("A wallpaper URL is required.", nameof(url));
+        }
+
+        _monitors.SetWallpaperFromUrl(deviceId, url);
+    }
+
+    /// <summary>
+    /// Gets the current desktop wallpaper position.
+    /// </summary>
+    /// <returns>The current wallpaper position.</returns>
+    public DesktopWallpaperPosition GetDesktopWallpaperPosition() {
+        return _monitors.GetWallpaperPosition();
+    }
+
+    /// <summary>
+    /// Sets the current desktop wallpaper position.
+    /// </summary>
+    /// <param name="position">Wallpaper position to apply.</param>
+    public void SetDesktopWallpaperPosition(DesktopWallpaperPosition position) {
+        _monitors.SetWallpaperPosition(position);
+    }
+
+    /// <summary>
+    /// Sets the wallpaper for all user profiles.
+    /// </summary>
+    /// <param name="wallpaperPath">Wallpaper file path.</param>
+    /// <param name="position">Wallpaper position to persist.</param>
+    /// <param name="includeDefaultProfile">Whether to include the default profile.</param>
+    public void SetDesktopWallpaperForAllUsers(string wallpaperPath, DesktopWallpaperPosition position, bool includeDefaultProfile = true) {
+        if (string.IsNullOrWhiteSpace(wallpaperPath)) {
+            throw new ArgumentException("A wallpaper path is required.", nameof(wallpaperPath));
+        }
+
+        _monitors.SetWallpaperForAllUsers(wallpaperPath, position, includeDefaultProfile);
+    }
+
+    /// <summary>
+    /// Gets the current logon wallpaper path when it can be resolved.
+    /// </summary>
+    /// <returns>The logon wallpaper path.</returns>
+    [SupportedOSPlatform("windows10.0.10240.0")]
+    public string GetLogonWallpaper() {
+        return _monitors.GetLogonWallpaper();
+    }
+
+    /// <summary>
+    /// Sets the logon wallpaper after enforcing elevation requirements.
+    /// </summary>
+    /// <param name="imagePath">Path to the logon wallpaper image.</param>
+    [SupportedOSPlatform("windows10.0.10240.0")]
+    public void SetLogonWallpaper(string imagePath) {
+        if (string.IsNullOrWhiteSpace(imagePath)) {
+            throw new ArgumentException("An image path is required.", nameof(imagePath));
+        }
+
+        EnsureElevated();
+        _monitors.SetLogonWallpaper(imagePath);
+    }
+
+    /// <summary>
+    /// Starts a desktop wallpaper slideshow.
+    /// </summary>
+    /// <param name="imagePaths">Wallpaper image paths.</param>
+    public void StartDesktopSlideshow(IEnumerable<string> imagePaths) {
+        if (imagePaths == null) {
+            throw new ArgumentNullException(nameof(imagePaths));
+        }
+
+        _monitors.StartWallpaperSlideshow(imagePaths);
+    }
+
+    /// <summary>
+    /// Stops the desktop wallpaper slideshow.
+    /// </summary>
+    public void StopDesktopSlideshow() {
+        _monitors.StopWallpaperSlideshow();
+    }
+
+    /// <summary>
+    /// Advances the desktop wallpaper slideshow.
+    /// </summary>
+    /// <param name="direction">Direction to advance.</param>
+    public void AdvanceDesktopSlideshow(DesktopSlideshowDirection direction) {
+        _monitors.AdvanceWallpaperSlide(direction);
+    }
+
+    /// <summary>
+    /// Gets the brightness for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <returns>The current brightness level.</returns>
+    public int GetMonitorBrightness(string deviceId) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        return _monitors.GetMonitorBrightness(deviceId);
+    }
+
+    /// <summary>
+    /// Sets the brightness for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="brightness">Brightness level.</param>
+    public void SetMonitorBrightness(string deviceId, int brightness) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        _monitors.SetMonitorBrightness(deviceId, brightness);
+    }
+
+    /// <summary>
+    /// Gets the current position for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <returns>The current monitor position.</returns>
+    public MonitorPosition GetMonitorPosition(string deviceId) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        return _monitors.GetMonitorPosition(deviceId);
+    }
+
+    /// <summary>
+    /// Sets the current position for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="position">Target monitor position.</param>
+    public void SetMonitorPosition(string deviceId, MonitorPosition position) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        if (position == null) {
+            throw new ArgumentNullException(nameof(position));
+        }
+
+        _monitors.SetMonitorPosition(deviceId, position);
+    }
+
+    /// <summary>
+    /// Sets the resolution for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="width">Target width.</param>
+    /// <param name="height">Target height.</param>
+    public void SetMonitorResolution(string deviceId, int width, int height) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        _monitors.SetMonitorResolution(deviceId, width, height);
+    }
+
+    /// <summary>
+    /// Sets the orientation for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="orientation">Target orientation.</param>
+    public void SetMonitorOrientation(string deviceId, DisplayOrientation orientation) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        _monitors.SetMonitorOrientation(deviceId, orientation);
+    }
+
+    /// <summary>
+    /// Sets the DPI scaling for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="scalingPercent">Target scaling percentage.</param>
+    public void SetMonitorDpiScaling(string deviceId, int scalingPercent) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        _monitors.SetMonitorDpiScaling(deviceId, scalingPercent);
+    }
+
+    /// <summary>
+    /// Sets the taskbar position for a monitor.
+    /// </summary>
+    /// <param name="monitorIndex">Monitor index.</param>
+    /// <param name="position">Target taskbar position.</param>
+    public void SetTaskbarPosition(int monitorIndex, TaskbarPosition position) {
+        if (monitorIndex < 0) {
+            throw new ArgumentOutOfRangeException(nameof(monitorIndex), "Monitor index must be zero or greater.");
+        }
+
+        new TaskbarService().SetTaskbarPosition(monitorIndex, position);
+    }
+
+    /// <summary>
+    /// Sets taskbar visibility for a monitor.
+    /// </summary>
+    /// <param name="monitorIndex">Monitor index.</param>
+    /// <param name="visible">Whether the taskbar should be visible.</param>
+    public void SetTaskbarVisibility(int monitorIndex, bool visible) {
+        if (monitorIndex < 0) {
+            throw new ArgumentOutOfRangeException(nameof(monitorIndex), "Monitor index must be zero or greater.");
+        }
+
+        new TaskbarService().SetTaskbarVisibility(monitorIndex, visible);
+    }
+
+    /// <summary>
     /// Gets matching windows.
     /// </summary>
     public List<WindowInfo> GetWindows(WindowQueryOptions options) {
         return _windowManager.GetWindows(options);
+    }
+
+    /// <summary>
+    /// Gets a single window by its handle when it can be resolved.
+    /// </summary>
+    /// <param name="handle">Window handle.</param>
+    /// <param name="includeHidden">Whether to include hidden windows.</param>
+    /// <param name="includeCloaked">Whether to include cloaked windows.</param>
+    /// <param name="includeOwned">Whether to include owned windows.</param>
+    /// <param name="includeEmptyTitles">Whether to include windows with empty titles.</param>
+    /// <returns>The matching window when found; otherwise null.</returns>
+    public WindowInfo? GetWindow(IntPtr handle, bool includeHidden = true, bool includeCloaked = true, bool includeOwned = true, bool includeEmptyTitles = true) {
+        if (handle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(handle));
+        }
+
+        return _windowManager.GetWindow(handle, includeHidden, includeCloaked, includeOwned, includeEmptyTitles);
+    }
+
+    /// <summary>
+    /// Gets process information for a resolved window.
+    /// </summary>
+    /// <param name="window">Window to inspect.</param>
+    /// <returns>The process information.</returns>
+    public WindowProcessInfo GetWindowProcessInfo(WindowInfo window) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        return _windowManager.GetWindowProcessInfo(window);
+    }
+
+    /// <summary>
+    /// Gets process information for a specific window handle when it can be resolved.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <returns>The process information.</returns>
+    public WindowProcessInfo GetWindowProcessInfo(IntPtr windowHandle) {
+        WindowInfo window = GetWindow(windowHandle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true)
+            ?? throw new InvalidOperationException("The requested window could not be resolved.");
+        return GetWindowProcessInfo(window);
+    }
+
+    /// <summary>
+    /// Gets process information for the owner of a resolved window when available.
+    /// </summary>
+    /// <param name="window">Window to inspect.</param>
+    /// <returns>The owner process information when available; otherwise null.</returns>
+    public WindowProcessInfo? GetOwnerWindowProcessInfo(WindowInfo window) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        return _windowManager.GetOwnerProcessInfo(window);
+    }
+
+    /// <summary>
+    /// Gets process information for the owner of a specific window handle when available.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <returns>The owner process information when available; otherwise null.</returns>
+    public WindowProcessInfo? GetOwnerWindowProcessInfo(IntPtr windowHandle) {
+        WindowInfo window = GetWindow(windowHandle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true)
+            ?? throw new InvalidOperationException("The requested window could not be resolved.");
+        return GetOwnerWindowProcessInfo(window);
+    }
+
+    /// <summary>
+    /// Gets a single control by its handle for a specific parent window when it can be resolved.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    /// <returns>The matching control when found; otherwise null.</returns>
+    public WindowControlInfo? GetControl(IntPtr windowHandle, IntPtr controlHandle, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        if (controlHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid control handle.", nameof(controlHandle));
+        }
+
+        WindowInfo? window = GetWindow(windowHandle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true);
+        if (window == null) {
+            return null;
+        }
+
+        return _windowManager.GetControls(
+            window,
+            new WindowControlQueryOptions {
+                Handle = controlHandle,
+                UseUiAutomation = useUiAutomation,
+                IncludeUiAutomation = includeUiAutomation
+            }).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Gets the observable state for a specific control when it can be resolved.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    /// <returns>The control state when found; otherwise null.</returns>
+    public DesktopControlState? GetControlState(IntPtr windowHandle, IntPtr controlHandle, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            return null;
+        }
+
+        return GetControlState(control);
     }
 
     /// <summary>
@@ -107,7 +523,7 @@ public sealed class DesktopAutomationService {
         }
 
         WindowInfo window = ResolveWindows(options, all: false)[0];
-        IntPtr focusedHandle = GetFocusedControlHandle(window.Handle);
+        IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
         if (focusedHandle == IntPtr.Zero) {
             return null;
         }
@@ -140,6 +556,703 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Gets the observable state for a resolved control.
+    /// </summary>
+    /// <param name="control">Control to inspect.</param>
+    /// <returns>The current control state.</returns>
+    public DesktopControlState GetControlState(WindowControlInfo control) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        WindowInfo window = ResolveParentWindow(control);
+        return CreateControlState(window, control);
+    }
+
+    /// <summary>
+    /// Observes the currently focused control for a specific window handle when it can be resolved.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <returns>The focused-control observation when available; otherwise null.</returns>
+    public DesktopFocusedControlObservation? GetFocusedControlObservation(IntPtr windowHandle) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return GetFocusedControlObservation(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
+    }
+
+    /// <summary>
+    /// Activates a resolved window.
+    /// </summary>
+    /// <param name="window">Window to activate.</param>
+    public void ActivateWindow(WindowInfo window) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.ActivateWindow(window);
+    }
+
+    /// <summary>
+    /// Activates a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    public void ActivateWindow(IntPtr windowHandle) {
+        ActivateWindow(ResolveWindowByHandle(windowHandle));
+    }
+
+    /// <summary>
+    /// Minimizes a resolved window.
+    /// </summary>
+    /// <param name="window">Window to minimize.</param>
+    public void MinimizeWindow(WindowInfo window) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.MinimizeWindow(window);
+    }
+
+    /// <summary>
+    /// Minimizes a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    public void MinimizeWindow(IntPtr windowHandle) {
+        MinimizeWindow(ResolveWindowByHandle(windowHandle));
+    }
+
+    /// <summary>
+    /// Maximizes a resolved window.
+    /// </summary>
+    /// <param name="window">Window to maximize.</param>
+    public void MaximizeWindow(WindowInfo window) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.MaximizeWindow(window);
+    }
+
+    /// <summary>
+    /// Maximizes a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    public void MaximizeWindow(IntPtr windowHandle) {
+        MaximizeWindow(ResolveWindowByHandle(windowHandle));
+    }
+
+    /// <summary>
+    /// Restores a resolved window.
+    /// </summary>
+    /// <param name="window">Window to restore.</param>
+    public void RestoreWindow(WindowInfo window) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.RestoreWindow(window);
+    }
+
+    /// <summary>
+    /// Restores a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    public void RestoreWindow(IntPtr windowHandle) {
+        RestoreWindow(ResolveWindowByHandle(windowHandle));
+    }
+
+    /// <summary>
+    /// Closes a resolved window.
+    /// </summary>
+    /// <param name="window">Window to close.</param>
+    public void CloseWindow(WindowInfo window) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.CloseWindow(window);
+    }
+
+    /// <summary>
+    /// Closes a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    public void CloseWindow(IntPtr windowHandle) {
+        CloseWindow(ResolveWindowByHandle(windowHandle));
+    }
+
+    /// <summary>
+    /// Snaps a resolved window to a predefined monitor region.
+    /// </summary>
+    /// <param name="window">Window to snap.</param>
+    /// <param name="position">Snap position.</param>
+    public void SnapWindow(WindowInfo window, SnapPosition position) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.SnapWindow(window, position);
+    }
+
+    /// <summary>
+    /// Snaps a specific window handle to a predefined monitor region.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="position">Snap position.</param>
+    public void SnapWindow(IntPtr windowHandle, SnapPosition position) {
+        SnapWindow(ResolveWindowByHandle(windowHandle), position);
+    }
+
+    /// <summary>
+    /// Moves a resolved window to a specific monitor.
+    /// </summary>
+    /// <param name="window">Window to move.</param>
+    /// <param name="monitorIndex">Monitor index.</param>
+    /// <returns>True when the window moved to a different monitor; otherwise false.</returns>
+    public bool MoveWindowToMonitor(WindowInfo window, int monitorIndex) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        Monitor monitor = _monitors.GetMonitors(connectedOnly: true, index: monitorIndex, refresh: true).FirstOrDefault()
+            ?? throw new InvalidOperationException($"Monitor '{monitorIndex}' was not found.");
+        return _windowManager.MoveWindowToMonitor(window, monitor);
+    }
+
+    /// <summary>
+    /// Moves a specific window handle to a specific monitor.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="monitorIndex">Monitor index.</param>
+    /// <returns>True when the window moved to a different monitor; otherwise false.</returns>
+    public bool MoveWindowToMonitor(IntPtr windowHandle, int monitorIndex) {
+        return MoveWindowToMonitor(ResolveWindowByHandle(windowHandle), monitorIndex);
+    }
+
+    /// <summary>
+    /// Sets whether a resolved window should stay topmost.
+    /// </summary>
+    /// <param name="window">Window to update.</param>
+    /// <param name="topMost">True to make the window topmost; otherwise false.</param>
+    public void SetWindowTopMost(WindowInfo window, bool topMost) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.SetWindowTopMost(window, topMost);
+    }
+
+    /// <summary>
+    /// Sets whether a specific window handle should stay topmost.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="topMost">True to make the window topmost; otherwise false.</param>
+    public void SetWindowTopMost(IntPtr windowHandle, bool topMost) {
+        SetWindowTopMost(ResolveWindowByHandle(windowHandle), topMost);
+    }
+
+    /// <summary>
+    /// Shows or hides a resolved window.
+    /// </summary>
+    /// <param name="window">Window to update.</param>
+    /// <param name="visible">True to show the window; otherwise false.</param>
+    public void SetWindowVisibility(WindowInfo window, bool visible) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.ShowWindow(window, visible);
+    }
+
+    /// <summary>
+    /// Shows or hides a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="visible">True to show the window; otherwise false.</param>
+    public void SetWindowVisibility(IntPtr windowHandle, bool visible) {
+        SetWindowVisibility(ResolveWindowByHandle(windowHandle), visible);
+    }
+
+    /// <summary>
+    /// Sets the transparency level of a resolved window.
+    /// </summary>
+    /// <param name="window">Window to update.</param>
+    /// <param name="alpha">Transparency alpha from 0 (transparent) to 255 (opaque).</param>
+    public void SetWindowTransparency(WindowInfo window, byte alpha) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.SetWindowTransparency(window, alpha);
+    }
+
+    /// <summary>
+    /// Sets the transparency level of a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="alpha">Transparency alpha from 0 (transparent) to 255 (opaque).</param>
+    public void SetWindowTransparency(IntPtr windowHandle, byte alpha) {
+        SetWindowTransparency(ResolveWindowByHandle(windowHandle), alpha);
+    }
+
+    /// <summary>
+    /// Adds or removes style bits on a resolved window.
+    /// </summary>
+    /// <param name="window">Window to update.</param>
+    /// <param name="flags">Style flags to modify.</param>
+    /// <param name="enable">True to set bits; otherwise false.</param>
+    /// <param name="extended">True to update extended style bits.</param>
+    public void SetWindowStyle(WindowInfo window, long flags, bool enable, bool extended = false) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        _windowManager.SetWindowStyle(window, flags, enable, extended);
+    }
+
+    /// <summary>
+    /// Adds or removes style bits on a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="flags">Style flags to modify.</param>
+    /// <param name="enable">True to set bits; otherwise false.</param>
+    /// <param name="extended">True to update extended style bits.</param>
+    public void SetWindowStyle(IntPtr windowHandle, long flags, bool enable, bool extended = false) {
+        SetWindowStyle(ResolveWindowByHandle(windowHandle), flags, enable, extended);
+    }
+
+    /// <summary>
+    /// Terminates the process that owns a resolved window.
+    /// </summary>
+    /// <param name="window">Window whose owning process should be terminated.</param>
+    /// <param name="entireProcessTree">Whether to terminate the full process tree.</param>
+    /// <param name="waitForExitMilliseconds">How long to wait for the process to exit.</param>
+    /// <returns>The termination result.</returns>
+    public DesktopProcessTerminationResult TerminateWindowProcess(WindowInfo window, bool entireProcessTree = false, int waitForExitMilliseconds = 5000) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (window.ProcessId == 0) {
+            throw new InvalidOperationException("The requested window does not expose a valid owning process.");
+        }
+
+        if (waitForExitMilliseconds < 0) {
+            throw new ArgumentOutOfRangeException(nameof(waitForExitMilliseconds), "waitForExitMilliseconds must be zero or greater.");
+        }
+
+        using Process process = Process.GetProcessById((int)window.ProcessId);
+        string processName = string.IsNullOrWhiteSpace(process.ProcessName)
+            ? window.Title
+            : process.ProcessName;
+
+        process.Kill(entireProcessTree);
+        bool exited = process.WaitForExit(waitForExitMilliseconds);
+        if (!exited) {
+            throw new TimeoutException($"Timed out waiting for process '{processName}' to exit.");
+        }
+
+        return new DesktopProcessTerminationResult {
+            ProcessId = (int)window.ProcessId,
+            ProcessName = processName,
+            WindowTitle = window.Title,
+            HasExited = true,
+            EntireProcessTree = entireProcessTree,
+            WaitForExitMilliseconds = waitForExitMilliseconds
+        };
+    }
+
+    /// <summary>
+    /// Terminates the process that owns a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="entireProcessTree">Whether to terminate the full process tree.</param>
+    /// <param name="waitForExitMilliseconds">How long to wait for the process to exit.</param>
+    /// <returns>The termination result.</returns>
+    public DesktopProcessTerminationResult TerminateWindowProcess(IntPtr windowHandle, bool entireProcessTree = false, int waitForExitMilliseconds = 5000) {
+        return TerminateWindowProcess(ResolveWindowByHandle(windowHandle), entireProcessTree, waitForExitMilliseconds);
+    }
+
+    /// <summary>
+    /// Observes the best available text source for the first matching window.
+    /// </summary>
+    /// <param name="options">Window selection options.</param>
+    /// <param name="expectedText">Optional text that should be preferred when present.</param>
+    /// <param name="observationOptions">Observation configuration.</param>
+    /// <returns>The best matching text observation when one is available; otherwise null.</returns>
+    public DesktopWindowTextObservation? ObserveWindowText(WindowQueryOptions options, string? expectedText = null, DesktopTextObservationOptions? observationOptions = null) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        DesktopTextObservationOptions settings = observationOptions ?? new DesktopTextObservationOptions();
+        ValidateTextObservationOptions(settings);
+
+        WindowInfo window = ResolveSingleWindow(options);
+        DesktopWindowTextObservation? fallbackObservation = null;
+        for (int attempt = 0; attempt < settings.RetryCount; attempt++) {
+            DesktopWindowTextObservation? observation = TryObserveWindowText(window, expectedText, settings);
+            if (observation?.ContainsExpected == true) {
+                return observation;
+            }
+
+            fallbackObservation ??= observation;
+            if (string.IsNullOrEmpty(expectedText) && fallbackObservation != null) {
+                return fallbackObservation;
+            }
+
+            if (attempt < settings.RetryCount - 1 && settings.RetryDelayMilliseconds > 0) {
+                Thread.Sleep(settings.RetryDelayMilliseconds);
+            }
+        }
+
+        return fallbackObservation;
+    }
+
+    /// <summary>
+    /// Observes the best available text source for a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="expectedText">Optional text that should be preferred when present.</param>
+    /// <param name="observationOptions">Observation configuration.</param>
+    /// <returns>The best matching text observation when one is available; otherwise null.</returns>
+    public DesktopWindowTextObservation? ObserveWindowText(IntPtr windowHandle, string? expectedText = null, DesktopTextObservationOptions? observationOptions = null) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return ObserveWindowText(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, expectedText, observationOptions);
+    }
+
+    /// <summary>
+    /// Focuses a resolved control and returns its updated observable state.
+    /// </summary>
+    /// <param name="control">Control to focus.</param>
+    /// <param name="ensureForegroundWindow">Whether to ensure the parent window is foreground first.</param>
+    /// <returns>The updated control state.</returns>
+    public DesktopControlState FocusControl(WindowControlInfo control, bool ensureForegroundWindow = false) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        WindowInfo window = ResolveParentWindow(control);
+        bool focused;
+        if (control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero) {
+            focused = new UiAutomationControlService().TryFocus(window, control, ensureForegroundWindow);
+        } else {
+            EnsureControlSupportsNativeStateChange(control, "focused");
+            focused = WindowActivationService.TryFocusControl(window.Handle, control.Handle, ensureForegroundWindow);
+        }
+
+        if (!focused) {
+            throw new InvalidOperationException("Failed to focus the specified control.");
+        }
+
+        return CreateControlState(window, control);
+    }
+
+    /// <summary>
+    /// Focuses a control resolved by window and control handle and returns its updated state.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="ensureForegroundWindow">Whether to ensure the parent window is foreground first.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    /// <returns>The updated control state.</returns>
+    public DesktopControlState FocusControl(IntPtr windowHandle, IntPtr controlHandle, bool ensureForegroundWindow = false, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            throw new InvalidOperationException("Failed to resolve the requested control.");
+        }
+
+        return FocusControl(control, ensureForegroundWindow);
+    }
+
+    /// <summary>
+    /// Enables or disables a resolved control and returns its updated state.
+    /// </summary>
+    /// <param name="control">Control to modify.</param>
+    /// <param name="enabled">True to enable the control; false to disable it.</param>
+    /// <returns>The updated control state.</returns>
+    public DesktopControlState SetControlEnabled(WindowControlInfo control, bool enabled) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        EnsureControlSupportsNativeStateChange(control, enabled ? "enabled" : "disabled");
+        WindowControlService.SetEnabled(control, enabled);
+        return CreateControlState(ResolveParentWindow(control), control);
+    }
+
+    /// <summary>
+    /// Enables or disables a control resolved by window and control handle and returns its updated state.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="enabled">True to enable the control; false to disable it.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    /// <returns>The updated control state.</returns>
+    public DesktopControlState SetControlEnabled(IntPtr windowHandle, IntPtr controlHandle, bool enabled, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            throw new InvalidOperationException("Failed to resolve the requested control.");
+        }
+
+        return SetControlEnabled(control, enabled);
+    }
+
+    /// <summary>
+    /// Shows or hides a resolved control and returns its updated state.
+    /// </summary>
+    /// <param name="control">Control to modify.</param>
+    /// <param name="visible">True to show the control; false to hide it.</param>
+    /// <returns>The updated control state.</returns>
+    public DesktopControlState SetControlVisibility(WindowControlInfo control, bool visible) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        EnsureControlSupportsNativeStateChange(control, visible ? "shown" : "hidden");
+        WindowControlService.SetVisibility(control, visible);
+        return CreateControlState(ResolveParentWindow(control), control);
+    }
+
+    /// <summary>
+    /// Shows or hides a control resolved by window and control handle and returns its updated state.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="visible">True to show the control; false to hide it.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    /// <returns>The updated control state.</returns>
+    public DesktopControlState SetControlVisibility(IntPtr windowHandle, IntPtr controlHandle, bool visible, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            throw new InvalidOperationException("Failed to resolve the requested control.");
+        }
+
+        return SetControlVisibility(control, visible);
+    }
+
+    /// <summary>
+    /// Gets the current check state for a resolved control.
+    /// </summary>
+    /// <param name="control">Control to inspect.</param>
+    /// <returns><c>true</c> when the control is checked; otherwise <c>false</c>.</returns>
+    public bool GetControlCheckState(WindowControlInfo control) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        EnsureControlSupportsNativeStateChange(control, "queried for check state");
+        return WindowControlService.GetCheckState(control);
+    }
+
+    /// <summary>
+    /// Gets the current check state for a control resolved by window and control handle.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    /// <returns>The current check state when the control can be resolved; otherwise null.</returns>
+    public bool? GetControlCheckState(IntPtr windowHandle, IntPtr controlHandle, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            return null;
+        }
+
+        return GetControlCheckState(control);
+    }
+
+    /// <summary>
+    /// Sets the current check state for a resolved control.
+    /// </summary>
+    /// <param name="control">Control to update.</param>
+    /// <param name="check">Desired check state.</param>
+    public void SetControlCheckState(WindowControlInfo control, bool check) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        EnsureControlSupportsNativeStateChange(control, check ? "checked" : "unchecked");
+        WindowControlService.SetCheckState(control, check);
+    }
+
+    /// <summary>
+    /// Sets the current check state for a control resolved by window and control handle.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="check">Desired check state.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    public void SetControlCheckState(IntPtr windowHandle, IntPtr controlHandle, bool check, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            throw new InvalidOperationException("Failed to resolve the requested control.");
+        }
+
+        SetControlCheckState(control, check);
+    }
+
+    /// <summary>
+    /// Gets the current mouse state.
+    /// </summary>
+    /// <returns>The current mouse state.</returns>
+    public DesktopMouseState GetMouseState() {
+        return MouseInputService.GetState();
+    }
+
+    /// <summary>
+    /// Moves the mouse cursor to the requested screen coordinates.
+    /// </summary>
+    /// <param name="x">Screen X coordinate.</param>
+    /// <param name="y">Screen Y coordinate.</param>
+    public void MoveMouse(int x, int y) {
+        MouseInputService.MoveCursor(x, y);
+    }
+
+    /// <summary>
+    /// Clicks the mouse using the requested button.
+    /// </summary>
+    /// <param name="button">Mouse button to click.</param>
+    public void ClickMouse(MouseButton button) {
+        MouseInputService.Click(button);
+    }
+
+    /// <summary>
+    /// Scrolls the mouse wheel by the requested amount.
+    /// </summary>
+    /// <param name="delta">Wheel delta.</param>
+    public void ScrollMouse(int delta) {
+        MouseInputService.Scroll(delta);
+    }
+
+    /// <summary>
+    /// Drags the mouse between two points.
+    /// </summary>
+    /// <param name="button">Mouse button to hold.</param>
+    /// <param name="startX">Starting screen X coordinate.</param>
+    /// <param name="startY">Starting screen Y coordinate.</param>
+    /// <param name="endX">Ending screen X coordinate.</param>
+    /// <param name="endY">Ending screen Y coordinate.</param>
+    /// <param name="stepDelayMilliseconds">Delay in milliseconds between drag steps.</param>
+    public void DragMouse(MouseButton button, int startX, int startY, int endX, int endY, int stepDelayMilliseconds) {
+        MouseInputService.MouseDrag(button, startX, startY, endX, endY, stepDelayMilliseconds);
+    }
+
+    /// <summary>
+    /// Starts sending keep-alive messages to matching windows.
+    /// </summary>
+    /// <param name="options">Window selection options.</param>
+    /// <param name="interval">Interval between keep-alive messages.</param>
+    /// <param name="all">Whether to apply to all matching windows.</param>
+    /// <returns>The windows now under keep-alive.</returns>
+    public IReadOnlyList<WindowInfo> StartWindowKeepAlive(WindowQueryOptions options, TimeSpan interval, bool all = false) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            WindowKeepAlive.Instance.Start(window, interval);
+        }
+
+        return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Starts sending keep-alive messages to a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="interval">Interval between keep-alive messages.</param>
+    /// <returns>The refreshed window state.</returns>
+    public WindowInfo StartWindowKeepAlive(IntPtr windowHandle, TimeSpan interval) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return StartWindowKeepAlive(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, interval, all: false)[0];
+    }
+
+    /// <summary>
+    /// Stops keep-alive messages for matching windows.
+    /// </summary>
+    /// <param name="options">Window selection options.</param>
+    /// <param name="all">Whether to apply to all matching windows.</param>
+    /// <returns>The windows that were targeted for keep-alive stop.</returns>
+    public IReadOnlyList<WindowInfo> StopWindowKeepAlive(WindowQueryOptions options, bool all = false) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            WindowKeepAlive.Instance.Stop(window.Handle);
+        }
+
+        return windows;
+    }
+
+    /// <summary>
+    /// Stops keep-alive messages for a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    public void StopWindowKeepAlive(IntPtr windowHandle) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        WindowKeepAlive.Instance.Stop(windowHandle);
+    }
+
+    /// <summary>
+    /// Stops all keep-alive sessions.
+    /// </summary>
+    public void StopAllWindowKeepAlive() {
+        WindowKeepAlive.Instance.StopAll();
+    }
+
+    /// <summary>
+    /// Lists windows that currently have active keep-alive sessions.
+    /// </summary>
+    /// <returns>The windows currently under keep-alive.</returns>
+    public IReadOnlyList<WindowInfo> GetWindowKeepAliveWindows() {
+        List<WindowInfo> windows = new();
+        foreach (IntPtr handle in WindowKeepAlive.Instance.ActiveHandles) {
+            WindowInfo? window = GetWindow(handle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true);
+            if (window != null) {
+                windows.Add(window);
+            }
+        }
+
+        return windows;
+    }
+
+    /// <summary>
     /// Moves and optionally resizes matching windows.
     /// </summary>
     public IReadOnlyList<WindowInfo> MoveWindows(WindowQueryOptions options, int? monitorIndex, int? x, int? y, int? width, int? height, bool activate, bool all = false) {
@@ -168,21 +1281,6 @@ public sealed class DesktopAutomationService {
         }
 
         return RefreshWindows(windows);
-    }
-
-    private static IntPtr GetFocusedControlHandle(IntPtr windowHandle) {
-        uint threadId = MonitorNativeMethods.GetWindowThreadProcessId(windowHandle, out _);
-        if (threadId == 0) {
-            return IntPtr.Zero;
-        }
-
-        MonitorNativeMethods.GUITHREADINFO threadInfo = new() {
-            cbSize = System.Runtime.InteropServices.Marshal.SizeOf<MonitorNativeMethods.GUITHREADINFO>()
-        };
-
-        return MonitorNativeMethods.GetGUIThreadInfo(threadId, ref threadInfo)
-            ? threadInfo.hwndFocus
-            : IntPtr.Zero;
     }
 
     /// <summary>
@@ -235,6 +1333,56 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Gets window and client-area geometry for a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <returns>The matching window geometry.</returns>
+    public DesktopWindowGeometry GetWindowGeometry(IntPtr windowHandle) {
+        return DescribeWindowGeometry(ResolveWindowByHandle(windowHandle));
+    }
+
+    /// <summary>
+    /// Pastes text to matching windows.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> PasteWindowText(WindowQueryOptions options, string text, WindowInputOptions? inputOptions = null, bool all = false) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+        if (text == null) {
+            throw new ArgumentNullException(nameof(text));
+        }
+
+        WindowInputOptions settings = inputOptions ?? new WindowInputOptions();
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            _windowManager.PasteText(window, text, settings);
+        }
+
+        return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Pastes text to a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="text">Text to paste.</param>
+    /// <param name="inputOptions">Input behavior overrides.</param>
+    /// <returns>The refreshed window state.</returns>
+    public WindowInfo PasteWindowText(IntPtr windowHandle, string text, WindowInputOptions? inputOptions = null) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return PasteWindowText(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, text, inputOptions, all: false)[0];
+    }
+
+    /// <summary>
     /// Sends text to matching windows.
     /// </summary>
     public IReadOnlyList<WindowInfo> TypeWindowText(WindowQueryOptions options, string text, bool paste, int delayMilliseconds, bool foregroundInput, bool physicalKeys, bool hostedSession, bool script, int scriptChunkLength, int scriptLineDelayMilliseconds, bool all = false) {
@@ -242,24 +1390,88 @@ public sealed class DesktopAutomationService {
             throw new ArgumentNullException(nameof(text));
         }
 
+        WindowInputOptions settings = new WindowInputOptions {
+            KeyDelayMilliseconds = delayMilliseconds,
+            RequireForegroundWindowForTyping = foregroundInput,
+            UsePhysicalKeyboardLayout = physicalKeys,
+            UseHostedSessionScanCodes = hostedSession,
+            TypeTextAsScript = script,
+            ScriptChunkLength = scriptChunkLength,
+            ScriptLineDelayMilliseconds = scriptLineDelayMilliseconds
+        };
+
+        return paste
+            ? PasteWindowText(options, text, settings, all)
+            : TypeWindowText(options, text, settings, all);
+    }
+
+    /// <summary>
+    /// Sends text to matching windows using explicit input options.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> TypeWindowText(WindowQueryOptions options, string text, WindowInputOptions? inputOptions = null, bool all = false) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+        if (text == null) {
+            throw new ArgumentNullException(nameof(text));
+        }
+
+        WindowInputOptions settings = inputOptions ?? new WindowInputOptions();
         IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
         foreach (WindowInfo window in windows) {
-            if (paste) {
-                _windowManager.PasteText(window, text);
-            } else {
-                _windowManager.TypeText(window, text, new WindowInputOptions {
-                    KeyDelayMilliseconds = delayMilliseconds,
-                    RequireForegroundWindowForTyping = foregroundInput,
-                    UsePhysicalKeyboardLayout = physicalKeys,
-                    UseHostedSessionScanCodes = hostedSession,
-                    TypeTextAsScript = script,
-                    ScriptChunkLength = scriptChunkLength,
-                    ScriptLineDelayMilliseconds = scriptLineDelayMilliseconds
-                });
-            }
+            _windowManager.TypeText(window, text, settings);
         }
 
         return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Sends text to a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="text">Text to send.</param>
+    /// <param name="paste">Whether to paste clipboard text instead of typing.</param>
+    /// <param name="delayMilliseconds">Delay between key presses when typing.</param>
+    /// <param name="foregroundInput">Whether the target must own the foreground during typing.</param>
+    /// <param name="physicalKeys">Whether to use the physical keyboard layout for typing.</param>
+    /// <param name="hostedSession">Whether to send hosted-session scan codes.</param>
+    /// <param name="script">Whether to send the text as script chunks.</param>
+    /// <param name="scriptChunkLength">Maximum script chunk length.</param>
+    /// <param name="scriptLineDelayMilliseconds">Delay between script lines.</param>
+    /// <returns>The refreshed window state.</returns>
+    public WindowInfo TypeWindowText(IntPtr windowHandle, string text, bool paste, int delayMilliseconds, bool foregroundInput, bool physicalKeys, bool hostedSession, bool script, int scriptChunkLength, int scriptLineDelayMilliseconds) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return TypeWindowText(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, text, paste, delayMilliseconds, foregroundInput, physicalKeys, hostedSession, script, scriptChunkLength, scriptLineDelayMilliseconds, all: false)[0];
+    }
+
+    /// <summary>
+    /// Sends text to a specific window handle using explicit input options.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="text">Text to send.</param>
+    /// <param name="inputOptions">Input behavior overrides.</param>
+    /// <returns>The refreshed window state.</returns>
+    public WindowInfo TypeWindowText(IntPtr windowHandle, string text, WindowInputOptions? inputOptions = null) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return TypeWindowText(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, text, inputOptions, all: false)[0];
     }
 
     /// <summary>
@@ -281,6 +1493,27 @@ public sealed class DesktopAutomationService {
         }
 
         return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Sends keys to a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="keys">Keys to send.</param>
+    /// <param name="activate">Whether to activate the window before sending keys.</param>
+    /// <returns>The refreshed window state.</returns>
+    public WindowInfo SendWindowKeys(IntPtr windowHandle, IReadOnlyList<VirtualKey> keys, bool activate) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return SendWindowKeys(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, keys, activate, all: false)[0];
     }
 
     /// <summary>
@@ -874,14 +2107,11 @@ public sealed class DesktopAutomationService {
     /// Waits for matching windows to appear.
     /// </summary>
     public DesktopWindowWaitResult WaitForWindows(WindowQueryOptions options, int timeoutMilliseconds, int intervalMilliseconds, bool all = false) {
-        if (timeoutMilliseconds < 0) {
-            throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds), "timeoutMilliseconds must be zero or greater.");
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
         }
 
-        if (intervalMilliseconds <= 0) {
-            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds), "intervalMilliseconds must be greater than zero.");
-        }
-
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
         Stopwatch stopwatch = Stopwatch.StartNew();
         while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
             List<WindowInfo> windows = _windowManager.GetWindows(options);
@@ -900,6 +2130,77 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Waits for matching windows to close.
+    /// </summary>
+    public DesktopWaitResult WaitForWindowToClose(WindowQueryOptions options, int timeoutMilliseconds, int intervalMilliseconds, bool all = false) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        var trackedHandles = new HashSet<IntPtr>();
+        while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
+            if (trackedHandles.Count == 0) {
+                IReadOnlyList<WindowInfo> initialWindows = GetMatchingWindows(options, all);
+                RememberWindowHandles(trackedHandles, initialWindows);
+                if (trackedHandles.Count == 0) {
+                    return new DesktopWaitResult {
+                        ElapsedMilliseconds = (int)stopwatch.ElapsedMilliseconds
+                    };
+                }
+            }
+
+            if (GetWindowsByHandle(trackedHandles, all: true).Count == 0) {
+                return new DesktopWaitResult {
+                    ElapsedMilliseconds = (int)stopwatch.ElapsedMilliseconds
+                };
+            }
+
+            Thread.Sleep(intervalMilliseconds);
+        }
+
+        throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching window to close.");
+    }
+
+    /// <summary>
+    /// Waits for matching windows to no longer own the foreground.
+    /// </summary>
+    public DesktopWaitResult WaitForWindowToLoseFocus(WindowQueryOptions options, int timeoutMilliseconds, int intervalMilliseconds, bool all = false) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        var trackedHandles = new HashSet<IntPtr>();
+        while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
+            if (trackedHandles.Count == 0) {
+                IReadOnlyList<WindowInfo> initialWindows = GetMatchingWindows(options, all);
+                RememberWindowHandles(trackedHandles, initialWindows);
+                if (trackedHandles.Count == 0) {
+                    return new DesktopWaitResult {
+                        ElapsedMilliseconds = (int)stopwatch.ElapsedMilliseconds
+                    };
+                }
+            }
+
+            WindowInfo? activeWindow = _windowManager.GetActiveWindow(includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true);
+            if (activeWindow == null || !trackedHandles.Contains(activeWindow.Handle)) {
+                return new DesktopWaitResult {
+                    ElapsedMilliseconds = (int)stopwatch.ElapsedMilliseconds
+                };
+            }
+
+            Thread.Sleep(intervalMilliseconds);
+        }
+
+        throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching window to lose focus.");
+    }
+
+    /// <summary>
     /// Waits for matching controls to appear.
     /// </summary>
     public DesktopControlWaitResult WaitForControls(WindowQueryOptions windowOptions, WindowControlQueryOptions? controlOptions, int timeoutMilliseconds, int intervalMilliseconds, bool allWindows = false, bool allControls = false) {
@@ -907,13 +2208,7 @@ public sealed class DesktopAutomationService {
             throw new ArgumentNullException(nameof(windowOptions));
         }
 
-        if (timeoutMilliseconds < 0) {
-            throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds), "timeoutMilliseconds must be zero or greater.");
-        }
-
-        if (intervalMilliseconds <= 0) {
-            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds), "intervalMilliseconds must be greater than zero.");
-        }
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
 
         Stopwatch stopwatch = Stopwatch.StartNew();
         var preferredWindowHandles = new HashSet<IntPtr>();
@@ -960,6 +2255,264 @@ public sealed class DesktopAutomationService {
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching control.");
+    }
+
+    /// <summary>
+    /// Waits until observed window text contains the requested value.
+    /// </summary>
+    /// <param name="options">Window selection options.</param>
+    /// <param name="expectedText">Expected text to observe.</param>
+    /// <param name="timeoutMilliseconds">Timeout in milliseconds. Zero waits indefinitely.</param>
+    /// <param name="intervalMilliseconds">Polling interval in milliseconds.</param>
+    /// <param name="observationOptions">Observation configuration.</param>
+    /// <returns>The matching text observation.</returns>
+    public DesktopWindowTextObservation WaitForObservedText(WindowQueryOptions options, string expectedText, int timeoutMilliseconds, int intervalMilliseconds, DesktopTextObservationOptions? observationOptions = null) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (expectedText == null) {
+            throw new ArgumentNullException(nameof(expectedText));
+        }
+
+        if (expectedText.Length == 0) {
+            throw new ArgumentException("expectedText must not be empty.", nameof(expectedText));
+        }
+
+        DesktopTextObservationOptions settings = observationOptions ?? new DesktopTextObservationOptions();
+        ValidateTextObservationOptions(settings);
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
+            DesktopWindowTextObservation? observation = ObserveWindowText(options, expectedText, settings);
+            if (observation?.ContainsExpected == true) {
+                return observation;
+            }
+
+            Thread.Sleep(intervalMilliseconds);
+        }
+
+        throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for observed text '{expectedText}'.");
+    }
+
+    /// <summary>
+    /// Waits until observed window text contains the requested value for a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="expectedText">Expected text to observe.</param>
+    /// <param name="timeoutMilliseconds">Timeout in milliseconds. Zero waits indefinitely.</param>
+    /// <param name="intervalMilliseconds">Polling interval in milliseconds.</param>
+    /// <param name="observationOptions">Observation configuration.</param>
+    /// <returns>The matching text observation.</returns>
+    public DesktopWindowTextObservation WaitForObservedText(IntPtr windowHandle, string expectedText, int timeoutMilliseconds, int intervalMilliseconds, DesktopTextObservationOptions? observationOptions = null) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return WaitForObservedText(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, expectedText, timeoutMilliseconds, intervalMilliseconds, observationOptions);
+    }
+
+    /// <summary>
+    /// Waits until a matching window exposes a focused control observation.
+    /// </summary>
+    /// <param name="options">Window selection options.</param>
+    /// <param name="timeoutMilliseconds">Timeout in milliseconds. Zero waits indefinitely.</param>
+    /// <param name="intervalMilliseconds">Polling interval in milliseconds.</param>
+    /// <returns>The focused-control observation.</returns>
+    public DesktopFocusedControlObservation WaitForFocusedControlObservation(WindowQueryOptions options, int timeoutMilliseconds, int intervalMilliseconds) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
+            DesktopFocusedControlObservation? observation = GetFocusedControlObservation(options);
+            if (observation != null && observation.FocusedHandle != IntPtr.Zero) {
+                return observation;
+            }
+
+            Thread.Sleep(intervalMilliseconds);
+        }
+
+        throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a focused control.");
+    }
+
+    /// <summary>
+    /// Waits until a specific window handle exposes a focused control observation.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="timeoutMilliseconds">Timeout in milliseconds. Zero waits indefinitely.</param>
+    /// <param name="intervalMilliseconds">Polling interval in milliseconds.</param>
+    /// <returns>The focused-control observation.</returns>
+    public DesktopFocusedControlObservation WaitForFocusedControlObservation(IntPtr windowHandle, int timeoutMilliseconds, int intervalMilliseconds) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return WaitForFocusedControlObservation(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, timeoutMilliseconds, intervalMilliseconds);
+    }
+
+    /// <summary>
+    /// Gets clipboard text when Unicode text is currently available.
+    /// </summary>
+    public string? GetClipboardText(int retryCount = 5, int retryDelayMilliseconds = 50) {
+        return ClipboardHelper.TryGetText(out string text, retryCount, retryDelayMilliseconds)
+            ? text
+            : null;
+    }
+
+    /// <summary>
+    /// Sets clipboard text.
+    /// </summary>
+    public void SetClipboardText(string text, int retryCount = 5, int retryDelayMilliseconds = 50) {
+        ClipboardHelper.SetText(text, retryCount, retryDelayMilliseconds);
+    }
+
+    /// <summary>
+    /// Returns whether the current process is elevated.
+    /// </summary>
+    public bool IsElevated() {
+        return PrivilegeChecker.IsElevated;
+    }
+
+    /// <summary>
+    /// Throws if the current process is not elevated.
+    /// </summary>
+    public void EnsureElevated() {
+        PrivilegeChecker.EnsureElevated();
+    }
+
+    /// <summary>
+    /// Launches a desktop process and waits for a correlated final window.
+    /// </summary>
+    public DesktopProcessLaunchAndWaitResult LaunchAndWaitForWindow(DesktopProcessLaunchAndWaitOptions options) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (string.IsNullOrWhiteSpace(options.FilePath)) {
+            throw new ArgumentException("A process path or command is required.", nameof(options));
+        }
+
+        if (options.TimeoutMilliseconds <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(options.TimeoutMilliseconds), "timeoutMilliseconds must be greater than zero.");
+        }
+
+        if (options.IntervalMilliseconds <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(options.IntervalMilliseconds), "intervalMilliseconds must be greater than zero.");
+        }
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        DesktopProcessLaunchInfo launch = LaunchProcess(new DesktopProcessStartOptions {
+            FilePath = options.FilePath,
+            Arguments = options.Arguments,
+            WorkingDirectory = options.WorkingDirectory,
+            WaitForInputIdleMilliseconds = options.WaitForInputIdleMilliseconds,
+            WaitForWindowMilliseconds = options.LaunchWaitForWindowMilliseconds,
+            WaitForWindowIntervalMilliseconds = options.LaunchWaitForWindowIntervalMilliseconds,
+            WindowTitlePattern = options.LaunchWindowTitlePattern,
+            WindowClassNamePattern = options.LaunchWindowClassNamePattern,
+            RequireWindow = false
+        });
+
+        DesktopLaunchWaitBindingPlan waitPlan = CreateLaunchWaitBindingPlan(
+            launch,
+            options.LaunchWindowTitlePattern,
+            options.LaunchWindowClassNamePattern,
+            options.WindowTitlePattern,
+            options.WindowClassNamePattern,
+            options.IncludeHidden,
+            options.IncludeEmptyTitles,
+            options.All,
+            options.FollowProcessFamily);
+        DesktopWindowWaitResult waitResult = WaitForWindows(waitPlan.Criteria, options.TimeoutMilliseconds, options.IntervalMilliseconds, options.All);
+
+        stopwatch.Stop();
+        return new DesktopProcessLaunchAndWaitResult {
+            Success = waitResult.Windows.Count > 0,
+            ElapsedMilliseconds = (int)stopwatch.ElapsedMilliseconds,
+            Launch = launch,
+            WaitPlan = waitPlan,
+            WindowWait = waitResult
+        };
+    }
+
+    /// <summary>
+    /// Creates the final wait binding plan for a launch-and-wait workflow.
+    /// </summary>
+    /// <param name="launch">Launch metadata.</param>
+    /// <param name="launchWindowTitlePattern">Optional launch-time window title filter.</param>
+    /// <param name="launchWindowClassNamePattern">Optional launch-time window class filter.</param>
+    /// <param name="windowTitlePattern">Optional final window title filter.</param>
+    /// <param name="windowClassNamePattern">Optional final window class filter.</param>
+    /// <param name="includeHidden">Whether hidden windows are included during the final wait.</param>
+    /// <param name="includeEmptyTitles">Whether windows with empty titles are included during the final wait.</param>
+    /// <param name="all">Whether all matching windows should be returned instead of the first match.</param>
+    /// <param name="followProcessFamily">Whether the final wait may follow the launched app's same-name process family.</param>
+    /// <returns>The final wait binding plan.</returns>
+    public static DesktopLaunchWaitBindingPlan CreateLaunchWaitBindingPlan(DesktopProcessLaunchInfo launch, string? launchWindowTitlePattern, string? launchWindowClassNamePattern, string? windowTitlePattern, string? windowClassNamePattern, bool includeHidden, bool includeEmptyTitles, bool all, bool followProcessFamily) {
+        if (launch == null) {
+            throw new ArgumentNullException(nameof(launch));
+        }
+
+        WindowQueryOptions criteria = new() {
+            TitlePattern = windowTitlePattern ?? launchWindowTitlePattern ?? "*",
+            ClassNamePattern = windowClassNamePattern ?? launchWindowClassNamePattern ?? "*",
+            IncludeHidden = includeHidden,
+            IncludeCloaked = false,
+            IncludeOwned = true,
+            IncludeEmptyTitles = includeEmptyTitles
+        };
+
+        if (launch.ResolvedProcessId.HasValue) {
+            criteria.ProcessId = launch.ResolvedProcessId.Value;
+            return new DesktopLaunchWaitBindingPlan {
+                Criteria = criteria,
+                WaitBinding = "resolved-process-id",
+                BoundProcessId = launch.ResolvedProcessId.Value
+            };
+        }
+
+        if (!followProcessFamily) {
+            criteria.ProcessId = launch.ProcessId;
+            return new DesktopLaunchWaitBindingPlan {
+                Criteria = criteria,
+                WaitBinding = "launcher-process-id",
+                BoundProcessId = launch.ProcessId
+            };
+        }
+
+        string? processNameHint = GetProcessNameHint(launch.FilePath);
+        if (string.IsNullOrWhiteSpace(processNameHint)) {
+            criteria.ProcessId = launch.ProcessId;
+            return new DesktopLaunchWaitBindingPlan {
+                Criteria = criteria,
+                WaitBinding = "launcher-process-id",
+                BoundProcessId = launch.ProcessId
+            };
+        }
+
+        criteria.ProcessNamePattern = processNameHint;
+        return new DesktopLaunchWaitBindingPlan {
+            Criteria = criteria,
+            WaitBinding = "process-name-family",
+            BoundProcessName = processNameHint
+        };
     }
 
     /// <summary>
@@ -1046,7 +2599,7 @@ public sealed class DesktopAutomationService {
     /// Captures a monitor.
     /// </summary>
     public DesktopCapture CaptureMonitor(int? monitorIndex = null, string? deviceId = null, string? deviceName = null) {
-        Monitor monitor = _monitors.GetMonitors(index: monitorIndex, deviceId: deviceId, deviceName: deviceName).FirstOrDefault()
+        Monitor monitor = GetMonitor(index: monitorIndex, deviceId: deviceId, deviceName: deviceName)
             ?? throw new InvalidOperationException("No matching monitor was found.");
 
         return new DesktopCapture {
@@ -1077,6 +2630,95 @@ public sealed class DesktopAutomationService {
             Bitmap = ScreenshotService.CaptureWindow(window.Handle),
             Window = window,
             Geometry = DescribeWindowGeometry(window)
+        };
+    }
+
+    /// <summary>
+    /// Captures a specific window handle.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <returns>The captured window image.</returns>
+    public DesktopCapture CaptureWindow(IntPtr windowHandle) {
+        WindowInfo window = ResolveWindowByHandle(windowHandle);
+        return new DesktopCapture {
+            Kind = "window",
+            Bitmap = ScreenshotService.CaptureWindow(window.Handle),
+            Window = window,
+            Geometry = DescribeWindowGeometry(window)
+        };
+    }
+
+    /// <summary>
+    /// Captures a resolved control.
+    /// </summary>
+    /// <param name="control">Control to capture.</param>
+    /// <returns>The captured control image.</returns>
+    public DesktopCapture CaptureControl(WindowControlInfo control) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        EnsureControlSupportsNativeStateChange(control, "captured");
+        WindowInfo window = ResolveParentWindow(control);
+        return new DesktopCapture {
+            Kind = "control",
+            Bitmap = ScreenshotService.CaptureControl(control.Handle),
+            Window = window,
+            Control = control,
+            Geometry = DescribeWindowGeometry(window)
+        };
+    }
+
+    /// <summary>
+    /// Captures a control resolved by window and control handle.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    /// <returns>The captured control image.</returns>
+    public DesktopCapture CaptureControl(IntPtr windowHandle, IntPtr controlHandle, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            throw new InvalidOperationException("Failed to resolve the requested control.");
+        }
+
+        return CaptureControl(control);
+    }
+
+    /// <summary>
+    /// Captures the client area of a single matching window, falling back to the full window when client bounds cannot be cropped safely.
+    /// </summary>
+    /// <param name="options">Window selection options.</param>
+    /// <returns>The captured client-area image.</returns>
+    public DesktopCapture CaptureWindowClientArea(WindowQueryOptions options) {
+        WindowInfo window = ResolveSingleWindow(options);
+        DesktopWindowGeometry geometry = DescribeWindowGeometry(window);
+        using Bitmap windowBitmap = ScreenshotService.CaptureWindow(window.Handle);
+        Bitmap clientBitmap = CreateClientAreaBitmap(windowBitmap, geometry) ?? (Bitmap)windowBitmap.Clone();
+        return new DesktopCapture {
+            Kind = "window-client",
+            Bitmap = clientBitmap,
+            Window = window,
+            Geometry = geometry
+        };
+    }
+
+    /// <summary>
+    /// Captures the client area of a specific window handle, falling back to the full window when client bounds cannot be cropped safely.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <returns>The captured client-area image.</returns>
+    public DesktopCapture CaptureWindowClientArea(IntPtr windowHandle) {
+        WindowInfo window = ResolveWindowByHandle(windowHandle);
+        DesktopWindowGeometry geometry = DescribeWindowGeometry(window);
+        using Bitmap windowBitmap = ScreenshotService.CaptureWindow(window.Handle);
+        Bitmap clientBitmap = CreateClientAreaBitmap(windowBitmap, geometry) ?? (Bitmap)windowBitmap.Clone();
+        return new DesktopCapture {
+            Kind = "window-client",
+            Bitmap = clientBitmap,
+            Window = window,
+            Geometry = geometry
         };
     }
 
@@ -1127,6 +2769,86 @@ public sealed class DesktopAutomationService {
         }
 
         return windows[0];
+    }
+
+    private static void EnsureControlSupportsNativeStateChange(WindowControlInfo control, string actionDescription) {
+        if (control.Handle == IntPtr.Zero) {
+            throw new InvalidOperationException($"The selected control does not expose a Win32 handle and cannot be {actionDescription} generically.");
+        }
+    }
+
+    private WindowInfo ResolveWindowByHandle(IntPtr windowHandle) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return GetWindow(windowHandle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true)
+            ?? throw new InvalidOperationException("The requested window could not be resolved.");
+    }
+
+    private static DesktopControlState CreateControlState(WindowInfo window, WindowControlInfo control) {
+        bool? isVisible = control.Handle != IntPtr.Zero
+            ? MonitorNativeMethods.IsWindowVisible(control.Handle)
+            : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null;
+        bool? isEnabled = control.Handle != IntPtr.Zero
+            ? MonitorNativeMethods.IsWindowEnabled(control.Handle)
+            : control.IsEnabled;
+        bool? isFocused = null;
+        IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
+        if (focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero) {
+            isFocused = focusedHandle == control.Handle;
+        }
+
+        return new DesktopControlState {
+            WindowHandle = window.Handle,
+            ControlHandle = control.Handle,
+            ClassName = control.ClassName,
+            AutomationId = control.AutomationId,
+            ControlType = control.ControlType,
+            Text = control.Text,
+            Value = control.Value,
+            IsEnabled = isEnabled,
+            IsVisible = isVisible,
+            IsFocused = isFocused,
+            IsKeyboardFocusable = control.IsKeyboardFocusable,
+            IsOffscreen = control.IsOffscreen,
+            SupportsBackgroundClick = control.SupportsBackgroundClick,
+            SupportsBackgroundText = control.SupportsBackgroundText,
+            SupportsBackgroundKeys = control.SupportsBackgroundKeys,
+            SupportsForegroundInputFallback = control.SupportsForegroundInputFallback,
+            Left = control.Left,
+            Top = control.Top,
+            Width = control.Width,
+            Height = control.Height
+        };
+    }
+
+    private static Bitmap? CreateClientAreaBitmap(Bitmap windowBitmap, DesktopWindowGeometry geometry) {
+        if (windowBitmap == null) {
+            throw new ArgumentNullException(nameof(windowBitmap));
+        }
+
+        if (geometry == null) {
+            throw new ArgumentNullException(nameof(geometry));
+        }
+
+        int cropLeft = geometry.ClientLeft - geometry.WindowLeft;
+        int cropTop = geometry.ClientTop - geometry.WindowTop;
+        Rectangle cropBounds = Rectangle.Intersect(
+            new Rectangle(cropLeft, cropTop, geometry.ClientWidth, geometry.ClientHeight),
+            new Rectangle(0, 0, windowBitmap.Width, windowBitmap.Height));
+        if (cropBounds.Width <= 0 || cropBounds.Height <= 0) {
+            return null;
+        }
+
+        Bitmap croppedBitmap = new(cropBounds.Width, cropBounds.Height);
+        using Graphics graphics = Graphics.FromImage(croppedBitmap);
+        graphics.DrawImage(
+            windowBitmap,
+            new Rectangle(0, 0, cropBounds.Width, cropBounds.Height),
+            cropBounds,
+            GraphicsUnit.Pixel);
+        return croppedBitmap;
     }
 
     private IReadOnlyList<WindowInfo> RefreshWindows(IReadOnlyList<WindowInfo> windows) {
@@ -1206,6 +2928,259 @@ public sealed class DesktopAutomationService {
         }
 
         return results;
+    }
+
+    private static void ValidateWaitArguments(int timeoutMilliseconds, int intervalMilliseconds) {
+        if (timeoutMilliseconds < 0) {
+            throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds), "timeoutMilliseconds must be zero or greater.");
+        }
+
+        if (intervalMilliseconds <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds), "intervalMilliseconds must be greater than zero.");
+        }
+    }
+
+    private static void ValidateTextObservationOptions(DesktopTextObservationOptions options) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (options.MaxObservedTextLength < 1) {
+            throw new ArgumentOutOfRangeException(nameof(options.MaxObservedTextLength), "MaxObservedTextLength must be greater than zero.");
+        }
+
+        if (options.RetryCount < 1) {
+            throw new ArgumentOutOfRangeException(nameof(options.RetryCount), "RetryCount must be greater than zero.");
+        }
+
+        if (options.RetryDelayMilliseconds < 0) {
+            throw new ArgumentOutOfRangeException(nameof(options.RetryDelayMilliseconds), "RetryDelayMilliseconds must be zero or greater.");
+        }
+    }
+
+    private DesktopWindowTextObservation? TryObserveWindowText(WindowInfo window, string? expectedText, DesktopTextObservationOptions observationOptions) {
+        DesktopWindowTextObservation? focusedObservation = TryObserveFocusedWindowText(window, expectedText, observationOptions.MaxObservedTextLength);
+        if (focusedObservation?.ContainsExpected == true || string.IsNullOrEmpty(expectedText)) {
+            return focusedObservation;
+        }
+
+        List<WindowControlInfo> controls = _windowManager.GetControls(
+            window,
+            new WindowControlQueryOptions {
+                UseUiAutomation = true,
+                IncludeUiAutomation = true
+            });
+        List<(WindowControlInfo Control, DesktopWindowTextObservation Observation)> candidates = controls
+            .Where(IsEditableTextCandidate)
+            .Select(control => CreateControlTextObservation(window, control, expectedText, observationOptions.MaxObservedTextLength))
+            .Where(candidate => candidate.HasValue)
+            .Select(candidate => candidate!.Value)
+            .ToList();
+
+        DesktopWindowTextObservation? controlObservation = candidates
+            .OrderByDescending(candidate => candidate.Observation.ContainsExpected == true)
+            .ThenByDescending(candidate => GetEditableTextCandidateScore(candidate.Control))
+            .ThenByDescending(candidate => candidate.Observation.Value.Length)
+            .Select(candidate => candidate.Observation)
+            .FirstOrDefault();
+        if (controlObservation != null) {
+            return controlObservation;
+        }
+
+        if (!string.IsNullOrWhiteSpace(window.Title)) {
+            return CreateTextObservation(
+                window,
+                IntPtr.Zero,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                window.Title,
+                "window.title",
+                expectedText,
+                observationOptions.MaxObservedTextLength);
+        }
+
+        return focusedObservation;
+    }
+
+    private DesktopWindowTextObservation? TryObserveFocusedWindowText(WindowInfo window, string? expectedText, int maxObservedTextLength) {
+        DesktopFocusedControlObservation? focusedControl = GetFocusedControlObservation(new WindowQueryOptions {
+            Handle = window.Handle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
+        if (focusedControl == null || focusedControl.FocusedHandle == IntPtr.Zero) {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(focusedControl.Value)) {
+            return CreateTextObservation(
+                window,
+                focusedControl.FocusedHandle,
+                focusedControl.ClassName,
+                focusedControl.AutomationId,
+                focusedControl.ControlType,
+                focusedControl.Value,
+                "focused.controlValue",
+                expectedText,
+                maxObservedTextLength);
+        }
+
+        if (!string.IsNullOrWhiteSpace(focusedControl.Text)) {
+            return CreateTextObservation(
+                window,
+                focusedControl.FocusedHandle,
+                focusedControl.ClassName,
+                focusedControl.AutomationId,
+                focusedControl.ControlType,
+                focusedControl.Text,
+                "focused.controlText",
+                expectedText,
+                maxObservedTextLength);
+        }
+
+        return null;
+    }
+
+    private static (WindowControlInfo Control, DesktopWindowTextObservation Observation)? CreateControlTextObservation(WindowInfo window, WindowControlInfo control, string? expectedText, int maxObservedTextLength) {
+        string? rawValue = !string.IsNullOrWhiteSpace(control.Value)
+            ? control.Value
+            : !string.IsNullOrWhiteSpace(control.Text)
+                ? control.Text
+                : control.Handle != IntPtr.Zero
+                    ? WindowTextHelper.GetWindowText(control.Handle)
+                    : null;
+        if (rawValue == null) {
+            return null;
+        }
+
+        string source = !string.IsNullOrWhiteSpace(control.Value)
+            ? "control.value"
+            : !string.IsNullOrWhiteSpace(control.Text)
+                ? "control.text"
+                : "control.liveText";
+
+        DesktopWindowTextObservation observation = CreateTextObservation(
+            window,
+            control.Handle,
+            control.ClassName,
+            control.AutomationId,
+            control.ControlType,
+            rawValue,
+            source,
+            expectedText,
+            maxObservedTextLength);
+        return (control, observation);
+    }
+
+    internal static bool IsEditableTextCandidate(WindowControlInfo control) {
+        if (control == null) {
+            return false;
+        }
+
+        string className = control.ClassName ?? string.Empty;
+        string controlType = control.ControlType ?? string.Empty;
+
+        return className.Equals("RichEditD2DPT", StringComparison.OrdinalIgnoreCase) ||
+            className.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase) ||
+            className.IndexOf("RichEdit", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            className.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            controlType.Equals("Edit", StringComparison.OrdinalIgnoreCase) ||
+            controlType.Equals("Document", StringComparison.OrdinalIgnoreCase) ||
+            (control.SupportsBackgroundText && control.IsKeyboardFocusable != false);
+    }
+
+    internal static int GetEditableTextCandidateScore(WindowControlInfo control) {
+        if (control == null) {
+            return 0;
+        }
+
+        int score = 0;
+        string className = control.ClassName ?? string.Empty;
+        string controlType = control.ControlType ?? string.Empty;
+
+        if (className.Equals("RichEditD2DPT", StringComparison.OrdinalIgnoreCase)) {
+            score += 200;
+        } else if (className.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase)) {
+            score += 180;
+        } else if (className.IndexOf("RichEdit", StringComparison.OrdinalIgnoreCase) >= 0) {
+            score += 160;
+        } else if (className.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0) {
+            score += 140;
+        }
+
+        if (controlType.Equals("Edit", StringComparison.OrdinalIgnoreCase)) {
+            score += 120;
+        } else if (controlType.Equals("Document", StringComparison.OrdinalIgnoreCase)) {
+            score += 80;
+        }
+
+        if (control.Handle != IntPtr.Zero) {
+            score += 40;
+        }
+
+        if (control.SupportsBackgroundText) {
+            score += 30;
+        }
+
+        if (control.IsKeyboardFocusable != false) {
+            score += 20;
+        }
+
+        if (control.IsEnabled != false) {
+            score += 10;
+        }
+
+        if (!string.IsNullOrWhiteSpace(control.Value)) {
+            score += 20;
+        }
+
+        if (!string.IsNullOrWhiteSpace(control.Text)) {
+            score += 10;
+        }
+
+        return score;
+    }
+
+    internal static DesktopWindowTextObservation CreateTextObservation(WindowInfo window, IntPtr controlHandle, string? controlClassName, string? controlAutomationId, string? controlType, string? value, string source, string? expectedText, int maxObservedTextLength) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (value == null) {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        if (string.IsNullOrWhiteSpace(source)) {
+            throw new ArgumentException("source is required.", nameof(source));
+        }
+
+        if (maxObservedTextLength < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxObservedTextLength), "maxObservedTextLength must be greater than zero.");
+        }
+
+        bool isTruncated = value.Length > maxObservedTextLength;
+        string normalizedValue = isTruncated
+            ? value.Substring(0, maxObservedTextLength)
+            : value;
+        bool? containsExpected = string.IsNullOrEmpty(expectedText)
+            ? null
+            : value.IndexOf(expectedText, StringComparison.Ordinal) >= 0 ? true : null;
+
+        return new DesktopWindowTextObservation {
+            WindowHandle = window.Handle,
+            WindowTitle = window.Title,
+            ControlHandle = controlHandle,
+            ControlClassName = controlClassName ?? string.Empty,
+            ControlAutomationId = controlAutomationId ?? string.Empty,
+            ControlType = controlType ?? string.Empty,
+            Value = normalizedValue,
+            Source = source,
+            ContainsExpected = containsExpected,
+            IsTruncated = isTruncated
+        };
     }
 
     private static void RememberWindowHandles(ISet<IntPtr> handles, IEnumerable<WindowInfo> windows) {

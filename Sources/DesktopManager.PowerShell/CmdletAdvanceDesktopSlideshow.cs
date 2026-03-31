@@ -11,7 +11,7 @@ public sealed class CmdletAdvanceDesktopSlideshow : PSCmdlet {
     /// <para type="description">Direction to advance the slideshow.</para>
     /// </summary>
     [Parameter(Mandatory = true, Position = 0)]
-    public DesktopSlideshowDirection Direction;
+    public DesktopSlideshowDirection Direction { get; set; }
 
     /// <example>
     ///   <summary>Advance to the next slide</summary>
@@ -20,7 +20,6 @@ public sealed class CmdletAdvanceDesktopSlideshow : PSCmdlet {
 
     /// <summary>Begin processing.</summary>
     protected override void BeginProcessing() {
-        Monitors monitors = new();
-        monitors.AdvanceWallpaperSlide(Direction);
+        new DesktopAutomationService().AdvanceDesktopSlideshow(Direction);
     }
 }

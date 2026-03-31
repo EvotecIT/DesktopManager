@@ -34,15 +34,17 @@ public sealed class CmdletInvokeDesktopWindowScreenshot : PSCmdlet {
 
     /// <inheritdoc/>
     protected override void BeginProcessing() {
-        Bitmap bmp = ParameterSetName == "Window"
-            ? ScreenshotService.CaptureWindow(Window.Handle)
-            : ScreenshotService.CaptureControl(Control.Handle);
+        var automation = new DesktopAutomationService();
+        using DesktopCapture capture = ParameterSetName == "Window"
+            ? automation.CaptureWindow(Window.Handle)
+            : automation.CaptureControl(Control);
+        Bitmap bmp = capture.Bitmap;
 
         if (MyInvocation.BoundParameters.ContainsKey(nameof(Path))) {
             bmp.Save(Path, ImageFormat.Png);
-            bmp.Dispose();
             WriteObject(Path);
         } else {
+            capture.Bitmap = null!;
             WriteObject(bmp);
         }
     }

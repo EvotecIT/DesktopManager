@@ -20,8 +20,7 @@ public sealed class CmdletInvokeDesktopMouseClick : PSCmdlet {
     /// <summary>Performs the click.</summary>
     protected override void BeginProcessing() {
         if (ShouldProcess("Mouse", $"Click {Button}")) {
-            var manager = new WindowManager();
-            manager.ClickMouse(Button);
+            new DesktopAutomationService().ClickMouse(Button);
         }
     }
 }

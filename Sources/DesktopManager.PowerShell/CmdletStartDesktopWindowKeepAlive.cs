@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Management.Automation;
 
 namespace DesktopManager.PowerShell;
@@ -25,11 +26,17 @@ public sealed class CmdletStartDesktopWindowKeepAlive : PSCmdlet {
 
     /// <inheritdoc/>
     protected override void BeginProcessing() {
-        var manager = new WindowManager();
-        var windows = manager.GetWindows(Name);
+        var automation = new DesktopAutomationService();
+        IReadOnlyList<WindowInfo> windows = automation.GetWindows(new WindowQueryOptions {
+            TitlePattern = Name,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
         foreach (var window in windows) {
             if (ShouldProcess(window.Title, $"Start keep-alive every {Interval}")) {
-                WindowKeepAlive.Instance.Start(window, Interval);
+                automation.StartWindowKeepAlive(window.Handle, Interval);
             }
         }
     }

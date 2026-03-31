@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Management.Automation;
 
@@ -10,9 +11,9 @@ namespace DesktopManager.PowerShell;
 public sealed class CmdletGetDesktopWindowKeepAlive : PSCmdlet {
     /// <inheritdoc/>
     protected override void BeginProcessing() {
-        var manager = new WindowManager();
-        var handles = WindowKeepAlive.Instance.ActiveHandles.ToList();
-        var windows = manager.GetWindows().Where(w => handles.Contains(w.Handle));
+        IReadOnlyList<WindowInfo> windows = new DesktopAutomationService()
+            .GetWindowKeepAliveWindows()
+            .ToList();
         WriteObject(windows, true);
     }
 }

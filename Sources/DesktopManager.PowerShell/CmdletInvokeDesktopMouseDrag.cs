@@ -50,8 +50,7 @@ public sealed class CmdletInvokeDesktopMouseDrag : PSCmdlet {
     /// <inheritdoc />
     protected override void BeginProcessing() {
         if (ShouldProcess("Mouse", $"Drag {Button} from {StartX},{StartY} to {EndX},{EndY}")) {
-            var manager = new WindowManager();
-            manager.DragMouse(Button, StartX, StartY, EndX, EndY, StepDelay);
+            new DesktopAutomationService().DragMouse(Button, StartX, StartY, EndX, EndY, StepDelay);
         }
     }
 }

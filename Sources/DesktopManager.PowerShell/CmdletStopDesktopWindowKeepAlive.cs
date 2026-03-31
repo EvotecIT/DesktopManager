@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Management.Automation;
 
 namespace DesktopManager.PowerShell;
@@ -25,18 +26,24 @@ public sealed class CmdletStopDesktopWindowKeepAlive : PSCmdlet {
 
     /// <inheritdoc/>
     protected override void BeginProcessing() {
+        var automation = new DesktopAutomationService();
         if (All.IsPresent) {
             if (ShouldProcess("All windows", "Stop keep-alive")) {
-                WindowKeepAlive.Instance.StopAll();
+                automation.StopAllWindowKeepAlive();
             }
             return;
         }
 
-        var manager = new WindowManager();
-        var windows = manager.GetWindows(Name);
+        IReadOnlyList<WindowInfo> windows = automation.GetWindows(new WindowQueryOptions {
+            TitlePattern = Name,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
         foreach (var window in windows) {
             if (ShouldProcess(window.Title, "Stop keep-alive")) {
-                WindowKeepAlive.Instance.Stop(window.Handle);
+                automation.StopWindowKeepAlive(window.Handle);
             }
         }
     }

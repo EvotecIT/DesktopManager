@@ -12,33 +12,33 @@ public sealed class CmdletSetDesktopBrightness : PSCmdlet {
     /// <para type="description">The index of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 0, ParameterSetName = "Index")]
-    public int? Index;
+    public int? Index { get; set; }
 
     /// <summary>
     /// <para type="description">The device ID of the monitor.</para>
     /// </summary>
     [Alias("MonitorID")]
     [Parameter(Mandatory = false, Position = 1, ParameterSetName = "DeviceID")]
-    public string DeviceId;
+    public string DeviceId { get; set; }
 
     /// <summary>
     /// <para type="description">The device name of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 2, ParameterSetName = "DeviceName")]
-    public string DeviceName;
+    public string DeviceName { get; set; }
 
     /// <summary>
     /// <para type="description">Set brightness for the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "PrimaryOnly")]
-    public SwitchParameter PrimaryOnly;
+    public SwitchParameter PrimaryOnly { get; set; }
 
     /// <summary>
     /// <para type="description">Brightness level to set.</para>
     /// </summary>
     [ValidateRange(0, 100)]
     [Parameter(Mandatory = true, Position = 4)]
-    public int Brightness;
+    public int Brightness { get; set; }
 
     private ActionPreference ErrorAction;
 
@@ -47,7 +47,7 @@ public sealed class CmdletSetDesktopBrightness : PSCmdlet {
     /// </summary>
     protected override void BeginProcessing() {
         ErrorAction = CmdletHelper.GetErrorAction(this);
-        Monitors monitors = new Monitors();
+        var automation = new DesktopAutomationService();
 
         bool? primaryOnly = MyInvocation.BoundParameters.ContainsKey(nameof(PrimaryOnly)) ? (bool?)PrimaryOnly : null;
         int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
@@ -55,11 +55,11 @@ public sealed class CmdletSetDesktopBrightness : PSCmdlet {
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
 
 
-        var getMonitors = monitors.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+        var getMonitors = automation.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
             if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set brightness to {Brightness}%")) {
                 try {
-                    monitors.SetMonitorBrightness(monitor.DeviceId, Brightness);
+                    automation.SetMonitorBrightness(monitor.DeviceId, Brightness);
                 } catch (Exception ex) {
                     if (ErrorAction == ActionPreference.Stop) { throw; }
                     WriteWarning($"Failed to set brightness for {monitor.DeviceName}: {ex.Message}");

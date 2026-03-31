@@ -41,7 +41,7 @@ public sealed class CmdletSetDesktopControlCheck : PSCmdlet {
         if (ShouldProcess(Control.Text ?? Control.ClassName, action)) {
             var automation = new DesktopAutomationService();
             try {
-                WindowControlService.SetCheckState(Control, Check);
+                automation.SetControlCheckState(Control, Check);
                 if (Verify.IsPresent || PassThru.IsPresent) {
                     WriteObject(DesktopControlMutationVerifier.Verify(
                         automation,

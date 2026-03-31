@@ -12,33 +12,33 @@ public sealed class CmdletSetDesktopDpiScaling : PSCmdlet {
     /// <para type="description">The index of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 0, ParameterSetName = "Index")]
-    public int? Index;
+    public int? Index { get; set; }
 
     /// <summary>
     /// <para type="description">The device ID of the monitor.</para>
     /// </summary>
     [Alias("MonitorID")]
     [Parameter(Mandatory = false, Position = 1, ParameterSetName = "DeviceID")]
-    public string DeviceId;
+    public string DeviceId { get; set; }
 
     /// <summary>
     /// <para type="description">The device name of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 2, ParameterSetName = "DeviceName")]
-    public string DeviceName;
+    public string DeviceName { get; set; }
 
     /// <summary>
     /// <para type="description">Set scaling for the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "PrimaryOnly")]
-    public SwitchParameter PrimaryOnly;
+    public SwitchParameter PrimaryOnly { get; set; }
 
     /// <summary>
     /// <para type="description">Scaling percentage to set.</para>
     /// </summary>
     [ValidateRange(100, 500)]
     [Parameter(Mandatory = true, Position = 4)]
-    public int Scaling;
+    public int Scaling { get; set; }
 
     private ActionPreference ErrorAction;
 
@@ -47,18 +47,18 @@ public sealed class CmdletSetDesktopDpiScaling : PSCmdlet {
     /// </summary>
     protected override void BeginProcessing() {
         ErrorAction = CmdletHelper.GetErrorAction(this);
-        Monitors monitors = new Monitors();
+        var automation = new DesktopAutomationService();
 
         bool? primaryOnly = MyInvocation.BoundParameters.ContainsKey(nameof(PrimaryOnly)) ? (bool?)PrimaryOnly : null;
         int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
         string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
 
-        var getMonitors = monitors.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+        var getMonitors = automation.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
             if (ShouldProcess($"Monitor {monitor.DeviceName}", $"Set DPI scaling to {Scaling}%")) {
                 try {
-                    monitors.SetMonitorDpiScaling(monitor.DeviceId, Scaling);
+                    automation.SetMonitorDpiScaling(monitor.DeviceId, Scaling);
                 } catch (Exception ex) {
                     if (ErrorAction == ActionPreference.Stop) { throw; }
                     WriteWarning($"Failed to set DPI scaling for {monitor.DeviceName}: {ex.Message}");

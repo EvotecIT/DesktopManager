@@ -10,6 +10,30 @@ namespace DesktopManager;
 [SupportedOSPlatform("windows")]
 public static class MouseInputService {
     /// <summary>
+    /// Gets the current mouse state.
+    /// </summary>
+    /// <returns>The current cursor position, button state, and cursor visibility.</returns>
+    public static DesktopMouseState GetState() {
+        if (!MonitorNativeMethods.GetCursorPos(out MonitorNativeMethods.POINT position)) {
+            throw new InvalidOperationException("Failed to get the current cursor position.");
+        }
+
+        MonitorNativeMethods.CURSORINFO cursorInfo = new() {
+            cbSize = Marshal.SizeOf<MonitorNativeMethods.CURSORINFO>()
+        };
+        bool hasCursorInfo = MonitorNativeMethods.GetCursorInfo(ref cursorInfo);
+
+        return new DesktopMouseState {
+            X = position.x,
+            Y = position.y,
+            IsLeftButtonDown = IsKeyDown(MonitorNativeMethods.VK_LBUTTON),
+            IsRightButtonDown = IsKeyDown(MonitorNativeMethods.VK_RBUTTON),
+            IsCursorVisible = hasCursorInfo && (cursorInfo.flags & MonitorNativeMethods.CURSOR_SHOWING) != 0,
+            CursorHandle = hasCursorInfo ? cursorInfo.hCursor : IntPtr.Zero
+        };
+    }
+
+    /// <summary>
     /// Moves the mouse cursor to the specified screen coordinates.
     /// </summary>
     /// <param name="x">X coordinate in pixels.</param>
@@ -130,5 +154,9 @@ public static class MouseInputService {
             ExtraInfo = IntPtr.Zero
         };
         MonitorNativeMethods.SendInput(1, input, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+    }
+
+    private static bool IsKeyDown(int virtualKey) {
+        return (MonitorNativeMethods.GetAsyncKeyState(virtualKey) & 0x8000) != 0;
     }
 }

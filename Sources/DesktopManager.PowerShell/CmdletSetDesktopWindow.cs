@@ -96,13 +96,18 @@ namespace DesktopManager.PowerShell {
         /// Applies the requested window modifications.
         /// </summary>
         protected override void BeginProcessing() {
-            var manager = new WindowManager();
             var automation = new DesktopAutomationService();
-            var windows = manager.GetWindows(Name);
+            IReadOnlyList<WindowInfo> windows = automation.GetWindows(new WindowQueryOptions {
+                TitlePattern = Name,
+                IncludeHidden = true,
+                IncludeCloaked = true,
+                IncludeOwned = true,
+                IncludeEmptyTitles = true
+            });
 
             Monitor targetMonitor = null;
             if (MonitorIndex.HasValue) {
-                targetMonitor = new Monitors().GetMonitors(index: MonitorIndex.Value).FirstOrDefault();
+                targetMonitor = automation.GetMonitor(index: MonitorIndex.Value);
                 if (targetMonitor == null) {
                     WriteWarning($"Monitor with index {MonitorIndex.Value} not found");
                 }
@@ -118,33 +123,47 @@ namespace DesktopManager.PowerShell {
                     bool closedWindow = false;
                     try {
                         if (targetMonitor != null) {
-                            manager.MoveWindowToMonitor(window, targetMonitor);
+                            automation.MoveWindowToMonitor(window.Handle, targetMonitor.Index);
                         }
                         if (Left >= 0 || Top >= 0 || Width >= 0 || Height >= 0) {
-                            manager.SetWindowPosition(window, Left, Top, Width, Height);
+                            automation.MoveWindows(
+                                new WindowQueryOptions {
+                                    Handle = window.Handle,
+                                    IncludeHidden = true,
+                                    IncludeCloaked = true,
+                                    IncludeOwned = true,
+                                    IncludeEmptyTitles = true
+                                },
+                                monitorIndex: null,
+                                x: Left >= 0 ? Left : null,
+                                y: Top >= 0 ? Top : null,
+                                width: Width >= 0 ? Width : null,
+                                height: Height >= 0 ? Height : null,
+                                activate: false,
+                                all: false);
                         }
                         if (State.HasValue) {
                             switch (State.Value) {
                                 case WindowState.Close:
-                                    manager.CloseWindow(window);
+                                    automation.CloseWindow(window.Handle);
                                     closedWindow = true;
                                     break;
                                 case WindowState.Minimize:
-                                    manager.MinimizeWindow(window);
+                                    automation.MinimizeWindow(window.Handle);
                                     break;
                                 case WindowState.Maximize:
-                                    manager.MaximizeWindow(window);
+                                    automation.MaximizeWindow(window.Handle);
                                     break;
                                 case WindowState.Normal:
-                                    manager.RestoreWindow(window);
+                                    automation.RestoreWindow(window.Handle);
                                     break;
                             }
                         }
                         if (!closedWindow && TopMost.IsPresent) {
-                            manager.SetWindowTopMost(window, true);
+                            automation.SetWindowTopMost(window.Handle, true);
                         }
                         if (!closedWindow && Activate.IsPresent) {
-                            manager.ActivateWindow(window);
+                            automation.ActivateWindow(window.Handle);
                         }
 
                         if (Verify.IsPresent || PassThru.IsPresent) {

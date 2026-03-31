@@ -62,7 +62,7 @@ internal static class DesktopControlMutationVerifier {
         }
 
         if (expectedCheckState.HasValue) {
-            bool? observedCheckState = TryGetObservedCheckState(observedControl);
+            bool? observedCheckState = TryGetObservedCheckState(automation, observedControl);
             if (!observedCheckState.HasValue) {
                 verified = false;
                 mode = "check";
@@ -240,13 +240,13 @@ internal static class DesktopControlMutationVerifier {
         return string.Empty;
     }
 
-    private static bool? TryGetObservedCheckState(WindowControlInfo control) {
+    private static bool? TryGetObservedCheckState(DesktopAutomationService automation, WindowControlInfo control) {
         if (control == null || control.Handle == IntPtr.Zero) {
             return null;
         }
 
         try {
-            return WindowControlService.GetCheckState(control);
+            return automation.GetControlCheckState(control);
         } catch {
             return null;
         }

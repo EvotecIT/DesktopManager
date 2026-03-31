@@ -26,8 +26,7 @@ public sealed class CmdletInvokeDesktopMouseMove : PSCmdlet {
     /// <summary>Moves the cursor.</summary>
     protected override void BeginProcessing() {
         if (ShouldProcess("Mouse", $"Move to {X},{Y}")) {
-            var manager = new WindowManager();
-            manager.MoveMouse(X, Y);
+            new DesktopAutomationService().MoveMouse(X, Y);
         }
     }
 }

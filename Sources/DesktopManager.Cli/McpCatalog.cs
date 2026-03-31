@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace DesktopManager.Cli;
@@ -7,17 +8,30 @@ namespace DesktopManager.Cli;
 internal static class McpCatalog {
     private static readonly HashSet<string> KnownToolNames = new(StringComparer.Ordinal) {
         "get_active_window",
+        "get_mouse_state",
+        "get_clipboard_text",
+        "get_elevation_status",
         "list_windows",
         "get_window_geometry",
         "window_exists",
         "active_window_matches",
         "wait_for_window",
+        "wait_for_window_close",
+        "wait_for_window_to_lose_focus",
+        "observe_window_text",
+        "wait_for_observed_text",
+        "get_focused_control",
+        "wait_for_focused_control",
+        "get_control_state",
         "list_window_controls",
         "diagnose_window_controls",
         "control_exists",
         "assert_control_value",
         "wait_for_control",
         "click_control",
+        "focus_control",
+        "set_control_enabled",
+        "set_control_visibility",
         "set_control_text",
         "send_control_keys",
         "move_window",
@@ -34,6 +48,7 @@ internal static class McpCatalog {
         "screenshot_window",
         "launch_process",
         "launch_and_wait_for_window",
+        "set_clipboard_text",
         "list_named_targets",
         "get_named_target",
         "save_window_target",
@@ -55,7 +70,11 @@ internal static class McpCatalog {
     };
 
     private static readonly HashSet<string> MutatingToolNames = new(StringComparer.Ordinal) {
+        "set_clipboard_text",
         "click_control",
+        "focus_control",
+        "set_control_enabled",
+        "set_control_visibility",
         "set_control_text",
         "send_control_keys",
         "move_window",
@@ -82,6 +101,9 @@ internal static class McpCatalog {
 
     private static readonly HashSet<string> LiveDesktopMutationToolNames = new(StringComparer.Ordinal) {
         "click_control",
+        "focus_control",
+        "set_control_enabled",
+        "set_control_visibility",
         "set_control_text",
         "send_control_keys",
         "move_window",
@@ -158,6 +180,10 @@ internal static class McpCatalog {
 
                 error = "Process-scoped MCP safety filters require an explicit 'processName' selector for this tool.";
                 return false;
+            case "focus_control":
+            case "set_control_enabled":
+            case "set_control_visibility":
+                return TryResolveProcessPatternsFromWindowHandle(arguments, "windowHandle", out processPatterns, out error);
             case "apply_named_layout":
             case "restore_saved_snapshot":
             case "prepare_for_coding":
@@ -170,9 +196,48 @@ internal static class McpCatalog {
         }
     }
 
+    private static bool TryResolveProcessPatternsFromWindowHandle(JsonElement arguments, string propertyName, out string[] processPatterns, out string? error) {
+        processPatterns = Array.Empty<string>();
+        error = null;
+
+        string? handleValue = ReadOptionalString(arguments, propertyName);
+        if (string.IsNullOrWhiteSpace(handleValue)) {
+            error = $"Process-scoped MCP safety filters require a non-empty '{propertyName}' handle for this tool.";
+            return false;
+        }
+
+        try {
+            IntPtr handle = DesktopHandleParser.Parse(handleValue);
+            WindowInfo? window = new DesktopAutomationService().GetWindow(handle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true);
+            if (window == null || window.ProcessId == 0) {
+                error = "The target window could not be resolved to a running process.";
+                return false;
+            }
+
+            using Process process = Process.GetProcessById((int)window.ProcessId);
+            if (string.IsNullOrWhiteSpace(process.ProcessName)) {
+                error = "The target window process name could not be resolved.";
+                return false;
+            }
+
+            processPatterns = new[] { process.ProcessName };
+            return true;
+        } catch (Exception ex) {
+            error = $"The target window process could not be resolved: {ex.Message}";
+            return false;
+        }
+    }
+
     public static object[] GetTools() {
         return new object[] {
             CreateTool("get_active_window", "Get Active Window", "Return information about the currently focused window.", CreateObjectSchema(), readOnly: true),
+            CreateTool("get_mouse_state", "Get Mouse State", "Return the current desktop mouse position, button state, and cursor visibility.", CreateObjectSchema(), readOnly: true),
+            CreateTool("get_clipboard_text", "Get Clipboard Text", "Return the current Unicode clipboard text when available.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["retryCount"] = CreateIntegerSchema("Number of attempts to open the clipboard."),
+                    ["retryDelayMs"] = CreateIntegerSchema("Delay between clipboard retry attempts in milliseconds.")
+                }), readOnly: true),
+            CreateTool("get_elevation_status", "Get Elevation Status", "Return whether the current DesktopManager host process is elevated.", CreateObjectSchema(), readOnly: true),
             CreateTool("list_windows", "List Windows", "List visible desktop windows with optional filtering.", CreateWindowSelectorSchema(includeAll: false, includeEmpty: true), readOnly: true),
             CreateTool("get_window_geometry", "Get Window Geometry", "Return outer-window and client-area geometry for matching windows.", CreateWindowSelectorSchema(includeAll: true, includeEmpty: true), readOnly: true),
             CreateTool("window_exists", "Window Exists", "Check whether a matching window currently exists.", CreateWindowSelectorSchema(includeAll: false, includeEmpty: true), readOnly: true),
@@ -193,6 +258,107 @@ internal static class McpCatalog {
                     ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
                     ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
                 }), readOnly: true),
+            CreateTool("wait_for_window_close", "Wait For Window Close", "Wait for a matching window to close.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["all"] = CreateBooleanSchema("Track all matching windows instead of the first match."),
+                    ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
+                    ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
+                }), readOnly: true),
+            CreateTool("wait_for_window_to_lose_focus", "Wait For Window To Lose Focus", "Wait for a matching window to no longer own foreground focus.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["all"] = CreateBooleanSchema("Track all matching windows instead of the first match."),
+                    ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
+                    ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
+                }), readOnly: true),
+            CreateTool("observe_window_text", "Observe Window Text", "Return the best available text observation for a matching window.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["expectedText"] = CreateStringSchema("Optional text to prefer when present."),
+                    ["maxLength"] = CreateIntegerSchema("Maximum observed text length."),
+                    ["retryCount"] = CreateIntegerSchema("Observation retry count."),
+                    ["retryDelayMs"] = CreateIntegerSchema("Delay between observation retries in milliseconds.")
+                }), readOnly: true),
+            CreateTool("wait_for_observed_text", "Wait For Observed Text", "Wait until observed window text contains the requested value.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["expectedText"] = CreateStringSchema("Text to wait for."),
+                    ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
+                    ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds."),
+                    ["maxLength"] = CreateIntegerSchema("Maximum observed text length."),
+                    ["retryCount"] = CreateIntegerSchema("Observation retry count."),
+                    ["retryDelayMs"] = CreateIntegerSchema("Delay between observation retries in milliseconds.")
+                }, new[] { "expectedText" }), readOnly: true),
+            CreateTool("get_focused_control", "Get Focused Control", "Return focused-control metadata for a matching window.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles.")
+                }), readOnly: true),
+            CreateTool("wait_for_focused_control", "Wait For Focused Control", "Wait until a matching window exposes a focused control.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
+                    ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
+                }), readOnly: true),
+            CreateTool("get_control_state", "Get Control State", "Return the observable state for a specific control handle.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format.")
+                }, new[] { "windowHandle", "controlHandle" }), readOnly: true),
             CreateTool("list_window_controls", "List Window Controls", "List child controls for one or more matching windows.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),
@@ -371,6 +537,24 @@ internal static class McpCatalog {
                     ["all"] = CreateBooleanSchema("Apply to all matching controls."),
                     ["allWindows"] = CreateBooleanSchema("Target controls in all matching windows.")
                 })), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("focus_control", "Focus Control", "Focus a specific control handle.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+                    ["ensureForegroundWindow"] = CreateBooleanSchema("Ensure the parent window becomes foreground before focusing the control.")
+                }), new[] { "windowHandle", "controlHandle" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_control_enabled", "Set Control Enabled", "Enable or disable a specific control handle.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+                    ["enabled"] = CreateBooleanSchema("True to enable the control; false to disable it.")
+                }), new[] { "windowHandle", "controlHandle", "enabled" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_control_visibility", "Set Control Visibility", "Show or hide a specific control handle.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+                    ["visible"] = CreateBooleanSchema("True to show the control; false to hide it.")
+                }), new[] { "windowHandle", "controlHandle", "visible" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("set_control_text", "Set Control Text", "Set text on a matching child control.", CreateObjectSchema(
                 AddMutationArtifactProperties(new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),
@@ -597,6 +781,12 @@ internal static class McpCatalog {
                     ["windowClassName"] = CreateStringSchema("Optional launched-window class filter."),
                     ["requireWindow"] = CreateBooleanSchema("Require a launched window to be found before returning.")
                 }, new[] { "filePath" }), readOnly: false, destructive: false, idempotent: false),
+            CreateTool("set_clipboard_text", "Set Clipboard Text", "Replace the current Unicode clipboard text.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["text"] = CreateStringSchema("Text to place on the clipboard."),
+                    ["retryCount"] = CreateIntegerSchema("Number of attempts to open the clipboard."),
+                    ["retryDelayMs"] = CreateIntegerSchema("Delay between clipboard retry attempts in milliseconds.")
+                }, new[] { "text" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("launch_and_wait_for_window", "Launch And Wait For Window", "Start a desktop application or process, then wait for a matching launched window.", CreateObjectSchema(
                 AddMutationArtifactProperties(new Dictionary<string, object> {
                     ["filePath"] = CreateStringSchema("Executable path or shell command."),
@@ -840,6 +1030,11 @@ internal static class McpCatalog {
         try {
             result = name switch {
                 "get_active_window" => DesktopOperations.GetActiveWindow(),
+                "get_mouse_state" => DesktopOperations.GetMouseState(),
+                "get_clipboard_text" => DesktopOperations.GetClipboardText(
+                    ReadInt(arguments, "retryCount"),
+                    ReadInt(arguments, "retryDelayMs")),
+                "get_elevation_status" => DesktopOperations.GetElevationStatus(),
                 "list_windows" => DesktopOperations.ListWindows(ReadWindowCriteria(arguments, false)),
                 "get_window_geometry" => DesktopOperations.GetWindowGeometry(ReadWindowCriteria(arguments, true)),
                 "window_exists" => DesktopOperations.WindowExists(ReadWindowCriteria(arguments, true)),
@@ -848,6 +1043,36 @@ internal static class McpCatalog {
                     ReadWindowCriteria(arguments, true),
                     ReadInt(arguments, "timeoutMs") ?? 10000,
                     ReadInt(arguments, "intervalMs") ?? 200),
+                "wait_for_window_close" => DesktopOperations.WaitForWindowToClose(
+                    ReadWindowCriteria(arguments, true),
+                    ReadInt(arguments, "timeoutMs") ?? 10000,
+                    ReadInt(arguments, "intervalMs") ?? 200),
+                "wait_for_window_to_lose_focus" => DesktopOperations.WaitForWindowToLoseFocus(
+                    ReadWindowCriteria(arguments, true),
+                    ReadInt(arguments, "timeoutMs") ?? 10000,
+                    ReadInt(arguments, "intervalMs") ?? 200),
+                "observe_window_text" => DesktopOperations.ObserveWindowText(
+                    ReadWindowCriteria(arguments, true),
+                    ReadOptionalString(arguments, "expectedText"),
+                    ReadInt(arguments, "maxLength"),
+                    ReadInt(arguments, "retryCount"),
+                    ReadInt(arguments, "retryDelayMs"))!,
+                "wait_for_observed_text" => DesktopOperations.WaitForObservedText(
+                    ReadWindowCriteria(arguments, true),
+                    ReadRequiredString(arguments, "expectedText"),
+                    ReadInt(arguments, "timeoutMs") ?? 10000,
+                    ReadInt(arguments, "intervalMs") ?? 200,
+                    ReadInt(arguments, "maxLength"),
+                    ReadInt(arguments, "retryCount"),
+                    ReadInt(arguments, "retryDelayMs")),
+                "get_focused_control" => DesktopOperations.GetFocusedControl(ReadWindowCriteria(arguments, true))!,
+                "wait_for_focused_control" => DesktopOperations.WaitForFocusedControl(
+                    ReadWindowCriteria(arguments, true),
+                    ReadInt(arguments, "timeoutMs") ?? 10000,
+                    ReadInt(arguments, "intervalMs") ?? 200),
+                "get_control_state" => DesktopOperations.GetControlState(
+                    ReadRequiredString(arguments, "windowHandle"),
+                    ReadRequiredString(arguments, "controlHandle")),
                 "move_window" => DesktopOperations.MoveWindow(
                     ReadWindowCriteria(arguments, true),
                     ReadInt(arguments, "monitor"),
@@ -886,6 +1111,10 @@ internal static class McpCatalog {
                     ReadOptionalString(arguments, "windowTitle"),
                     ReadOptionalString(arguments, "windowClassName"),
                     ReadBool(arguments, "requireWindow")),
+                "set_clipboard_text" => DesktopOperations.SetClipboardText(
+                    ReadRequiredString(arguments, "text"),
+                    ReadInt(arguments, "retryCount"),
+                    ReadInt(arguments, "retryDelayMs")),
                 "launch_and_wait_for_window" => DesktopOperations.LaunchAndWaitForWindow(
                     ReadRequiredString(arguments, "filePath"),
                     ReadOptionalString(arguments, "arguments"),
@@ -1004,6 +1233,18 @@ internal static class McpCatalog {
                         ReadBool(arguments, "allWindows"),
                         ReadBool(arguments, "all"),
                         ReadMutationArtifactOptions(arguments)),
+                "focus_control" => DesktopOperations.FocusControl(
+                    ReadRequiredString(arguments, "windowHandle"),
+                    ReadRequiredString(arguments, "controlHandle"),
+                    ReadBool(arguments, "ensureForegroundWindow")),
+                "set_control_enabled" => DesktopOperations.SetControlEnabled(
+                    ReadRequiredString(arguments, "windowHandle"),
+                    ReadRequiredString(arguments, "controlHandle"),
+                    ReadRequiredBool(arguments, "enabled")),
+                "set_control_visibility" => DesktopOperations.SetControlVisibility(
+                    ReadRequiredString(arguments, "windowHandle"),
+                    ReadRequiredString(arguments, "controlHandle"),
+                    ReadRequiredBool(arguments, "visible")),
                 "set_control_text" => string.IsNullOrWhiteSpace(ReadOptionalString(arguments, "targetName"))
                     ? DesktopOperations.SetControlText(
                         ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),
@@ -1480,6 +1721,11 @@ internal static class McpCatalog {
 
     private static bool ReadBool(JsonElement element, string propertyName) {
         return ReadNullableBool(element, propertyName) ?? false;
+    }
+
+    private static bool ReadRequiredBool(JsonElement element, string propertyName) {
+        bool? value = ReadNullableBool(element, propertyName);
+        return value ?? throw new CommandLineException($"Property '{propertyName}' is required.");
     }
 
     private static MutationArtifactOptions? ReadMutationArtifactOptions(JsonElement element) {

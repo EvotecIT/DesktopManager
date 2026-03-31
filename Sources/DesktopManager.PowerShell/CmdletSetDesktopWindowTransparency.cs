@@ -29,12 +29,18 @@ public sealed class CmdletSetDesktopWindowTransparency : PSCmdlet {
     /// Applies the transparency setting to matching windows.
     /// </summary>
     protected override void BeginProcessing() {
-        var manager = new WindowManager();
-        var windows = manager.GetWindows(Name);
+        var automation = new DesktopAutomationService();
+        IReadOnlyList<WindowInfo> windows = automation.GetWindows(new WindowQueryOptions {
+            TitlePattern = Name,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
         foreach (var window in windows) {
             if (ShouldProcess($"Window '{window.Title}'", $"Set transparency to {Alpha}")) {
                 try {
-                    manager.SetWindowTransparency(window, Alpha);
+                    automation.SetWindowTransparency(window.Handle, Alpha);
                 } catch (Exception ex) {
                     WriteWarning($"Failed to set transparency for '{window.Title}': {ex.Message}");
                 }

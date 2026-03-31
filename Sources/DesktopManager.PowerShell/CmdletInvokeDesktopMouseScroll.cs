@@ -20,8 +20,7 @@ public sealed class CmdletInvokeDesktopMouseScroll : PSCmdlet {
     /// <summary>Scrolls the wheel.</summary>
     protected override void BeginProcessing() {
         if (ShouldProcess("Mouse", $"Scroll {Delta}")) {
-            var manager = new WindowManager();
-            manager.ScrollMouse(Delta);
+            new DesktopAutomationService().ScrollMouse(Delta);
         }
     }
 }

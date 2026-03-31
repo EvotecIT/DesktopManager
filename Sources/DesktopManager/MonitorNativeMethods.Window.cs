@@ -95,6 +95,23 @@ public static partial class MonitorNativeMethods
     public static extern bool IsWindowVisible(IntPtr hWnd);
 
     /// <summary>
+    /// Checks whether a window/control is enabled.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <returns>True when the target is enabled.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowEnabled(IntPtr hWnd);
+
+    /// <summary>
+    /// Enables or disables a window/control.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="bEnable">True to enable; false to disable.</param>
+    /// <returns>True when the target was previously disabled.</returns>
+    [DllImport("user32.dll")]
+    public static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
+
+    /// <summary>
     /// Retrieves a handle to the parent of the specified window.
     /// </summary>
     /// <param name="hWnd">The window handle.</param>

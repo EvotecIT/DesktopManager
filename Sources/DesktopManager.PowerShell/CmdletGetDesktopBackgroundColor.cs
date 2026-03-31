@@ -13,7 +13,6 @@ namespace DesktopManager.PowerShell;
 public sealed class CmdletGetDesktopBackgroundColor : PSCmdlet {
     /// <summary>Begin processing.</summary>
     protected override void BeginProcessing() {
-        Monitors monitors = new Monitors();
-        WriteObject(monitors.GetBackgroundColor());
+        WriteObject(new DesktopAutomationService().GetDesktopBackgroundColor());
     }
 }

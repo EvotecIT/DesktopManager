@@ -38,7 +38,13 @@ public sealed class CmdletSetDesktopWindowStyle : PSCmdlet {
 
     /// <inheritdoc />
     protected override void BeginProcessing() {
-        var windows = _manager.GetWindows(Name);
+        IReadOnlyList<WindowInfo> windows = _automation.GetWindows(new WindowQueryOptions {
+            TitlePattern = Name,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        });
         foreach (var window in windows) {
             if (Style.HasValue) {
                 ProcessWindow(window, (long)Style.Value, false);
@@ -53,13 +59,12 @@ public sealed class CmdletSetDesktopWindowStyle : PSCmdlet {
         string action = Disable.IsPresent ? "Clear style" : "Set style";
         if (ShouldProcess($"Window '{window.Title}'", action)) {
             try {
-                _manager.SetWindowStyle(window, flags, !Disable.IsPresent, extended);
+                _automation.SetWindowStyle(window.Handle, flags, !Disable.IsPresent, extended);
             } catch (Exception ex) {
                 WriteWarning($"Failed to modify style for '{window.Title}': {ex.Message}");
             }
         }
     }
 
-    private readonly WindowManager _manager = new WindowManager();
+    private readonly DesktopAutomationService _automation = new();
 }
-

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.Versioning;
 
 namespace DesktopManager.Tests;
 
@@ -34,6 +35,460 @@ public class DesktopAutomationCoreTests {
     /// </summary>
     public void DesktopHandleParser_ParseInvalidValue_ThrowsArgumentException() {
         Assert.ThrowsException<ArgumentException>(() => DesktopHandleParser.Parse("not-a-handle"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures desktop automation reports the same elevation state as the shared privilege helper.
+    /// </summary>
+    public void DesktopAutomationService_IsElevated_MatchesPrivilegeChecker() {
+        var automation = new DesktopAutomationService();
+
+        Assert.AreEqual(PrivilegeChecker.IsElevated, automation.IsElevated());
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures clipboard writes reject null text.
+    /// </summary>
+    public void DesktopAutomationService_SetClipboardText_NullText_ThrowsArgumentNullException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentNullException>(() => automation.SetClipboardText(null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures logon wallpaper updates reject a missing image path.
+    /// </summary>
+    [SupportedOSPlatform("windows10.0.10240.0")]
+    public void DesktopAutomationService_SetLogonWallpaper_NullPath_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetLogonWallpaper(null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures desktop slideshow start rejects missing image paths.
+    /// </summary>
+    public void DesktopAutomationService_StartDesktopSlideshow_NullImagePaths_ThrowsArgumentNullException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentNullException>(() => automation.StartDesktopSlideshow(null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor wallpaper queries reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_GetMonitorWallpaper_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.GetMonitorWallpaper(null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor wallpaper updates reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorWallpaper_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorWallpaper(null!, "wallpaper.jpg"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor wallpaper stream updates reject a missing stream.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorWallpaperStream_NullStream_ThrowsArgumentNullException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentNullException>(() => automation.SetMonitorWallpaper("DISPLAY1", (Stream)null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor wallpaper URL updates reject a missing URL.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorWallpaperFromUrl_NullUrl_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorWallpaperFromUrl("DISPLAY1", null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures all-user wallpaper updates reject a missing file path.
+    /// </summary>
+    public void DesktopAutomationService_SetDesktopWallpaperForAllUsers_NullPath_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetDesktopWallpaperForAllUsers(null!, DesktopWallpaperPosition.Fill));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor brightness queries reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_GetMonitorBrightness_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.GetMonitorBrightness(null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor brightness updates reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorBrightness_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorBrightness(null!, 50));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor position queries reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_GetMonitorPosition_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.GetMonitorPosition(null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor position updates reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorPosition_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorPosition(null!, new MonitorPosition(0, 0, 100, 100)));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor position updates reject a missing position object.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorPosition_NullPosition_ThrowsArgumentNullException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentNullException>(() => automation.SetMonitorPosition("DISPLAY1", null!));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor resolution updates reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorResolution_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorResolution(null!, 1920, 1080));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor orientation updates reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorOrientation_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorOrientation(null!, DisplayOrientation.Default));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor DPI scaling updates reject a missing device identifier.
+    /// </summary>
+    public void DesktopAutomationService_SetMonitorDpiScaling_NullDeviceId_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorDpiScaling(null!, 150));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures taskbar position updates reject negative monitor indexes.
+    /// </summary>
+    public void DesktopAutomationService_SetTaskbarPosition_NegativeMonitorIndex_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.SetTaskbarPosition(-1, TaskbarPosition.Bottom));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures taskbar visibility updates reject negative monitor indexes.
+    /// </summary>
+    public void DesktopAutomationService_SetTaskbarVisibility_NegativeMonitorIndex_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.SetTaskbarVisibility(-1, visible: true));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window activation rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_ActivateWindow_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.ActivateWindow(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first topmost updates reject a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_SetWindowTopMost_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowTopMost(IntPtr.Zero, true));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first visibility updates reject a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_SetWindowVisibility_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowVisibility(IntPtr.Zero, true));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first transparency updates reject a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_SetWindowTransparency_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowTransparency(IntPtr.Zero, 128));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first style updates reject a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_SetWindowStyle_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowStyle(IntPtr.Zero, (long)WindowStyleFlags.SysMenu, enable: true));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window typing rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_TypeWindowText_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.TypeWindowText(IntPtr.Zero, "sample", paste: false, delayMilliseconds: 0, foregroundInput: false, physicalKeys: false, hostedSession: false, script: false, scriptChunkLength: 120, scriptLineDelayMilliseconds: 0));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window typing with explicit options rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_TypeWindowTextWithOptions_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.TypeWindowText(IntPtr.Zero, "sample", new WindowInputOptions()));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window paste rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_PasteWindowText_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.PasteWindowText(IntPtr.Zero, "sample"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window key sending rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_SendWindowKeys_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SendWindowKeys(IntPtr.Zero, [VirtualKey.VK_RETURN], activate: true));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window process queries reject a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_GetWindowProcessInfo_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.GetWindowProcessInfo(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first owner window process queries reject a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_GetOwnerWindowProcessInfo_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.GetOwnerWindowProcessInfo(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first keep-alive start rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_StartWindowKeepAlive_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.StartWindowKeepAlive(IntPtr.Zero, TimeSpan.FromSeconds(1)));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first keep-alive stop rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_StopWindowKeepAlive_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.StopWindowKeepAlive(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor lookups return null when the selector cannot match.
+    /// </summary>
+    public void DesktopAutomationService_GetMonitor_ImpossibleDeviceName_ReturnsNull() {
+        var automation = new DesktopAutomationService();
+
+        Monitor? monitor = automation.GetMonitor(deviceName: "__DesktopManager_NoSuchMonitor__");
+
+        Assert.IsNull(monitor);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures monitor capture rejects missing monitor selectors.
+    /// </summary>
+    public void DesktopAutomationService_CaptureMonitor_ImpossibleDeviceName_ThrowsInvalidOperationException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<InvalidOperationException>(() => automation.CaptureMonitor(deviceName: "__DesktopManager_NoSuchMonitor__"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window geometry rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_GetWindowGeometry_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.GetWindowGeometry(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window capture rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_CaptureWindow_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.CaptureWindow(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first control capture rejects a zero window handle.
+    /// </summary>
+    public void DesktopAutomationService_CaptureControl_ZeroWindowHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.CaptureControl(IntPtr.Zero, new IntPtr(1)));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first client-area capture rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_CaptureWindowClientArea_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.CaptureWindowClientArea(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures waiting for a focused control rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_WaitForFocusedControlObservation_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.WaitForFocusedControlObservation(IntPtr.Zero, 1000, 100));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first control check-state queries reject a zero window handle.
+    /// </summary>
+    public void DesktopAutomationService_GetControlCheckState_ZeroWindowHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.GetControlCheckState(IntPtr.Zero, new IntPtr(1)));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first control check-state updates reject a zero window handle.
+    /// </summary>
+    public void DesktopAutomationService_SetControlCheckState_ZeroWindowHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.SetControlCheckState(IntPtr.Zero, new IntPtr(1), check: true));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures handle-first window process termination rejects a zero handle.
+    /// </summary>
+    public void DesktopAutomationService_TerminateWindowProcess_ZeroHandle_ThrowsArgumentException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsException<ArgumentException>(() => automation.TerminateWindowProcess(IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures window process termination rejects a negative exit wait.
+    /// </summary>
+    public void DesktopAutomationService_TerminateWindowProcess_NegativeWait_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+        var window = new WindowInfo {
+            Handle = new IntPtr(0x1234),
+            ProcessId = 123
+        };
+
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.TerminateWindowProcess(window, waitForExitMilliseconds: -1));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures launch-and-wait binding planner rejects null launch metadata.
+    /// </summary>
+    public void DesktopAutomationService_CreateLaunchWaitBindingPlan_NullLaunch_ThrowsArgumentNullException() {
+        Assert.ThrowsException<ArgumentNullException>(() => DesktopAutomationService.CreateLaunchWaitBindingPlan(
+            null!,
+            launchWindowTitlePattern: null,
+            launchWindowClassNamePattern: null,
+            windowTitlePattern: null,
+            windowClassNamePattern: null,
+            includeHidden: false,
+            includeEmptyTitles: false,
+            all: false,
+            followProcessFamily: false));
     }
 
     [TestMethod]

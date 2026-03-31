@@ -155,6 +155,40 @@ public static class WindowControlService {
         ReleaseHeldModifiers(control.Handle, heldModifiers);
     }
 
+    /// <summary>
+    /// Enables or disables the specified control.
+    /// </summary>
+    /// <param name="control">Control to modify.</param>
+    /// <param name="enabled">True to enable the control; false to disable it.</param>
+    public static void SetEnabled(WindowControlInfo control, bool enabled) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        if (control.Handle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid control handle", nameof(control));
+        }
+
+        MonitorNativeMethods.EnableWindow(control.Handle, enabled);
+    }
+
+    /// <summary>
+    /// Shows or hides the specified control.
+    /// </summary>
+    /// <param name="control">Control to modify.</param>
+    /// <param name="visible">True to show the control; false to hide it.</param>
+    public static void SetVisibility(WindowControlInfo control, bool visible) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        if (control.Handle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid control handle", nameof(control));
+        }
+
+        MonitorNativeMethods.ShowWindow(control.Handle, visible ? MonitorNativeMethods.SW_SHOW : MonitorNativeMethods.SW_HIDE);
+    }
+
     private static void SendMouseClick(IntPtr handle, MouseButton button, int x, int y) {
         uint messageDown = button == MouseButton.Left ? MonitorNativeMethods.WM_LBUTTONDOWN : MonitorNativeMethods.WM_RBUTTONDOWN;
         uint messageUp = button == MouseButton.Left ? MonitorNativeMethods.WM_LBUTTONUP : MonitorNativeMethods.WM_RBUTTONUP;

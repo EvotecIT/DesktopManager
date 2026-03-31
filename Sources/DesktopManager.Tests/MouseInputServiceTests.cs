@@ -21,6 +21,20 @@ public class MouseInputServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Test for GetState_DoesNotThrow.
+    /// </summary>
+    public void GetState_DoesNotThrow() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        DesktopMouseState state = MouseInputService.GetState();
+
+        Assert.IsNotNull(state);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Test for Click_DoesNotThrow.
     /// </summary>
     public void Click_DoesNotThrow() {

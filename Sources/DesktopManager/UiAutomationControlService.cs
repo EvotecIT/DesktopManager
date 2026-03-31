@@ -194,6 +194,18 @@ internal sealed class UiAutomationControlService {
         return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow));
     }
 
+    public bool TryFocus(WindowInfo window, WindowControlInfo control, bool ensureForegroundWindow) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        return RunInSta(service => service.TryFocusCore(window, control, ensureForegroundWindow));
+    }
+
     public IReadOnlyList<DesktopUiAutomationRootDiagnostic> DiagnoseRoots(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles = null, int sampleLimit = 3) {
         if (sampleLimit < 0) {
             throw new ArgumentOutOfRangeException(nameof(sampleLimit), "sampleLimit must be zero or greater.");
@@ -480,6 +492,25 @@ internal sealed class UiAutomationControlService {
 
         KeyboardInputService.SendToForeground(keys.ToArray());
         return true;
+    }
+
+    private bool TryFocusCore(WindowInfo window, WindowControlInfo control, bool ensureForegroundWindow) {
+        UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
+        object? element = match.Element;
+        if (element == null) {
+            return false;
+        }
+
+        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
+        if (!TrySetFocus(element)) {
+            return false;
+        }
+
+        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
+            return false;
+        }
+
+        return !ensureForegroundWindow || MonitorNativeMethods.GetForegroundWindow() == window.Handle;
     }
 
     private DesktopUiAutomationActionDiagnostic ProbeActionResolutionCore(WindowInfo window, WindowControlInfo control) {

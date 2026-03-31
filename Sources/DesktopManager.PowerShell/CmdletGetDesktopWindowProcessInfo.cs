@@ -31,10 +31,10 @@ public sealed class CmdletGetDesktopWindowProcessInfo : PSCmdlet {
     /// Retrieves process information for the specified window.
     /// </summary>
     protected override void ProcessRecord() {
-        var manager = new WindowManager();
+        var automation = new DesktopAutomationService();
         WindowProcessInfo info = Owner.IsPresent
-            ? manager.GetOwnerProcessInfo(InputObject)
-            : manager.GetWindowProcessInfo(InputObject);
+            ? automation.GetOwnerWindowProcessInfo(InputObject)
+            : automation.GetWindowProcessInfo(InputObject);
 
         if (info == null) {
             WriteVerbose("Owner process information was not available.");

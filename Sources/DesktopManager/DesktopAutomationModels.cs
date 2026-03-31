@@ -96,6 +96,181 @@ public sealed class DesktopProcessLaunchInfo {
 }
 
 /// <summary>
+/// Options for launching a desktop process and then waiting for a correlated window.
+/// </summary>
+public sealed class DesktopProcessLaunchAndWaitOptions {
+    /// <summary>
+    /// Gets or sets the executable path or shell command.
+    /// </summary>
+    public string FilePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the optional argument string.
+    /// </summary>
+    public string? Arguments { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional working directory.
+    /// </summary>
+    public string? WorkingDirectory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional input-idle wait timeout in milliseconds.
+    /// </summary>
+    public int? WaitForInputIdleMilliseconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional launch-time window correlation wait in milliseconds.
+    /// </summary>
+    public int? LaunchWaitForWindowMilliseconds { get; set; } = 2000;
+
+    /// <summary>
+    /// Gets or sets the polling interval used while correlating the launched window.
+    /// </summary>
+    public int? LaunchWaitForWindowIntervalMilliseconds { get; set; } = 200;
+
+    /// <summary>
+    /// Gets or sets an optional launch-time window title filter.
+    /// </summary>
+    public string? LaunchWindowTitlePattern { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional launch-time window class filter.
+    /// </summary>
+    public string? LaunchWindowClassNamePattern { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional final window title filter.
+    /// </summary>
+    public string? WindowTitlePattern { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional final window class filter.
+    /// </summary>
+    public string? WindowClassNamePattern { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether hidden windows should be included during the final wait.
+    /// </summary>
+    public bool IncludeHidden { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether windows with empty titles should be included during the final wait.
+    /// </summary>
+    public bool IncludeEmptyTitles { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether all matching windows should be returned instead of the first match.
+    /// </summary>
+    public bool All { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the final wait may follow the launched app's same-name process family.
+    /// </summary>
+    public bool FollowProcessFamily { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum final wait time in milliseconds.
+    /// </summary>
+    public int TimeoutMilliseconds { get; set; } = 10000;
+
+    /// <summary>
+    /// Gets or sets the polling interval used during the final wait.
+    /// </summary>
+    public int IntervalMilliseconds { get; set; } = 200;
+}
+
+/// <summary>
+/// Describes how a launch-and-wait workflow bound its final wait selector.
+/// </summary>
+public sealed class DesktopLaunchWaitBindingPlan {
+    /// <summary>
+    /// Gets or sets the final window query used for waiting.
+    /// </summary>
+    public WindowQueryOptions Criteria { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the binding strategy identifier.
+    /// </summary>
+    public string WaitBinding { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the bound process identifier when the wait is pinned to a specific process.
+    /// </summary>
+    public int? BoundProcessId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bound process-name family when the wait follows same-name processes.
+    /// </summary>
+    public string? BoundProcessName { get; set; }
+}
+
+/// <summary>
+/// Represents a launch-and-wait workflow executed by the desktop automation core.
+/// </summary>
+public sealed class DesktopProcessLaunchAndWaitResult {
+    /// <summary>
+    /// Gets or sets whether the workflow resolved at least one matching window.
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total elapsed time in milliseconds.
+    /// </summary>
+    public int ElapsedMilliseconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the launch metadata.
+    /// </summary>
+    public DesktopProcessLaunchInfo Launch { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the final wait binding plan.
+    /// </summary>
+    public DesktopLaunchWaitBindingPlan WaitPlan { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the final wait result.
+    /// </summary>
+    public DesktopWindowWaitResult WindowWait { get; set; } = new();
+}
+
+/// <summary>
+/// Represents terminating the process that owns a specific window.
+/// </summary>
+public sealed class DesktopProcessTerminationResult {
+    /// <summary>
+    /// Gets or sets the terminated process identifier.
+    /// </summary>
+    public int ProcessId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the terminated process name when it could be resolved.
+    /// </summary>
+    public string ProcessName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the originating window title.
+    /// </summary>
+    public string WindowTitle { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the process exited within the requested wait time.
+    /// </summary>
+    public bool HasExited { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the termination request targeted the full process tree.
+    /// </summary>
+    public bool EntireProcessTree { get; set; }
+
+    /// <summary>
+    /// Gets or sets the exit wait timeout used after termination.
+    /// </summary>
+    public int WaitForExitMilliseconds { get; set; }
+}
+
+/// <summary>
 /// Represents a wait operation for one or more windows.
 /// </summary>
 public sealed class DesktopWindowWaitResult {
@@ -668,6 +843,11 @@ public sealed class DesktopCapture : IDisposable {
     /// Gets or sets the captured window when applicable.
     /// </summary>
     public WindowInfo? Window { get; set; }
+
+    /// <summary>
+    /// Gets or sets the captured control when applicable.
+    /// </summary>
+    public WindowControlInfo? Control { get; set; }
 
     /// <summary>
     /// Gets or sets the captured window geometry when applicable.

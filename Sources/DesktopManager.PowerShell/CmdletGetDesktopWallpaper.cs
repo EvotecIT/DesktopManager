@@ -24,37 +24,37 @@ public sealed class CmdletGetDesktopWallpaper : PSCmdlet {
     /// <para type="description">The index of the monitor to get the wallpaper for.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 0)]
-    public int Index;
+    public int Index { get; set; }
 
     /// <summary>
     /// <para type="description">The device ID of the monitor to get the wallpaper for.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 1)]
-    public string DeviceId;
+    public string DeviceId { get; set; }
 
     /// <summary>
     /// <para type="description">The device name of the monitor to get the wallpaper for.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 2)]
-    public string DeviceName;
+    public string DeviceName { get; set; }
 
     /// <summary>
     /// <para type="description">Get the wallpaper for connected monitors only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3)]
-    public SwitchParameter ConnectedOnly;
+    public SwitchParameter ConnectedOnly { get; set; }
 
     /// <summary>
     /// <para type="description">Get the wallpaper for the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 4)]
-    public SwitchParameter PrimaryOnly;
+    public SwitchParameter PrimaryOnly { get; set; }
 
     /// <summary>
     /// Begin processing the command.
     /// </summary>
     protected override void BeginProcessing() {
-        Monitors monitors = new Monitors();
+        var automation = new DesktopAutomationService();
 
         // Check if parameters are set by the user
         bool? connectedOnly = MyInvocation.BoundParameters.ContainsKey(nameof(ConnectedOnly)) ? (bool?)ConnectedOnly : null;
@@ -64,10 +64,10 @@ public sealed class CmdletGetDesktopWallpaper : PSCmdlet {
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
 
         // Get monitors
-        var getMonitors = monitors.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+        var getMonitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
             // Get wallpaper
-            WriteObject(monitor.GetWallpaper());
+            WriteObject(automation.GetMonitorWallpaper(monitor.DeviceId));
         }
     }
 }

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+using System.Linq;
 
 namespace DesktopManager.Cli;
 
@@ -22,35 +21,33 @@ internal static partial class DesktopOperations {
         return ExecuteCore(() => {
             var warnings = new List<string>();
             var notes = new List<string>();
-            Stopwatch stopwatch = Stopwatch.StartNew();
             MutationArtifactOptions options = artifactOptions ?? new MutationArtifactOptions();
 
             IReadOnlyList<ScreenshotResult> beforeScreenshots = options.CaptureBefore
                 ? CaptureDesktopArtifacts("launch-and-wait-for-window", "before", options, warnings)
                 : Array.Empty<ScreenshotResult>();
 
-            ProcessLaunchResult launch = LaunchProcess(
-                filePath,
-                arguments,
-                workingDirectory,
-                waitForInputIdleMilliseconds,
-                launchWaitForWindowMilliseconds,
-                launchWaitForWindowIntervalMilliseconds,
-                launchWindowTitlePattern,
-                launchWindowClassNamePattern,
-                requireWindow: false);
-
-            LaunchWaitBindingPlan waitPlan = CreateLaunchWaitBindingPlan(
-                launch,
-                launchWindowTitlePattern,
-                launchWindowClassNamePattern,
-                windowTitlePattern,
-                windowClassNamePattern,
-                includeHidden,
-                includeEmpty,
-                all,
-                followProcessFamily);
-            WindowSelectionCriteria waitCriteria = waitPlan.Criteria;
+            DesktopProcessLaunchAndWaitResult workflow = new DesktopAutomationService().LaunchAndWaitForWindow(new DesktopProcessLaunchAndWaitOptions {
+                FilePath = filePath,
+                Arguments = arguments,
+                WorkingDirectory = workingDirectory,
+                WaitForInputIdleMilliseconds = waitForInputIdleMilliseconds,
+                LaunchWaitForWindowMilliseconds = launchWaitForWindowMilliseconds,
+                LaunchWaitForWindowIntervalMilliseconds = launchWaitForWindowIntervalMilliseconds,
+                LaunchWindowTitlePattern = launchWindowTitlePattern,
+                LaunchWindowClassNamePattern = launchWindowClassNamePattern,
+                WindowTitlePattern = windowTitlePattern,
+                WindowClassNamePattern = windowClassNamePattern,
+                IncludeHidden = includeHidden,
+                IncludeEmptyTitles = includeEmpty,
+                All = all,
+                FollowProcessFamily = followProcessFamily,
+                TimeoutMilliseconds = timeoutMilliseconds,
+                IntervalMilliseconds = intervalMilliseconds
+            });
+            ProcessLaunchResult launch = BuildProcessLaunchResult(workflow.Launch);
+            LaunchWaitBindingPlan waitPlan = MapLaunchWaitBindingPlan(workflow.WaitPlan, all);
+            WaitForWindowResult waitResult = BuildWaitForWindowResult(workflow.WindowWait);
 
             notes.Add($"Launched process {launch.ProcessId} from '{launch.FilePath}'.");
             if (launch.ResolvedProcessId.HasValue && launch.ResolvedProcessId.Value != launch.ProcessId) {
@@ -58,12 +55,11 @@ internal static partial class DesktopOperations {
             }
 
             if (waitPlan.BoundProcessId.HasValue) {
-                notes.Add($"Wait selector bound to processId={waitPlan.BoundProcessId.Value}, title='{waitCriteria.TitlePattern}', class='{waitCriteria.ClassNamePattern}'.");
+                notes.Add($"Wait selector bound to processId={waitPlan.BoundProcessId.Value}, title='{waitPlan.Criteria.TitlePattern}', class='{waitPlan.Criteria.ClassNamePattern}'.");
             } else {
-                notes.Add($"Wait selector bound to processName='{waitPlan.BoundProcessName}', title='{waitCriteria.TitlePattern}', class='{waitCriteria.ClassNamePattern}'.");
+                notes.Add($"Wait selector bound to processName='{waitPlan.BoundProcessName}', title='{waitPlan.Criteria.TitlePattern}', class='{waitPlan.Criteria.ClassNamePattern}'.");
             }
 
-            WaitForWindowResult waitResult = WaitForWindow(waitCriteria, timeoutMilliseconds, intervalMilliseconds);
             notes.Add(waitPlan.BoundProcessId.HasValue
                 ? $"Resolved {waitResult.Count} window(s) for process {waitPlan.BoundProcessId.Value}."
                 : $"Resolved {waitResult.Count} window(s) for process family '{waitPlan.BoundProcessName}'.");
@@ -73,7 +69,7 @@ internal static partial class DesktopOperations {
                 var automation = new DesktopAutomationService();
                 afterScreenshots = CaptureWindowArtifacts(
                     automation,
-                    automation.GetWindows(CreateWindowQuery(waitCriteria)),
+                    workflow.WindowWait.Windows,
                     "launch-and-wait-for-window",
                     "after",
                     options,
@@ -82,11 +78,10 @@ internal static partial class DesktopOperations {
                 afterScreenshots = Array.Empty<ScreenshotResult>();
             }
 
-            stopwatch.Stop();
             return new LaunchAndWaitResult {
                 Action = "launch-and-wait-for-window",
-                Success = waitResult.Count > 0,
-                ElapsedMilliseconds = (int)stopwatch.ElapsedMilliseconds,
+                Success = workflow.Success,
+                ElapsedMilliseconds = workflow.ElapsedMilliseconds,
                 WaitTimeoutMilliseconds = timeoutMilliseconds,
                 WaitIntervalMilliseconds = intervalMilliseconds,
                 WaitBinding = waitPlan.WaitBinding,
@@ -103,87 +98,41 @@ internal static partial class DesktopOperations {
     }
 
     internal static LaunchWaitBindingPlan CreateLaunchWaitBindingPlan(ProcessLaunchResult launch, string? launchWindowTitlePattern, string? launchWindowClassNamePattern, string? windowTitlePattern, string? windowClassNamePattern, bool includeHidden, bool includeEmpty, bool all, bool followProcessFamily) {
-        var criteria = new WindowSelectionCriteria {
-            TitlePattern = windowTitlePattern ?? launchWindowTitlePattern ?? "*",
-            ClassNamePattern = windowClassNamePattern ?? launchWindowClassNamePattern ?? "*",
-            IncludeHidden = includeHidden,
-            IncludeCloaked = false,
-            IncludeOwned = true,
-            IncludeEmptyTitles = includeEmpty,
-            All = all
-        };
+        DesktopLaunchWaitBindingPlan corePlan = DesktopAutomationService.CreateLaunchWaitBindingPlan(new DesktopProcessLaunchInfo {
+            FilePath = launch.FilePath,
+            Arguments = launch.Arguments,
+            WorkingDirectory = launch.WorkingDirectory,
+            ProcessId = launch.ProcessId,
+            ResolvedProcessId = launch.ResolvedProcessId
+        }, launchWindowTitlePattern, launchWindowClassNamePattern, windowTitlePattern, windowClassNamePattern, includeHidden, includeEmpty, all, followProcessFamily);
+        return MapLaunchWaitBindingPlan(corePlan, all);
+    }
 
-        if (launch.ResolvedProcessId.HasValue) {
-            return new LaunchWaitBindingPlan {
-                Criteria = {
-                    TitlePattern = criteria.TitlePattern,
-                    ClassNamePattern = criteria.ClassNamePattern,
-                    IncludeHidden = criteria.IncludeHidden,
-                    IncludeCloaked = criteria.IncludeCloaked,
-                    IncludeOwned = criteria.IncludeOwned,
-                    IncludeEmptyTitles = criteria.IncludeEmptyTitles,
-                    All = criteria.All,
-                    ProcessId = launch.ResolvedProcessId.Value
-                },
-                WaitBinding = "resolved-process-id",
-                BoundProcessId = launch.ResolvedProcessId.Value
-            };
-        }
-
-        if (!followProcessFamily) {
-            return new LaunchWaitBindingPlan {
-                Criteria = {
-                    TitlePattern = criteria.TitlePattern,
-                    ClassNamePattern = criteria.ClassNamePattern,
-                    IncludeHidden = criteria.IncludeHidden,
-                    IncludeCloaked = criteria.IncludeCloaked,
-                    IncludeOwned = criteria.IncludeOwned,
-                    IncludeEmptyTitles = criteria.IncludeEmptyTitles,
-                    All = criteria.All,
-                    ProcessId = launch.ProcessId
-                },
-                WaitBinding = "launcher-process-id",
-                BoundProcessId = launch.ProcessId
-            };
-        }
-
-        string? processNameHint = GetProcessNameHint(launch.FilePath);
-        if (string.IsNullOrWhiteSpace(processNameHint)) {
-            return new LaunchWaitBindingPlan {
-                Criteria = {
-                    TitlePattern = criteria.TitlePattern,
-                    ClassNamePattern = criteria.ClassNamePattern,
-                    IncludeHidden = criteria.IncludeHidden,
-                    IncludeCloaked = criteria.IncludeCloaked,
-                    IncludeOwned = criteria.IncludeOwned,
-                    IncludeEmptyTitles = criteria.IncludeEmptyTitles,
-                    All = criteria.All,
-                    ProcessId = launch.ProcessId
-                },
-                WaitBinding = "launcher-process-id",
-                BoundProcessId = launch.ProcessId
-            };
-        }
-
+    private static LaunchWaitBindingPlan MapLaunchWaitBindingPlan(DesktopLaunchWaitBindingPlan corePlan, bool all) {
         return new LaunchWaitBindingPlan {
-            Criteria = {
-                TitlePattern = criteria.TitlePattern,
-                ClassNamePattern = criteria.ClassNamePattern,
-                IncludeHidden = criteria.IncludeHidden,
-                IncludeCloaked = criteria.IncludeCloaked,
-                IncludeOwned = criteria.IncludeOwned,
-                IncludeEmptyTitles = criteria.IncludeEmptyTitles,
-                All = criteria.All,
-                ProcessNamePattern = processNameHint
+            Criteria = new WindowSelectionCriteria {
+                TitlePattern = corePlan.Criteria.TitlePattern,
+                ProcessNamePattern = corePlan.Criteria.ProcessNamePattern,
+                ClassNamePattern = corePlan.Criteria.ClassNamePattern,
+                ProcessId = corePlan.Criteria.ProcessId == 0 ? null : corePlan.Criteria.ProcessId,
+                Active = corePlan.Criteria.ActiveWindow,
+                IncludeHidden = corePlan.Criteria.IncludeHidden,
+                IncludeCloaked = corePlan.Criteria.IncludeCloaked,
+                IncludeOwned = corePlan.Criteria.IncludeOwned,
+                IncludeEmptyTitles = corePlan.Criteria.IncludeEmptyTitles ?? false,
+                All = all
             },
-            WaitBinding = "process-name-family",
-            BoundProcessName = processNameHint
+            WaitBinding = corePlan.WaitBinding,
+            BoundProcessId = corePlan.BoundProcessId,
+            BoundProcessName = corePlan.BoundProcessName
         };
     }
 
-    private static string? GetProcessNameHint(string filePath) {
-        string trimmed = filePath.Trim().Trim('"');
-        string executableName = Path.GetFileNameWithoutExtension(trimmed);
-        return string.IsNullOrWhiteSpace(executableName) ? null : executableName;
+    private static WaitForWindowResult BuildWaitForWindowResult(DesktopWindowWaitResult result) {
+        return new WaitForWindowResult {
+            ElapsedMilliseconds = result.ElapsedMilliseconds,
+            Count = result.Windows.Count,
+            Windows = result.Windows.Select(MapWindow).ToArray()
+        };
     }
 }

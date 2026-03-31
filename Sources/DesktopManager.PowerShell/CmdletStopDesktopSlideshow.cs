@@ -16,8 +16,7 @@ public sealed class CmdletStopDesktopSlideshow : PSCmdlet {
     /// </summary>
     protected override void BeginProcessing() {
         if (ShouldProcess("Desktop", "Stop wallpaper slideshow")) {
-            Monitors monitors = new();
-            monitors.StopWallpaperSlideshow();
+            new DesktopAutomationService().StopDesktopSlideshow();
         }
     }
 }

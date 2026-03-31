@@ -17,50 +17,50 @@ public sealed class CmdletSetTaskbarPosition : PSCmdlet {
     /// <para type="description">The index of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 0, ParameterSetName = "Index")]
-    public int? Index;
+    public int? Index { get; set; }
 
     /// <summary>
     /// <para type="description">The device ID of the monitor.</para>
     /// </summary>
     [Alias("MonitorID")]
     [Parameter(Mandatory = false, Position = 1, ParameterSetName = "DeviceId")]
-    public string DeviceId;
+    public string DeviceId { get; set; }
 
     /// <summary>
     /// <para type="description">The device name of the monitor.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 2, ParameterSetName = "DeviceName")]
-    public string DeviceName;
+    public string DeviceName { get; set; }
 
     /// <summary>
     /// <para type="description">Affects the primary monitor only.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 3, ParameterSetName = "PrimaryOnly")]
-    public SwitchParameter PrimaryOnly;
+    public SwitchParameter PrimaryOnly { get; set; }
 
     /// <summary>
     /// <para type="description">Affects all monitors.</para>
     /// </summary>
     [Parameter(Mandatory = false, Position = 4, ParameterSetName = "All")]
-    public SwitchParameter All;
+    public SwitchParameter All { get; set; }
 
     /// <summary>
     /// <para type="description">Desired taskbar position.</para>
     /// </summary>
     [Parameter(Mandatory = false)]
-    public TaskbarPosition? Position;
+    public TaskbarPosition? Position { get; set; }
 
     /// <summary>
     /// <para type="description">Hide the taskbar.</para>
     /// </summary>
     [Parameter(Mandatory = false)]
-    public SwitchParameter Hide;
+    public SwitchParameter Hide { get; set; }
 
     /// <summary>
     /// <para type="description">Show the taskbar.</para>
     /// </summary>
     [Parameter(Mandatory = false)]
-    public SwitchParameter Show;
+    public SwitchParameter Show { get; set; }
 
     private ActionPreference _errorAction;
 
@@ -75,28 +75,27 @@ public sealed class CmdletSetTaskbarPosition : PSCmdlet {
             ThrowTerminatingError(new ErrorRecord(new ArgumentException("Specify only Hide or Show."), "ParameterConflict", ErrorCategory.InvalidArgument, null));
         }
 
-        Monitors monitors = new Monitors();
-        TaskbarService service = new TaskbarService();
+        var automation = new DesktopAutomationService();
 
         bool? primaryOnly = MyInvocation.BoundParameters.ContainsKey(nameof(PrimaryOnly)) ? (bool?)PrimaryOnly : null;
         int? index = MyInvocation.BoundParameters.ContainsKey(nameof(Index)) ? (int?)Index : null;
         string deviceId = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceId)) ? DeviceId : null;
         string deviceName = MyInvocation.BoundParameters.ContainsKey(nameof(DeviceName)) ? DeviceName : null;
 
-        IEnumerable<Monitor> targets = All ? monitors.GetMonitors() :
-            monitors.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+        IEnumerable<Monitor> targets = All ? automation.GetMonitors() :
+            automation.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
 
         foreach (var monitor in targets) {
             if (ShouldProcess($"Monitor {monitor.DeviceName}", "Change taskbar")) {
                 try {
                     if (Position.HasValue) {
-                        service.SetTaskbarPosition(monitor.Index, Position.Value);
+                        automation.SetTaskbarPosition(monitor.Index, Position.Value);
                     }
                     if (Hide.IsPresent) {
-                        service.SetTaskbarVisibility(monitor.Index, false);
+                        automation.SetTaskbarVisibility(monitor.Index, false);
                     }
                     if (Show.IsPresent) {
-                        service.SetTaskbarVisibility(monitor.Index, true);
+                        automation.SetTaskbarVisibility(monitor.Index, true);
                     }
                 } catch (Exception ex) {
                     if (_errorAction == ActionPreference.Stop) { throw; }

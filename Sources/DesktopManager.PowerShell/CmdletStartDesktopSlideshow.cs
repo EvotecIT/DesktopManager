@@ -14,7 +14,7 @@ public sealed class CmdletStartDesktopSlideshow : PSCmdlet {
     /// <para type="description">Paths to images used for the slideshow.</para>
     /// </summary>
     [Parameter(Mandatory = true, Position = 0)]
-    public string[] ImagePath;
+    public string[] ImagePath { get; set; }
 
     /// <summary>
     /// Begins processing the cmdlet.
@@ -24,7 +24,6 @@ public sealed class CmdletStartDesktopSlideshow : PSCmdlet {
             return;
         }
 
-        Monitors monitors = new();
-        monitors.StartWallpaperSlideshow(ImagePath);
+        new DesktopAutomationService().StartDesktopSlideshow(ImagePath);
     }
 }
