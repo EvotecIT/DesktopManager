@@ -41,7 +41,7 @@ internal static class WindowActivationService {
         for (int attempt = 0; attempt < retryCount; attempt++) {
             if (MonitorNativeMethods.IsIconic(handle)) {
                 MonitorNativeMethods.ShowWindow(handle, MonitorNativeMethods.SW_RESTORE);
-            } else {
+            } else if (!MonitorNativeMethods.IsWindowVisible(handle)) {
                 MonitorNativeMethods.ShowWindow(handle, MonitorNativeMethods.SW_SHOW);
             }
 

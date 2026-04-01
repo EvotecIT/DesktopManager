@@ -144,6 +144,39 @@ internal sealed class DesktopManagerTestAppSession : IDisposable {
         throw new AssertInconclusiveException(failureMessage);
     }
 
+    public WindowInfo ResolveWindowInfo() {
+        WindowInfo? window = new DesktopAutomationService().GetWindow(
+            _windowHandle,
+            includeHidden: true,
+            includeCloaked: true,
+            includeOwned: true,
+            includeEmptyTitles: true);
+        if (window == null) {
+            throw new AssertInconclusiveException("The DesktopManager test app window could not be resolved by handle.");
+        }
+
+        return window;
+    }
+
+    public DesktopManagerTestAppStatus WaitForEditorForeground(int timeoutMilliseconds, string failureMessage) {
+        return WaitForStatus(
+            status => status.IsForegroundWindow &&
+                string.Equals(status.ActiveSurface, "editor", StringComparison.OrdinalIgnoreCase),
+            timeoutMilliseconds,
+            failureMessage);
+    }
+
+    public DesktopManagerTestAppStatus FocusEditorWindow(int timeoutMilliseconds) {
+        RequestFocusEditor();
+        try {
+            new DesktopAutomationService().FocusWindows(CreateWindowQuery());
+        } catch (InvalidOperationException) {
+            // The test app keeps retrying focus from its own UI thread.
+        }
+
+        return WaitForEditorForeground(timeoutMilliseconds, "The DesktopManager test app editor did not become the foreground target.");
+    }
+
     public string WriteStatusArtifact(string reason, string? summaryText = null, string? summaryCategoryHint = null) {
         return WriteStatusArtifact(reason, null, null, summaryText, summaryCategoryHint);
     }

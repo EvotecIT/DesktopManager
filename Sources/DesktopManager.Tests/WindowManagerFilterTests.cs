@@ -4,7 +4,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
 
 namespace DesktopManager.Tests;
 
@@ -13,6 +12,8 @@ namespace DesktopManager.Tests;
 /// Tests for WindowManager filtering features.
 /// </summary>
 public class WindowManagerFilterTests {
+    private const int FocusTimeoutMilliseconds = 5000;
+
     [TestCleanup]
     public void Cleanup() {
         TestHelper.KillAllNotepads();
@@ -186,16 +187,12 @@ public class WindowManagerFilterTests {
         }
         TestHelper.RequireForegroundWindowUiTests();
 
-        using WinFormsWindowHarness firstHarness = WinFormsWindowHarness.Create($"Foreground Harness 1 {Guid.NewGuid():N}");
-        using WinFormsWindowHarness secondHarness = WinFormsWindowHarness.Create($"Foreground Harness 2 {Guid.NewGuid():N}");
+        using var firstSession = DesktopManagerTestAppSession.Start("foreground-filter-first");
+        using var secondSession = DesktopManagerTestAppSession.Start("foreground-filter-second");
 
         var manager = new WindowManager();
-        manager.ActivateWindow(secondHarness.Window);
-        Application.DoEvents();
-        System.Threading.Thread.Sleep(100);
-        manager.ActivateWindow(firstHarness.Window);
-        Application.DoEvents();
-        System.Threading.Thread.Sleep(100);
+        secondSession.FocusEditorWindow(FocusTimeoutMilliseconds);
+        firstSession.FocusEditorWindow(FocusTimeoutMilliseconds);
 
         IntPtr foreground = MonitorNativeMethods.GetForegroundWindow();
         if (foreground == IntPtr.Zero) {
@@ -207,7 +204,7 @@ public class WindowManagerFilterTests {
             Assert.Inconclusive("The active window could not be resolved from enumeration");
         }
 
-        Assert.AreEqual(firstHarness.Window.Handle, foreground, "Expected the owned harness window to be foreground.");
+        Assert.AreEqual(firstSession.WindowHandle, foreground, "Expected the repo-owned DesktopManager test app window to be foreground.");
         Assert.AreEqual(foreground, window.Handle, "Expected GetActiveWindow to resolve the owned foreground harness window.");
     }
 

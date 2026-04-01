@@ -1,7 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Windows.Forms;
 
 namespace DesktopManager.Tests;
 
@@ -10,6 +9,8 @@ namespace DesktopManager.Tests;
 /// Test class for WindowTopMostActivationTests.
 /// </summary>
 public class WindowTopMostActivationTests {
+    private const int FocusTimeoutMilliseconds = 5000;
+
     [TestMethod]
     [TestCategory("UITest")]
     /// <summary>
@@ -21,29 +22,30 @@ public class WindowTopMostActivationTests {
         }
         TestHelper.RequireForegroundWindowUiTests();
 
-        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create("DesktopManager TopMost Harness");
+        using var session = DesktopManagerTestAppSession.Start("topmost-toggle");
+        WindowInfo window = session.ResolveWindowInfo();
 
         var manager = new WindowManager();
 
-        long originalStyle = MonitorNativeMethods.GetWindowLongPtr(harness.Window.Handle, MonitorNativeMethods.GWL_EXSTYLE).ToInt64();
+        long originalStyle = MonitorNativeMethods.GetWindowLongPtr(window.Handle, MonitorNativeMethods.GWL_EXSTYLE).ToInt64();
         bool wasTop = (originalStyle & MonitorNativeMethods.WS_EX_TOPMOST) != 0;
 
         // Set to opposite of current state
-        manager.SetWindowTopMost(harness.Window, !wasTop);
+        manager.SetWindowTopMost(window, !wasTop);
 
         // Give the system time to process the change
         Thread.Sleep(100);
 
-        long toggled = MonitorNativeMethods.GetWindowLongPtr(harness.Window.Handle, MonitorNativeMethods.GWL_EXSTYLE).ToInt64();
+        long toggled = MonitorNativeMethods.GetWindowLongPtr(window.Handle, MonitorNativeMethods.GWL_EXSTYLE).ToInt64();
         bool newIsTop = (toggled & MonitorNativeMethods.WS_EX_TOPMOST) != 0;
 
         Assert.AreEqual(!wasTop, newIsTop, $"Expected topmost to change from {wasTop} to {!wasTop}, but got {newIsTop}");
 
         // Test changing back
-        manager.SetWindowTopMost(harness.Window, wasTop);
+        manager.SetWindowTopMost(window, wasTop);
         Thread.Sleep(100);
 
-        long restored = MonitorNativeMethods.GetWindowLongPtr(harness.Window.Handle, MonitorNativeMethods.GWL_EXSTYLE).ToInt64();
+        long restored = MonitorNativeMethods.GetWindowLongPtr(window.Handle, MonitorNativeMethods.GWL_EXSTYLE).ToInt64();
         bool restoredIsTop = (restored & MonitorNativeMethods.WS_EX_TOPMOST) != 0;
 
         Assert.AreEqual(wasTop, restoredIsTop, $"Expected topmost to restore to {wasTop}, but got {restoredIsTop}");
@@ -60,27 +62,57 @@ public class WindowTopMostActivationTests {
         TestHelper.RequireForegroundWindowUiTests();
 
         var manager = new WindowManager();
-        using WinFormsWindowHarness firstHarness = WinFormsWindowHarness.Create("DesktopManager Activation Harness 1");
-        using WinFormsWindowHarness secondHarness = WinFormsWindowHarness.Create("DesktopManager Activation Harness 2");
+        using var firstSession = DesktopManagerTestAppSession.Start("activation-first");
+        using var secondSession = DesktopManagerTestAppSession.Start("activation-second");
+        WindowInfo firstWindow = firstSession.ResolveWindowInfo();
+        WindowInfo secondWindow = secondSession.ResolveWindowInfo();
 
         try {
-            manager.ActivateWindow(secondHarness.Window);
-            Application.DoEvents();
-            Thread.Sleep(100);
+            manager.ActivateWindow(secondWindow);
+            secondSession.WaitForEditorForeground(
+                FocusTimeoutMilliseconds,
+                "The second repo-owned DesktopManager test app window did not become the foreground target.");
 
-            manager.ActivateWindow(firstHarness.Window);
-            Application.DoEvents();
-            Thread.Sleep(100);
+            manager.ActivateWindow(firstWindow);
+            firstSession.WaitForEditorForeground(
+                FocusTimeoutMilliseconds,
+                "The first repo-owned DesktopManager test app window did not become the foreground target.");
 
             IntPtr newForeground = MonitorNativeMethods.GetForegroundWindow();
             if (newForeground == IntPtr.Zero) {
                 Assert.Inconclusive("GetForegroundWindow returned 0 after activation attempt.");
             }
 
-            Assert.AreEqual(firstHarness.Window.Handle, newForeground,
-                $"Expected the owned harness window to become foreground. Expected: {firstHarness.Window.Handle:X8}, Actual: {newForeground:X8}");
+            Assert.AreEqual(firstSession.WindowHandle, newForeground,
+                $"Expected the repo-owned DesktopManager test app window to become foreground. Expected: {firstSession.WindowHandle:X8}, Actual: {newForeground:X8}");
         } catch (InvalidOperationException ex) when (ex.Message.Contains("Failed to activate window")) {
-            Assert.Inconclusive($"Window activation failed due to Windows security policies. Target window: Handle={firstHarness.Window.Handle:X8}. This is expected behavior in many Windows configurations due to User Interface Privilege Isolation (UIPI) or other focus management policies.");
+            Assert.Inconclusive($"Window activation failed due to Windows security policies. Target window: Handle={firstSession.WindowHandle:X8}. This is expected behavior in many Windows configurations due to User Interface Privilege Isolation (UIPI) or other focus management policies.");
         }
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    /// <summary>
+    /// Ensures window activation preserves a maximized repo-owned harness window.
+    /// </summary>
+    public void ActivateWindow_MaximizedWindow_RemainsMaximized() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+        TestHelper.RequireForegroundWindowUiTests();
+
+        using var session = DesktopManagerTestAppSession.Start("activation-maximized");
+        WindowManager manager = new();
+        WindowInfo window = session.ResolveWindowInfo();
+
+        manager.MaximizeWindow(window);
+        Thread.Sleep(150);
+        manager.ActivateWindow(window);
+        session.WaitForEditorForeground(
+            FocusTimeoutMilliseconds,
+            "The maximized repo-owned DesktopManager test app window did not become the foreground target.");
+
+        WindowInfo refreshedWindow = session.ResolveWindowInfo();
+        Assert.AreEqual(WindowState.Maximize, refreshedWindow.State, "Expected activation to preserve the maximized window state.");
     }
 }
