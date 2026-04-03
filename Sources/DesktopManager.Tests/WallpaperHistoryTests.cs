@@ -11,13 +11,22 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class WallpaperHistoryTests
 {
+    private static string CreateHistoryPath()
+    {
+        return Path.Combine(
+            Path.GetTempPath(),
+            "DesktopManager.Tests",
+            Guid.NewGuid().ToString("N"),
+            "wallpaper-history.json");
+    }
+
     [TestMethod]
     /// <summary>
     /// Test for AddEntry_WritesFile.
     /// </summary>
     public void AddEntry_WritesFile()
     {
-        var temp = Path.GetTempFileName();
+        var temp = CreateHistoryPath();
         Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", temp);
         try
         {
@@ -30,9 +39,10 @@ public class WallpaperHistoryTests
         finally
         {
             Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", null);
-            if (File.Exists(temp))
+            var directory = Path.GetDirectoryName(temp);
+            if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory))
             {
-                File.Delete(temp);
+                Directory.Delete(directory, recursive: true);
             }
         }
     }
@@ -43,7 +53,7 @@ public class WallpaperHistoryTests
     /// </summary>
     public void AddEntry_EnforcesMaximum()
     {
-        var temp = Path.GetTempFileName();
+        var temp = CreateHistoryPath();
         Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", temp);
         try
         {
@@ -57,9 +67,10 @@ public class WallpaperHistoryTests
         finally
         {
             Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", null);
-            if (File.Exists(temp))
+            var directory = Path.GetDirectoryName(temp);
+            if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory))
             {
-                File.Delete(temp);
+                Directory.Delete(directory, recursive: true);
             }
         }
     }

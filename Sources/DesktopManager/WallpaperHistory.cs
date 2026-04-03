@@ -14,8 +14,6 @@ public static class WallpaperHistory
 {
     private static readonly object _lock = new();
 
-    private static string? _historyFilePath;
-
     private static string DefaultHistoryFilePath =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -23,7 +21,7 @@ public static class WallpaperHistory
             "wallpaper-history.json");
 
     private static string HistoryFilePath =>
-        _historyFilePath ??= GetHistoryFilePath();
+        GetHistoryFilePath();
 
     private static string GetHistoryFilePath()
     {
@@ -75,6 +73,7 @@ public static class WallpaperHistory
             {
                 return new List<string>();
             }
+
             try
             {
                 string json = File.ReadAllText(HistoryFilePath);
@@ -101,6 +100,7 @@ public static class WallpaperHistory
             {
                 Directory.CreateDirectory(dir);
             }
+
             string json = JsonSerializer.Serialize(paths);
             File.WriteAllText(HistoryFilePath, json);
         }
@@ -121,6 +121,7 @@ public static class WallpaperHistory
         {
             return;
         }
+
         lock (_lock)
         {
             var history = GetHistory();
@@ -130,6 +131,7 @@ public static class WallpaperHistory
             {
                 history.RemoveRange(MaxEntries, history.Count - MaxEntries);
             }
+
             SetHistory(history);
         }
     }
