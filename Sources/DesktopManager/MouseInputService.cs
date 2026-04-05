@@ -14,9 +14,7 @@ public static class MouseInputService {
     /// </summary>
     /// <returns>The current cursor position, button state, and cursor visibility.</returns>
     public static DesktopMouseState GetState() {
-        if (!MonitorNativeMethods.GetCursorPos(out MonitorNativeMethods.POINT position)) {
-            throw new InvalidOperationException("Failed to get the current cursor position.");
-        }
+        bool hasPosition = MonitorNativeMethods.GetCursorPos(out MonitorNativeMethods.POINT position);
 
         MonitorNativeMethods.CURSORINFO cursorInfo = new() {
             cbSize = Marshal.SizeOf<MonitorNativeMethods.CURSORINFO>()
@@ -24,8 +22,8 @@ public static class MouseInputService {
         bool hasCursorInfo = MonitorNativeMethods.GetCursorInfo(ref cursorInfo);
 
         return new DesktopMouseState {
-            X = position.x,
-            Y = position.y,
+            X = hasPosition ? position.x : 0,
+            Y = hasPosition ? position.y : 0,
             IsLeftButtonDown = IsKeyDown(MonitorNativeMethods.VK_LBUTTON),
             IsRightButtonDown = IsKeyDown(MonitorNativeMethods.VK_RBUTTON),
             IsCursorVisible = hasCursorInfo && (cursorInfo.flags & MonitorNativeMethods.CURSOR_SHOWING) != 0,

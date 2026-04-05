@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Threading;
 
 namespace DesktopManager;
 
@@ -13,6 +15,7 @@ namespace DesktopManager;
 public static class WallpaperHistory
 {
     private static readonly object _lock = new();
+    private const int MutexWaitTimeoutMilliseconds = 5000;
 
     private static string DefaultHistoryFilePath =>
         Path.Combine(
@@ -67,24 +70,7 @@ public static class WallpaperHistory
     /// </example>
     public static List<string> GetHistory()
     {
-        lock (_lock)
-        {
-            if (!File.Exists(HistoryFilePath))
-            {
-                return new List<string>();
-            }
-
-            try
-            {
-                string json = File.ReadAllText(HistoryFilePath);
-                var history = JsonSerializer.Deserialize<List<string>>(json);
-                return history ?? new List<string>();
-            }
-            catch (JsonException)
-            {
-                return new List<string>();
-            }
-        }
+        return ExecuteWithHistoryFileLock(ReadHistoryCore);
     }
 
     /// <summary>
@@ -93,17 +79,10 @@ public static class WallpaperHistory
     /// <param name="paths">Collection of wallpaper file paths to persist.</param>
     public static void SetHistory(IEnumerable<string> paths)
     {
-        lock (_lock)
-        {
-            string? dir = Path.GetDirectoryName(HistoryFilePath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-
-            string json = JsonSerializer.Serialize(paths);
-            File.WriteAllText(HistoryFilePath, json);
-        }
+        ExecuteWithHistoryFileLock(historyFilePath => {
+            WriteHistoryCore(historyFilePath, paths);
+            return 0;
+        });
     }
 
     /// <summary>
@@ -122,9 +101,8 @@ public static class WallpaperHistory
             return;
         }
 
-        lock (_lock)
-        {
-            var history = GetHistory();
+        ExecuteWithHistoryFileLock(historyFilePath => {
+            var history = ReadHistoryCore(historyFilePath);
             history.Remove(path);
             history.Insert(0, path);
             if (history.Count > MaxEntries)
@@ -132,7 +110,106 @@ public static class WallpaperHistory
                 history.RemoveRange(MaxEntries, history.Count - MaxEntries);
             }
 
-            SetHistory(history);
+            WriteHistoryCore(historyFilePath, history);
+            return 0;
+        });
+    }
+
+    private static List<string> ReadHistoryCore(string historyFilePath)
+    {
+        if (!File.Exists(historyFilePath))
+        {
+            return new List<string>();
         }
+
+        try
+        {
+            using FileStream stream = new FileStream(historyFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var history = JsonSerializer.Deserialize<List<string>>(stream);
+            return history ?? new List<string>();
+        }
+        catch (JsonException)
+        {
+            return new List<string>();
+        }
+    }
+
+    private static void WriteHistoryCore(string historyFilePath, IEnumerable<string> paths)
+    {
+        string? dir = Path.GetDirectoryName(historyFilePath);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        string json = JsonSerializer.Serialize(paths);
+        string tempPath = historyFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (FileStream stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (StreamWriter writer = new StreamWriter(stream))
+            {
+                writer.Write(json);
+            }
+
+            if (File.Exists(historyFilePath))
+            {
+                File.Replace(tempPath, historyFilePath, null);
+            }
+            else
+            {
+                File.Move(tempPath, historyFilePath);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
+
+    private static T ExecuteWithHistoryFileLock<T>(Func<string, T> action)
+    {
+        string historyFilePath = HistoryFilePath;
+        lock (_lock)
+        {
+            using Mutex mutex = OpenHistoryFileMutex(historyFilePath);
+            try
+            {
+                if (!mutex.WaitOne(MutexWaitTimeoutMilliseconds))
+                {
+                    throw new IOException($"Timed out waiting for wallpaper history access to '{historyFilePath}'.");
+                }
+            }
+            catch (AbandonedMutexException)
+            {
+                // Continue; ownership is granted to the current process.
+            }
+
+            try
+            {
+                return action(historyFilePath);
+            }
+            finally
+            {
+                try
+                {
+                    mutex.ReleaseMutex();
+                }
+                catch (ApplicationException)
+                {
+                }
+            }
+        }
+    }
+
+    private static Mutex OpenHistoryFileMutex(string historyFilePath)
+    {
+        using MD5 md5 = MD5.Create();
+        byte[] hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(historyFilePath));
+        string hash = BitConverter.ToString(hashBytes).Replace("-", string.Empty);
+        return new Mutex(false, @"Global\DesktopManager.WallpaperHistory." + hash);
     }
 }

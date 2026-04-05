@@ -9,6 +9,30 @@ namespace DesktopManager.Tests;
 /// Test class for MonitorServiceTests.
 /// </summary>
 public class MonitorServiceTests {
+    private static string CreateHistoryPath() {
+        return Path.Combine(
+            Path.GetTempPath(),
+            "DesktopManager.Tests",
+            nameof(MonitorServiceTests),
+            Guid.NewGuid().ToString("N"),
+            "wallpaper-history.json");
+    }
+
+    private static void WithIsolatedWallpaperHistory(Action<string> action) {
+        string historyPath = CreateHistoryPath();
+        Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", historyPath);
+        try {
+            action(historyPath);
+        }
+        finally {
+            Environment.SetEnvironmentVariable("DESKTOPMANAGER_HISTORY_PATH", null);
+            string? directory = Path.GetDirectoryName(historyPath);
+            if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory)) {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
     [TestMethod]
     /// <summary>
     /// Test for Constructor_DoesNotCallEnable.
@@ -48,21 +72,34 @@ public class MonitorServiceTests {
     /// Test for SetWallpaper_ByIndex_UsesDevicePath.
     /// </summary>
     public void SetWallpaper_ByIndex_UsesDevicePath() {
-        var fake = new FakeDesktopManager();
-        fake.DevicePaths[0] = "dev";
-        var service = new MonitorService(fake);
-        service.SetWallpaper(0, "w");
-        Assert.AreEqual(("dev", "w"), fake.SetWallpaperCalls[0]);
+        WithIsolatedWallpaperHistory(_ => {
+            var fake = new FakeDesktopManager();
+            fake.DevicePaths[0] = "dev";
+            var service = new MonitorService(fake);
+
+            service.SetWallpaper(0, "w");
+
+            Assert.AreEqual(("dev", "w"), fake.SetWallpaperCalls[0]);
+            CollectionAssert.AreEqual(new[] { "w" }, WallpaperHistory.GetHistory());
+        });
     }
+
     [TestMethod]
     /// <summary>
-    /// Test for SetWallpaper_ByIndex_MissingPathUsesEmptyString.
+    /// Test for SetWallpaper_ByIndex_MissingPathDoesNotFallBackGlobally.
     /// </summary>
-    public void SetWallpaper_ByIndex_MissingPathUsesEmptyString() {
-        var fake = new FakeDesktopManager();
-        var service = new MonitorService(fake);
-        service.SetWallpaper(1, "img");
-        Assert.AreEqual(0, fake.SetWallpaperCalls.Count);
+    public void SetWallpaper_ByIndex_MissingPathDoesNotFallBackGlobally() {
+        WithIsolatedWallpaperHistory(historyPath => {
+            var fake = new FakeDesktopManager();
+            var service = new MonitorService(fake);
+
+            service.SetWallpaper(1, "img");
+
+            Assert.AreEqual(0, fake.SetWallpaperCalls.Count);
+            Assert.IsFalse(fake.EnableCalled);
+            Assert.IsFalse(File.Exists(historyPath));
+            Assert.AreEqual(0, WallpaperHistory.GetHistory().Count);
+        });
     }
 
 

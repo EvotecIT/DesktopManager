@@ -154,7 +154,6 @@ public partial class MonitorService {
         try {
             var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
             if (string.IsNullOrWhiteSpace(monitorId)) {
-                SetWallpaperInternal(wallpaperPath, true);
                 return;
             }
             SetWallpaperInternal(monitorId, wallpaperPath, true);
@@ -174,12 +173,16 @@ public partial class MonitorService {
             throw new ArgumentNullException(nameof(imageStream));
         }
 
-        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
-        if (string.IsNullOrWhiteSpace(monitorId)) {
+        try {
+            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (string.IsNullOrWhiteSpace(monitorId)) {
+                return;
+            }
+
+            SetWallpaper(monitorId, imageStream);
+        } catch (DesktopManagerException) {
             SetWallpaper(imageStream);
-            return;
         }
-        SetWallpaper(monitorId, imageStream);
     }
 
     /// <summary>
@@ -198,12 +201,16 @@ public partial class MonitorService {
     /// <param name="url">URL pointing to the image.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task SetWallpaperFromUrlAsync(int index, string url) {
-        var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
-        if (string.IsNullOrWhiteSpace(monitorId)) {
+        try {
+            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (string.IsNullOrWhiteSpace(monitorId)) {
+                return;
+            }
+
+            await SetWallpaperFromUrlAsync(monitorId, url);
+        } catch (DesktopManagerException) {
             await SetWallpaperFromUrlAsync(url);
-            return;
         }
-        await SetWallpaperFromUrlAsync(monitorId, url);
     }
 
     /// <summary>

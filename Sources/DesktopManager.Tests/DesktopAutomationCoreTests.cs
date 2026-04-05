@@ -9,6 +9,10 @@ namespace DesktopManager.Tests;
 /// Tests for shared desktop automation helpers.
 /// </summary>
 public class DesktopAutomationCoreTests {
+    private static string GetNoWindowHelperPath() {
+        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WindowTextHelper32", "WindowTextHelper32.exe");
+    }
+
     [TestMethod]
     /// <summary>
     /// Ensures hexadecimal handles parse correctly.
@@ -785,13 +789,17 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_LaunchProcess_RequireWindowWithoutUserFacingWindow_ThrowsTimeoutException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<TimeoutException>(() => automation.LaunchProcess(new DesktopProcessStartOptions {
-            FilePath = "cmd.exe",
-            Arguments = "/c exit",
-            WaitForWindowMilliseconds = 1,
-            WaitForWindowIntervalMilliseconds = 1,
-            RequireWindow = true
-        }));
+        try {
+            automation.LaunchProcess(new DesktopProcessStartOptions {
+                FilePath = GetNoWindowHelperPath(),
+                Arguments = "0",
+                WaitForWindowMilliseconds = 0,
+                WaitForWindowIntervalMilliseconds = 1,
+                RequireWindow = true
+            });
+            Assert.Fail("Expected LaunchProcess to throw TimeoutException when no user-facing window appears.");
+        } catch (TimeoutException) {
+        }
     }
 
     [TestMethod]
@@ -801,14 +809,18 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_LaunchProcess_RequireWindowWithImpossibleSelector_ThrowsTimeoutException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<TimeoutException>(() => automation.LaunchProcess(new DesktopProcessStartOptions {
-            FilePath = "cmd.exe",
-            Arguments = "/c exit",
-            WindowTitlePattern = "__DesktopManager_NoSuchWindow__",
-            WaitForWindowMilliseconds = 1,
-            WaitForWindowIntervalMilliseconds = 1,
-            RequireWindow = true
-        }));
+        try {
+            automation.LaunchProcess(new DesktopProcessStartOptions {
+                FilePath = GetNoWindowHelperPath(),
+                Arguments = "0",
+                WindowTitlePattern = "__DesktopManager_NoSuchWindow__",
+                WaitForWindowMilliseconds = 0,
+                WaitForWindowIntervalMilliseconds = 1,
+                RequireWindow = true
+            });
+            Assert.Fail("Expected LaunchProcess to throw TimeoutException when no window matches the selector.");
+        } catch (TimeoutException) {
+        }
     }
 
     [TestMethod]
