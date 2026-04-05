@@ -2559,8 +2559,9 @@ public sealed class DesktopAutomationService {
             throw new DirectoryNotFoundException($"The working directory '{options.WorkingDirectory}' does not exist.");
         }
 
+        bool useShellExecute = ShouldUseShellExecute(options.FilePath);
         var startInfo = new ProcessStartInfo(options.FilePath) {
-            UseShellExecute = true
+            UseShellExecute = useShellExecute
         };
         if (!string.IsNullOrWhiteSpace(options.Arguments)) {
             startInfo.Arguments = options.Arguments;
@@ -2570,7 +2571,10 @@ public sealed class DesktopAutomationService {
         }
 
         string? primaryProcessNameHint = GetProcessNameHint(options.FilePath);
-        HashSet<IntPtr> preLaunchWindowHandles = CaptureWindowHandlesForProcesses(CollectProcessNameHints(primaryProcessNameHint));
+        IReadOnlyList<string> initialProcessNameHints = CollectProcessNameHints(primaryProcessNameHint);
+        ISet<IntPtr> preLaunchWindowHandles = useShellExecute
+            ? CaptureWindowHandlesForProcesses(initialProcessNameHints)
+            : new HashSet<IntPtr>();
         DateTime launchStartedUtc = DateTime.UtcNow;
         using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start process '{options.FilePath}'.");
 
@@ -2585,7 +2589,9 @@ public sealed class DesktopAutomationService {
         IReadOnlyList<string> processNameHints = CollectProcessNameHints(primaryProcessNameHint, GetProcessNameHint(process, options.FilePath));
         int waitForWindowMilliseconds = options.WaitForWindowMilliseconds ?? 2000;
         int waitForWindowIntervalMilliseconds = options.WaitForWindowIntervalMilliseconds ?? 200;
-        WindowInfo? mainWindow = TryResolveLaunchedWindow(process.Id, processNameHints, launchStartedUtc, preLaunchWindowHandles, options.WindowTitlePattern, options.WindowClassNamePattern, waitForWindowMilliseconds, waitForWindowIntervalMilliseconds);
+        WindowInfo? mainWindow = waitForWindowMilliseconds == 0
+            ? TryResolveImmediateLaunchedWindow(process, options.WindowTitlePattern, options.WindowClassNamePattern)
+            : TryResolveLaunchedWindow(process.Id, processNameHints, launchStartedUtc, preLaunchWindowHandles, options.WindowTitlePattern, options.WindowClassNamePattern, waitForWindowMilliseconds, waitForWindowIntervalMilliseconds);
         if (options.RequireWindow && mainWindow == null) {
             throw new TimeoutException(BuildMissingLaunchedWindowMessage(processNameHints, options.WindowTitlePattern, options.WindowClassNamePattern, waitForWindowMilliseconds));
         }
@@ -3274,50 +3280,92 @@ public sealed class DesktopAutomationService {
         } while (true);
     }
 
+    private WindowInfo? TryResolveImmediateLaunchedWindow(Process process, string? windowTitlePattern, string? windowClassNamePattern) {
+        try {
+            process.Refresh();
+            IntPtr mainWindowHandle = process.MainWindowHandle;
+            if (mainWindowHandle == IntPtr.Zero) {
+                return null;
+            }
+
+            WindowInfo? window = _windowManager.GetWindow(mainWindowHandle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true);
+            if (window == null || !MatchesLaunchedWindow(window.Title ?? string.Empty, mainWindowHandle, windowTitlePattern, windowClassNamePattern)) {
+                return null;
+            }
+
+            return window;
+        } catch {
+            return null;
+        }
+    }
+
     private WindowInfo? FindBestLaunchedWindowCandidate(int launcherProcessId, IReadOnlyList<string> processNameHints, DateTime launchedAtUtc, ISet<IntPtr> preLaunchWindowHandles, string? windowTitlePattern, string? windowClassNamePattern) {
         List<LaunchWindowCandidate> candidates = new();
 
-        foreach (WindowInfo window in _windowManager.GetWindows(new WindowQueryOptions {
-            ProcessId = launcherProcessId,
-            IncludeHidden = false,
-            IncludeCloaked = false,
-            IncludeOwned = false,
-            IncludeEmptyTitles = false,
-            IsVisible = true
-        })) {
-            candidates.Add(new LaunchWindowCandidate(
-                window,
-                TryGetProcessStartTimeUtc((int)window.ProcessId, out DateTime startedUtc) ? (DateTime?)startedUtc : null,
-                true,
-                !preLaunchWindowHandles.Contains(window.Handle)));
-        }
-
-        for (int hintIndex = 0; hintIndex < processNameHints.Count; hintIndex++) {
-            string resolvedProcessNameHint = processNameHints[hintIndex];
-            foreach (WindowInfo window in _windowManager.GetWindows(new WindowQueryOptions {
-                ProcessNamePattern = resolvedProcessNameHint,
-                IncludeHidden = false,
-                IncludeCloaked = false,
-                IncludeOwned = false,
-                IncludeEmptyTitles = false,
-                IsVisible = true
-            })) {
-                if (candidates.Any(candidate => candidate.Window.Handle == window.Handle)) {
-                    continue;
-                }
-
-                DateTime? startedUtc = TryGetProcessStartTimeUtc((int)window.ProcessId, out DateTime processStartedUtc) ? processStartedUtc : null;
-                bool newHandleAfterLaunch = !preLaunchWindowHandles.Contains(window.Handle);
-                if (!newHandleAfterLaunch && startedUtc.HasValue && startedUtc.Value < launchedAtUtc.AddSeconds(-2)) {
-                    continue;
-                }
-
-                candidates.Add(new LaunchWindowCandidate(window, startedUtc, false, newHandleAfterLaunch, hintIndex));
+        IntPtr shellWindow = MonitorNativeMethods.GetShellWindow();
+        if (!MonitorNativeMethods.EnumWindows((handle, lParam) => {
+            if (handle == shellWindow || !MonitorNativeMethods.IsWindowVisible(handle)) {
+                return true;
             }
+
+            IntPtr ownerHandle = MonitorNativeMethods.GetWindow(handle, MonitorNativeMethods.GW_OWNER);
+            if (ownerHandle != IntPtr.Zero) {
+                return true;
+            }
+
+            MonitorNativeMethods.TryGetWindowCloaked(handle, out bool isCloaked);
+            if (isCloaked) {
+                return true;
+            }
+
+            uint windowProcessId = 0;
+            uint windowThreadId = MonitorNativeMethods.GetWindowThreadProcessId(handle, out windowProcessId);
+            bool exactProcessMatch = windowProcessId == launcherProcessId;
+            int hintPriority = int.MaxValue;
+
+            if (!exactProcessMatch) {
+                string? processName = TryGetProcessName((int)windowProcessId);
+                if (string.IsNullOrWhiteSpace(processName)) {
+                    return true;
+                }
+
+                hintPriority = GetProcessNameHintPriority(processNameHints, processName!);
+                if (hintPriority < 0) {
+                    return true;
+                }
+            }
+
+            DateTime? startedUtc = TryGetProcessStartTimeUtc((int)windowProcessId, out DateTime processStartedUtc)
+                ? processStartedUtc
+                : null;
+            bool newHandleAfterLaunch = IsNewLaunchedWindowCandidate(handle, preLaunchWindowHandles, startedUtc, launchedAtUtc);
+            if (!exactProcessMatch && !newHandleAfterLaunch && startedUtc.HasValue && startedUtc.Value < launchedAtUtc.AddSeconds(-2)) {
+                return true;
+            }
+
+            string title = WindowTextHelper.GetWindowText(handle);
+            if (string.IsNullOrWhiteSpace(title) || !MatchesLaunchedWindow(title, handle, windowTitlePattern, windowClassNamePattern)) {
+                return true;
+            }
+
+            WindowInfo window = _windowManager.GetWindow(handle, includeHidden: true, includeCloaked: true, includeOwned: true, includeEmptyTitles: true)
+                ?? new WindowInfo {
+                    Title = title,
+                    Handle = handle,
+                    ProcessId = windowProcessId,
+                    ThreadId = windowThreadId,
+                    IsVisible = true,
+                    OwnerHandle = ownerHandle,
+                    IsCloaked = false
+                };
+
+            candidates.Add(new LaunchWindowCandidate(window, startedUtc, exactProcessMatch, newHandleAfterLaunch, hintPriority));
+            return true;
+        }, IntPtr.Zero)) {
+            throw new InvalidOperationException("Failed to enumerate launch window candidates.");
         }
 
         return candidates
-            .Where(candidate => MatchesLaunchedWindow(candidate.Window, windowTitlePattern, windowClassNamePattern))
             .OrderByDescending(candidate => candidate.ExactProcessMatch)
             .ThenBy(candidate => candidate.HintPriority)
             .ThenByDescending(candidate => candidate.NewHandleAfterLaunch)
@@ -3327,12 +3375,12 @@ public sealed class DesktopAutomationService {
             .FirstOrDefault();
     }
 
-    private bool MatchesLaunchedWindow(WindowInfo window, string? windowTitlePattern, string? windowClassNamePattern) {
-        if (!string.IsNullOrWhiteSpace(windowTitlePattern) && !MatchesPattern(window.Title ?? string.Empty, windowTitlePattern!)) {
+    private bool MatchesLaunchedWindow(string title, IntPtr handle, string? windowTitlePattern, string? windowClassNamePattern) {
+        if (!string.IsNullOrWhiteSpace(windowTitlePattern) && !MatchesPattern(title, windowTitlePattern!)) {
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(windowClassNamePattern) && !MatchesPattern(GetWindowClassName(window.Handle), windowClassNamePattern!)) {
+        if (!string.IsNullOrWhiteSpace(windowClassNamePattern) && !MatchesPattern(GetWindowClassName(handle), windowClassNamePattern!)) {
             return false;
         }
 
@@ -3393,6 +3441,29 @@ public sealed class DesktopAutomationService {
         return hints;
     }
 
+    private static bool ShouldUseShellExecute(string filePath) {
+        string trimmedPath = filePath?.Trim().Trim('"') ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedPath)) {
+            return true;
+        }
+
+        string extension = Path.GetExtension(trimmedPath);
+        if (string.IsNullOrWhiteSpace(extension)) {
+            return false;
+        }
+
+        return !extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsNewLaunchedWindowCandidate(IntPtr handle, ISet<IntPtr> preLaunchWindowHandles, DateTime? processStartedUtc, DateTime launchedAtUtc) {
+        if (preLaunchWindowHandles.Count > 0) {
+            return !preLaunchWindowHandles.Contains(handle);
+        }
+
+        return !processStartedUtc.HasValue || processStartedUtc.Value >= launchedAtUtc.AddSeconds(-2);
+    }
+
     private static string BuildMissingLaunchedWindowMessage(IReadOnlyList<string> processNameHints, string? windowTitlePattern, string? windowClassNamePattern, int waitForWindowMilliseconds) {
         string processText = processNameHints.Count == 0 ? "the launched application" : string.Join(", ", processNameHints);
         if (!string.IsNullOrWhiteSpace(windowTitlePattern) || !string.IsNullOrWhiteSpace(windowClassNamePattern)) {
@@ -3437,6 +3508,25 @@ public sealed class DesktopAutomationService {
             startTimeUtc = default;
             return false;
         }
+    }
+
+    private static string? TryGetProcessName(int processId) {
+        try {
+            using Process process = Process.GetProcessById(processId);
+            return process.ProcessName;
+        } catch {
+            return null;
+        }
+    }
+
+    private static int GetProcessNameHintPriority(IReadOnlyList<string> processNameHints, string processName) {
+        for (int index = 0; index < processNameHints.Count; index++) {
+            if (string.Equals(processNameHints[index], processName, StringComparison.OrdinalIgnoreCase)) {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private IReadOnlyList<DesktopResolvedWindowTarget> ResolveWindowTargets(WindowQueryOptions options, string targetName, DesktopWindowTargetDefinition definition, bool all) {

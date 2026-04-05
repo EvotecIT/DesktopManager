@@ -1,4 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Reflection;
 
 namespace DesktopManager.Tests;
 
@@ -11,6 +13,17 @@ public sealed class TestAssemblyHooks {
 
     [AssemblyCleanup]
     public static void Cleanup() {
+        DisposeSingletonIfCreated<HotkeyService>("_instance");
+        DisposeSingletonIfCreated<WindowKeepAlive>("_instance");
         TestHelper.KillAllNotepads();
+    }
+
+    private static void DisposeSingletonIfCreated<T>(string fieldName) where T : class, IDisposable {
+        FieldInfo? field = typeof(T).GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Static);
+        if (field?.GetValue(null) is not Lazy<T> lazy || !lazy.IsValueCreated) {
+            return;
+        }
+
+        lazy.Value.Dispose();
     }
 }
