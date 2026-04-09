@@ -16,6 +16,7 @@ on:
 env:
   DOTNET_VERSION: '8.x'
   BUILD_CONFIGURATION: 'Release'
+  TEST_FRAMEWORK: 'net8.0-windows10.0.19041.0'
 
 jobs:
   test-windows:
@@ -37,7 +38,7 @@ jobs:
         run: dotnet build Sources/DesktopManager.sln --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
       - name: Run tests
-        run: dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework net8.0-windows --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
+        run: dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework ${{ env.TEST_FRAMEWORK }} --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
