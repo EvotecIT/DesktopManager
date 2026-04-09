@@ -9,12 +9,14 @@ using System.Threading;
 namespace DesktopManager.Cli;
 
 internal static partial class DesktopOperations {
-    private static WindowChangeResult ExecuteWindowMutation(string action, WindowSelectionCriteria criteria, string safetyMode, MutationArtifactOptions? artifactOptions, Func<DesktopAutomationService, IReadOnlyList<WindowInfo>> mutation, string? targetName = null, string? targetKind = null, Func<DesktopAutomationService, IReadOnlyList<WindowInfo>, MutationArtifactOptions, WindowMutationVerificationResult?>? verify = null) {
+    private static WindowChangeResult ExecuteWindowMutation(string action, WindowSelectionCriteria criteria, string safetyMode, MutationArtifactOptions? artifactOptions, Func<DesktopAutomationService, IReadOnlyList<WindowInfo>> mutation, string? targetName = null, string? targetKind = null, Func<DesktopAutomationService, IReadOnlyList<ResolvedPointerTargetResult>>? resolveTargets = null, Func<DesktopAutomationService, IReadOnlyList<WindowInfo>, MutationArtifactOptions, WindowMutationVerificationResult?>? verify = null) {
         return ExecuteCore(() => {
             var automation = new DesktopAutomationService();
             var warnings = new List<string>();
             Stopwatch stopwatch = Stopwatch.StartNew();
             MutationArtifactOptions options = artifactOptions ?? new MutationArtifactOptions();
+            IReadOnlyList<ResolvedPointerTargetResult> resolvedTargets = resolveTargets?.Invoke(automation) ?? Array.Empty<ResolvedPointerTargetResult>();
+            VisualObservationBaseline? visualBaseline = PrepareWindowVisualBaseline(automation, ResolveWindowsForMutation(automation, criteria), options, warnings);
 
             IReadOnlyList<ScreenshotResult> beforeScreenshots = options.CaptureBefore
                 ? CaptureWindowArtifacts(automation, ResolveWindowsForMutation(automation, criteria), action, "before", options, warnings)
@@ -22,13 +24,15 @@ internal static partial class DesktopOperations {
 
             IReadOnlyList<WindowInfo> windows = mutation(automation);
             WindowMutationVerificationResult? verification = VerifyWindowMutation(automation, action, windows, options, verify, warnings);
+            WindowVisualChangeResult? visualChange = ObserveVisualChange(automation, windows, visualBaseline, options, warnings);
 
             IReadOnlyList<ScreenshotResult> afterScreenshots = options.CaptureAfter
                 ? CaptureWindowArtifacts(automation, windows, action, "after", options, warnings)
                 : Array.Empty<ScreenshotResult>();
 
             stopwatch.Stop();
-            return BuildWindowChangeResult(action, windows, (int)stopwatch.ElapsedMilliseconds, safetyMode, targetName, targetKind, beforeScreenshots, afterScreenshots, warnings, verification);
+            visualBaseline?.Dispose();
+            return BuildWindowChangeResult(action, windows, (int)stopwatch.ElapsedMilliseconds, safetyMode, targetName, targetKind, resolvedTargets, beforeScreenshots, afterScreenshots, warnings, verification, visualChange);
         });
     }
 
@@ -39,9 +43,10 @@ internal static partial class DesktopOperations {
             Stopwatch stopwatch = Stopwatch.StartNew();
             MutationArtifactOptions options = artifactOptions ?? new MutationArtifactOptions();
 
-            IReadOnlyList<WindowControlTargetInfo> resolvedControls = options.CaptureBefore
+            IReadOnlyList<WindowControlTargetInfo> resolvedControls = options.CaptureBefore || options.WaitForVisualChange
                 ? resolveControls(automation)
                 : Array.Empty<WindowControlTargetInfo>();
+            VisualObservationBaseline? visualBaseline = PrepareControlVisualBaseline(automation, LimitControlsForMutation(resolvedControls, allWindows, allControls), options, warnings);
             IReadOnlyList<ScreenshotResult> beforeScreenshots = options.CaptureBefore
                 ? CaptureControlArtifacts(automation, LimitControlsForMutation(resolvedControls, allWindows, allControls), action, "before", options, warnings)
                 : Array.Empty<ScreenshotResult>();
@@ -49,14 +54,104 @@ internal static partial class DesktopOperations {
             IReadOnlyList<WindowControlTargetInfo> controls = mutation(automation);
             IReadOnlyList<WindowControlTargetInfo> safetyControls = resolvedControls.Count > 0 ? resolvedControls : controls;
             string safetyMode = determineSafetyMode(safetyControls);
+            WindowVisualChangeResult? visualChange = ObserveVisualChange(
+                automation,
+                controls.Select(static control => control.Window).ToArray(),
+                visualBaseline,
+                options,
+                warnings);
 
             IReadOnlyList<ScreenshotResult> afterScreenshots = options.CaptureAfter
                 ? CaptureControlArtifacts(automation, controls, action, "after", options, warnings)
                 : Array.Empty<ScreenshotResult>();
 
             stopwatch.Stop();
-            return BuildControlActionResult(action, controls, (int)stopwatch.ElapsedMilliseconds, safetyMode, targetName, targetKind, beforeScreenshots, afterScreenshots, warnings);
+            visualBaseline?.Dispose();
+            return BuildControlActionResult(action, controls, (int)stopwatch.ElapsedMilliseconds, safetyMode, targetName, targetKind, beforeScreenshots, afterScreenshots, warnings, visualChange);
         });
+    }
+
+    private static VisualObservationBaseline? PrepareWindowVisualBaseline(DesktopAutomationService automation, IReadOnlyList<WindowInfo> windows, MutationArtifactOptions options, List<string> warnings) {
+        if (!options.WaitForVisualChange) {
+            return null;
+        }
+
+        return PrepareVisualBaseline(automation, windows, options, warnings);
+    }
+
+    private static VisualObservationBaseline? PrepareControlVisualBaseline(DesktopAutomationService automation, IReadOnlyList<WindowControlTargetInfo> controls, MutationArtifactOptions options, List<string> warnings) {
+        if (!options.WaitForVisualChange) {
+            return null;
+        }
+
+        if (controls.Count == 0) {
+            warnings.Add("Visual change verification was requested, but no controls could be resolved before the mutation.");
+            return null;
+        }
+
+        WindowInfo[] windows = controls
+            .Select(static control => control.Window)
+            .GroupBy(static window => window.Handle)
+            .Select(static group => group.First())
+            .ToArray();
+        return PrepareVisualBaseline(automation, windows, options, warnings);
+    }
+
+    private static VisualObservationBaseline? PrepareVisualBaseline(DesktopAutomationService automation, IReadOnlyList<WindowInfo> windows, MutationArtifactOptions options, List<string> warnings) {
+        if (windows.Count == 0) {
+            warnings.Add("Visual change verification was requested, but no matching window could be resolved before the mutation.");
+            return null;
+        }
+
+        WindowInfo window = windows[0];
+        if (windows.Count > 1) {
+            warnings.Add($"Visual change verification currently observes only the first mutated window. Using {FormatWindowLabel(window)}.");
+        }
+
+        try {
+            DesktopCapture capture = !string.IsNullOrWhiteSpace(options.VisualTargetName)
+                ? automation.CaptureWindowTarget(new WindowQueryOptions {
+                    Handle = window.Handle,
+                    IncludeHidden = true,
+                    IncludeCloaked = true,
+                    IncludeOwned = true,
+                    IncludeEmptyTitles = true
+                }, options.VisualTargetName)
+                : options.VisualClientArea
+                    ? automation.CaptureWindowClientArea(window.Handle)
+                    : automation.CaptureWindow(window.Handle);
+            return new VisualObservationBaseline(window, capture);
+        } catch (Exception ex) when (IsArtifactWarning(ex) || ex is TimeoutException || ex is Win32Exception) {
+            warnings.Add($"Failed to capture the visual baseline for {FormatWindowLabel(window)}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static WindowVisualChangeResult? ObserveVisualChange(DesktopAutomationService automation, IReadOnlyList<WindowInfo> windows, VisualObservationBaseline? baseline, MutationArtifactOptions options, List<string> warnings) {
+        if (!options.WaitForVisualChange || baseline == null) {
+            return null;
+        }
+
+        try {
+            DesktopWindowVisualChangeObservation observation = automation.WaitForWindowVisualChange(
+                baseline.Window,
+                baseline.Capture,
+                options.VisualTargetName,
+                options.VisualClientArea,
+                options.VisualTimeoutMilliseconds,
+                options.VisualIntervalMilliseconds,
+                options.VisualMinimumChangedRatio,
+                options.VisualDifferenceThreshold);
+            return MapWindowVisualChangeObservation(observation);
+        } catch (Exception ex) when (IsArtifactWarning(ex) || ex is TimeoutException || ex is Win32Exception) {
+            if (ex is TimeoutException) {
+                warnings.Add($"Timed out after {options.VisualTimeoutMilliseconds}ms waiting for a visible change in {FormatWindowLabel(baseline.Window)}.");
+                return null;
+            }
+
+            warnings.Add($"Visual change verification failed for {FormatWindowLabel(baseline.Window)}: {ex.Message}");
+            return null;
+        }
     }
 
     private static IReadOnlyList<WindowInfo> ResolveWindowsForMutation(DesktopAutomationService automation, WindowSelectionCriteria criteria) {
@@ -137,6 +232,14 @@ internal static partial class DesktopOperations {
 
     private static string DetermineControlClickSafetyMode(IReadOnlyList<WindowControlTargetInfo> controls) {
         return HasZeroHandleUiAutomationControl(controls) ? "uia-direct-invoke" : "background-control-click";
+    }
+
+    private static string DetermineControlCheckStateSafetyMode(IReadOnlyList<WindowControlTargetInfo> controls) {
+        return HasZeroHandleUiAutomationControl(controls) ? "uia-toggle" : "background-control-check-state";
+    }
+
+    private static string DetermineControlSelectedValueSafetyMode(IReadOnlyList<WindowControlTargetInfo> controls) {
+        return HasZeroHandleUiAutomationControl(controls) ? "uia-selection-item" : "background-control-selected-value";
     }
 
     private static string DetermineControlTextSafetyMode(IReadOnlyList<WindowControlTargetInfo> controls, bool allowForegroundInputFallback) {
@@ -236,5 +339,20 @@ internal static partial class DesktopOperations {
             exception is DirectoryNotFoundException ||
             exception is FileNotFoundException ||
             exception is InvalidOperationException;
+    }
+
+    private sealed class VisualObservationBaseline : IDisposable {
+        public VisualObservationBaseline(WindowInfo window, DesktopCapture capture) {
+            Window = window;
+            Capture = capture;
+        }
+
+        public WindowInfo Window { get; }
+
+        public DesktopCapture Capture { get; }
+
+        public void Dispose() {
+            Capture.Dispose();
+        }
     }
 }

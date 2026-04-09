@@ -33,6 +33,7 @@ internal static class WindowCommands {
             "type" => Type(arguments),
             "keys" => Keys(arguments),
             "wait" => Wait(arguments),
+            "wait-visual-change" => WaitVisualChange(arguments),
             _ => throw new CommandLineException($"Unknown window command '{action}'.")
         };
     }
@@ -195,7 +196,47 @@ internal static class WindowCommands {
     }
 
     private static int Click(CommandLineArguments arguments) {
+        string? visualBaselineName = arguments.GetOption("visual-baseline");
         string? targetName = arguments.GetOption("target");
+        string? ocrText = arguments.GetOption("ocr-text");
+        if ((!string.IsNullOrWhiteSpace(visualBaselineName) && !string.IsNullOrWhiteSpace(targetName)) ||
+            (!string.IsNullOrWhiteSpace(visualBaselineName) && !string.IsNullOrWhiteSpace(ocrText)) ||
+            (!string.IsNullOrWhiteSpace(targetName) && !string.IsNullOrWhiteSpace(ocrText))) {
+            throw new CommandLineException("Use only one of '--target', '--visual-baseline', or '--ocr-text'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(visualBaselineName)) {
+            bool clientArea = arguments.HasFlag("client-area") ? arguments.GetBoolFlag("client-area") : true;
+            return WriteWindowMutationResult(
+                arguments,
+                DesktopOperations.ClickWindowVisualBaseline(
+                    CreateCriteria(arguments, includeEmptyDefault: true),
+                    visualBaselineName,
+                    arguments.GetOption("button") ?? "left",
+                    arguments.GetBoolFlag("activate"),
+                    clientArea,
+                    arguments.GetDoubleOption("baseline-max-average-difference") ?? 12.0,
+                    arguments.GetIntOption("baseline-difference-threshold") ?? 24,
+                    arguments.GetIntOption("baseline-scan-step") ?? 8,
+                    CreateArtifactOptions(arguments)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(ocrText)) {
+            bool clientArea = arguments.HasFlag("client-area") ? arguments.GetBoolFlag("client-area") : true;
+            return WriteWindowMutationResult(
+                arguments,
+                DesktopOperations.ClickWindowText(
+                    CreateCriteria(arguments, includeEmptyDefault: true),
+                    ocrText,
+                    arguments.GetOption("button") ?? "left",
+                    arguments.GetBoolFlag("activate"),
+                    arguments.GetBoolFlag("ocr-contains"),
+                    arguments.GetOption("ocr-target"),
+                    clientArea,
+                    arguments.GetOption("ocr-language"),
+                    CreateArtifactOptions(arguments)));
+        }
+
         if (!string.IsNullOrWhiteSpace(targetName)) {
             return WriteWindowMutationResult(
                 arguments,
@@ -224,7 +265,19 @@ internal static class WindowCommands {
     private static int Drag(CommandLineArguments arguments) {
         string? startTargetName = arguments.GetOption("start-target");
         string? endTargetName = arguments.GetOption("end-target");
-        if (!string.IsNullOrWhiteSpace(startTargetName) || !string.IsNullOrWhiteSpace(endTargetName)) {
+        string? startVisualBaselineName = arguments.GetOption("start-visual-baseline");
+        string? endVisualBaselineName = arguments.GetOption("end-visual-baseline");
+        string? startOcrText = arguments.GetOption("start-ocr-text");
+        string? endOcrText = arguments.GetOption("end-ocr-text");
+        bool hasTargets = !string.IsNullOrWhiteSpace(startTargetName) || !string.IsNullOrWhiteSpace(endTargetName);
+        bool hasVisualBaselines = !string.IsNullOrWhiteSpace(startVisualBaselineName) || !string.IsNullOrWhiteSpace(endVisualBaselineName);
+        bool hasOcrText = !string.IsNullOrWhiteSpace(startOcrText) || !string.IsNullOrWhiteSpace(endOcrText);
+        int strategyCount = (hasTargets ? 1 : 0) + (hasVisualBaselines ? 1 : 0) + (hasOcrText ? 1 : 0);
+        if (strategyCount > 1) {
+            throw new CommandLineException("Use only one of named targets, visual baselines, or OCR text anchors for drag targeting.");
+        }
+
+        if (hasTargets) {
             if (string.IsNullOrWhiteSpace(startTargetName) || string.IsNullOrWhiteSpace(endTargetName)) {
                 throw new CommandLineException("Both '--start-target' and '--end-target' are required when using named targets.");
             }
@@ -238,6 +291,51 @@ internal static class WindowCommands {
                     arguments.GetOption("button") ?? "left",
                     arguments.GetIntOption("step-delay-ms") ?? 0,
                     arguments.GetBoolFlag("activate"),
+                    CreateArtifactOptions(arguments)));
+        }
+
+        if (hasVisualBaselines) {
+            if (string.IsNullOrWhiteSpace(startVisualBaselineName) || string.IsNullOrWhiteSpace(endVisualBaselineName)) {
+                throw new CommandLineException("Both '--start-visual-baseline' and '--end-visual-baseline' are required when using visual baseline anchors.");
+            }
+
+            bool clientArea = arguments.HasFlag("client-area") ? arguments.GetBoolFlag("client-area") : true;
+            return WriteWindowMutationResult(
+                arguments,
+                DesktopOperations.DragWindowVisualBaselines(
+                    CreateCriteria(arguments, includeEmptyDefault: true),
+                    startVisualBaselineName,
+                    endVisualBaselineName,
+                    arguments.GetOption("button") ?? "left",
+                    arguments.GetIntOption("step-delay-ms") ?? 0,
+                    arguments.GetBoolFlag("activate"),
+                    clientArea,
+                    arguments.GetDoubleOption("baseline-max-average-difference") ?? 12.0,
+                    arguments.GetIntOption("baseline-difference-threshold") ?? 24,
+                    arguments.GetIntOption("baseline-scan-step") ?? 8,
+                    CreateArtifactOptions(arguments)));
+        }
+
+        if (hasOcrText) {
+            if (string.IsNullOrWhiteSpace(startOcrText) || string.IsNullOrWhiteSpace(endOcrText)) {
+                throw new CommandLineException("Both '--start-ocr-text' and '--end-ocr-text' are required when using OCR text anchors.");
+            }
+
+            bool clientArea = arguments.HasFlag("client-area") ? arguments.GetBoolFlag("client-area") : true;
+            return WriteWindowMutationResult(
+                arguments,
+                DesktopOperations.DragWindowText(
+                    CreateCriteria(arguments, includeEmptyDefault: true),
+                    startOcrText,
+                    endOcrText,
+                    arguments.GetOption("button") ?? "left",
+                    arguments.GetIntOption("step-delay-ms") ?? 0,
+                    arguments.GetBoolFlag("activate"),
+                    arguments.GetBoolFlag("ocr-contains"),
+                    arguments.GetOption("start-ocr-target"),
+                    arguments.GetOption("end-ocr-target"),
+                    clientArea,
+                    arguments.GetOption("ocr-language"),
                     CreateArtifactOptions(arguments)));
         }
 
@@ -261,7 +359,46 @@ internal static class WindowCommands {
     }
 
     private static int Scroll(CommandLineArguments arguments) {
+        string? visualBaselineName = arguments.GetOption("visual-baseline");
         string? targetName = arguments.GetOption("target");
+        string? ocrText = arguments.GetOption("ocr-text");
+        int strategyCount = (!string.IsNullOrWhiteSpace(targetName) ? 1 : 0) + (!string.IsNullOrWhiteSpace(visualBaselineName) ? 1 : 0) + (!string.IsNullOrWhiteSpace(ocrText) ? 1 : 0);
+        if (strategyCount > 1) {
+            throw new CommandLineException("Use only one of '--target', '--visual-baseline', or '--ocr-text'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(visualBaselineName)) {
+            bool clientArea = arguments.HasFlag("client-area") ? arguments.GetBoolFlag("client-area") : true;
+            return WriteWindowMutationResult(
+                arguments,
+                DesktopOperations.ScrollWindowVisualBaseline(
+                    CreateCriteria(arguments, includeEmptyDefault: true),
+                    visualBaselineName,
+                    arguments.GetRequiredIntOption("delta"),
+                    arguments.GetBoolFlag("activate"),
+                    clientArea,
+                    arguments.GetDoubleOption("baseline-max-average-difference") ?? 12.0,
+                    arguments.GetIntOption("baseline-difference-threshold") ?? 24,
+                    arguments.GetIntOption("baseline-scan-step") ?? 8,
+                    CreateArtifactOptions(arguments)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(ocrText)) {
+            bool clientArea = arguments.HasFlag("client-area") ? arguments.GetBoolFlag("client-area") : true;
+            return WriteWindowMutationResult(
+                arguments,
+                DesktopOperations.ScrollWindowText(
+                    CreateCriteria(arguments, includeEmptyDefault: true),
+                    ocrText,
+                    arguments.GetRequiredIntOption("delta"),
+                    arguments.GetBoolFlag("activate"),
+                    arguments.GetBoolFlag("ocr-contains"),
+                    arguments.GetOption("ocr-target"),
+                    clientArea,
+                    arguments.GetOption("ocr-language"),
+                    CreateArtifactOptions(arguments)));
+        }
+
         if (!string.IsNullOrWhiteSpace(targetName)) {
             return WriteWindowMutationResult(
                 arguments,
@@ -383,6 +520,24 @@ internal static class WindowCommands {
         return WriteWaitResult(result, Console.Out);
     }
 
+    private static int WaitVisualChange(CommandLineArguments arguments) {
+        WindowVisualChangeResult result = DesktopOperations.WaitForWindowVisualChange(
+            CreateCriteria(arguments, includeEmptyDefault: true),
+            arguments.GetOption("target"),
+            arguments.GetBoolFlag("client-area"),
+            arguments.GetIntOption("timeout-ms") ?? 10000,
+            arguments.GetIntOption("interval-ms") ?? 200,
+            arguments.GetDoubleOption("minimum-changed-ratio") ?? 0.01,
+            arguments.GetIntOption("difference-threshold") ?? 24);
+
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(result);
+            return 0;
+        }
+
+        return WriteVisualChangeResult(result, Console.Out);
+    }
+
     private static int WriteWindowMutationResult(CommandLineArguments arguments, WindowChangeResult payload) {
         if (arguments.GetBoolFlag("json")) {
             OutputFormatter.WriteJson(payload);
@@ -397,6 +552,13 @@ internal static class WindowCommands {
         if (!string.IsNullOrWhiteSpace(payload.TargetName)) {
             writer.WriteLine($"target: {payload.TargetKind ?? "selector"} {payload.TargetName}");
         }
+        foreach (ResolvedPointerTargetResult resolvedTarget in payload.ResolvedTargets) {
+            writer.WriteLine(
+                $"resolved-target: role={resolvedTarget.Role} kind={resolvedTarget.Kind} name={resolvedTarget.Name} " +
+                $"window={resolvedTarget.Window.Handle} relative=({resolvedTarget.RelativeX},{resolvedTarget.RelativeY}) " +
+                $"size={resolvedTarget.Width}x{resolvedTarget.Height} screen=({resolvedTarget.ScreenX},{resolvedTarget.ScreenY}) " +
+                $"action=({resolvedTarget.ActionX},{resolvedTarget.ActionY})");
+        }
 
         if (payload.Verification != null) {
             writer.WriteLine($"verification: verified={payload.Verification.Verified} mode={payload.Verification.Mode} observed={payload.Verification.ObservedCount}/{payload.Verification.ExpectedCount} matched={payload.Verification.MatchedCount} mismatches={payload.Verification.MismatchCount} tolerance-px={payload.Verification.TolerancePixels}");
@@ -408,6 +570,11 @@ internal static class WindowCommands {
             foreach (string note in payload.Verification.Notes) {
                 writer.WriteLine($"verification-note: {note}");
             }
+        }
+
+        if (payload.VisualChange != null) {
+            writer.WriteLine($"visual-change: changed after {payload.VisualChange.ElapsedMilliseconds}ms");
+            writer.WriteLine($"visual-metrics: changed-samples={payload.VisualChange.ChangedSampleCount}/{payload.VisualChange.SampleCount} ratio={payload.VisualChange.ChangedSampleRatio:F4} avg-diff={payload.VisualChange.AverageDifference:F1} threshold={payload.VisualChange.DifferenceThreshold} min-ratio={payload.VisualChange.MinimumChangedRatio:F4} size-changed={payload.VisualChange.SizeChanged}");
         }
 
         if (payload.BeforeScreenshots.Count > 0 || payload.AfterScreenshots.Count > 0) {
@@ -444,13 +611,35 @@ internal static class WindowCommands {
         return 0;
     }
 
+    internal static int WriteVisualChangeResult(WindowVisualChangeResult result, TextWriter writer) {
+        writer.WriteLine($"wait-visual-change: changed after {result.ElapsedMilliseconds}ms");
+        writer.WriteLine($"window: {result.Window.Title} [PID {result.Window.ProcessId}]");
+        if (!string.IsNullOrWhiteSpace(result.TargetName)) {
+            writer.WriteLine($"target: {result.TargetName}");
+        } else if (result.ClientArea) {
+            writer.WriteLine("target: client-area");
+        } else {
+            writer.WriteLine("target: window");
+        }
+
+        writer.WriteLine($"metrics: changed-samples={result.ChangedSampleCount}/{result.SampleCount} ratio={result.ChangedSampleRatio:F4} avg-diff={result.AverageDifference:F1} threshold={result.DifferenceThreshold} min-ratio={result.MinimumChangedRatio:F4} size-changed={result.SizeChanged}");
+        return 0;
+    }
+
     internal static MutationArtifactOptions? CreateArtifactOptions(CommandLineArguments arguments) {
         bool captureBefore = arguments.GetBoolFlag("capture-before");
         bool captureAfter = arguments.GetBoolFlag("capture-after");
         string? artifactDirectory = arguments.GetOption("artifact-directory");
         bool verifyAfter = arguments.GetBoolFlag("verify") || arguments.GetIntOption("verify-tolerance-px").HasValue;
         int verificationTolerancePixels = arguments.GetIntOption("verify-tolerance-px") ?? 10;
-        if (!captureBefore && !captureAfter && string.IsNullOrWhiteSpace(artifactDirectory) && !verifyAfter) {
+        bool waitForVisualChange = arguments.GetBoolFlag("wait-visual-change");
+        string? visualTargetName = arguments.GetOption("visual-target");
+        bool visualClientArea = arguments.GetBoolFlag("visual-client-area");
+        int visualTimeoutMilliseconds = arguments.GetIntOption("visual-timeout-ms") ?? 5000;
+        int visualIntervalMilliseconds = arguments.GetIntOption("visual-interval-ms") ?? 100;
+        double visualMinimumChangedRatio = arguments.GetDoubleOption("minimum-changed-ratio") ?? 0.01;
+        int visualDifferenceThreshold = arguments.GetIntOption("difference-threshold") ?? 24;
+        if (!captureBefore && !captureAfter && string.IsNullOrWhiteSpace(artifactDirectory) && !verifyAfter && !waitForVisualChange) {
             return null;
         }
 
@@ -459,7 +648,14 @@ internal static class WindowCommands {
             CaptureAfter = captureAfter,
             ArtifactDirectory = artifactDirectory,
             VerifyAfter = verifyAfter,
-            VerificationTolerancePixels = verificationTolerancePixels
+            VerificationTolerancePixels = verificationTolerancePixels,
+            WaitForVisualChange = waitForVisualChange,
+            VisualTargetName = visualTargetName,
+            VisualClientArea = visualClientArea,
+            VisualTimeoutMilliseconds = visualTimeoutMilliseconds,
+            VisualIntervalMilliseconds = visualIntervalMilliseconds,
+            VisualMinimumChangedRatio = visualMinimumChangedRatio,
+            VisualDifferenceThreshold = visualDifferenceThreshold
         };
     }
 

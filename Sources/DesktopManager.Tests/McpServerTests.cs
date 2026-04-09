@@ -49,6 +49,13 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("get_named_control_target"));
         Assert.IsTrue(toolNames.Contains("save_control_target"));
         Assert.IsTrue(toolNames.Contains("resolve_control_target"));
+        Assert.IsTrue(toolNames.Contains("list_named_visual_baselines"));
+        Assert.IsTrue(toolNames.Contains("get_named_visual_baseline"));
+        Assert.IsTrue(toolNames.Contains("save_visual_baseline"));
+        Assert.IsTrue(toolNames.Contains("assert_visual_baseline"));
+        Assert.IsTrue(toolNames.Contains("resolve_visual_baseline"));
+        Assert.IsTrue(toolNames.Contains("read_window_text"));
+        Assert.IsTrue(toolNames.Contains("resolve_window_text"));
         Assert.IsTrue(toolNames.Contains("diagnose_window_controls"));
         Assert.IsTrue(toolNames.Contains("get_window_geometry"));
         Assert.IsTrue(toolNames.Contains("get_window_process_info"));
@@ -65,6 +72,7 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("advance_desktop_slideshow"));
         Assert.IsTrue(toolNames.Contains("wait_for_window_close"));
         Assert.IsTrue(toolNames.Contains("wait_for_window_to_lose_focus"));
+        Assert.IsTrue(toolNames.Contains("wait_for_window_visual_change"));
         Assert.IsTrue(toolNames.Contains("observe_window_text"));
         Assert.IsTrue(toolNames.Contains("wait_for_observed_text"));
         Assert.IsTrue(toolNames.Contains("get_focused_control"));
@@ -119,6 +127,26 @@ public class McpServerTests {
         AssertToolHasArtifactProperties(toolsByName["assert_window_layout"]);
         AssertToolHasProperty(toolsByName["save_window_target"], "widthRatio");
         AssertToolHasProperty(toolsByName["save_window_target"], "heightRatio");
+        AssertToolHasProperty(toolsByName["save_visual_baseline"], "targetName");
+        AssertToolHasProperty(toolsByName["assert_visual_baseline"], "maxChangedRatio");
+        AssertToolHasProperty(toolsByName["resolve_visual_baseline"], "maxAverageDifference");
+        AssertToolHasProperty(toolsByName["read_window_text"], "targetName");
+        AssertToolHasProperty(toolsByName["read_window_text"], "languageTag");
+        AssertToolHasProperty(toolsByName["resolve_window_text"], "queryText");
+        AssertToolHasProperty(toolsByName["resolve_window_text"], "contains");
+        AssertToolHasProperty(toolsByName["click_window_point"], "visualBaselineName");
+        AssertToolHasProperty(toolsByName["click_window_point"], "ocrText");
+        AssertToolHasProperty(toolsByName["click_window_point"], "ocrTargetName");
+        AssertToolHasProperty(toolsByName["click_window_point"], "ocrContains");
+        AssertToolHasProperty(toolsByName["click_window_point"], "baselineMaxAverageDifference");
+        AssertToolHasProperty(toolsByName["drag_window_points"], "startVisualBaselineName");
+        AssertToolHasProperty(toolsByName["drag_window_points"], "startOcrText");
+        AssertToolHasProperty(toolsByName["drag_window_points"], "endOcrText");
+        AssertToolHasProperty(toolsByName["drag_window_points"], "ocrContains");
+        AssertToolHasProperty(toolsByName["scroll_window_point"], "visualBaselineName");
+        AssertToolHasProperty(toolsByName["scroll_window_point"], "ocrText");
+        AssertToolHasProperty(toolsByName["scroll_window_point"], "ocrTargetName");
+        AssertToolHasProperty(toolsByName["scroll_window_point"], "ocrContains");
         AssertToolHasProperty(toolsByName["screenshot_window"], "targetName");
         AssertToolHasProperty(toolsByName["launch_and_wait_for_window"], "timeoutMs");
         AssertToolHasProperty(toolsByName["launch_and_wait_for_window"], "followProcessFamily");
@@ -144,6 +172,17 @@ public class McpServerTests {
         AssertToolHasProperty(toolsByName["wait_for_observed_text"], "expectedText");
         AssertToolHasProperty(toolsByName["wait_for_focused_control"], "timeoutMs");
         AssertToolHasProperty(toolsByName["wait_for_focused_control"], "intervalMs");
+        AssertToolHasProperty(toolsByName["wait_for_window_visual_change"], "targetName");
+        AssertToolHasProperty(toolsByName["wait_for_window_visual_change"], "clientArea");
+        AssertToolHasProperty(toolsByName["wait_for_window_visual_change"], "timeoutMs");
+        AssertToolHasProperty(toolsByName["wait_for_window_visual_change"], "intervalMs");
+        AssertToolHasProperty(toolsByName["wait_for_window_visual_change"], "minimumChangedRatio");
+        AssertToolHasProperty(toolsByName["wait_for_window_visual_change"], "differenceThreshold");
+        AssertToolHasProperty(toolsByName["click_window_point"], "waitForVisualChange");
+        AssertToolHasProperty(toolsByName["click_window_point"], "visualTargetName");
+        AssertToolHasProperty(toolsByName["click_window_point"], "visualClientArea");
+        AssertToolHasProperty(toolsByName["click_window_point"], "visualTimeoutMs");
+        AssertToolHasProperty(toolsByName["click_window_point"], "visualIntervalMs");
         AssertToolHasProperty(toolsByName["get_window_process_info"], "processName");
         AssertToolHasProperty(toolsByName["get_owner_window_process_info"], "handle");
         AssertToolHasProperty(toolsByName["start_window_keep_alive"], "intervalMs");
@@ -180,6 +219,7 @@ public class McpServerTests {
 
         Assert.IsTrue(resourceUris.Contains("desktop://control-targets"));
         Assert.IsTrue(resourceUris.Contains("desktop://targets"));
+        Assert.IsTrue(resourceUris.Contains("desktop://visual-baselines"));
         Assert.IsTrue(resourceUris.Contains("desktop://snapshot/current"));
     }
 
@@ -273,6 +313,56 @@ public class McpServerTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures named visual baselines can be read back through the MCP tool surface.
+    /// </summary>
+    public void McpServer_GetNamedVisualBaseline_ReturnsDefinition() {
+        string baselineName = "McpServerTests-Visual-" + Guid.NewGuid().ToString("N");
+        string metadataPath = DesktopStateStore.GetVisualBaselinePath(baselineName);
+        string imagePath = DesktopStateStore.GetVisualBaselineImagePath(baselineName);
+
+        try {
+            File.WriteAllText(metadataPath, """
+{
+  "Description": "Stored editor baseline",
+  "TargetName": "editor-pane",
+  "ClientArea": false,
+  "Width": 640,
+  "Height": 480,
+  "CreatedUtc": "2026-04-09T10:00:00Z"
+}
+""");
+            File.WriteAllBytes(imagePath, Array.Empty<byte>());
+
+            using var client = McpTestClient.Start();
+            client.SendRequest(1, "initialize", new Dictionary<string, object?> {
+                ["protocolVersion"] = "2025-06-18"
+            });
+
+            JsonElement getResult = client.CallTool(2, "get_named_visual_baseline", new Dictionary<string, object?> {
+                ["name"] = baselineName
+            });
+
+            JsonElement baseline = getResult.GetProperty("Baseline");
+            Assert.AreEqual(baselineName, getResult.GetProperty("Name").GetString());
+            Assert.AreEqual(metadataPath, getResult.GetProperty("Path").GetString());
+            Assert.AreEqual(imagePath, getResult.GetProperty("ImagePath").GetString());
+            Assert.AreEqual("Stored editor baseline", baseline.GetProperty("Description").GetString());
+            Assert.AreEqual("editor-pane", baseline.GetProperty("TargetName").GetString());
+            Assert.AreEqual(640, baseline.GetProperty("Width").GetInt32());
+            Assert.AreEqual(480, baseline.GetProperty("Height").GetInt32());
+        } finally {
+            if (File.Exists(metadataPath)) {
+                File.Delete(metadataPath);
+            }
+
+            if (File.Exists(imagePath)) {
+                File.Delete(imagePath);
+            }
+        }
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures MCP prompts resolve through the stdio transport with the expected guidance text.
     /// </summary>
     public void McpServer_GetPrompt_ReturnsExpectedInstructions() {
@@ -306,8 +396,10 @@ public class McpServerTests {
     /// </summary>
     public void McpServer_ReadResources_ReturnsSavedTargetsAndSnapshot() {
         string windowTargetName = "McpServerTests-Resource-Window-" + Guid.NewGuid().ToString("N");
+        string visualBaselineName = "McpServerTests-Resource-Visual-" + Guid.NewGuid().ToString("N");
         string controlTargetName = "McpServerTests-Resource-Control-" + Guid.NewGuid().ToString("N");
         string windowTargetPath = DesktopStateStore.GetTargetPath(windowTargetName);
+        string visualBaselinePath = DesktopStateStore.GetVisualBaselinePath(visualBaselineName);
         string controlTargetPath = DesktopStateStore.GetControlTargetPath(controlTargetName);
 
         try {
@@ -324,6 +416,18 @@ public class McpServerTests {
                 ["widthRatio"] = 0.6,
                 ["heightRatio"] = 0.4
             });
+            File.WriteAllText(visualBaselinePath, """
+{
+  "Name": "%VISUAL_NAME%",
+  "Description": "Resource test visual baseline",
+  "TargetName": null,
+  "ClientArea": true,
+  "Width": 320,
+  "Height": 120,
+  "ImagePath": "C:\\Temp\\resource-visual-baseline.png",
+  "CreatedUtc": "2026-04-09T10:00:00Z"
+}
+""".Replace("%VISUAL_NAME%", visualBaselineName, StringComparison.Ordinal));
             client.CallTool(3, "save_control_target", new Dictionary<string, object?> {
                 ["name"] = controlTargetName,
                 ["description"] = "Resource test control",
@@ -336,12 +440,17 @@ public class McpServerTests {
             }));
             Assert.IsTrue(targetsResource.EnumerateArray().Any(item => string.Equals(item.GetString(), windowTargetName, StringComparison.Ordinal)));
 
-            JsonElement controlTargetsResource = ReadResourceJson(client.SendRequest(5, "resources/read", new Dictionary<string, object?> {
+            JsonElement visualBaselinesResource = ReadResourceJson(client.SendRequest(5, "resources/read", new Dictionary<string, object?> {
+                ["uri"] = "desktop://visual-baselines"
+            }));
+            Assert.IsTrue(visualBaselinesResource.EnumerateArray().Any(item => string.Equals(item.GetString(), visualBaselineName, StringComparison.Ordinal)));
+
+            JsonElement controlTargetsResource = ReadResourceJson(client.SendRequest(6, "resources/read", new Dictionary<string, object?> {
                 ["uri"] = "desktop://control-targets"
             }));
             Assert.IsTrue(controlTargetsResource.EnumerateArray().Any(item => string.Equals(item.GetString(), controlTargetName, StringComparison.Ordinal)));
 
-            JsonElement snapshotResource = ReadResourceJson(client.SendRequest(6, "resources/read", new Dictionary<string, object?> {
+            JsonElement snapshotResource = ReadResourceJson(client.SendRequest(7, "resources/read", new Dictionary<string, object?> {
                 ["uri"] = "desktop://snapshot/current"
             }));
             Assert.IsTrue(snapshotResource.TryGetProperty("ActiveWindow", out _));
@@ -350,6 +459,10 @@ public class McpServerTests {
         } finally {
             if (File.Exists(windowTargetPath)) {
                 File.Delete(windowTargetPath);
+            }
+
+            if (File.Exists(visualBaselinePath)) {
+                File.Delete(visualBaselinePath);
             }
 
             if (File.Exists(controlTargetPath)) {

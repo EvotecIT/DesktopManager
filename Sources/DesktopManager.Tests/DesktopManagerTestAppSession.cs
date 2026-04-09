@@ -102,6 +102,10 @@ internal sealed class DesktopManagerTestAppSession : IDisposable {
         WriteCommandFile("focus-commandbar");
     }
 
+    public void RequestFocusWebView() {
+        WriteCommandFile("focus-webview");
+    }
+
     public void RequestFocusSecondary() {
         WriteCommandFile("focus-secondary");
     }
@@ -123,12 +127,15 @@ internal sealed class DesktopManagerTestAppSession : IDisposable {
             throw new AssertInconclusiveException("The desktop test app status file was not created.");
         }
 
-        DesktopManagerTestAppStatus? status = JsonSerializer.Deserialize<DesktopManagerTestAppStatus>(File.ReadAllText(_statusFilePath));
-        if (status == null) {
-            throw new AssertInconclusiveException("The desktop test app status file could not be read.");
+        for (int attempt = 1; attempt <= CommandWriteRetryCount; attempt++) {
+            if (TryReadStatus(out DesktopManagerTestAppStatus? status) && status != null) {
+                return status;
+            }
+
+            Thread.Sleep(50);
         }
 
-        return status;
+        throw new AssertInconclusiveException("The desktop test app status file could not be read.");
     }
 
     public DesktopManagerTestAppStatus WaitForStatus(Func<DesktopManagerTestAppStatus, bool> predicate, int timeoutMilliseconds, string failureMessage) {
@@ -295,7 +302,9 @@ internal sealed class DesktopManagerTestAppSession : IDisposable {
                 return false;
             }
 
-            status = JsonSerializer.Deserialize<DesktopManagerTestAppStatus>(File.ReadAllText(_statusFilePath));
+            using var stream = new FileStream(_statusFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            status = JsonSerializer.Deserialize<DesktopManagerTestAppStatus>(reader.ReadToEnd());
             return status != null;
         } catch {
             return false;
@@ -365,17 +374,17 @@ internal sealed class DesktopManagerTestAppSession : IDisposable {
 
     private static string GetPreferredTargetFramework() {
 #if NET10_0
-        return "net10.0-windows";
+        return "net10.0-windows10.0.19041.0";
 #else
-        return "net8.0-windows";
+        return "net8.0-windows10.0.19041.0";
 #endif
     }
 
     private static string GetFallbackTargetFramework() {
 #if NET10_0
-        return "net8.0-windows";
+        return "net8.0-windows10.0.19041.0";
 #else
-        return "net10.0-windows";
+        return "net10.0-windows10.0.19041.0";
 #endif
     }
 

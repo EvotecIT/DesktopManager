@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "desktopmanager": {
+      "command": "pwsh",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-File",
+        "./scripts/start-desktopmanager-mcp.ps1"
+      ]
+    }
+  }
+}

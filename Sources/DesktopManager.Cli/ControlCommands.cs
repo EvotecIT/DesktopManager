@@ -273,6 +273,11 @@ internal static class ControlCommands {
             writer.WriteLine($"target: {result.TargetKind ?? "selector"} {result.TargetName}");
         }
 
+        if (result.VisualChange != null) {
+            writer.WriteLine($"visual-change: changed after {result.VisualChange.ElapsedMilliseconds}ms");
+            writer.WriteLine($"visual-metrics: changed-samples={result.VisualChange.ChangedSampleCount}/{result.VisualChange.SampleCount} ratio={result.VisualChange.ChangedSampleRatio:F4} avg-diff={result.VisualChange.AverageDifference:F1} threshold={result.VisualChange.DifferenceThreshold} min-ratio={result.VisualChange.MinimumChangedRatio:F4} size-changed={result.VisualChange.SizeChanged}");
+        }
+
         if (result.BeforeScreenshots.Count > 0 || result.AfterScreenshots.Count > 0) {
             writer.WriteLine($"artifacts: before={result.BeforeScreenshots.Count} after={result.AfterScreenshots.Count}");
         }
@@ -348,14 +353,28 @@ internal static class ControlCommands {
         bool captureBefore = arguments.GetBoolFlag("capture-before");
         bool captureAfter = arguments.GetBoolFlag("capture-after");
         string? artifactDirectory = arguments.GetOption("artifact-directory");
-        if (!captureBefore && !captureAfter && string.IsNullOrWhiteSpace(artifactDirectory)) {
+        bool waitForVisualChange = arguments.GetBoolFlag("wait-visual-change");
+        string? visualTargetName = arguments.GetOption("visual-target");
+        bool visualClientArea = arguments.GetBoolFlag("visual-client-area");
+        int visualTimeoutMilliseconds = arguments.GetIntOption("visual-timeout-ms") ?? 5000;
+        int visualIntervalMilliseconds = arguments.GetIntOption("visual-interval-ms") ?? 100;
+        double visualMinimumChangedRatio = arguments.GetDoubleOption("minimum-changed-ratio") ?? 0.01;
+        int visualDifferenceThreshold = arguments.GetIntOption("difference-threshold") ?? 24;
+        if (!captureBefore && !captureAfter && string.IsNullOrWhiteSpace(artifactDirectory) && !waitForVisualChange) {
             return null;
         }
 
         return new MutationArtifactOptions {
             CaptureBefore = captureBefore,
             CaptureAfter = captureAfter,
-            ArtifactDirectory = artifactDirectory
+            ArtifactDirectory = artifactDirectory,
+            WaitForVisualChange = waitForVisualChange,
+            VisualTargetName = visualTargetName,
+            VisualClientArea = visualClientArea,
+            VisualTimeoutMilliseconds = visualTimeoutMilliseconds,
+            VisualIntervalMilliseconds = visualIntervalMilliseconds,
+            VisualMinimumChangedRatio = visualMinimumChangedRatio,
+            VisualDifferenceThreshold = visualDifferenceThreshold
         };
     }
 

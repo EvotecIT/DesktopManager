@@ -74,11 +74,13 @@ internal sealed class WindowChangeResult {
     public string SafetyMode { get; set; } = string.Empty;
     public string? TargetName { get; set; }
     public string? TargetKind { get; set; }
+    public IReadOnlyList<ResolvedPointerTargetResult> ResolvedTargets { get; set; } = new List<ResolvedPointerTargetResult>();
     public IReadOnlyList<ScreenshotResult> BeforeScreenshots { get; set; } = new List<ScreenshotResult>();
     public IReadOnlyList<ScreenshotResult> AfterScreenshots { get; set; } = new List<ScreenshotResult>();
     public IReadOnlyList<string> ArtifactWarnings { get; set; } = new List<string>();
     public IReadOnlyList<WindowResult> Windows { get; set; } = new List<WindowResult>();
     public WindowMutationVerificationResult? Verification { get; set; }
+    public WindowVisualChangeResult? VisualChange { get; set; }
 }
 
 internal sealed class WindowGeometryResult {
@@ -93,6 +95,21 @@ internal sealed class WindowGeometryResult {
     public int ClientHeight { get; set; }
     public int ClientOffsetLeft { get; set; }
     public int ClientOffsetTop { get; set; }
+}
+
+internal sealed class ResolvedPointerTargetResult {
+    public string Kind { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public WindowResult Window { get; set; } = new();
+    public int RelativeX { get; set; }
+    public int RelativeY { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public int ScreenX { get; set; }
+    public int ScreenY { get; set; }
+    public int ActionX { get; set; }
+    public int ActionY { get; set; }
 }
 
 internal sealed class WindowProcessInfoResult {
@@ -143,6 +160,8 @@ internal sealed class ControlStateResult {
     public bool? IsFocused { get; set; }
     public bool? IsKeyboardFocusable { get; set; }
     public bool? IsOffscreen { get; set; }
+    public bool? IsChecked { get; set; }
+    public string SelectedValue { get; set; } = string.Empty;
     public bool SupportsBackgroundClick { get; set; }
     public bool SupportsBackgroundText { get; set; }
     public bool SupportsBackgroundKeys { get; set; }
@@ -165,6 +184,7 @@ internal sealed class ControlActionResult {
     public IReadOnlyList<ScreenshotResult> AfterScreenshots { get; set; } = new List<ScreenshotResult>();
     public IReadOnlyList<string> ArtifactWarnings { get; set; } = new List<string>();
     public IReadOnlyList<ControlResult> Controls { get; set; } = new List<ControlResult>();
+    public WindowVisualChangeResult? VisualChange { get; set; }
 }
 
 internal sealed class ControlAssertionResult {
@@ -408,6 +428,119 @@ internal sealed class WindowTargetResult {
     public WindowTargetDefinitionResult Target { get; set; } = new();
 }
 
+internal sealed class VisualBaselineResult {
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public string ImagePath { get; set; } = string.Empty;
+    public VisualBaselineDefinitionResult Baseline { get; set; } = new();
+}
+
+internal sealed class VisualBaselineDefinitionResult {
+    public string? Description { get; set; }
+    public string? TargetName { get; set; }
+    public bool ClientArea { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public string CreatedUtc { get; set; } = string.Empty;
+}
+
+internal sealed class VisualBaselineAssertionResult {
+    public bool Matched { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public string ImagePath { get; set; } = string.Empty;
+    public VisualBaselineDefinitionResult Baseline { get; set; } = new();
+    public WindowResult Window { get; set; } = new();
+    public WindowGeometryResult Geometry { get; set; } = new();
+    public string? TargetName { get; set; }
+    public bool ClientArea { get; set; }
+    public double MaxChangedRatio { get; set; }
+    public int DifferenceThreshold { get; set; }
+    public int SampleCount { get; set; }
+    public int ChangedSampleCount { get; set; }
+    public double ChangedSampleRatio { get; set; }
+    public double AverageDifference { get; set; }
+    public bool SizeChanged { get; set; }
+}
+
+internal sealed class VisualBaselineResolveResult {
+    public bool Matched { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public string ImagePath { get; set; } = string.Empty;
+    public VisualBaselineDefinitionResult Baseline { get; set; } = new();
+    public WindowResult Window { get; set; } = new();
+    public WindowGeometryResult Geometry { get; set; } = new();
+    public bool ClientArea { get; set; }
+    public double MaxAverageDifference { get; set; }
+    public int DifferenceThreshold { get; set; }
+    public int ScanStep { get; set; }
+    public int EvaluatedPositionCount { get; set; }
+    public int RelativeX { get; set; }
+    public int RelativeY { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public int ScreenX { get; set; }
+    public int ScreenY { get; set; }
+    public int SampleCount { get; set; }
+    public int ChangedSampleCount { get; set; }
+    public double ChangedSampleRatio { get; set; }
+    public double AverageDifference { get; set; }
+    public bool SizeChanged { get; set; }
+}
+
+internal sealed class OcrWordResult {
+    public string Text { get; set; } = string.Empty;
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+}
+
+internal sealed class OcrLineResult {
+    public string Text { get; set; } = string.Empty;
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public IReadOnlyList<OcrWordResult> Words { get; set; } = new List<OcrWordResult>();
+}
+
+internal sealed class WindowTextReadResult {
+    public WindowResult Window { get; set; } = new();
+    public WindowGeometryResult Geometry { get; set; } = new();
+    public string? TargetName { get; set; }
+    public bool ClientArea { get; set; }
+    public int CaptureScreenX { get; set; }
+    public int CaptureScreenY { get; set; }
+    public string LanguageTag { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public IReadOnlyList<OcrLineResult> Lines { get; set; } = new List<OcrLineResult>();
+}
+
+internal sealed class WindowTextResolveResult {
+    public bool Matched { get; set; }
+    public string QueryText { get; set; } = string.Empty;
+    public bool ContainsMatch { get; set; }
+    public WindowResult Window { get; set; } = new();
+    public WindowGeometryResult Geometry { get; set; } = new();
+    public string? TargetName { get; set; }
+    public bool ClientArea { get; set; }
+    public string LanguageTag { get; set; } = string.Empty;
+    public string MatchKind { get; set; } = string.Empty;
+    public string MatchedText { get; set; } = string.Empty;
+    public int CandidateCount { get; set; }
+    public int RelativeX { get; set; }
+    public int RelativeY { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public int ScreenX { get; set; }
+    public int ScreenY { get; set; }
+    public int ActionX { get; set; }
+    public int ActionY { get; set; }
+    public IReadOnlyList<OcrWordResult> Words { get; set; } = new List<OcrWordResult>();
+}
+
 internal sealed class ControlTargetResult {
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
@@ -539,6 +672,21 @@ internal sealed class WaitForWindowResult {
     public IReadOnlyList<WindowResult> Windows { get; set; } = new List<WindowResult>();
 }
 
+internal sealed class WindowVisualChangeResult {
+    public int ElapsedMilliseconds { get; set; }
+    public WindowResult Window { get; set; } = new();
+    public WindowGeometryResult Geometry { get; set; } = new();
+    public string? TargetName { get; set; }
+    public bool ClientArea { get; set; }
+    public double MinimumChangedRatio { get; set; }
+    public int DifferenceThreshold { get; set; }
+    public int SampleCount { get; set; }
+    public int ChangedSampleCount { get; set; }
+    public double ChangedSampleRatio { get; set; }
+    public double AverageDifference { get; set; }
+    public bool SizeChanged { get; set; }
+}
+
 internal sealed class WaitForControlResult {
     public int ElapsedMilliseconds { get; set; }
     public int Count { get; set; }
@@ -559,6 +707,13 @@ internal sealed class MutationArtifactOptions {
     public string? ArtifactDirectory { get; set; }
     public bool VerifyAfter { get; set; }
     public int VerificationTolerancePixels { get; set; } = 10;
+    public bool WaitForVisualChange { get; set; }
+    public string? VisualTargetName { get; set; }
+    public bool VisualClientArea { get; set; }
+    public int VisualTimeoutMilliseconds { get; set; } = 5000;
+    public int VisualIntervalMilliseconds { get; set; } = 100;
+    public double VisualMinimumChangedRatio { get; set; } = 0.01;
+    public int VisualDifferenceThreshold { get; set; } = 24;
 }
 
 internal sealed class WindowMutationVerificationResult {

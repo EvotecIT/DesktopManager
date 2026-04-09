@@ -178,6 +178,34 @@ internal sealed class UiAutomationControlService {
         return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow));
     }
 
+    public bool TrySetCheckState(WindowInfo window, WindowControlInfo control, bool check) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        return RunInSta(service => service.TrySetCheckStateCore(window, control, check));
+    }
+
+    public bool TrySetSelectedValue(WindowInfo window, WindowControlInfo control, string selectedValue) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        if (selectedValue == null) {
+            throw new ArgumentNullException(nameof(selectedValue));
+        }
+
+        return RunInSta(service => service.TrySetSelectedValueCore(window, control, selectedValue));
+    }
+
     public bool TrySendKeys(WindowInfo window, WindowControlInfo control, IReadOnlyList<VirtualKey> keys, bool ensureForegroundWindow) {
         if (window == null) {
             throw new ArgumentNullException(nameof(window));
@@ -192,6 +220,30 @@ internal sealed class UiAutomationControlService {
         }
 
         return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow));
+    }
+
+    public bool? TryReadCheckState(WindowInfo window, WindowControlInfo control) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        return RunInSta(service => service.TryReadCheckStateCore(window, control));
+    }
+
+    public string? TryReadSelectedValue(WindowInfo window, WindowControlInfo control) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        return RunInSta(service => service.TryReadSelectedValueCore(window, control));
     }
 
     public bool TryFocus(WindowInfo window, WindowControlInfo control, bool ensureForegroundWindow) {
@@ -419,6 +471,41 @@ internal sealed class UiAutomationControlService {
             TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
     }
 
+    private bool TrySetCheckStateCore(WindowInfo window, WindowControlInfo control, bool check) {
+        UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
+        object? element = match.Element;
+        if (element == null) {
+            return false;
+        }
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            bool? currentState = ReadCheckState(element);
+            if (currentState.HasValue && currentState.Value == check) {
+                return true;
+            }
+
+            bool actionApplied =
+                TryPatternAction(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
+                TryPatternAction(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
+                TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+            if (!actionApplied) {
+                return false;
+            }
+
+            if (WaitForResolvedCheckState(window, control, check)) {
+                return true;
+            }
+
+            match = ResolveMatchingElement(window.Handle, control);
+            element = match.Element;
+            if (element == null) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
     private bool TrySetValueCore(WindowInfo window, WindowControlInfo control, string value) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
@@ -426,8 +513,66 @@ internal sealed class UiAutomationControlService {
             return false;
         }
 
-        return TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value) ||
+        bool patternApplied =
+            TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value) ||
             TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+        if (!patternApplied) {
+            return false;
+        }
+
+        return WaitForResolvedValue(window, control, value);
+    }
+
+    private bool TrySetSelectedValueCore(WindowInfo window, WindowControlInfo control, string selectedValue) {
+        UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
+        object? element = match.Element;
+        if (element == null) {
+            return false;
+        }
+
+        string? currentSelection = ReadSelectedValue(element);
+        if (string.Equals(currentSelection, selectedValue, StringComparison.OrdinalIgnoreCase)) {
+            return true;
+        }
+
+        bool patternApplied =
+            TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", selectedValue) ||
+            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", selectedValue);
+        if (patternApplied && WaitForResolvedSelectedValue(window, control, selectedValue)) {
+            return true;
+        }
+
+        bool expanded = TryPatternAction(element, "System.Windows.Automation.ExpandCollapsePattern", "Expand");
+        if (expanded) {
+            Thread.Sleep(ForegroundInputSettleMilliseconds);
+        }
+
+        try {
+            object? candidate = FindSelectionCandidateElement(element, selectedValue);
+            if (candidate == null && TryResolveRootElement(window.Handle, out object? rootElement) && rootElement != null) {
+                candidate = FindSelectionCandidateElement(rootElement, selectedValue);
+            }
+
+            if (candidate == null) {
+                return false;
+            }
+
+            bool itemApplied =
+                TryPatternAction(candidate, "System.Windows.Automation.SelectionItemPattern", "Select") ||
+                TryPatternAction(candidate, "System.Windows.Automation.InvokePattern", "Invoke") ||
+                TryPatternAction(candidate, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+            if (!itemApplied) {
+                return false;
+            }
+
+            control.Value = selectedValue;
+            control.Text = selectedValue;
+            return true;
+        } finally {
+            if (expanded) {
+                TryPatternAction(element, "System.Windows.Automation.ExpandCollapsePattern", "Collapse");
+            }
+        }
     }
 
     private bool TrySetTextCore(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
@@ -468,6 +613,20 @@ internal sealed class UiAutomationControlService {
         }
 
         return WaitForResolvedValue(window, control, value);
+    }
+
+    private bool? TryReadCheckStateCore(WindowInfo window, WindowControlInfo control) {
+        UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
+        return match.Element == null
+            ? null
+            : ReadCheckState(match.Element);
+    }
+
+    private string? TryReadSelectedValueCore(WindowInfo window, WindowControlInfo control) {
+        UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
+        return match.Element == null
+            ? null
+            : ReadSelectedValue(match.Element);
     }
 
     private bool TrySendKeysCore(WindowInfo window, WindowControlInfo control, IReadOnlyList<VirtualKey> keys, bool ensureForegroundWindow) {
@@ -850,8 +1009,12 @@ internal sealed class UiAutomationControlService {
         }
     }
 
-    private object? CreatePropertyCondition(string propertyFieldName, string value) {
-        if (string.IsNullOrWhiteSpace(propertyFieldName) || string.IsNullOrWhiteSpace(value)) {
+    private object? CreatePropertyCondition(string propertyFieldName, object? value) {
+        if (string.IsNullOrWhiteSpace(propertyFieldName) || value == null) {
+            return null;
+        }
+
+        if (value is string text && string.IsNullOrWhiteSpace(text)) {
             return null;
         }
 
@@ -1008,11 +1171,172 @@ internal sealed class UiAutomationControlService {
         try {
             rootElement = _automationElementType!.GetMethod("FromHandle", BindingFlags.Public | BindingFlags.Static)?
                 .Invoke(null, new object[] { rootHandle });
-            return rootElement != null;
+            if (rootElement != null) {
+                return true;
+            }
         } catch {
-            rootElement = null;
+        }
+
+        return TryResolveRootElementFromDesktopSearch(rootHandle, out rootElement);
+    }
+
+    private bool TryResolveRootElementFromDesktopSearch(IntPtr rootHandle, out object? rootElement) {
+        rootElement = null;
+        object? desktopRoot = TryGetDesktopRootElement();
+        if (desktopRoot == null) {
             return false;
         }
+
+        if (TryFindElementByProperty(desktopRoot, "NativeWindowHandleProperty", ToNativeHandlePropertyValue(rootHandle), out rootElement) && rootElement != null) {
+            return true;
+        }
+
+        if (!MonitorNativeMethods.GetWindowRect(rootHandle, out RECT windowRect)) {
+            return false;
+        }
+
+        MonitorNativeMethods.GetWindowThreadProcessId(rootHandle, out uint processId);
+        if (processId == 0 || processId > int.MaxValue) {
+            return false;
+        }
+
+        object? processCondition = CreatePropertyCondition("ProcessIdProperty", (int)processId);
+        object? treeScope = Enum.Parse(_treeScopeType!, "Descendants", ignoreCase: false);
+        if (processCondition == null || treeScope == null) {
+            return false;
+        }
+
+        object? collection = _automationElementType!.GetMethod("FindAll", new[] { _treeScopeType!, _conditionType! })?
+            .Invoke(desktopRoot, new[] { treeScope, processCondition });
+        if (collection == null) {
+            return false;
+        }
+
+        PropertyInfo? countProperty = _automationElementCollectionType!.GetProperty("Count");
+        PropertyInfo? itemProperty = _automationElementCollectionType.GetProperty("Item");
+        if (countProperty == null || itemProperty == null) {
+            return false;
+        }
+
+        int count = (int)(countProperty.GetValue(collection) ?? 0);
+        int bestScore = 0;
+        object? bestElement = null;
+        for (int index = 0; index < count; index++) {
+            object? candidate = itemProperty.GetValue(collection, new object[] { index });
+            if (candidate == null) {
+                continue;
+            }
+
+            WindowControlInfo? info;
+            try {
+                info = CreateControlInfo(candidate);
+            } catch {
+                continue;
+            }
+
+            if (info == null) {
+                continue;
+            }
+
+            int score = ScoreDesktopSearchRootCandidate(windowRect, info);
+            if (score > bestScore) {
+                bestScore = score;
+                bestElement = candidate;
+            }
+        }
+
+        rootElement = bestElement;
+        return rootElement != null;
+    }
+
+    private object? TryGetDesktopRootElement() {
+        return _automationElementType?.GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+    }
+
+    private bool TryFindElementByProperty(object rootElement, string propertyFieldName, object? value, out object? element) {
+        element = null;
+        if (rootElement == null || value == null) {
+            return false;
+        }
+
+        object? condition = CreatePropertyCondition(propertyFieldName, value);
+        object? treeScope = Enum.Parse(_treeScopeType!, "Descendants", ignoreCase: false);
+        if (condition == null || treeScope == null) {
+            return false;
+        }
+
+        try {
+            element = _automationElementType!.GetMethod("FindFirst", new[] { _treeScopeType!, _conditionType! })?
+                .Invoke(rootElement, new[] { treeScope, condition });
+            return element != null;
+        } catch {
+            element = null;
+            return false;
+        }
+    }
+
+    internal static int ScoreDesktopSearchRootCandidate(RECT windowRect, WindowControlInfo candidate) {
+        if (candidate == null) {
+            return 0;
+        }
+
+        if (candidate.IsOffscreen == true || candidate.Width <= 0 || candidate.Height <= 0) {
+            return 0;
+        }
+
+        int candidateRight = candidate.Left + candidate.Width;
+        int candidateBottom = candidate.Top + candidate.Height;
+        int overlapWidth = Math.Min(windowRect.Right, candidateRight) - Math.Max(windowRect.Left, candidate.Left);
+        int overlapHeight = Math.Min(windowRect.Bottom, candidateBottom) - Math.Max(windowRect.Top, candidate.Top);
+        if (overlapWidth <= 0 || overlapHeight <= 0) {
+            return 0;
+        }
+
+        long overlapArea = (long)overlapWidth * overlapHeight;
+        long windowArea = Math.Max(1L, (long)(windowRect.Right - windowRect.Left) * Math.Max(1, windowRect.Bottom - windowRect.Top));
+        long candidateArea = Math.Max(1L, (long)candidate.Width * candidate.Height);
+        int windowCoverageScore = (int)Math.Min(1000L, (overlapArea * 1000L) / windowArea);
+        int candidateCoverageScore = (int)Math.Min(1000L, (overlapArea * 1000L) / candidateArea);
+        int score = (windowCoverageScore * 8) + candidateCoverageScore;
+
+        int windowCenterX = windowRect.Left + ((windowRect.Right - windowRect.Left) / 2);
+        int windowCenterY = windowRect.Top + ((windowRect.Bottom - windowRect.Top) / 2);
+        int candidateCenterX = candidate.Left + (candidate.Width / 2);
+        int candidateCenterY = candidate.Top + (candidate.Height / 2);
+        int centerDistance = Math.Abs(windowCenterX - candidateCenterX) + Math.Abs(windowCenterY - candidateCenterY);
+        if (centerDistance == 0) {
+            score += 250;
+        } else if (centerDistance <= 24) {
+            score += 180;
+        } else if (centerDistance <= 96) {
+            score += 80;
+        }
+
+        if (windowCoverageScore >= 950) {
+            score += 400;
+        }
+
+        if (string.Equals(candidate.ControlType, "Window", StringComparison.OrdinalIgnoreCase)) {
+            score += 250;
+        } else if (string.Equals(candidate.ControlType, "Pane", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(candidate.ControlType, "Custom", StringComparison.OrdinalIgnoreCase)) {
+            score += 120;
+        }
+
+        if (candidate.Handle != IntPtr.Zero) {
+            score += 30;
+        }
+
+        return score;
+    }
+
+    private static object? ToNativeHandlePropertyValue(IntPtr handle) {
+        long raw = handle.ToInt64();
+        if (raw > int.MaxValue || raw < int.MinValue) {
+            return null;
+        }
+
+        return unchecked((int)raw);
     }
 
     private static string ReadWindowClassName(IntPtr handle) {
@@ -1153,6 +1477,65 @@ internal sealed class UiAutomationControlService {
         }
     }
 
+    private bool WaitForResolvedCheckState(WindowInfo window, WindowControlInfo control, bool expectedState) {
+        DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(ForegroundTextVerificationMilliseconds);
+        while (DateTime.UtcNow <= deadlineUtc) {
+            bool? currentState = TryReadResolvedCheckState(window, control);
+            if (currentState.HasValue && currentState.Value == expectedState) {
+                return true;
+            }
+
+            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
+        }
+
+        return false;
+    }
+
+    private bool WaitForResolvedSelectedValue(WindowInfo window, WindowControlInfo control, string expectedValue) {
+        DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(ForegroundTextVerificationMilliseconds);
+        while (DateTime.UtcNow <= deadlineUtc) {
+            string? currentValue = TryReadResolvedSelectedValue(window, control);
+            if (!string.IsNullOrWhiteSpace(currentValue) && string.Equals(currentValue, expectedValue, StringComparison.OrdinalIgnoreCase)) {
+                control.Value = expectedValue;
+                if (string.IsNullOrWhiteSpace(control.Text) || string.Equals(control.ControlType, "ComboBox", StringComparison.OrdinalIgnoreCase)) {
+                    control.Text = expectedValue;
+                }
+
+                return true;
+            }
+
+            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
+        }
+
+        return false;
+    }
+
+    private bool? TryReadResolvedCheckState(WindowInfo window, WindowControlInfo control) {
+        UiAutomationElementMatchResult refreshedMatch = ResolveMatchingElement(window.Handle, control);
+        if (refreshedMatch.Element == null) {
+            return null;
+        }
+
+        try {
+            return ReadCheckState(refreshedMatch.Element);
+        } catch {
+            return null;
+        }
+    }
+
+    private string? TryReadResolvedSelectedValue(WindowInfo window, WindowControlInfo control) {
+        UiAutomationElementMatchResult refreshedMatch = ResolveMatchingElement(window.Handle, control);
+        if (refreshedMatch.Element == null) {
+            return null;
+        }
+
+        try {
+            return ReadSelectedValue(refreshedMatch.Element);
+        } catch {
+            return null;
+        }
+    }
+
     private bool HasPattern(object element, string patternTypeName) {
         try {
             Type? patternType = _automationClientAssembly?.GetType(patternTypeName, throwOnError: false);
@@ -1193,6 +1576,155 @@ internal sealed class UiAutomationControlService {
         } catch {
             return null;
         }
+    }
+
+    private bool? ReadCheckState(object element) {
+        try {
+            Type? togglePatternType = _automationClientAssembly?.GetType("System.Windows.Automation.TogglePattern", throwOnError: false);
+            if (togglePatternType == null) {
+                return null;
+            }
+
+            object? pattern = GetCurrentPattern(element, togglePatternType);
+            if (pattern == null) {
+                return null;
+            }
+
+            object? current = pattern.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(pattern);
+            object? toggleState = current?.GetType().GetProperty("ToggleState", BindingFlags.Public | BindingFlags.Instance)?.GetValue(current);
+            string? toggleStateName = toggleState?.ToString();
+            if (string.IsNullOrWhiteSpace(toggleStateName)) {
+                return null;
+            }
+
+            if (toggleStateName.EndsWith("On", StringComparison.OrdinalIgnoreCase)) {
+                return true;
+            }
+
+            if (toggleStateName.EndsWith("Off", StringComparison.OrdinalIgnoreCase)) {
+                return false;
+            }
+
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
+    private string? ReadSelectedValue(object element) {
+        string? selectionValue = ReadSelectedItemValue(element);
+        if (!string.IsNullOrWhiteSpace(selectionValue)) {
+            return selectionValue;
+        }
+
+        string? directValue =
+            ReadPatternValue(element, "System.Windows.Automation.ValuePattern") ??
+            ReadPatternValue(element, "System.Windows.Automation.LegacyIAccessiblePattern");
+        return string.IsNullOrWhiteSpace(directValue)
+            ? null
+            : directValue;
+    }
+
+    private string? ReadSelectedItemValue(object element) {
+        try {
+            Type? selectionPatternType = _automationClientAssembly?.GetType("System.Windows.Automation.SelectionPattern", throwOnError: false);
+            if (selectionPatternType == null) {
+                return null;
+            }
+
+            object? pattern = GetCurrentPattern(element, selectionPatternType);
+            if (pattern == null) {
+                return null;
+            }
+
+            MethodInfo? getSelectionMethod = pattern.GetType().GetMethod("GetSelection", Type.EmptyTypes);
+            object? selection = getSelectionMethod?.Invoke(pattern, null);
+            if (selection == null) {
+                return null;
+            }
+
+            PropertyInfo? countProperty = _automationElementCollectionType?.GetProperty("Count");
+            PropertyInfo? itemProperty = _automationElementCollectionType?.GetProperty("Item");
+            if (countProperty == null || itemProperty == null) {
+                return null;
+            }
+
+            int count = (int)(countProperty.GetValue(selection) ?? 0);
+            if (count <= 0) {
+                return null;
+            }
+
+            object? selectedElement = itemProperty.GetValue(selection, new object[] { 0 });
+            if (selectedElement == null) {
+                return null;
+            }
+
+            WindowControlInfo? selectedInfo = CreateControlInfo(selectedElement);
+            if (selectedInfo == null) {
+                return null;
+            }
+
+            return !string.IsNullOrWhiteSpace(selectedInfo.Value)
+                ? selectedInfo.Value
+                : !string.IsNullOrWhiteSpace(selectedInfo.Text)
+                    ? selectedInfo.Text
+                    : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private object? FindSelectionCandidateElement(object rootElement, string selectedValue) {
+        return FindMatchingDescendantElement(rootElement, includeRoot: false, (candidateElement, info) =>
+            !string.IsNullOrWhiteSpace(selectedValue) &&
+            (string.Equals(info.Text, selectedValue, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(info.Value, selectedValue, StringComparison.OrdinalIgnoreCase)) &&
+            (HasPattern(candidateElement, "System.Windows.Automation.SelectionItemPattern") ||
+            HasPattern(candidateElement, "System.Windows.Automation.InvokePattern") ||
+            HasPattern(candidateElement, "System.Windows.Automation.LegacyIAccessiblePattern")));
+    }
+
+    private object? FindMatchingDescendantElement(object rootElement, bool includeRoot, Func<object, WindowControlInfo, bool> predicate) {
+        if (rootElement == null) {
+            return null;
+        }
+
+        object? treeScope = Enum.Parse(_treeScopeType!, includeRoot ? "Subtree" : "Descendants", ignoreCase: false);
+        object? trueCondition = _conditionType!.GetField("TrueCondition", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        if (treeScope == null || trueCondition == null) {
+            return null;
+        }
+
+        object? collection = _automationElementType!.GetMethod("FindAll", new[] { _treeScopeType!, _conditionType! })?
+            .Invoke(rootElement, new[] { treeScope, trueCondition });
+        if (collection == null) {
+            return null;
+        }
+
+        PropertyInfo? countProperty = _automationElementCollectionType!.GetProperty("Count");
+        PropertyInfo? itemProperty = _automationElementCollectionType.GetProperty("Item");
+        if (countProperty == null || itemProperty == null) {
+            return null;
+        }
+
+        int count = (int)(countProperty.GetValue(collection) ?? 0);
+        for (int index = 0; index < count; index++) {
+            object? candidateElement = itemProperty.GetValue(collection, new object[] { index });
+            if (candidateElement == null) {
+                continue;
+            }
+
+            try {
+                WindowControlInfo? info = CreateControlInfo(candidateElement);
+                if (info != null && predicate(candidateElement, info)) {
+                    return candidateElement;
+                }
+            } catch {
+                // Ignore unsupported descendants and keep searching for a structurally actionable candidate.
+            }
+        }
+
+        return null;
     }
 
     private static string ReadString(object instance, string propertyName) {

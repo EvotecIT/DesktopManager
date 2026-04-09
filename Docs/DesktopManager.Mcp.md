@@ -19,6 +19,9 @@ The MCP server now starts in read-only inspection mode by default. Use `desktopm
 - `window_exists`
 - `active_window_matches`
 - `wait_for_window`
+- `wait_for_window_visual_change`
+- `read_window_text`
+- `resolve_window_text`
 - `list_window_controls`
 - `diagnose_window_controls`
 - `control_exists`
@@ -42,6 +45,11 @@ The MCP server now starts in read-only inspection mode by default. Use `desktopm
 - `get_named_target`
 - `save_window_target`
 - `resolve_window_target`
+- `list_named_visual_baselines`
+- `get_named_visual_baseline`
+- `save_visual_baseline`
+- `assert_visual_baseline`
+- `resolve_visual_baseline`
 - `list_named_control_targets`
 - `get_named_control_target`
 - `save_control_target`
@@ -67,6 +75,7 @@ The MCP server now starts in read-only inspection mode by default. Use `desktopm
 - `desktop://windows/visible`
 - `desktop://layouts`
 - `desktop://targets`
+- `desktop://visual-baselines`
 - `desktop://control-targets`
 - `desktop://snapshot/current`
 
@@ -89,6 +98,7 @@ The MCP server now starts in read-only inspection mode by default. Use `desktopm
    - Use `get_active_window` when focus matters.
    - Use `window_exists` or `active_window_matches` when you want a structured assertion before acting.
    - Use `screenshot_desktop` or `screenshot_window` when visual confirmation is needed.
+   - Use `wait_for_window_visual_change` when the next step depends on visible feedback from an opaque surface, not only on a control or text query.
    - Use `get_window_geometry` when you need outer-window and client-area bounds before a coordinate-based action.
    - When multiple windows match, prefer an exact `handle` over a broad process selector.
 3. Launch when needed.
@@ -108,8 +118,19 @@ The MCP server now starts in read-only inspection mode by default. Use `desktopm
    - When modern controls expose state through UI Automation, filter by current value, enabled state, or keyboard focusability instead of guessing from text alone.
    - If a UIA-heavy query is host-sensitive, opt into foreground assistance before falling back to brittle retries.
    - If structure discovery still fails, use `screenshot_window` plus `get_window_geometry`, then target `click_window_point`, `drag_window_points`, or `scroll_window_point`.
+   - After a coordinate-based action on an opaque surface, prefer `wait_for_window_visual_change` over a blind sleep so the workflow can prove the app actually reacted.
+   - For one-step mutate-and-verify flows, the same window/control mutation tools can now return built-in visual-change metrics when `waitForVisualChange=true` is supplied.
    - Prefer ratio-based targeting with `clientArea=true` when you want the action to scale with different window sizes.
    - When the same coordinate fallback will be reused, save it once with `save_window_target` and resolve or reuse it by name.
+   - When a workflow needs a reusable visual checkpoint, save it once with `save_visual_baseline` and compare it later with `assert_visual_baseline` instead of carrying ad-hoc reference images outside DesktopManager.
+   - When that same saved region should also become a reusable visual anchor, call `resolve_visual_baseline` to relocate it inside the current window or client area before a follow-up click or drag.
+   - For the common click case, `click_window_point` can now take `visualBaselineName` directly so the same saved visual region becomes an actionable anchor, not only a read-only resolution step.
+   - The same anchor model now extends to `drag_window_points` and `scroll_window_point`, so saved visual regions can drive richer pointer actions too.
+   - Those anchor-driven mutation results now also report the resolved regions and action points they used, which is useful for retries, audits, and follow-up reasoning.
+   - When structure discovery is weak but the UI text is visually clear, use `read_window_text` or `resolve_window_text` before falling back to blind coordinates.
+   - `resolve_window_text` is the new generic text-anchor path for opaque surfaces: it returns visible label bounds and a ready-to-use action point without needing a saved target or app-specific adapter.
+   - For the common click case, `click_window_point` can now take `ocrText` directly so the same OCR text-anchor path becomes actionable without an extra resolve step.
+   - The same OCR text-anchor path now extends to `drag_window_points` and `scroll_window_point`, so visible text can drive richer pointer actions without pre-saved coordinates.
    - When the same control selector will be reused, save it once with `save_control_target` and resolve or reuse it by name.
    - Prefer `type_window_text` for whole-window text entry.
    - Prefer `send_window_keys` for whole-window Enter, Escape, or accelerator follow-up actions when a modern control becomes unreliable after text entry.
@@ -150,10 +171,16 @@ desktopmanager window list
 desktopmanager window exists --title "Codex"
 desktopmanager window active-matches --title "Codex"
 desktopmanager window wait --process notepad --timeout-ms 5000
+desktopmanager window wait-visual-change --handle 0xFF1802 --client-area --timeout-ms 5000 --json
 desktopmanager window geometry --handle 0xFF1802 --json
 desktopmanager window list --process notepad --json
 desktopmanager target save editor-center --x-ratio 0.5 --y-ratio 0.5 --client-area
 desktopmanager target resolve editor-center --handle 0xFF1802 --json
+desktopmanager visual save editor-clean --handle 0xFF1802 --client-area --json
+desktopmanager visual resolve editor-clean --handle 0xFF1802 --client-area --max-average-difference 10 --json
+desktopmanager window click --handle 0xFF1802 --visual-baseline editor-clean --client-area --baseline-max-average-difference 10 --json
+desktopmanager window scroll --handle 0xFF1802 --visual-baseline editor-clean --delta -120 --client-area --baseline-max-average-difference 10 --json
+desktopmanager visual assert editor-clean --handle 0xFF1802 --client-area --max-changed-ratio 0.01 --json
 desktopmanager control-target save edge-address --control-type Edit --background-text --uia
 desktopmanager control-target resolve edge-address --process msedge --json
 desktopmanager control list --window-title "Codex" --target codex-sidebar-toggle --json
@@ -213,6 +240,7 @@ When control structure is flaky, prefer this flow:
 2. Read `get_window_geometry` if you need exact client-area bounds.
 3. Save a reusable point or area with `save_window_target`.
 4. Reuse it from `resolve_window_target`, `screenshot_window` with `targetName`, `click_window_point`, `drag_window_points`, or `scroll_window_point`.
+5. When the action should visibly change the same surface, call `wait_for_window_visual_change` against the whole window, client area, or saved target region before assuming success.
 
 That keeps screenshot-assisted targeting in the shared core instead of forcing the agent to re-invent one-off coordinates every run.
 
@@ -221,6 +249,7 @@ That keeps screenshot-assisted targeting in the shared core instead of forcing t
 - DesktopManager currently focuses on non-destructive window and layout operations.
 - Screenshots are written to PNG files and returned as file paths.
 - Window screenshots prefer native window rendering and fall back to screen capture when that is unavailable.
+- Visible-change waits reuse that same capture path, so opaque WinUI/WebView surfaces can be verified by pixel change even when their inner controls are not structurally exposed.
 - Snapshots are windows-only for now.
 - Control discovery supports both child-window selectors and UIA-oriented selectors.
 - Control assertions and waits are available on the same shared selector model as list/click/set-text.

@@ -81,6 +81,43 @@ public class WindowControlMessageTests {
     [TestMethod]
     [TestCategory("UITest")]
     /// <summary>
+    /// Ensures direct combo-box selection can switch the current item by displayed text.
+    /// </summary>
+    public void WindowControlService_SetSelectedValue_UpdatesComboBoxSelection() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Combo Selection Test Form", ShowInTaskbar = false };
+        using ComboBox comboBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+        comboBox.Items.AddRange(["Alpha", "Beta", "Gamma"]);
+        comboBox.SelectedIndex = 0;
+        form.Controls.Add(comboBox);
+        form.Show();
+        comboBox.CreateControl();
+        Application.DoEvents();
+        Thread.Sleep(100);
+
+        WindowControlInfo control = new() {
+            ParentWindowHandle = form.Handle,
+            Handle = comboBox.Handle,
+            ClassName = "ComboBox",
+            Id = MonitorNativeMethods.GetDlgCtrlID(comboBox.Handle),
+            Text = comboBox.Text
+        };
+
+        WindowControlService.SetSelectedValue(control, "Beta");
+        Application.DoEvents();
+        Thread.Sleep(100);
+
+        Assert.AreEqual("Beta", comboBox.Text);
+        Assert.AreEqual("Beta", WindowControlService.GetSelectedValue(control));
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    /// <summary>
     /// Ensures control enumeration includes parent window metadata and shared capabilities.
     /// </summary>
     public void ControlEnumerator_EnumerateControls_PopulatesParentWindowMetadata() {

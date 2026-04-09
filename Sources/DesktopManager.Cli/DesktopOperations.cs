@@ -138,6 +138,40 @@ internal static partial class DesktopOperations {
             visible)));
     }
 
+    public static ControlStateResult SetControlCheckState(string windowHandle, string controlHandle, bool check) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IntPtr resolvedWindowHandle = DesktopHandleParser.Parse(windowHandle);
+            IntPtr resolvedControlHandle = DesktopHandleParser.Parse(controlHandle);
+            automation.SetControlCheckState(resolvedWindowHandle, resolvedControlHandle, check);
+            DesktopControlState? state = automation.GetControlState(resolvedWindowHandle, resolvedControlHandle);
+            if (state == null) {
+                throw new InvalidOperationException("The requested control could not be resolved after the check-state mutation.");
+            }
+
+            return MapControlState(state);
+        });
+    }
+
+    public static ControlStateResult SetControlSelectedValue(string windowHandle, string controlHandle, string selectedValue) {
+        return ExecuteCore(() => {
+            if (string.IsNullOrWhiteSpace(selectedValue)) {
+                throw new CommandLineException("A selected value is required.");
+            }
+
+            var automation = new DesktopAutomationService();
+            IntPtr resolvedWindowHandle = DesktopHandleParser.Parse(windowHandle);
+            IntPtr resolvedControlHandle = DesktopHandleParser.Parse(controlHandle);
+            automation.SetControlSelectedValue(resolvedWindowHandle, resolvedControlHandle, selectedValue);
+            DesktopControlState? state = automation.GetControlState(resolvedWindowHandle, resolvedControlHandle);
+            if (state == null) {
+                throw new InvalidOperationException("The requested control could not be resolved after the selection mutation.");
+            }
+
+            return MapControlState(state);
+        });
+    }
+
     public static IReadOnlyList<WindowGeometryResult> GetWindowGeometry(WindowSelectionCriteria criteria) {
         return ExecuteCore(() => new DesktopAutomationService()
             .GetWindowGeometry(CreateWindowQuery(criteria), criteria.All)
@@ -215,10 +249,12 @@ internal static partial class DesktopOperations {
                 "window-keep-alive",
                 targetName: null,
                 targetKind: null,
+                resolvedTargets: Array.Empty<ResolvedPointerTargetResult>(),
                 beforeScreenshots: Array.Empty<ScreenshotResult>(),
                 afterScreenshots: Array.Empty<ScreenshotResult>(),
                 artifactWarnings: Array.Empty<string>(),
-                verification: null);
+                verification: null,
+                visualChange: null);
         });
     }
 
@@ -278,7 +314,34 @@ internal static partial class DesktopOperations {
             artifactOptions,
             automation => automation.ClickWindowTarget(CreateWindowQuery(criteria), targetName, mouseButton, activate, criteria.All),
             targetName,
-            "window-target");
+            "window-target",
+            resolveTargets: automation => ResolveWindowTargetPointers(automation, criteria, targetName, "target"));
+    }
+
+    public static WindowChangeResult ClickWindowVisualBaseline(WindowSelectionCriteria criteria, string baselineName, string button, bool activate, bool clientArea, double maxAverageDifference, int differenceThreshold, int scanStep, MutationArtifactOptions? artifactOptions = null) {
+        MouseButton mouseButton = ParseMouseButton(button);
+        return ExecuteWindowMutation(
+            "click-visual-baseline",
+            criteria,
+            "foreground-mouse-input",
+            artifactOptions,
+            automation => automation.ClickWindowVisualBaseline(CreateWindowQuery(criteria), baselineName, mouseButton, activate, clientArea, maxAverageDifference, differenceThreshold, scanStep, criteria.All),
+            baselineName,
+            "visual-baseline",
+            resolveTargets: automation => ResolveVisualBaselinePointers(automation, criteria, baselineName, "target", clientArea, maxAverageDifference, differenceThreshold, scanStep));
+    }
+
+    public static WindowChangeResult ClickWindowText(WindowSelectionCriteria criteria, string queryText, string button, bool activate, bool contains, string? targetName, bool clientArea, string? languageTag, MutationArtifactOptions? artifactOptions = null) {
+        MouseButton mouseButton = ParseMouseButton(button);
+        return ExecuteWindowMutation(
+            "click-ocr-text",
+            criteria,
+            "foreground-mouse-input",
+            artifactOptions,
+            automation => automation.ClickWindowText(CreateWindowQuery(criteria), queryText, mouseButton, activate, contains, targetName, clientArea, languageTag, criteria.All),
+            queryText,
+            "ocr-text",
+            resolveTargets: automation => ResolveWindowTextPointers(automation, criteria, queryText, "target", contains, targetName, clientArea, languageTag));
     }
 
     public static WindowChangeResult DragWindowPoints(WindowSelectionCriteria criteria, int? startX, int? startY, double? startXRatio, double? startYRatio, int? endX, int? endY, double? endXRatio, double? endYRatio, string button, int stepDelayMilliseconds, bool activate, bool clientArea, MutationArtifactOptions? artifactOptions = null) {
@@ -300,7 +363,34 @@ internal static partial class DesktopOperations {
             artifactOptions,
             automation => automation.DragWindowTargets(CreateWindowQuery(criteria), startTargetName, endTargetName, mouseButton, stepDelayMilliseconds, activate, criteria.All),
             $"{startTargetName}->{endTargetName}",
-            "window-target-pair");
+            "window-target-pair",
+            resolveTargets: automation => ResolveWindowTargetPairPointers(automation, criteria, startTargetName, endTargetName));
+    }
+
+    public static WindowChangeResult DragWindowVisualBaselines(WindowSelectionCriteria criteria, string startBaselineName, string endBaselineName, string button, int stepDelayMilliseconds, bool activate, bool clientArea, double maxAverageDifference, int differenceThreshold, int scanStep, MutationArtifactOptions? artifactOptions = null) {
+        MouseButton mouseButton = ParseMouseButton(button);
+        return ExecuteWindowMutation(
+            "drag-visual-baseline",
+            criteria,
+            "foreground-mouse-input",
+            artifactOptions,
+            automation => automation.DragWindowVisualBaselines(CreateWindowQuery(criteria), startBaselineName, endBaselineName, mouseButton, stepDelayMilliseconds, activate, clientArea, maxAverageDifference, differenceThreshold, scanStep, criteria.All),
+            $"{startBaselineName}->{endBaselineName}",
+            "visual-baseline-pair",
+            resolveTargets: automation => ResolveVisualBaselinePairPointers(automation, criteria, startBaselineName, endBaselineName, clientArea, maxAverageDifference, differenceThreshold, scanStep));
+    }
+
+    public static WindowChangeResult DragWindowText(WindowSelectionCriteria criteria, string startQueryText, string endQueryText, string button, int stepDelayMilliseconds, bool activate, bool contains, string? startTargetName, string? endTargetName, bool clientArea, string? languageTag, MutationArtifactOptions? artifactOptions = null) {
+        MouseButton mouseButton = ParseMouseButton(button);
+        return ExecuteWindowMutation(
+            "drag-ocr-text",
+            criteria,
+            "foreground-mouse-input",
+            artifactOptions,
+            automation => automation.DragWindowText(CreateWindowQuery(criteria), startQueryText, endQueryText, mouseButton, stepDelayMilliseconds, activate, contains, startTargetName, endTargetName, clientArea, languageTag, criteria.All),
+            $"{startQueryText}->{endQueryText}",
+            "ocr-text-pair",
+            resolveTargets: automation => ResolveWindowTextPairPointers(automation, criteria, startQueryText, endQueryText, contains, startTargetName, endTargetName, clientArea, languageTag));
     }
 
     public static WindowChangeResult ScrollWindowPoint(WindowSelectionCriteria criteria, int? x, int? y, double? xRatio, double? yRatio, int delta, bool activate, bool clientArea, MutationArtifactOptions? artifactOptions = null) {
@@ -320,7 +410,32 @@ internal static partial class DesktopOperations {
             artifactOptions,
             automation => automation.ScrollWindowTarget(CreateWindowQuery(criteria), targetName, delta, activate, criteria.All),
             targetName,
-            "window-target");
+            "window-target",
+            resolveTargets: automation => ResolveWindowTargetPointers(automation, criteria, targetName, "target"));
+    }
+
+    public static WindowChangeResult ScrollWindowVisualBaseline(WindowSelectionCriteria criteria, string baselineName, int delta, bool activate, bool clientArea, double maxAverageDifference, int differenceThreshold, int scanStep, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            "scroll-visual-baseline",
+            criteria,
+            "foreground-mouse-input",
+            artifactOptions,
+            automation => automation.ScrollWindowVisualBaseline(CreateWindowQuery(criteria), baselineName, delta, activate, clientArea, maxAverageDifference, differenceThreshold, scanStep, criteria.All),
+            baselineName,
+            "visual-baseline",
+            resolveTargets: automation => ResolveVisualBaselinePointers(automation, criteria, baselineName, "target", clientArea, maxAverageDifference, differenceThreshold, scanStep));
+    }
+
+    public static WindowChangeResult ScrollWindowText(WindowSelectionCriteria criteria, string queryText, int delta, bool activate, bool contains, string? targetName, bool clientArea, string? languageTag, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            "scroll-ocr-text",
+            criteria,
+            "foreground-mouse-input",
+            artifactOptions,
+            automation => automation.ScrollWindowText(CreateWindowQuery(criteria), queryText, delta, activate, contains, targetName, clientArea, languageTag, criteria.All),
+            queryText,
+            "ocr-text",
+            resolveTargets: automation => ResolveWindowTextPointers(automation, criteria, queryText, "target", contains, targetName, clientArea, languageTag));
     }
 
     public static WindowChangeResult MinimizeWindows(WindowSelectionCriteria criteria, MutationArtifactOptions? artifactOptions = null) {
@@ -537,13 +652,23 @@ internal static partial class DesktopOperations {
             : options.ForegroundInput
                 ? "window-text-foreground-input"
                 : "window-text-input";
+        bool requireForegroundVerification = options.ForegroundInput || options.PhysicalKeys || options.HostedSession;
 
         return ExecuteWindowMutation(
             action,
             criteria,
             safetyMode,
             artifactOptions,
-            automation => automation.TypeWindowText(CreateWindowQuery(criteria), options.Text, options.Paste, options.DelayMilliseconds, options.ForegroundInput, options.PhysicalKeys, options.HostedSession, options.ScriptMode, options.ScriptChunkLength, options.ScriptLineDelayMilliseconds, criteria.All));
+            automation => automation.TypeWindowText(CreateWindowQuery(criteria), options.Text, options.Paste, options.DelayMilliseconds, options.ForegroundInput, options.PhysicalKeys, options.HostedSession, options.ScriptMode, options.ScriptChunkLength, options.ScriptLineDelayMilliseconds, criteria.All),
+            verify: requireForegroundVerification
+                ? (automation, windows, mutationOptions) => BuildWindowPostconditionVerificationResult(
+                    action,
+                    windows,
+                    ObserveWindowsByHandle(automation, windows),
+                    SafeGetActiveWindowInfo(automation),
+                    mutationOptions.VerificationTolerancePixels,
+                    requireForegroundMatch: true)
+                : null);
     }
 
     public static WindowChangeResult SendWindowKeys(WindowSelectionCriteria criteria, IReadOnlyList<string> keys, bool activate, MutationArtifactOptions? artifactOptions = null) {
@@ -881,6 +1006,34 @@ internal static partial class DesktopOperations {
             automation => automation.SetControlText(CreateWindowQuery(windowCriteria), CreateControlQuery(controlCriteria), text, allWindows, controlCriteria.All));
     }
 
+    public static ControlActionResult SetControlCheckState(WindowSelectionCriteria windowCriteria, ControlSelectionCriteria controlCriteria, bool check, bool allWindows, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteControlMutation(
+            "set-control-check-state",
+            windowCriteria,
+            allWindows,
+            controlCriteria.All,
+            artifactOptions,
+            automation => automation.GetControls(CreateWindowQuery(windowCriteria), CreateControlQuery(controlCriteria), allWindows, controlCriteria.All),
+            resolvedControls => DetermineControlCheckStateSafetyMode(resolvedControls),
+            automation => automation.SetControlCheckState(CreateWindowQuery(windowCriteria), CreateControlQuery(controlCriteria), check, allWindows, controlCriteria.All));
+    }
+
+    public static ControlActionResult SetControlSelectedValue(WindowSelectionCriteria windowCriteria, ControlSelectionCriteria controlCriteria, string selectedValue, bool allWindows, MutationArtifactOptions? artifactOptions = null) {
+        if (string.IsNullOrWhiteSpace(selectedValue)) {
+            throw new CommandLineException("A selected value is required.");
+        }
+
+        return ExecuteControlMutation(
+            "set-control-selected-value",
+            windowCriteria,
+            allWindows,
+            controlCriteria.All,
+            artifactOptions,
+            automation => automation.GetControls(CreateWindowQuery(windowCriteria), CreateControlQuery(controlCriteria), allWindows, controlCriteria.All),
+            resolvedControls => DetermineControlSelectedValueSafetyMode(resolvedControls),
+            automation => automation.SetControlSelectedValue(CreateWindowQuery(windowCriteria), CreateControlQuery(controlCriteria), selectedValue, allWindows, controlCriteria.All));
+    }
+
     public static ControlActionResult SetControlTargetText(WindowSelectionCriteria windowCriteria, string targetName, string text, bool ensureForegroundWindow, bool allowForegroundInputFallback, bool allWindows, bool allControls, MutationArtifactOptions? artifactOptions = null) {
         if (text == null) {
             throw new CommandLineException("Text is required.");
@@ -1053,6 +1206,52 @@ internal static partial class DesktopOperations {
             .ToArray());
     }
 
+    public static VisualBaselineResult SaveVisualBaseline(string name, WindowSelectionCriteria criteria, string? targetName, bool clientArea, string? description) {
+        return ExecuteCore(() => BuildVisualBaselineResult(
+            name,
+            DesktopStateStore.GetVisualBaselinePath(name),
+            DesktopStateStore.GetVisualBaselineImagePath(name),
+            new DesktopAutomationService().SaveVisualBaseline(name, CreateWindowQuery(criteria), targetName, clientArea, description)));
+    }
+
+    public static IReadOnlyList<string> ListVisualBaselines() {
+        return ExecuteCore(() => new DesktopAutomationService().ListVisualBaselines());
+    }
+
+    public static VisualBaselineResult GetVisualBaseline(string name) {
+        return ExecuteCore(() => BuildVisualBaselineResult(
+            name,
+            DesktopStateStore.GetVisualBaselinePath(name),
+            DesktopStateStore.GetVisualBaselineImagePath(name),
+            new DesktopAutomationService().GetVisualBaseline(name)));
+    }
+
+    public static VisualBaselineAssertionResult AssertVisualBaseline(string name, WindowSelectionCriteria criteria, string? targetName, bool? clientArea, double maxChangedRatio, int differenceThreshold) {
+        return ExecuteCore(() => MapVisualBaselineAssertionResult(
+            name,
+            DesktopStateStore.GetVisualBaselinePath(name),
+            DesktopStateStore.GetVisualBaselineImagePath(name),
+            new DesktopAutomationService().AssertVisualBaseline(name, CreateWindowQuery(criteria), targetName, clientArea, maxChangedRatio, differenceThreshold)));
+    }
+
+    public static VisualBaselineResolveResult ResolveVisualBaseline(string name, WindowSelectionCriteria criteria, bool clientArea, double maxAverageDifference, int differenceThreshold, int scanStep) {
+        return ExecuteCore(() => MapVisualBaselineResolveResult(
+            name,
+            DesktopStateStore.GetVisualBaselinePath(name),
+            DesktopStateStore.GetVisualBaselineImagePath(name),
+            new DesktopAutomationService().ResolveVisualBaseline(name, CreateWindowQuery(criteria), clientArea, maxAverageDifference, differenceThreshold, scanStep)));
+    }
+
+    public static WindowTextReadResult ReadWindowText(WindowSelectionCriteria criteria, string? targetName, bool clientArea, string? languageTag) {
+        return ExecuteCore(() => MapWindowTextReadResult(
+            new DesktopAutomationService().ReadWindowText(CreateWindowQuery(criteria), targetName, clientArea, languageTag)));
+    }
+
+    public static WindowTextResolveResult ResolveWindowText(WindowSelectionCriteria criteria, string queryText, bool contains, string? targetName, bool clientArea, string? languageTag) {
+        return ExecuteCore(() => MapWindowTextResolveResult(
+            new DesktopAutomationService().ResolveWindowText(CreateWindowQuery(criteria), queryText, contains, targetName, clientArea, languageTag)));
+    }
+
     public static ControlTargetResult SaveControlTarget(string name, ControlSelectionCriteria criteria, string? description) {
         return ExecuteCore(() => {
             DesktopControlTargetDefinition definition = new DesktopControlTargetDefinition {
@@ -1170,6 +1369,24 @@ internal static partial class DesktopOperations {
         });
     }
 
+    public static WindowVisualChangeResult WaitForWindowVisualChange(
+        WindowSelectionCriteria criteria,
+        string? targetName,
+        bool clientArea,
+        int timeoutMilliseconds,
+        int intervalMilliseconds,
+        double minimumChangedRatio,
+        int differenceThreshold) {
+        return ExecuteCore(() => MapWindowVisualChangeObservation(new DesktopAutomationService().WaitForWindowVisualChange(
+            CreateWindowQuery(criteria),
+            targetName,
+            clientArea,
+            timeoutMilliseconds,
+            intervalMilliseconds,
+            minimumChangedRatio,
+            differenceThreshold)));
+    }
+
     public static WindowAssertionResult WindowExists(WindowSelectionCriteria criteria) {
         return ExecuteCore(() => {
             WindowQueryOptions query = CreateWindowQuery(criteria);
@@ -1237,7 +1454,7 @@ internal static partial class DesktopOperations {
         }
     }
 
-    private static WindowChangeResult BuildWindowChangeResult(string action, IReadOnlyList<WindowInfo> windows, int elapsedMilliseconds, string safetyMode, string? targetName, string? targetKind, IReadOnlyList<ScreenshotResult> beforeScreenshots, IReadOnlyList<ScreenshotResult> afterScreenshots, IReadOnlyList<string> artifactWarnings, WindowMutationVerificationResult? verification) {
+    private static WindowChangeResult BuildWindowChangeResult(string action, IReadOnlyList<WindowInfo> windows, int elapsedMilliseconds, string safetyMode, string? targetName, string? targetKind, IReadOnlyList<ResolvedPointerTargetResult> resolvedTargets, IReadOnlyList<ScreenshotResult> beforeScreenshots, IReadOnlyList<ScreenshotResult> afterScreenshots, IReadOnlyList<string> artifactWarnings, WindowMutationVerificationResult? verification, WindowVisualChangeResult? visualChange) {
         return new WindowChangeResult {
             Action = action,
             Success = true,
@@ -1246,11 +1463,13 @@ internal static partial class DesktopOperations {
             SafetyMode = safetyMode,
             TargetName = targetName,
             TargetKind = targetKind,
+            ResolvedTargets = resolvedTargets,
             BeforeScreenshots = beforeScreenshots,
             AfterScreenshots = afterScreenshots,
             ArtifactWarnings = artifactWarnings,
             Windows = windows.Select(MapWindow).ToArray(),
-            Verification = verification
+            Verification = verification,
+            VisualChange = visualChange
         };
     }
 
@@ -1587,6 +1806,23 @@ internal static partial class DesktopOperations {
         };
     }
 
+    private static WindowVisualChangeResult MapWindowVisualChangeObservation(DesktopWindowVisualChangeObservation observation) {
+        return new WindowVisualChangeResult {
+            ElapsedMilliseconds = observation.ElapsedMilliseconds,
+            Window = MapWindow(observation.Window),
+            Geometry = MapWindowGeometry(observation.Geometry),
+            TargetName = observation.TargetName,
+            ClientArea = observation.ClientArea,
+            MinimumChangedRatio = observation.MinimumChangedRatio,
+            DifferenceThreshold = observation.Metrics.DifferenceThreshold,
+            SampleCount = observation.Metrics.SampleCount,
+            ChangedSampleCount = observation.Metrics.ChangedSampleCount,
+            ChangedSampleRatio = observation.Metrics.ChangedSampleRatio,
+            AverageDifference = observation.Metrics.AverageDifference,
+            SizeChanged = observation.Metrics.SizeChanged
+        };
+    }
+
     private static ControlStateResult MapControlState(DesktopControlState state) {
         return new ControlStateResult {
             WindowHandle = state.WindowHandle == IntPtr.Zero ? string.Empty : $"0x{state.WindowHandle.ToInt64():X}",
@@ -1601,6 +1837,8 @@ internal static partial class DesktopOperations {
             IsFocused = state.IsFocused,
             IsKeyboardFocusable = state.IsKeyboardFocusable,
             IsOffscreen = state.IsOffscreen,
+            IsChecked = state.IsChecked,
+            SelectedValue = state.SelectedValue,
             SupportsBackgroundClick = state.SupportsBackgroundClick,
             SupportsBackgroundText = state.SupportsBackgroundText,
             SupportsBackgroundKeys = state.SupportsBackgroundKeys,
@@ -1645,6 +1883,15 @@ internal static partial class DesktopOperations {
             Name = name,
             Path = path,
             Target = MapWindowTargetDefinition(target)
+        };
+    }
+
+    private static VisualBaselineResult BuildVisualBaselineResult(string name, string path, string imagePath, DesktopVisualBaselineDefinition baseline) {
+        return new VisualBaselineResult {
+            Name = name,
+            Path = path,
+            ImagePath = imagePath,
+            Baseline = MapVisualBaselineDefinition(baseline)
         };
     }
 
@@ -1694,6 +1941,126 @@ internal static partial class DesktopOperations {
         };
     }
 
+    private static VisualBaselineDefinitionResult MapVisualBaselineDefinition(DesktopVisualBaselineDefinition baseline) {
+        return new VisualBaselineDefinitionResult {
+            Description = baseline.Description,
+            TargetName = baseline.TargetName,
+            ClientArea = baseline.ClientArea,
+            Width = baseline.Width,
+            Height = baseline.Height,
+            CreatedUtc = baseline.CreatedUtc
+        };
+    }
+
+    private static VisualBaselineAssertionResult MapVisualBaselineAssertionResult(string name, string path, string imagePath, DesktopVisualBaselineAssertionResult assertion) {
+        return new VisualBaselineAssertionResult {
+            Matched = assertion.Matched,
+            Name = name,
+            Path = path,
+            ImagePath = imagePath,
+            Baseline = MapVisualBaselineDefinition(assertion.Baseline),
+            Window = MapWindow(assertion.Window),
+            Geometry = MapWindowGeometry(assertion.Geometry),
+            TargetName = assertion.TargetName,
+            ClientArea = assertion.ClientArea,
+            MaxChangedRatio = assertion.MaxChangedRatio,
+            DifferenceThreshold = assertion.DifferenceThreshold,
+            SampleCount = assertion.Metrics.SampleCount,
+            ChangedSampleCount = assertion.Metrics.ChangedSampleCount,
+            ChangedSampleRatio = assertion.Metrics.ChangedSampleRatio,
+            AverageDifference = assertion.Metrics.AverageDifference,
+            SizeChanged = assertion.Metrics.SizeChanged
+        };
+    }
+
+    private static VisualBaselineResolveResult MapVisualBaselineResolveResult(string name, string path, string imagePath, DesktopVisualBaselineResolveResult resolution) {
+        return new VisualBaselineResolveResult {
+            Matched = resolution.Matched,
+            Name = name,
+            Path = path,
+            ImagePath = imagePath,
+            Baseline = MapVisualBaselineDefinition(resolution.Baseline),
+            Window = MapWindow(resolution.Window),
+            Geometry = MapWindowGeometry(resolution.Geometry),
+            ClientArea = resolution.ClientArea,
+            MaxAverageDifference = resolution.MaxAverageDifference,
+            DifferenceThreshold = resolution.DifferenceThreshold,
+            ScanStep = resolution.ScanStep,
+            EvaluatedPositionCount = resolution.EvaluatedPositionCount,
+            RelativeX = resolution.RelativeX,
+            RelativeY = resolution.RelativeY,
+            Width = resolution.Width,
+            Height = resolution.Height,
+            ScreenX = resolution.ScreenX,
+            ScreenY = resolution.ScreenY,
+            SampleCount = resolution.Metrics.SampleCount,
+            ChangedSampleCount = resolution.Metrics.ChangedSampleCount,
+            ChangedSampleRatio = resolution.Metrics.ChangedSampleRatio,
+            AverageDifference = resolution.Metrics.AverageDifference,
+            SizeChanged = resolution.Metrics.SizeChanged
+        };
+    }
+
+    private static WindowTextReadResult MapWindowTextReadResult(DesktopWindowTextReadResult result) {
+        return new WindowTextReadResult {
+            Window = MapWindow(result.Window),
+            Geometry = MapWindowGeometry(result.Geometry),
+            TargetName = result.TargetName,
+            ClientArea = result.ClientArea,
+            CaptureScreenX = result.CaptureScreenX,
+            CaptureScreenY = result.CaptureScreenY,
+            LanguageTag = result.LanguageTag,
+            Text = result.Text,
+            Lines = result.Lines.Select(MapOcrLine).ToArray()
+        };
+    }
+
+    private static WindowTextResolveResult MapWindowTextResolveResult(DesktopWindowTextResolveResult result) {
+        return new WindowTextResolveResult {
+            Matched = result.Matched,
+            QueryText = result.QueryText,
+            ContainsMatch = result.ContainsMatch,
+            Window = MapWindow(result.Window),
+            Geometry = MapWindowGeometry(result.Geometry),
+            TargetName = result.TargetName,
+            ClientArea = result.ClientArea,
+            LanguageTag = result.LanguageTag,
+            MatchKind = result.MatchKind,
+            MatchedText = result.MatchedText,
+            CandidateCount = result.CandidateCount,
+            RelativeX = result.RelativeX,
+            RelativeY = result.RelativeY,
+            Width = result.Width,
+            Height = result.Height,
+            ScreenX = result.ScreenX,
+            ScreenY = result.ScreenY,
+            ActionX = result.ActionX,
+            ActionY = result.ActionY,
+            Words = result.Words.Select(MapOcrWord).ToArray()
+        };
+    }
+
+    private static OcrLineResult MapOcrLine(DesktopOcrLine line) {
+        return new OcrLineResult {
+            Text = line.Text,
+            X = line.X,
+            Y = line.Y,
+            Width = line.Width,
+            Height = line.Height,
+            Words = line.Words.Select(MapOcrWord).ToArray()
+        };
+    }
+
+    private static OcrWordResult MapOcrWord(DesktopOcrWord word) {
+        return new OcrWordResult {
+            Text = word.Text,
+            X = word.X,
+            Y = word.Y,
+            Width = word.Width,
+            Height = word.Height
+        };
+    }
+
     internal static ResolvedWindowTargetResult MapResolvedWindowTarget(DesktopResolvedWindowTarget target) {
         return new ResolvedWindowTargetResult {
             Name = target.Name,
@@ -1708,6 +2075,133 @@ internal static partial class DesktopOperations {
             ScreenY = target.ScreenY,
             ScreenWidth = target.ScreenWidth,
             ScreenHeight = target.ScreenHeight
+        };
+    }
+
+    private static IReadOnlyList<ResolvedPointerTargetResult> ResolveWindowTargetPointers(DesktopAutomationService automation, WindowSelectionCriteria criteria, string targetName, string role) {
+        return automation
+            .ResolveWindowTargets(CreateWindowQuery(criteria), targetName, criteria.All)
+            .Select(target => MapResolvedPointerTarget(targetName, "window-target", role, target))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<ResolvedPointerTargetResult> ResolveWindowTargetPairPointers(DesktopAutomationService automation, WindowSelectionCriteria criteria, string startTargetName, string endTargetName) {
+        ResolvedPointerTargetResult[] startTargets = ResolveWindowTargetPointers(automation, criteria, startTargetName, "start").ToArray();
+        ResolvedPointerTargetResult[] endTargets = ResolveWindowTargetPointers(automation, criteria, endTargetName, "end").ToArray();
+        return startTargets.Concat(endTargets).ToArray();
+    }
+
+    private static IReadOnlyList<ResolvedPointerTargetResult> ResolveVisualBaselinePointers(DesktopAutomationService automation, WindowSelectionCriteria criteria, string baselineName, string role, bool clientArea, double maxAverageDifference, int differenceThreshold, int scanStep) {
+        return ResolveWindowsForMutation(automation, criteria)
+            .Select(window => MapResolvedPointerTarget(
+                baselineName,
+                "visual-baseline",
+                role,
+                automation.ResolveVisualBaseline(
+                    baselineName,
+                    new WindowQueryOptions {
+                        Handle = window.Handle,
+                        ProcessId = unchecked((int)window.ProcessId),
+                        IncludeHidden = true,
+                        IncludeCloaked = true,
+                        IncludeOwned = true,
+                        IncludeEmptyTitles = true
+                    },
+                    clientArea,
+                    maxAverageDifference,
+                    differenceThreshold,
+                    scanStep)))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<ResolvedPointerTargetResult> ResolveVisualBaselinePairPointers(DesktopAutomationService automation, WindowSelectionCriteria criteria, string startBaselineName, string endBaselineName, bool clientArea, double maxAverageDifference, int differenceThreshold, int scanStep) {
+        ResolvedPointerTargetResult[] startTargets = ResolveVisualBaselinePointers(automation, criteria, startBaselineName, "start", clientArea, maxAverageDifference, differenceThreshold, scanStep).ToArray();
+        ResolvedPointerTargetResult[] endTargets = ResolveVisualBaselinePointers(automation, criteria, endBaselineName, "end", clientArea, maxAverageDifference, differenceThreshold, scanStep).ToArray();
+        return startTargets.Concat(endTargets).ToArray();
+    }
+
+    private static IReadOnlyList<ResolvedPointerTargetResult> ResolveWindowTextPointers(DesktopAutomationService automation, WindowSelectionCriteria criteria, string queryText, string role, bool contains, string? targetName, bool clientArea, string? languageTag) {
+        return ResolveWindowsForMutation(automation, criteria)
+            .Select(window => {
+                DesktopWindowTextResolveResult resolution = automation.ResolveWindowText(
+                    new WindowQueryOptions {
+                        Handle = window.Handle,
+                        ProcessId = unchecked((int)window.ProcessId),
+                        IncludeHidden = true,
+                        IncludeCloaked = true,
+                        IncludeOwned = true,
+                        IncludeEmptyTitles = true
+                    },
+                    queryText,
+                    contains,
+                    targetName,
+                    clientArea,
+                    languageTag);
+                if (!resolution.Matched) {
+                    throw new InvalidOperationException($"Visible text '{queryText}' could not be resolved in window '{window.Title}'.");
+                }
+
+                return MapResolvedPointerTarget(queryText, "ocr-text", role, resolution);
+            })
+            .ToArray();
+    }
+
+    private static IReadOnlyList<ResolvedPointerTargetResult> ResolveWindowTextPairPointers(DesktopAutomationService automation, WindowSelectionCriteria criteria, string startQueryText, string endQueryText, bool contains, string? startTargetName, string? endTargetName, bool clientArea, string? languageTag) {
+        ResolvedPointerTargetResult[] startTargets = ResolveWindowTextPointers(automation, criteria, startQueryText, "start", contains, startTargetName, clientArea, languageTag).ToArray();
+        ResolvedPointerTargetResult[] endTargets = ResolveWindowTextPointers(automation, criteria, endQueryText, "end", contains, endTargetName, clientArea, languageTag).ToArray();
+        return startTargets.Concat(endTargets).ToArray();
+    }
+
+    private static ResolvedPointerTargetResult MapResolvedPointerTarget(string name, string kind, string role, DesktopResolvedWindowTarget target) {
+        int width = target.ScreenWidth ?? 0;
+        int height = target.ScreenHeight ?? 0;
+        return new ResolvedPointerTargetResult {
+            Kind = kind,
+            Name = name,
+            Role = role,
+            Window = MapWindow(target.Geometry.Window),
+            RelativeX = target.RelativeX,
+            RelativeY = target.RelativeY,
+            Width = target.RelativeWidth ?? width,
+            Height = target.RelativeHeight ?? height,
+            ScreenX = target.ScreenX,
+            ScreenY = target.ScreenY,
+            ActionX = target.ScreenX,
+            ActionY = target.ScreenY
+        };
+    }
+
+    private static ResolvedPointerTargetResult MapResolvedPointerTarget(string name, string kind, string role, DesktopVisualBaselineResolveResult target) {
+        return new ResolvedPointerTargetResult {
+            Kind = kind,
+            Name = name,
+            Role = role,
+            Window = MapWindow(target.Window),
+            RelativeX = target.RelativeX,
+            RelativeY = target.RelativeY,
+            Width = target.Width,
+            Height = target.Height,
+            ScreenX = target.ScreenX,
+            ScreenY = target.ScreenY,
+            ActionX = target.ScreenX + Math.Max(0, target.Width / 2),
+            ActionY = target.ScreenY + Math.Max(0, target.Height / 2)
+        };
+    }
+
+    private static ResolvedPointerTargetResult MapResolvedPointerTarget(string name, string kind, string role, DesktopWindowTextResolveResult target) {
+        return new ResolvedPointerTargetResult {
+            Kind = kind,
+            Name = name,
+            Role = role,
+            Window = MapWindow(target.Window),
+            RelativeX = target.RelativeX,
+            RelativeY = target.RelativeY,
+            Width = target.Width,
+            Height = target.Height,
+            ScreenX = target.ScreenX,
+            ScreenY = target.ScreenY,
+            ActionX = target.ActionX,
+            ActionY = target.ActionY
         };
     }
 
@@ -1798,7 +2292,7 @@ internal static partial class DesktopOperations {
         };
     }
 
-    private static ControlActionResult BuildControlActionResult(string action, IReadOnlyList<WindowControlTargetInfo> controls, int elapsedMilliseconds, string safetyMode, string? targetName, string? targetKind, IReadOnlyList<ScreenshotResult> beforeScreenshots, IReadOnlyList<ScreenshotResult> afterScreenshots, IReadOnlyList<string> artifactWarnings) {
+    private static ControlActionResult BuildControlActionResult(string action, IReadOnlyList<WindowControlTargetInfo> controls, int elapsedMilliseconds, string safetyMode, string? targetName, string? targetKind, IReadOnlyList<ScreenshotResult> beforeScreenshots, IReadOnlyList<ScreenshotResult> afterScreenshots, IReadOnlyList<string> artifactWarnings, WindowVisualChangeResult? visualChange) {
         return new ControlActionResult {
             Action = action,
             Success = true,
@@ -1810,7 +2304,8 @@ internal static partial class DesktopOperations {
             BeforeScreenshots = beforeScreenshots,
             AfterScreenshots = afterScreenshots,
             ArtifactWarnings = artifactWarnings,
-            Controls = controls.Select(MapControl).ToArray()
+            Controls = controls.Select(MapControl).ToArray(),
+            VisualChange = visualChange
         };
     }
 

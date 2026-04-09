@@ -440,6 +440,17 @@ public sealed class DesktopAutomationService {
             return null;
         }
 
+        WindowControlInfo? nativeMatch = _windowManager.GetControls(
+            window,
+            new WindowControlQueryOptions {
+                Handle = controlHandle,
+                UseUiAutomation = false,
+                IncludeUiAutomation = false
+            }).FirstOrDefault();
+        if (nativeMatch != null || (!useUiAutomation && !includeUiAutomation)) {
+            return nativeMatch;
+        }
+
         return _windowManager.GetControls(
             window,
             new WindowControlQueryOptions {
@@ -1076,7 +1087,17 @@ public sealed class DesktopAutomationService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        EnsureControlSupportsNativeStateChange(control, "queried for check state");
+        if (control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero) {
+            WindowInfo window = ResolveParentWindow(control);
+            bool? checkState = new UiAutomationControlService().TryReadCheckState(window, control);
+            if (!checkState.HasValue) {
+                throw new InvalidOperationException("The selected UI Automation control did not report a readable check state.");
+            }
+
+            return checkState.Value;
+        }
+
+        EnsureControlSupportsNativeCheckState(control, "queried for check state");
         return WindowControlService.GetCheckState(control);
     }
 
@@ -1107,7 +1128,16 @@ public sealed class DesktopAutomationService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        EnsureControlSupportsNativeStateChange(control, check ? "checked" : "unchecked");
+        if (control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero) {
+            WindowInfo window = ResolveParentWindow(control);
+            if (!new UiAutomationControlService().TrySetCheckState(window, control, check)) {
+                throw new InvalidOperationException("The UI Automation control check state could not be updated.");
+            }
+
+            return;
+        }
+
+        EnsureControlSupportsNativeCheckState(control, check ? "checked" : "unchecked");
         WindowControlService.SetCheckState(control, check);
     }
 
@@ -1126,6 +1156,50 @@ public sealed class DesktopAutomationService {
         }
 
         SetControlCheckState(control, check);
+    }
+
+    /// <summary>
+    /// Selects a combo-box-style item for a resolved control by its displayed text.
+    /// </summary>
+    /// <param name="control">Control to update.</param>
+    /// <param name="selectedValue">Displayed item text to select.</param>
+    public void SetControlSelectedValue(WindowControlInfo control, string selectedValue) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        if (selectedValue == null) {
+            throw new ArgumentNullException(nameof(selectedValue));
+        }
+
+        if (control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero) {
+            WindowInfo window = ResolveParentWindow(control);
+            if (!new UiAutomationControlService().TrySetSelectedValue(window, control, selectedValue)) {
+                throw new InvalidOperationException("The UI Automation control selection could not be updated.");
+            }
+
+            return;
+        }
+
+        EnsureControlSupportsNativeSelection(control, "selected generically");
+        WindowControlService.SetSelectedValue(control, selectedValue);
+    }
+
+    /// <summary>
+    /// Selects a combo-box-style item for a control resolved by window and control handle.
+    /// </summary>
+    /// <param name="windowHandle">Parent window handle.</param>
+    /// <param name="controlHandle">Control handle.</param>
+    /// <param name="selectedValue">Displayed item text to select.</param>
+    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
+    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
+    public void SetControlSelectedValue(IntPtr windowHandle, IntPtr controlHandle, string selectedValue, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+        if (control == null) {
+            throw new InvalidOperationException("Failed to resolve the requested control.");
+        }
+
+        SetControlSelectedValue(control, selectedValue);
     }
 
     /// <summary>
@@ -1704,6 +1778,289 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Saves a reusable visual baseline image and metadata definition.
+    /// </summary>
+    public DesktopVisualBaselineDefinition SaveVisualBaseline(string name, WindowQueryOptions options, string? targetName, bool clientArea, string? description = null) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        WindowInfo window = ResolveSingleWindow(options);
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        using DesktopCapture capture = CaptureWindowForVisualObservation(window.Handle, normalizedTargetName, clientArea);
+
+        string metadataPath = DesktopStateStore.GetVisualBaselinePath(name);
+        string imagePath = DesktopStateStore.GetVisualBaselineImagePath(name);
+        capture.Bitmap.Save(imagePath, System.Drawing.Imaging.ImageFormat.Png);
+
+        var definition = new DesktopVisualBaselineDefinition {
+            Description = description,
+            TargetName = normalizedTargetName,
+            ClientArea = normalizedTargetName == null && clientArea,
+            Width = capture.Bitmap.Width,
+            Height = capture.Bitmap.Height,
+            CreatedUtc = DateTime.UtcNow.ToString("O")
+        };
+
+        File.WriteAllText(metadataPath, JsonSerializer.Serialize(definition, TargetSerializerOptions));
+        return definition;
+    }
+
+    /// <summary>
+    /// Gets a previously saved visual baseline definition.
+    /// </summary>
+    public DesktopVisualBaselineDefinition GetVisualBaseline(string name) {
+        string path = DesktopStateStore.GetVisualBaselinePath(name);
+        if (!File.Exists(path)) {
+            throw new InvalidOperationException($"Named visual baseline '{name}' was not found.");
+        }
+
+        DesktopVisualBaselineDefinition? definition = JsonSerializer.Deserialize<DesktopVisualBaselineDefinition>(File.ReadAllText(path));
+        if (definition == null) {
+            throw new InvalidOperationException($"Named visual baseline '{name}' could not be read.");
+        }
+
+        return definition;
+    }
+
+    /// <summary>
+    /// Lists saved visual baseline names.
+    /// </summary>
+    public IReadOnlyList<string> ListVisualBaselines() {
+        return DesktopStateStore.ListNames("visual-baselines");
+    }
+
+    /// <summary>
+    /// Compares a live window capture to a saved visual baseline.
+    /// </summary>
+    public DesktopVisualBaselineAssertionResult AssertVisualBaseline(string name, WindowQueryOptions options, string? targetName = null, bool? clientArea = null, double maxChangedRatio = 0.01, int differenceThreshold = 24) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (maxChangedRatio < 0 || maxChangedRatio > 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxChangedRatio), "The maximum changed ratio must be between 0 and 1.");
+        }
+
+        if (differenceThreshold < 0 || differenceThreshold > 255) {
+            throw new ArgumentOutOfRangeException(nameof(differenceThreshold), "The difference threshold must be between 0 and 255.");
+        }
+
+        DesktopVisualBaselineDefinition definition = GetVisualBaseline(name);
+        string imagePath = DesktopStateStore.GetVisualBaselineImagePath(name);
+        if (!File.Exists(imagePath)) {
+            throw new InvalidOperationException($"Named visual baseline '{name}' does not have a saved image.");
+        }
+
+        WindowInfo window = ResolveSingleWindow(options);
+        string? effectiveTargetName = string.IsNullOrWhiteSpace(targetName) ? definition.TargetName : targetName.Trim();
+        bool effectiveClientArea = string.IsNullOrWhiteSpace(effectiveTargetName) && (clientArea ?? definition.ClientArea);
+        using Bitmap baselineBitmap = new(imagePath);
+        using DesktopCapture currentCapture = CaptureWindowForVisualObservation(window.Handle, effectiveTargetName, effectiveClientArea);
+        DesktopVisualDifferenceMetrics metrics = ScreenshotService.CompareBitmaps(
+            baselineBitmap,
+            currentCapture.Bitmap,
+            differenceThreshold);
+
+        return new DesktopVisualBaselineAssertionResult {
+            Matched = !metrics.SizeChanged && metrics.ChangedSampleRatio <= maxChangedRatio,
+            Baseline = definition,
+            Window = currentCapture.Window ?? window,
+            Geometry = currentCapture.Geometry ?? DescribeWindowGeometry(window),
+            TargetName = effectiveTargetName,
+            ClientArea = string.IsNullOrWhiteSpace(effectiveTargetName) && effectiveClientArea,
+            MaxChangedRatio = maxChangedRatio,
+            DifferenceThreshold = differenceThreshold,
+            Metrics = metrics
+        };
+    }
+
+    /// <summary>
+    /// Searches a live window capture for the best location of a saved visual baseline image.
+    /// </summary>
+    public DesktopVisualBaselineResolveResult ResolveVisualBaseline(string name, WindowQueryOptions options, bool clientArea = true, double maxAverageDifference = 12.0, int differenceThreshold = 24, int scanStep = 8) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (maxAverageDifference < 0 || maxAverageDifference > 255) {
+            throw new ArgumentOutOfRangeException(nameof(maxAverageDifference), "The maximum average difference must be between 0 and 255.");
+        }
+
+        DesktopVisualBaselineDefinition definition = GetVisualBaseline(name);
+        string imagePath = DesktopStateStore.GetVisualBaselineImagePath(name);
+        if (!File.Exists(imagePath)) {
+            throw new InvalidOperationException($"Named visual baseline '{name}' does not have a saved image.");
+        }
+
+        WindowInfo window = ResolveSingleWindow(options);
+        using Bitmap baselineBitmap = new(imagePath);
+        using DesktopCapture searchCapture = CaptureWindowForVisualObservation(window.Handle, targetName: null, clientArea);
+        DesktopVisualBitmapMatch match = ScreenshotService.FindBestBitmapMatch(
+            baselineBitmap,
+            searchCapture.Bitmap,
+            differenceThreshold,
+            scanStep);
+
+        DesktopWindowGeometry geometry = searchCapture.Geometry ?? DescribeWindowGeometry(window);
+        int screenLeft = clientArea ? geometry.ClientLeft + match.RelativeX : geometry.WindowLeft + match.RelativeX;
+        int screenTop = clientArea ? geometry.ClientTop + match.RelativeY : geometry.WindowTop + match.RelativeY;
+
+        return new DesktopVisualBaselineResolveResult {
+            Matched = !match.Metrics.SizeChanged && match.Metrics.AverageDifference <= maxAverageDifference,
+            Baseline = definition,
+            Window = searchCapture.Window ?? window,
+            Geometry = geometry,
+            ClientArea = clientArea,
+            MaxAverageDifference = maxAverageDifference,
+            DifferenceThreshold = differenceThreshold,
+            ScanStep = match.ScanStep,
+            EvaluatedPositionCount = match.EvaluatedPositionCount,
+            RelativeX = match.RelativeX,
+            RelativeY = match.RelativeY,
+            Width = match.Width,
+            Height = match.Height,
+            ScreenX = screenLeft,
+            ScreenY = screenTop,
+            Metrics = match.Metrics
+        };
+    }
+
+    /// <summary>
+    /// Reads OCR text from a live window, client area, or named target region.
+    /// </summary>
+    public DesktopWindowTextReadResult ReadWindowText(WindowQueryOptions options, string? targetName = null, bool clientArea = true, string? languageTag = null) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        WindowInfo window = ResolveSingleWindow(options);
+        DesktopWindowGeometry geometry = DescribeWindowGeometry(window);
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        DesktopOcrReadResult ocrResult;
+        int captureScreenX;
+        int captureScreenY;
+
+        if (!string.IsNullOrWhiteSpace(normalizedTargetName)) {
+            DesktopResolvedWindowTarget target = ResolveWindowTargets(CreatePinnedWindowQuery(window), normalizedTargetName, all: false).FirstOrDefault()
+                ?? throw new InvalidOperationException($"Named target '{normalizedTargetName}' could not be resolved against the requested window.");
+            if (!target.ScreenWidth.HasValue || !target.ScreenHeight.HasValue) {
+                throw new InvalidOperationException($"Named target '{normalizedTargetName}' does not define a capture area.");
+            }
+
+            using Bitmap bitmap = ScreenshotService.CaptureRegion(target.ScreenX, target.ScreenY, target.ScreenWidth.Value, target.ScreenHeight.Value);
+            ocrResult = ScreenshotService.ReadText(bitmap, languageTag);
+            geometry = target.Geometry;
+            captureScreenX = target.ScreenX;
+            captureScreenY = target.ScreenY;
+        } else if (clientArea) {
+            using DesktopCapture capture = CaptureWindowClientArea(window.Handle);
+            ocrResult = ScreenshotService.ReadText(capture.Bitmap, languageTag);
+            geometry = capture.Geometry ?? geometry;
+            captureScreenX = geometry.ClientLeft;
+            captureScreenY = geometry.ClientTop;
+        } else {
+            using DesktopCapture capture = CaptureWindow(options);
+            ocrResult = ScreenshotService.ReadText(capture.Bitmap, languageTag);
+            geometry = capture.Geometry ?? geometry;
+            captureScreenX = geometry.WindowLeft;
+            captureScreenY = geometry.WindowTop;
+        }
+
+        return new DesktopWindowTextReadResult {
+            Window = window,
+            Geometry = geometry,
+            TargetName = normalizedTargetName,
+            ClientArea = normalizedTargetName == null && clientArea,
+            CaptureScreenX = captureScreenX,
+            CaptureScreenY = captureScreenY,
+            LanguageTag = ocrResult.LanguageTag,
+            Text = ocrResult.Text,
+            Lines = CloneOcrLines(ocrResult.Lines)
+        };
+    }
+
+    /// <summary>
+    /// Resolves the best OCR text match inside a live window, client area, or named target region.
+    /// </summary>
+    public DesktopWindowTextResolveResult ResolveWindowText(WindowQueryOptions options, string queryText, bool contains = false, string? targetName = null, bool clientArea = true, string? languageTag = null) {
+        DesktopWindowTextReadResult readResult = ReadWindowText(options, targetName, clientArea, languageTag);
+        return ResolveWindowTextMatch(readResult, queryText, contains);
+    }
+
+    /// <summary>
+    /// Resolves the best OCR text match inside a previously captured OCR result.
+    /// </summary>
+    internal static DesktopWindowTextResolveResult ResolveWindowTextMatch(DesktopWindowTextReadResult source, string queryText, bool contains = false) {
+        if (source == null) {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        if (string.IsNullOrWhiteSpace(queryText)) {
+            throw new ArgumentException("A non-empty OCR query is required.", nameof(queryText));
+        }
+
+        string normalizedQuery = NormalizeOcrSearchText(queryText);
+        var candidates = new List<(int Priority, int LengthDelta, int Area, string MatchKind, string MatchedText, int X, int Y, int Width, int Height, IReadOnlyList<DesktopOcrWord> Words)>();
+
+        foreach (DesktopOcrLine line in source.Lines) {
+            TryAddTextMatchCandidate(candidates, line.Text, "line", line.X, line.Y, line.Width, line.Height, line.Words, normalizedQuery, contains);
+            foreach (DesktopOcrWord word in line.Words) {
+                TryAddTextMatchCandidate(candidates, word.Text, "word", word.X, word.Y, word.Width, word.Height, new[] { word }, normalizedQuery, contains);
+            }
+        }
+
+        var unmatched = new DesktopWindowTextResolveResult {
+            Matched = false,
+            QueryText = queryText.Trim(),
+            ContainsMatch = contains,
+            Window = source.Window,
+            Geometry = source.Geometry,
+            TargetName = source.TargetName,
+            ClientArea = source.ClientArea,
+            LanguageTag = source.LanguageTag,
+            CandidateCount = 0
+        };
+
+        if (candidates.Count == 0) {
+            return unmatched;
+        }
+
+        var best = candidates
+            .OrderBy(candidate => candidate.Priority)
+            .ThenBy(candidate => candidate.LengthDelta)
+            .ThenBy(candidate => candidate.Area)
+            .ThenBy(candidate => candidate.Y)
+            .ThenBy(candidate => candidate.X)
+            .First();
+
+        int screenX = source.CaptureScreenX + best.X;
+        int screenY = source.CaptureScreenY + best.Y;
+        return new DesktopWindowTextResolveResult {
+            Matched = true,
+            QueryText = queryText.Trim(),
+            ContainsMatch = contains,
+            Window = source.Window,
+            Geometry = source.Geometry,
+            TargetName = source.TargetName,
+            ClientArea = source.ClientArea,
+            LanguageTag = source.LanguageTag,
+            MatchKind = best.MatchKind,
+            MatchedText = best.MatchedText,
+            CandidateCount = candidates.Count,
+            RelativeX = best.X,
+            RelativeY = best.Y,
+            Width = best.Width,
+            Height = best.Height,
+            ScreenX = screenX,
+            ScreenY = screenY,
+            ActionX = screenX + Math.Max(0, best.Width / 2),
+            ActionY = screenY + Math.Max(0, best.Height / 2),
+            Words = CloneOcrWords(best.Words)
+        };
+    }
+
+    /// <summary>
     /// Resolves a saved control target against one or more matching windows.
     /// </summary>
     public IReadOnlyList<DesktopResolvedControlTarget> ResolveControlTargets(WindowQueryOptions options, string targetName, bool allWindows = false, bool allControls = false) {
@@ -1864,6 +2221,124 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Clicks the center of the best live match for a saved visual baseline inside each matching window.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> ClickWindowVisualBaseline(WindowQueryOptions options, string baselineName, MouseButton button, bool activate, bool clientArea = true, double maxAverageDifference = 12.0, int differenceThreshold = 24, int scanStep = 8, bool all = false) {
+        if (string.IsNullOrWhiteSpace(baselineName)) {
+            throw new ArgumentException("A visual baseline name is required.", nameof(baselineName));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            if (activate) {
+                _windowManager.ActivateWindow(window);
+                Thread.Sleep(100);
+            }
+
+            DesktopVisualBaselineResolveResult resolution = ResolveVisualBaseline(
+                baselineName,
+                new WindowQueryOptions {
+                    Handle = window.Handle,
+                    ProcessId = unchecked((int)window.ProcessId),
+                    IncludeHidden = true,
+                    IncludeCloaked = true,
+                    IncludeOwned = true,
+                    IncludeEmptyTitles = true
+                },
+                clientArea,
+                maxAverageDifference,
+                differenceThreshold,
+                scanStep);
+
+            if (!resolution.Matched) {
+                throw new InvalidOperationException(
+                    $"Visual baseline '{baselineName}' could not be matched reliably in window '{window.Title}'. " +
+                    $"Average difference {resolution.Metrics.AverageDifference:F1} exceeded tolerance {maxAverageDifference:F1}.");
+            }
+
+            int screenCenterX = resolution.ScreenX + Math.Max(0, resolution.Width / 2);
+            int screenCenterY = resolution.ScreenY + Math.Max(0, resolution.Height / 2);
+            Thread.Sleep(50);
+            _windowManager.MoveMouse(screenCenterX, screenCenterY);
+            _windowManager.ClickMouse(button);
+        }
+
+        return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Clicks the best OCR text match inside each matching window.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> ClickWindowText(WindowQueryOptions options, string queryText, MouseButton button, bool activate, bool contains = false, string? targetName = null, bool clientArea = true, string? languageTag = null, bool all = false) {
+        if (string.IsNullOrWhiteSpace(queryText)) {
+            throw new ArgumentException("A non-empty OCR query is required.", nameof(queryText));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            if (activate) {
+                _windowManager.ActivateWindow(window);
+                Thread.Sleep(100);
+            }
+
+            DesktopWindowTextResolveResult resolution = ResolveWindowText(
+                CreatePinnedWindowQuery(window),
+                queryText,
+                contains,
+                targetName,
+                clientArea,
+                languageTag);
+
+            if (!resolution.Matched) {
+                throw new InvalidOperationException(
+                    $"Visible text '{queryText.Trim()}' could not be resolved in window '{window.Title}'.");
+            }
+
+            Thread.Sleep(50);
+            _windowManager.MoveMouse(resolution.ActionX, resolution.ActionY);
+            _windowManager.ClickMouse(button);
+        }
+
+        return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Scrolls at the best OCR text match inside each matching window.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> ScrollWindowText(WindowQueryOptions options, string queryText, int delta, bool activate, bool contains = false, string? targetName = null, bool clientArea = true, string? languageTag = null, bool all = false) {
+        if (string.IsNullOrWhiteSpace(queryText)) {
+            throw new ArgumentException("A non-empty OCR query is required.", nameof(queryText));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            if (activate) {
+                _windowManager.ActivateWindow(window);
+                Thread.Sleep(100);
+            }
+
+            DesktopWindowTextResolveResult resolution = ResolveWindowText(
+                CreatePinnedWindowQuery(window),
+                queryText,
+                contains,
+                targetName,
+                clientArea,
+                languageTag);
+
+            if (!resolution.Matched) {
+                throw new InvalidOperationException(
+                    $"Visible text '{queryText.Trim()}' could not be resolved in window '{window.Title}'.");
+            }
+
+            Thread.Sleep(50);
+            _windowManager.MoveMouse(resolution.ActionX, resolution.ActionY);
+            _windowManager.ScrollMouse(delta);
+        }
+
+        return RefreshWindows(windows);
+    }
+
+    /// <summary>
     /// Scrolls at a saved target relative to each matching window.
     /// </summary>
     public IReadOnlyList<WindowInfo> ScrollWindowTarget(WindowQueryOptions options, string targetName, int delta, bool activate, bool all = false) {
@@ -1880,6 +2355,52 @@ public sealed class DesktopAutomationService {
         }
 
         return RefreshWindows(targets.Select(target => target.Geometry.Window).ToArray());
+    }
+
+    /// <summary>
+    /// Scrolls at the center of the best live match for a saved visual baseline inside each matching window.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> ScrollWindowVisualBaseline(WindowQueryOptions options, string baselineName, int delta, bool activate, bool clientArea = true, double maxAverageDifference = 12.0, int differenceThreshold = 24, int scanStep = 8, bool all = false) {
+        if (string.IsNullOrWhiteSpace(baselineName)) {
+            throw new ArgumentException("A visual baseline name is required.", nameof(baselineName));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            if (activate) {
+                _windowManager.ActivateWindow(window);
+                Thread.Sleep(100);
+            }
+
+            DesktopVisualBaselineResolveResult resolution = ResolveVisualBaseline(
+                baselineName,
+                new WindowQueryOptions {
+                    Handle = window.Handle,
+                    ProcessId = unchecked((int)window.ProcessId),
+                    IncludeHidden = true,
+                    IncludeCloaked = true,
+                    IncludeOwned = true,
+                    IncludeEmptyTitles = true
+                },
+                clientArea,
+                maxAverageDifference,
+                differenceThreshold,
+                scanStep);
+
+            if (!resolution.Matched) {
+                throw new InvalidOperationException(
+                    $"Visual baseline '{baselineName}' could not be matched reliably in window '{window.Title}'. " +
+                    $"Average difference {resolution.Metrics.AverageDifference:F1} exceeded tolerance {maxAverageDifference:F1}.");
+            }
+
+            int screenCenterX = resolution.ScreenX + Math.Max(0, resolution.Width / 2);
+            int screenCenterY = resolution.ScreenY + Math.Max(0, resolution.Height / 2);
+            Thread.Sleep(50);
+            _windowManager.MoveMouse(screenCenterX, screenCenterY);
+            _windowManager.ScrollMouse(delta);
+        }
+
+        return RefreshWindows(windows);
     }
 
     /// <summary>
@@ -1903,6 +2424,102 @@ public sealed class DesktopAutomationService {
             DesktopResolvedWindowTarget startTarget = ResolveWindowTarget(startTargetName, startDefinition, geometry);
             DesktopResolvedWindowTarget endTarget = ResolveWindowTarget(endTargetName, endDefinition, geometry);
             _windowManager.DragMouse(button, startTarget.ScreenX, startTarget.ScreenY, endTarget.ScreenX, endTarget.ScreenY, stepDelayMilliseconds);
+        }
+
+        return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Drags between the centers of two saved visual-baseline matches inside each matching window.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> DragWindowVisualBaselines(WindowQueryOptions options, string startBaselineName, string endBaselineName, MouseButton button, int stepDelayMilliseconds, bool activate, bool clientArea = true, double maxAverageDifference = 12.0, int differenceThreshold = 24, int scanStep = 8, bool all = false) {
+        if (stepDelayMilliseconds < 0) {
+            throw new ArgumentOutOfRangeException(nameof(stepDelayMilliseconds), "stepDelayMilliseconds must be zero or greater.");
+        }
+
+        if (string.IsNullOrWhiteSpace(startBaselineName)) {
+            throw new ArgumentException("A starting visual baseline name is required.", nameof(startBaselineName));
+        }
+
+        if (string.IsNullOrWhiteSpace(endBaselineName)) {
+            throw new ArgumentException("An ending visual baseline name is required.", nameof(endBaselineName));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            if (activate) {
+                _windowManager.ActivateWindow(window);
+                Thread.Sleep(100);
+            }
+
+            WindowQueryOptions windowQuery = new() {
+                Handle = window.Handle,
+                ProcessId = unchecked((int)window.ProcessId),
+                IncludeHidden = true,
+                IncludeCloaked = true,
+                IncludeOwned = true,
+                IncludeEmptyTitles = true
+            };
+            DesktopVisualBaselineResolveResult startResolution = ResolveVisualBaseline(startBaselineName, windowQuery, clientArea, maxAverageDifference, differenceThreshold, scanStep);
+            DesktopVisualBaselineResolveResult endResolution = ResolveVisualBaseline(endBaselineName, windowQuery, clientArea, maxAverageDifference, differenceThreshold, scanStep);
+
+            if (!startResolution.Matched) {
+                throw new InvalidOperationException(
+                    $"Visual baseline '{startBaselineName}' could not be matched reliably in window '{window.Title}'. " +
+                    $"Average difference {startResolution.Metrics.AverageDifference:F1} exceeded tolerance {maxAverageDifference:F1}.");
+            }
+
+            if (!endResolution.Matched) {
+                throw new InvalidOperationException(
+                    $"Visual baseline '{endBaselineName}' could not be matched reliably in window '{window.Title}'. " +
+                    $"Average difference {endResolution.Metrics.AverageDifference:F1} exceeded tolerance {maxAverageDifference:F1}.");
+            }
+
+            int startCenterX = startResolution.ScreenX + Math.Max(0, startResolution.Width / 2);
+            int startCenterY = startResolution.ScreenY + Math.Max(0, startResolution.Height / 2);
+            int endCenterX = endResolution.ScreenX + Math.Max(0, endResolution.Width / 2);
+            int endCenterY = endResolution.ScreenY + Math.Max(0, endResolution.Height / 2);
+            _windowManager.DragMouse(button, startCenterX, startCenterY, endCenterX, endCenterY, stepDelayMilliseconds);
+        }
+
+        return RefreshWindows(windows);
+    }
+
+    /// <summary>
+    /// Drags between two OCR-resolved visible text anchors inside each matching window.
+    /// </summary>
+    public IReadOnlyList<WindowInfo> DragWindowText(WindowQueryOptions options, string startQueryText, string endQueryText, MouseButton button, int stepDelayMilliseconds, bool activate, bool contains = false, string? startTargetName = null, string? endTargetName = null, bool clientArea = true, string? languageTag = null, bool all = false) {
+        if (stepDelayMilliseconds < 0) {
+            throw new ArgumentOutOfRangeException(nameof(stepDelayMilliseconds), "stepDelayMilliseconds must be zero or greater.");
+        }
+
+        if (string.IsNullOrWhiteSpace(startQueryText)) {
+            throw new ArgumentException("A non-empty starting OCR query is required.", nameof(startQueryText));
+        }
+
+        if (string.IsNullOrWhiteSpace(endQueryText)) {
+            throw new ArgumentException("A non-empty ending OCR query is required.", nameof(endQueryText));
+        }
+
+        IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
+        foreach (WindowInfo window in windows) {
+            if (activate) {
+                _windowManager.ActivateWindow(window);
+                Thread.Sleep(100);
+            }
+
+            WindowQueryOptions pinnedWindow = CreatePinnedWindowQuery(window);
+            DesktopWindowTextResolveResult startResolution = ResolveWindowText(pinnedWindow, startQueryText, contains, startTargetName, clientArea, languageTag);
+            DesktopWindowTextResolveResult endResolution = ResolveWindowText(pinnedWindow, endQueryText, contains, endTargetName, clientArea, languageTag);
+            if (!startResolution.Matched) {
+                throw new InvalidOperationException($"Visible text '{startQueryText.Trim()}' could not be resolved in window '{window.Title}'.");
+            }
+
+            if (!endResolution.Matched) {
+                throw new InvalidOperationException($"Visible text '{endQueryText.Trim()}' could not be resolved in window '{window.Title}'.");
+            }
+
+            _windowManager.DragMouse(button, startResolution.ActionX, startResolution.ActionY, endResolution.ActionX, endResolution.ActionY, stepDelayMilliseconds);
         }
 
         return RefreshWindows(windows);
@@ -1985,6 +2602,34 @@ public sealed class DesktopAutomationService {
         IReadOnlyList<WindowControlTargetInfo> controls = RequireControls(windowOptions, controlOptions, allWindows, allControls);
         foreach (WindowControlTargetInfo control in controls) {
             SetControlText(control.Window, control.Control, text, controlOptions?.EnsureForegroundWindow ?? false, controlOptions?.AllowForegroundInputFallback ?? false);
+        }
+
+        return controls;
+    }
+
+    /// <summary>
+    /// Sets the checked state on matching controls.
+    /// </summary>
+    public IReadOnlyList<WindowControlTargetInfo> SetControlCheckState(WindowQueryOptions windowOptions, WindowControlQueryOptions? controlOptions, bool check, bool allWindows = false, bool allControls = false) {
+        IReadOnlyList<WindowControlTargetInfo> controls = RequireControls(windowOptions, controlOptions, allWindows, allControls);
+        foreach (WindowControlTargetInfo control in controls) {
+            SetControlCheckState(control.Control, check);
+        }
+
+        return controls;
+    }
+
+    /// <summary>
+    /// Selects a displayed value on matching controls.
+    /// </summary>
+    public IReadOnlyList<WindowControlTargetInfo> SetControlSelectedValue(WindowQueryOptions windowOptions, WindowControlQueryOptions? controlOptions, string selectedValue, bool allWindows = false, bool allControls = false) {
+        if (selectedValue == null) {
+            throw new ArgumentNullException(nameof(selectedValue));
+        }
+
+        IReadOnlyList<WindowControlTargetInfo> controls = RequireControls(windowOptions, controlOptions, allWindows, allControls);
+        foreach (WindowControlTargetInfo control in controls) {
+            SetControlSelectedValue(control.Control, selectedValue);
         }
 
         return controls;
@@ -2384,6 +3029,98 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Waits until a matching window, client area, or named target changes visually.
+    /// </summary>
+    public DesktopWindowVisualChangeObservation WaitForWindowVisualChange(
+        WindowQueryOptions options,
+        string? targetName,
+        bool clientArea,
+        int timeoutMilliseconds,
+        int intervalMilliseconds,
+        double minimumChangedRatio = 0.01,
+        int differenceThreshold = 24) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (minimumChangedRatio < 0 || minimumChangedRatio > 1) {
+            throw new ArgumentOutOfRangeException(nameof(minimumChangedRatio), "The minimum changed ratio must be between 0 and 1.");
+        }
+
+        if (differenceThreshold < 0 || differenceThreshold > 255) {
+            throw new ArgumentOutOfRangeException(nameof(differenceThreshold), "The difference threshold must be between 0 and 255.");
+        }
+
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
+
+        WindowInfo baselineWindow = ResolveSingleWindow(options);
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        using DesktopCapture baselineCapture = CaptureWindowForVisualObservation(baselineWindow.Handle, normalizedTargetName, clientArea);
+        return WaitForWindowVisualChange(
+            baselineWindow,
+            baselineCapture,
+            normalizedTargetName,
+            clientArea,
+            timeoutMilliseconds,
+            intervalMilliseconds,
+            minimumChangedRatio,
+            differenceThreshold);
+    }
+
+    internal DesktopWindowVisualChangeObservation WaitForWindowVisualChange(
+        WindowInfo baselineWindow,
+        DesktopCapture baselineCapture,
+        string? targetName,
+        bool clientArea,
+        int timeoutMilliseconds,
+        int intervalMilliseconds,
+        double minimumChangedRatio = 0.01,
+        int differenceThreshold = 24) {
+        if (baselineWindow == null) {
+            throw new ArgumentNullException(nameof(baselineWindow));
+        }
+
+        if (baselineCapture == null) {
+            throw new ArgumentNullException(nameof(baselineCapture));
+        }
+
+        if (minimumChangedRatio < 0 || minimumChangedRatio > 1) {
+            throw new ArgumentOutOfRangeException(nameof(minimumChangedRatio), "The minimum changed ratio must be between 0 and 1.");
+        }
+
+        if (differenceThreshold < 0 || differenceThreshold > 255) {
+            throw new ArgumentOutOfRangeException(nameof(differenceThreshold), "The difference threshold must be between 0 and 255.");
+        }
+
+        ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
+
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
+            using DesktopCapture currentCapture = CaptureWindowForVisualObservation(baselineWindow.Handle, normalizedTargetName, clientArea);
+            DesktopVisualDifferenceMetrics metrics = ScreenshotService.CompareBitmaps(
+                baselineCapture.Bitmap,
+                currentCapture.Bitmap,
+                differenceThreshold);
+            if (metrics.ChangedSampleRatio >= minimumChangedRatio) {
+                return new DesktopWindowVisualChangeObservation {
+                    ElapsedMilliseconds = (int)stopwatch.ElapsedMilliseconds,
+                    Window = currentCapture.Window ?? ResolveWindowByHandle(baselineWindow.Handle),
+                    Geometry = currentCapture.Geometry ?? DescribeWindowGeometry(ResolveWindowByHandle(baselineWindow.Handle)),
+                    TargetName = normalizedTargetName,
+                    ClientArea = normalizedTargetName == null && clientArea,
+                    MinimumChangedRatio = minimumChangedRatio,
+                    Metrics = metrics
+                };
+            }
+
+            Thread.Sleep(intervalMilliseconds);
+        }
+
+        throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a visible change in the matching window.");
+    }
+
+    /// <summary>
     /// Gets clipboard text when Unicode text is currently available.
     /// </summary>
     public string? GetClipboardText(int retryCount = 5, int retryDelayMilliseconds = 50) {
@@ -2770,6 +3507,17 @@ public sealed class DesktopAutomationService {
         return ResolveWindows(options, all: false)[0];
     }
 
+    private static WindowQueryOptions CreatePinnedWindowQuery(WindowInfo window) {
+        return new WindowQueryOptions {
+            Handle = window.Handle,
+            ProcessId = unchecked((int)window.ProcessId),
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        };
+    }
+
     private WindowInfo? TryResolveSingleWindow(WindowQueryOptions options) {
         IReadOnlyList<WindowInfo> windows = GetMatchingWindows(options, all: false);
         return windows.Count > 0 ? windows[0] : null;
@@ -2804,6 +3552,38 @@ public sealed class DesktopAutomationService {
         }
     }
 
+    private static void EnsureControlSupportsNativeCheckState(WindowControlInfo control, string actionDescription) {
+        EnsureControlSupportsNativeStateChange(control, actionDescription);
+        if (!WindowControlService.SupportsCheckState(control)) {
+            throw new InvalidOperationException($"The selected control does not expose a native check state and cannot be {actionDescription} generically.");
+        }
+    }
+
+    private static void EnsureControlSupportsNativeSelection(WindowControlInfo control, string actionDescription) {
+        EnsureControlSupportsNativeStateChange(control, actionDescription);
+        if (!WindowControlService.SupportsSelection(control)) {
+            throw new InvalidOperationException($"The selected control does not expose a native selection model and cannot be {actionDescription}.");
+        }
+    }
+
+    private DesktopCapture CaptureWindowForVisualObservation(IntPtr windowHandle, string? targetName, bool clientArea) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetName)) {
+            return CaptureWindowTarget(new WindowQueryOptions {
+                Handle = windowHandle,
+                IncludeHidden = true,
+                IncludeCloaked = true,
+                IncludeOwned = true,
+                IncludeEmptyTitles = true
+            }, targetName);
+        }
+
+        return clientArea ? CaptureWindowClientArea(windowHandle) : CaptureWindow(windowHandle);
+    }
+
     private WindowInfo ResolveWindowByHandle(IntPtr windowHandle) {
         if (windowHandle == IntPtr.Zero) {
             throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
@@ -2813,17 +3593,50 @@ public sealed class DesktopAutomationService {
             ?? throw new InvalidOperationException("The requested window could not be resolved.");
     }
 
-    private static DesktopControlState CreateControlState(WindowInfo window, WindowControlInfo control) {
+    private DesktopControlState CreateControlState(WindowInfo window, WindowControlInfo control) {
         bool? isVisible = control.Handle != IntPtr.Zero
             ? MonitorNativeMethods.IsWindowVisible(control.Handle)
             : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null;
         bool? isEnabled = control.Handle != IntPtr.Zero
             ? MonitorNativeMethods.IsWindowEnabled(control.Handle)
             : control.IsEnabled;
+        UiAutomationControlService? uiAutomation = control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero
+            ? new UiAutomationControlService()
+            : null;
+        string liveText = control.Handle != IntPtr.Zero
+            ? WindowTextHelper.GetWindowText(control.Handle)
+            : string.Empty;
+        string selectedValue = control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)
+            ? WindowControlService.GetSelectedValue(control)
+            : uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty;
+        string uiAutomationValue = uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty;
+        string resolvedText = !string.IsNullOrWhiteSpace(liveText)
+            ? liveText
+            : !string.IsNullOrWhiteSpace(selectedValue)
+                ? selectedValue
+                : !string.IsNullOrWhiteSpace(control.Text)
+                    ? control.Text
+                    : uiAutomationValue;
+        string resolvedValue = !string.IsNullOrWhiteSpace(selectedValue)
+            ? selectedValue
+            : !string.IsNullOrWhiteSpace(liveText)
+                ? liveText
+                : !string.IsNullOrWhiteSpace(control.Value)
+                    ? control.Value
+                    : !string.IsNullOrWhiteSpace(uiAutomationValue)
+                        ? uiAutomationValue
+                        : resolvedText;
         bool? isFocused = null;
         IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
         if (focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero) {
             isFocused = focusedHandle == control.Handle;
+        }
+
+        bool? isChecked = null;
+        if (control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control)) {
+            isChecked = WindowControlService.GetCheckState(control);
+        } else if (uiAutomation != null) {
+            isChecked = uiAutomation.TryReadCheckState(window, control);
         }
 
         return new DesktopControlState {
@@ -2832,13 +3645,15 @@ public sealed class DesktopAutomationService {
             ClassName = control.ClassName,
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
-            Text = control.Text,
-            Value = control.Value,
+            Text = resolvedText,
+            Value = resolvedValue,
             IsEnabled = isEnabled,
             IsVisible = isVisible,
             IsFocused = isFocused,
             IsKeyboardFocusable = control.IsKeyboardFocusable,
             IsOffscreen = control.IsOffscreen,
+            IsChecked = isChecked,
+            SelectedValue = selectedValue,
             SupportsBackgroundClick = control.SupportsBackgroundClick,
             SupportsBackgroundText = control.SupportsBackgroundText,
             SupportsBackgroundKeys = control.SupportsBackgroundKeys,
@@ -3406,6 +4221,69 @@ public sealed class DesktopAutomationService {
         }
 
         return handles;
+    }
+
+    private static IReadOnlyList<DesktopOcrLine> CloneOcrLines(IReadOnlyList<DesktopOcrLine> lines) {
+        return lines.Select(line => new DesktopOcrLine {
+            Text = line.Text,
+            X = line.X,
+            Y = line.Y,
+            Width = line.Width,
+            Height = line.Height,
+            Words = CloneOcrWords(line.Words)
+        }).ToArray();
+    }
+
+    private static IReadOnlyList<DesktopOcrWord> CloneOcrWords(IReadOnlyList<DesktopOcrWord> words) {
+        return words.Select(word => new DesktopOcrWord {
+            Text = word.Text,
+            X = word.X,
+            Y = word.Y,
+            Width = word.Width,
+            Height = word.Height
+        }).ToArray();
+    }
+
+    private static void TryAddTextMatchCandidate(
+        ICollection<(int Priority, int LengthDelta, int Area, string MatchKind, string MatchedText, int X, int Y, int Width, int Height, IReadOnlyList<DesktopOcrWord> Words)> candidates,
+        string candidateText,
+        string matchKind,
+        int x,
+        int y,
+        int width,
+        int height,
+        IReadOnlyList<DesktopOcrWord> words,
+        string normalizedQuery,
+        bool contains) {
+        string normalizedCandidate = NormalizeOcrSearchText(candidateText);
+        if (string.IsNullOrWhiteSpace(normalizedCandidate)) {
+            return;
+        }
+
+        bool exactMatch = string.Equals(normalizedCandidate, normalizedQuery, StringComparison.OrdinalIgnoreCase);
+        bool matched = exactMatch || contains && normalizedCandidate.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase);
+        if (!matched) {
+            return;
+        }
+
+        int priority = exactMatch
+            ? string.Equals(matchKind, "word", StringComparison.Ordinal) ? 0 : 1
+            : string.Equals(matchKind, "word", StringComparison.Ordinal) ? 2 : 3;
+        candidates.Add((
+            priority,
+            Math.Abs(normalizedCandidate.Length - normalizedQuery.Length),
+            Math.Max(1, width) * Math.Max(1, height),
+            matchKind,
+            candidateText,
+            x,
+            y,
+            width,
+            height,
+            CloneOcrWords(words)));
+    }
+
+    private static string NormalizeOcrSearchText(string value) {
+        return Regex.Replace(value ?? string.Empty, "\\s+", " ").Trim();
     }
 
     private static string? GetProcessNameHint(string filePath) {

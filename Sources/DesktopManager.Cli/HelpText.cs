@@ -16,6 +16,7 @@ Groups:
   process    Start desktop applications
   screenshot Capture the desktop, monitors, or windows
   target     Save and resolve reusable window-relative targets
+  visual     Save visual baselines and inspect screenshot text
   control-target Save and resolve reusable control selector targets
   layout     Save, apply, and list named layouts
   snapshot   Save, restore, and list named snapshots
@@ -33,6 +34,8 @@ Examples:
   desktopmanager process start-and-wait notepad.exe --timeout-ms 5000
   desktopmanager screenshot desktop
   desktopmanager target save editor-center --x-ratio 0.5 --y-ratio 0.5 --client-area
+  desktopmanager visual save editor-default --process notepad --client-area
+  desktopmanager visual read-text --process notepad --client-area
   desktopmanager control-target save edge-address --control-type Edit --background-text --uia
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400
   desktopmanager monitor list --json
@@ -52,6 +55,7 @@ Use:
   desktopmanager help process
   desktopmanager help screenshot
   desktopmanager help target
+  desktopmanager help visual
   desktopmanager help control-target
   desktopmanager help layout
   desktopmanager help snapshot
@@ -71,9 +75,9 @@ Window commands:
   desktopmanager window exists [selector] [--json]
   desktopmanager window active-matches [selector] [--json]
   desktopmanager window move [selector] [--monitor <index>] [--x <value>] [--y <value>] [--width <value>] [--height <value>] [--activate] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
-  desktopmanager window click [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name>) [--button <left|right>] [--activate] [--client-area] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
-  desktopmanager window drag [selector] (((--start-x <value> --start-y <value>) | (--start-x-ratio <value> --start-y-ratio <value>)) ((--end-x <value> --end-y <value>) | (--end-x-ratio <value> --end-y-ratio <value>)) | (--start-target <name> --end-target <name>)) [--button <left|right>] [--step-delay-ms <value>] [--activate] [--client-area] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
-  desktopmanager window scroll [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name>) --delta <value> [--activate] [--client-area] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window click [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name> | --visual-baseline <name> | --ocr-text <text>) [--button <left|right>] [--activate] [--client-area] [--ocr-target <name>] [--ocr-contains] [--ocr-language <tag>] [--baseline-max-average-difference <value>] [--baseline-difference-threshold <value>] [--baseline-scan-step <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window drag [selector] (((--start-x <value> --start-y <value>) | (--start-x-ratio <value> --start-y-ratio <value>)) ((--end-x <value> --end-y <value>) | (--end-x-ratio <value> --end-y-ratio <value>)) | (--start-target <name> --end-target <name>) | (--start-visual-baseline <name> --end-visual-baseline <name>) | (--start-ocr-text <text> --end-ocr-text <text>)) [--button <left|right>] [--step-delay-ms <value>] [--activate] [--client-area] [--start-ocr-target <name>] [--end-ocr-target <name>] [--ocr-contains] [--ocr-language <tag>] [--baseline-max-average-difference <value>] [--baseline-difference-threshold <value>] [--baseline-scan-step <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window scroll [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name> | --visual-baseline <name> | --ocr-text <text>) --delta <value> [--activate] [--client-area] [--ocr-target <name>] [--ocr-contains] [--ocr-language <tag>] [--baseline-max-average-difference <value>] [--baseline-difference-threshold <value>] [--baseline-scan-step <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window focus [selector] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window keep-alive-list [--json]
   desktopmanager window keep-alive-start [selector] [--interval-ms <value>] [--all] [--json]
@@ -89,6 +93,7 @@ Window commands:
   desktopmanager window type [selector] --text <value> [--paste] [--foreground-input] [--physical-keys] [--hosted-session] [--script] [--chunk-size <value>] [--line-delay-ms <value>] [--delay-ms <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window keys [selector] --keys <value>[,<value>...] [--no-activate] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window wait [selector] [--timeout-ms <value>] [--interval-ms <value>] [--all] [--json]
+  desktopmanager window wait-visual-change [selector] [--target <name>] [--client-area] [--timeout-ms <value>] [--interval-ms <value>] [--minimum-changed-ratio <value>] [--difference-threshold <value>] [--json]
 
 Selectors:
   --title <pattern>
@@ -103,6 +108,13 @@ Selectors:
   --artifact-directory <path>
   --verify
   --verify-tolerance-px <value>
+  --wait-visual-change
+  --visual-target <name>
+  --visual-client-area
+  --visual-timeout-ms <value>
+  --visual-interval-ms <value>
+  --minimum-changed-ratio <value>
+  --difference-threshold <value>
 
 Examples:
   desktopmanager window list --title "*Notepad*" --json
@@ -114,12 +126,21 @@ Examples:
   desktopmanager window click --process notepad --x 200 --y 200 --client-area
   desktopmanager window click --process notepad --x-ratio 0.5 --y-ratio 0.5 --client-area
   desktopmanager window click --process notepad --target editor-center
+  desktopmanager window click --process notepad --visual-baseline apply-button --client-area --baseline-max-average-difference 10
+  desktopmanager window click --process notepad --ocr-text Apply --client-area
+  desktopmanager window click --process msedge --ocr-text "Sign in" --ocr-contains --client-area
   desktopmanager window drag --process notepad --start-x 200 --start-y 200 --end-x 500 --end-y 200 --client-area
   desktopmanager window drag --process notepad --start-x-ratio 0.2 --start-y-ratio 0.2 --end-x-ratio 0.6 --end-y-ratio 0.2 --client-area
+  desktopmanager window drag --process notepad --start-visual-baseline drag-source --end-visual-baseline drop-target --client-area
+  desktopmanager window drag --process notepad --start-ocr-text "Drag Source" --end-ocr-text "Drop Target" --ocr-contains --client-area
+  desktopmanager window wait-visual-change --process msedge --client-area --timeout-ms 5000
+  desktopmanager window wait-visual-change --process msedge --target edge-editor-pane --minimum-changed-ratio 0.005 --timeout-ms 5000 --json
   desktopmanager window drag --process notepad --start-target editor-center --end-target editor-right
   desktopmanager window scroll --process notepad --x 200 --y 200 --delta -120 --client-area
   desktopmanager window scroll --process notepad --x-ratio 0.5 --y-ratio 0.5 --delta -120 --client-area
   desktopmanager window scroll --process notepad --target editor-center --delta -120
+  desktopmanager window scroll --process notepad --visual-baseline editor-clean --delta -120 --client-area
+  desktopmanager window scroll --process notepad --ocr-text "Page 1" --ocr-contains --client-area
   desktopmanager window type --active --text "Hello world"
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "safe probe" --foreground-input
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "safe probe" --physical-keys
@@ -146,6 +167,11 @@ Notes:
   Hosted-session typing stops immediately if foreground ownership changes mid-input.
   Hosted-session harness diagnostics are written under Artifacts\HostedSessionTyping with a .json snapshot and a companion .summary.txt file.
   --verify re-queries the mutated window and reports observed postconditions instead of only the request outcome.
+  --wait-visual-change waits for real pixel change after a mutation and can observe the whole window, the client area, or a saved visual target region.
+  --visual-baseline resolves a saved visual region and clicks the center of the best live match before the action continues.
+  The same baseline tuning flags also apply to visual-baseline drag and scroll targeting.
+  --ocr-text resolves a visible text label through Windows OCR and clicks its best live match without requiring pre-saved targets.
+  The same OCR anchor model also applies to drag and scroll targeting through `--start-ocr-text` / `--end-ocr-text` and `--ocr-text`.
 """;
     }
 
@@ -195,6 +221,45 @@ Examples:
   desktopmanager target get editor-center --json
   desktopmanager target list
   desktopmanager target resolve editor-center --process notepad --json
+""";
+    }
+
+    public static string GetVisualHelp() {
+        return """
+Visual commands:
+  desktopmanager visual save <name> [selector] [--target <name>] [--client-area] [--description <text>] [--json]
+  desktopmanager visual get <name> [--json]
+  desktopmanager visual list [--json]
+  desktopmanager visual assert <name> [selector] [--target <name>] [--client-area] [--max-changed-ratio <value>] [--difference-threshold <value>] [--json]
+  desktopmanager visual resolve <name> [selector] [--client-area] [--max-average-difference <value>] [--difference-threshold <value>] [--scan-step <value>] [--json]
+  desktopmanager visual read-text [selector] [--target <name>] [--client-area] [--language <tag>] [--json]
+  desktopmanager visual resolve-text <text> [selector] [--target <name>] [--client-area] [--contains] [--language <tag>] [--json]
+
+Selectors:
+  --title <pattern>
+  --process <pattern>
+  --class <pattern>
+  --pid <id>
+  --handle <value>
+  --active
+
+Examples:
+  desktopmanager visual save editor-default --process notepad --client-area
+  desktopmanager visual get editor-default --json
+  desktopmanager visual list
+  desktopmanager visual assert editor-default --process notepad --client-area --max-changed-ratio 0.005
+  desktopmanager visual resolve editor-default --process notepad --client-area --max-average-difference 10 --json
+  desktopmanager visual read-text --process notepad --client-area --json
+  desktopmanager visual resolve-text APPLY --process notepad --client-area
+  desktopmanager visual assert edge-editor-pane --process msedge --target edge-editor-pane --difference-threshold 18 --json
+
+Notes:
+  Visual baselines store a PNG image plus metadata under the current user's AppData profile.
+  Saved baselines can reuse a named window target, the whole window, or the client area.
+  Visual assertions compare sampled pixels, so use tighter ratios for stable UI and looser ratios for animated surfaces.
+  Visual resolve searches a whole window or client area for the saved baseline image and returns the best sampled match coordinates.
+  Visual read-text runs Windows OCR over the selected capture and returns line and word bounds relative to that capture.
+  Visual resolve-text returns the best OCR match coordinates so agents can click visible UI by label without pre-saved targets.
 """;
     }
 
@@ -293,6 +358,13 @@ Control selectors:
   --capture-before
   --capture-after
   --artifact-directory <path>
+  --wait-visual-change
+  --visual-target <name>
+  --visual-client-area
+  --visual-timeout-ms <value>
+  --visual-interval-ms <value>
+  --minimum-changed-ratio <value>
+  --difference-threshold <value>
 
 Examples:
   desktopmanager control list --window-process notepad --json
@@ -315,6 +387,11 @@ Examples:
   desktopmanager control click --window-process notepad --class Edit
   desktopmanager control set-text --window-process notepad --class Edit --text "Hello world"
   desktopmanager control send-keys --window-process notepad --class Edit --keys VK_CONTROL,VK_A
+
+Notes:
+  Use --allow-foreground-input only when the control target is a zero-handle UIA surface that cannot be updated safely in the background.
+  Saved control targets preserve capability hints such as background-text and UIA selection filters, which makes repeat automation less brittle.
+  --wait-visual-change can confirm that a control mutation changed the visible parent window even when structural verification is weak.
 """;
     }
 

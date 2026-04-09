@@ -249,4 +249,68 @@ public class UiAutomationControlServiceTests {
     public void IsLikelyEditableControl_ButtonShape_ReturnsFalse() {
         Assert.IsFalse(UiAutomationControlService.IsLikelyEditableControl("Button", "Button"));
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures desktop-root fallback prefers a window-sized container over a small inner child.
+    /// </summary>
+    public void ScoreDesktopSearchRootCandidate_WindowSizedPane_OutranksSmallInnerEdit() {
+        var windowRect = new RECT {
+            Left = 100,
+            Top = 200,
+            Right = 860,
+            Bottom = 1100
+        };
+        var largePane = new WindowControlInfo {
+            ControlType = "Pane",
+            Left = 108,
+            Top = 208,
+            Width = 744,
+            Height = 884
+        };
+        var smallEdit = new WindowControlInfo {
+            ControlType = "Edit",
+            Left = 560,
+            Top = 1010,
+            Width = 220,
+            Height = 44
+        };
+
+        int largePaneScore = UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, largePane);
+        int smallEditScore = UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, smallEdit);
+
+        Assert.IsTrue(largePaneScore > smallEditScore,
+            $"Expected the large container to outrank the small inner control, but got pane={largePaneScore}, edit={smallEditScore}.");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures non-overlapping or offscreen candidates are rejected by desktop-root scoring.
+    /// </summary>
+    public void ScoreDesktopSearchRootCandidate_OffscreenOrNonIntersecting_ReturnsZero() {
+        var windowRect = new RECT {
+            Left = 100,
+            Top = 200,
+            Right = 860,
+            Bottom = 1100
+        };
+        var offscreenCandidate = new WindowControlInfo {
+            ControlType = "Pane",
+            Left = 108,
+            Top = 208,
+            Width = 744,
+            Height = 884,
+            IsOffscreen = true
+        };
+        var nonIntersectingCandidate = new WindowControlInfo {
+            ControlType = "Pane",
+            Left = 1200,
+            Top = 1600,
+            Width = 300,
+            Height = 200
+        };
+
+        Assert.AreEqual(0, UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, offscreenCandidate));
+        Assert.AreEqual(0, UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, nonIntersectingCandidate));
+    }
 }

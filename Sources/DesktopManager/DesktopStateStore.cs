@@ -81,17 +81,45 @@ public static class DesktopStateStore {
     }
 
     /// <summary>
+    /// Gets the path for a named visual baseline metadata file.
+    /// </summary>
+    /// <param name="name">Visual baseline name.</param>
+    /// <returns>The full metadata path.</returns>
+    public static string GetVisualBaselinePath(string name) {
+        return GetNamedPath("visual-baselines", name);
+    }
+
+    /// <summary>
+    /// Gets the PNG image path for a named visual baseline.
+    /// </summary>
+    /// <param name="name">Visual baseline name.</param>
+    /// <returns>The full image path.</returns>
+    public static string GetVisualBaselineImagePath(string name) {
+        return GetNamedImagePath("visual-baselines", name);
+    }
+
+    /// <summary>
     /// Lists stored names for a given category.
     /// </summary>
     /// <param name="category">Storage category.</param>
     /// <returns>The stored names.</returns>
     public static IReadOnlyList<string> ListNames(string category) {
+        return ListNames(category, "*.json");
+    }
+
+    /// <summary>
+    /// Lists stored names for a given category and file pattern.
+    /// </summary>
+    /// <param name="category">Storage category.</param>
+    /// <param name="searchPattern">Search pattern such as <c>*.json</c> or <c>*.png</c>.</param>
+    /// <returns>The stored names.</returns>
+    public static IReadOnlyList<string> ListNames(string category, string searchPattern) {
         string directory = GetCategoryDirectory(category);
         if (!Directory.Exists(directory)) {
             return Array.Empty<string>();
         }
 
-        return Directory.GetFiles(directory, "*.json")
+        return Directory.GetFiles(directory, searchPattern)
             .Select(path => Path.GetFileNameWithoutExtension(path))
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -133,6 +161,17 @@ public static class DesktopStateStore {
         string directory = GetCategoryDirectory(category);
         Directory.CreateDirectory(directory);
         return Path.Combine(directory, sanitized + ".json");
+    }
+
+    private static string GetNamedImagePath(string category, string name) {
+        if (string.IsNullOrWhiteSpace(name)) {
+            throw new ArgumentException("A name is required.", nameof(name));
+        }
+
+        string sanitized = SanitizeName(name);
+        string directory = GetCategoryDirectory(category);
+        Directory.CreateDirectory(directory);
+        return Path.Combine(directory, sanitized + ".png");
     }
 
     private static string GetCategoryDirectory(string category) {

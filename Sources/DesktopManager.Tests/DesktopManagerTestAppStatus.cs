@@ -45,5 +45,67 @@ internal sealed class DesktopManagerTestAppStatus {
 
     public string CommandBarText { get; set; } = string.Empty;
 
+    public long CommandBarHostHandle { get; set; }
+
+    public bool WebViewReady { get; set; }
+
+    public string WebViewStatusText { get; set; } = string.Empty;
+
+    public string WebViewPromptText { get; set; } = string.Empty;
+
+    public string WebViewDomStatusText { get; set; } = string.Empty;
+
+    public string WebViewLastEvent { get; set; } = string.Empty;
+
+    public long WebViewHostHandle { get; set; }
+
     public string StatusText { get; set; } = string.Empty;
+
+    public bool AutomationCheckBoxChecked { get; set; }
+
+    public long AutomationCheckBoxHandle { get; set; }
+
+    public string SelectedOption { get; set; } = string.Empty;
+
+    public long OptionsComboBoxHandle { get; set; }
+
+    public string BasicActionStatus { get; set; } = string.Empty;
+
+    public long ApplyButtonHandle { get; set; }
+
+    public long ScrollListHandle { get; set; }
+
+    public int ScrollTopIndex { get; set; }
+
+    public string ScrollTopItemText { get; set; } = string.Empty;
+
+    public string ScrollStatusText { get; set; } = string.Empty;
+
+    public string DragPayload { get; set; } = string.Empty;
+
+    public string DroppedText { get; set; } = string.Empty;
+
+    public int DragDropCount { get; set; }
+
+    public string DragDropStatus { get; set; } = string.Empty;
+
+    public DesktopManagerTestAppControlBounds EditorBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds CommandBarHostBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds WebViewHostBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds WebViewClientBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds AutomationCheckBoxBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds OptionsComboBoxBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds ApplyButtonBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds ScrollListBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds DragSourceBounds { get; set; } = new();
+
+    public DesktopManagerTestAppControlBounds DropTargetBounds { get; set; } = new();
 }
