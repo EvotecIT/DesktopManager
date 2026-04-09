@@ -1786,7 +1786,7 @@ public sealed class DesktopAutomationService {
         }
 
         WindowInfo window = ResolveSingleWindow(options);
-        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName!.Trim();
         using DesktopCapture capture = CaptureWindowForVisualObservation(window.Handle, normalizedTargetName, clientArea);
 
         string metadataPath = DesktopStateStore.GetVisualBaselinePath(name);
@@ -1853,7 +1853,7 @@ public sealed class DesktopAutomationService {
         }
 
         WindowInfo window = ResolveSingleWindow(options);
-        string? effectiveTargetName = string.IsNullOrWhiteSpace(targetName) ? definition.TargetName : targetName.Trim();
+        string? effectiveTargetName = string.IsNullOrWhiteSpace(targetName) ? definition.TargetName : targetName!.Trim();
         bool effectiveClientArea = string.IsNullOrWhiteSpace(effectiveTargetName) && (clientArea ?? definition.ClientArea);
         using Bitmap baselineBitmap = new(imagePath);
         using DesktopCapture currentCapture = CaptureWindowForVisualObservation(window.Handle, effectiveTargetName, effectiveClientArea);
@@ -1936,13 +1936,13 @@ public sealed class DesktopAutomationService {
 
         WindowInfo window = ResolveSingleWindow(options);
         DesktopWindowGeometry geometry = DescribeWindowGeometry(window);
-        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName!.Trim();
         DesktopOcrReadResult ocrResult;
         int captureScreenX;
         int captureScreenY;
 
         if (!string.IsNullOrWhiteSpace(normalizedTargetName)) {
-            DesktopResolvedWindowTarget target = ResolveWindowTargets(CreatePinnedWindowQuery(window), normalizedTargetName, all: false).FirstOrDefault()
+            DesktopResolvedWindowTarget target = ResolveWindowTargets(CreatePinnedWindowQuery(window), normalizedTargetName!, all: false).FirstOrDefault()
                 ?? throw new InvalidOperationException($"Named target '{normalizedTargetName}' could not be resolved against the requested window.");
             if (!target.ScreenWidth.HasValue || !target.ScreenHeight.HasValue) {
                 throw new InvalidOperationException($"Named target '{normalizedTargetName}' does not define a capture area.");
@@ -3054,7 +3054,7 @@ public sealed class DesktopAutomationService {
         ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
 
         WindowInfo baselineWindow = ResolveSingleWindow(options);
-        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName!.Trim();
         using DesktopCapture baselineCapture = CaptureWindowForVisualObservation(baselineWindow.Handle, normalizedTargetName, clientArea);
         return WaitForWindowVisualChange(
             baselineWindow,
@@ -3094,7 +3094,7 @@ public sealed class DesktopAutomationService {
 
         ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
 
-        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName.Trim();
+        string? normalizedTargetName = string.IsNullOrWhiteSpace(targetName) ? null : targetName!.Trim();
         Stopwatch stopwatch = Stopwatch.StartNew();
         while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
             using DesktopCapture currentCapture = CaptureWindowForVisualObservation(baselineWindow.Handle, normalizedTargetName, clientArea);
@@ -3578,7 +3578,7 @@ public sealed class DesktopAutomationService {
                 IncludeCloaked = true,
                 IncludeOwned = true,
                 IncludeEmptyTitles = true
-            }, targetName);
+            }, targetName!);
         }
 
         return clientArea ? CaptureWindowClientArea(windowHandle) : CaptureWindow(windowHandle);

@@ -1597,11 +1597,12 @@ internal sealed class UiAutomationControlService {
                 return null;
             }
 
-            if (toggleStateName.EndsWith("On", StringComparison.OrdinalIgnoreCase)) {
+            string toggleStateText = toggleStateName!;
+            if (toggleStateText.EndsWith("On", StringComparison.OrdinalIgnoreCase)) {
                 return true;
             }
 
-            if (toggleStateName.EndsWith("Off", StringComparison.OrdinalIgnoreCase)) {
+            if (toggleStateText.EndsWith("Off", StringComparison.OrdinalIgnoreCase)) {
                 return false;
             }
 

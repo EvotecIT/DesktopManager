@@ -427,7 +427,7 @@ public class McpServerTests {
   "ImagePath": "C:\\Temp\\resource-visual-baseline.png",
   "CreatedUtc": "2026-04-09T10:00:00Z"
 }
-""".Replace("%VISUAL_NAME%", visualBaselineName, StringComparison.Ordinal));
+""".Replace("%VISUAL_NAME%", visualBaselineName));
             client.CallTool(3, "save_control_target", new Dictionary<string, object?> {
                 ["name"] = controlTargetName,
                 ["description"] = "Resource test control",
