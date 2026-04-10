@@ -16,6 +16,7 @@ desktopmanager window geometry
 desktopmanager window exists
 desktopmanager window active-matches
 desktopmanager window wait
+desktopmanager window wait-visual-change
 desktopmanager window type
 desktopmanager window keys
 desktopmanager window move
@@ -47,6 +48,12 @@ desktopmanager target save
 desktopmanager target get
 desktopmanager target list
 desktopmanager target resolve
+
+desktopmanager visual save
+desktopmanager visual get
+desktopmanager visual list
+desktopmanager visual assert
+desktopmanager visual resolve
 
 desktopmanager control-target save
 desktopmanager control-target get
@@ -80,6 +87,7 @@ desktopmanager mcp serve --dry-run
 - `snapshot` stores named JSON files under `%AppData%\DesktopManager\snapshots`.
 - `screenshot` stores generated PNG files under `%AppData%\DesktopManager\captures` when `--output` is not provided.
 - `target` stores reusable JSON target definitions under `%AppData%\DesktopManager\targets`.
+- `visual` stores reusable JSON metadata plus PNG baseline images under `%AppData%\DesktopManager\visual-baselines`.
 - `control-target` stores reusable JSON control selector definitions under `%AppData%\DesktopManager\control-targets`.
 - `monitor list` reports the desktop-coordinate bounds used by monitor screenshots.
 - snapshots currently reuse the window layout format and are therefore windows-only for now.
@@ -88,6 +96,17 @@ desktopmanager mcp serve --dry-run
 - `process start-and-wait` now packages the safer unattended launch flow: start the app, bind the follow-up wait to the launched process, return the resolved window result, and optionally capture before/after evidence.
 - `process start-and-wait --follow-process-family` is an explicit opt-in for apps that surface their visible window from a same-name helper or broker process after launch-time correlation finishes.
 - `window wait` polls for a matching window and returns when one appears.
+- `window wait-visual-change` polls a matching window, client area, or saved target region until the pixels materially change, which makes opaque modern-app flows verifiable without depending on structural UIA exposure.
+- `visual save` captures a reusable baseline for a whole window, the client area, or a saved target region so later runs can assert that the same UI still looks right.
+- `visual assert` compares a live window, client area, or saved target region against a stored baseline and returns sampled change metrics instead of forcing agents to hand-roll image diffs.
+- `visual resolve` searches a live window or client area for a previously saved baseline image and returns the best match coordinates, which makes saved visual regions reusable as anchors instead of screenshot-only artifacts.
+- `visual read-text` runs Windows OCR over a live window, client area, or saved target region and returns recognized text plus line and word bounds.
+- `visual resolve-text` turns that OCR output into a reusable text anchor by returning the best visible match coordinates for a query string.
+- `window click --ocr-text <text>` turns that same OCR text-anchor path into a direct action, so visible labels can drive clicks without pre-saved targets or app-specific adapters.
+- `window drag --start-ocr-text <text> --end-ocr-text <text>` and `window scroll --ocr-text <text>` extend that same OCR text-anchor path to richer pointer actions, so visually obvious surfaces can stay generic even when structure is weak.
+- `window click --visual-baseline <name>` turns that saved visual region into a direct action path, so agents can click a previously seen button or panel without first hand-copying resolved coordinates.
+- `window drag --start-visual-baseline <name> --end-visual-baseline <name>` and `window scroll --visual-baseline <name>` extend that same anchor model to richer pointer actions.
+- anchor-driven window mutations now return the resolved region and action point they actually used, which makes debugging and agent retries much more concrete.
 - `window exists` and `window active-matches` provide non-mutating verification commands.
 - `control exists` and `control wait` provide the same inspect-first verification model for controls.
 - `control assert-value` adds a stronger reusable assertion when a workflow depends on the resolved field content, not just control presence.
@@ -125,6 +144,8 @@ desktopmanager mcp serve --dry-run
 - workflow results can include `resolvedWindow` for the explicit target window when the workflow can resolve it, but callers should still treat focus and target resolution as best-effort and rely on `Notes` when Windows blocks the normal path.
 - `layout assert` now verifies that the current desktop satisfies a saved named layout within configurable geometry tolerances and optional state matching, which makes saved layouts reusable as assertions instead of restore-only state.
 - `window click`, `window drag`, and `window scroll` provide shared window-relative fallbacks for modern apps when structural control discovery is unavailable.
+- `window wait-visual-change` is the matching non-mutating verification primitive for those fallback actions, so agents can wait for real visual change instead of guessing from timing alone.
+- mutating `window` and `control` commands can now also ask for built-in visual-change verification, which waits for a real pixel delta after the action and returns the observed change metrics in the same structured result.
 - `window` commands support exact handle targeting and active-window targeting for safer selection when multiple windows match.
 - `window geometry` returns both outer-window and client-area bounds, which makes screenshot-assisted targeting much easier.
 - `window click`, `window drag`, and `window scroll` now also support normalized ratios from `0` to `1` for less brittle targeting.
@@ -166,6 +187,10 @@ desktopmanager mcp serve --dry-run
 - `window keys` rounds out the shared whole-window input path for accelerators and commit keys without forcing agents back into ad-hoc foreground hacks.
 - `window click`, `window drag`, and `window scroll` give CLI, MCP, and PowerShell the same coordinate-based fallback path when UIA-heavy apps stay opaque.
 - `target` turns screenshot-assisted coordinate fallback into reusable state instead of one-off manual ratios.
+- `visual` turns screenshot-assisted verification into reusable state instead of making every workflow keep one-off reference images and custom compare logic.
+- the same saved visual baseline can now double as a reusable template anchor, so agents can relocate a previously seen button or panel before clicking it.
+- that same anchor can now drive `window click` directly, which is a better fit for generic operator loops than forcing a separate resolve step in every caller.
+- the same anchor family now also drives drag and scroll, which means a previously saved visual region can remain useful even when the next interaction is not a simple click.
 - area-capable `target` definitions now let the shared core reuse visual regions, not just click points.
 - `control-target` turns modern-app control discovery into reusable state instead of repeating long UIA selector sets each time.
 - `workflow` packages a few multi-step desktop routines into shared structured results instead of leaving them as prompts or one-off agent logic.
@@ -185,6 +210,7 @@ desktopmanager mcp serve --dry-run
 - preferred UIA root reuse only helps inside a long-lived process like MCP or an in-process wait loop. Separate one-shot CLI invocations still start fresh.
 - the short-lived UIA control cache is also process-local, so it mainly helps MCP, in-process waits, and repeated diagnostics inside the same host session.
 - For opaque modern apps, the most reliable fallback flow is now: `screenshot window --json`, inspect `Geometry`, then use ratio-based `window click`, `window drag`, or `window scroll` with `--client-area`.
+- For opaque modern apps, pair that fallback with `window wait-visual-change` for immediate feedback and `visual save` / `visual assert` when the workflow needs a reusable “still looks right” checkpoint across runs.
 
 ## Screenshot-Assisted Target Flow
 
@@ -196,6 +222,17 @@ desktopmanager target save edge-editor-pane --x-ratio 0.1 --y-ratio 0.15 --width
 desktopmanager target resolve edge-editor-pane --process msedge --json
 desktopmanager screenshot target edge-editor-pane --process msedge --json
 desktopmanager window click --process msedge --target edge-editor-pane
+desktopmanager window wait-visual-change --process msedge --target edge-editor-pane --timeout-ms 5000 --json
+desktopmanager visual save edge-editor-clean --process msedge --target edge-editor-pane --json
+desktopmanager visual resolve edge-editor-clean --process msedge --client-area --max-average-difference 10 --json
+desktopmanager visual read-text --process msedge --client-area --json
+desktopmanager visual resolve-text "Sign in" --process msedge --client-area --contains --json
+desktopmanager window click --process msedge --ocr-text "Sign in" --ocr-contains --client-area --json
+desktopmanager window drag --process msedge --start-ocr-text "Source" --end-ocr-text "Drop here" --ocr-contains --client-area --json
+desktopmanager window scroll --process msedge --ocr-text "Timeline" --delta -120 --ocr-contains --client-area --json
+desktopmanager window click --process msedge --visual-baseline edge-editor-clean --client-area --baseline-max-average-difference 10 --json
+desktopmanager window scroll --process msedge --visual-baseline edge-editor-clean --delta -120 --client-area --baseline-max-average-difference 10 --json
+desktopmanager visual assert edge-editor-clean --process msedge --target edge-editor-pane --max-changed-ratio 0.01 --json
 ```
 
 For reusable drags or scrolling, save more than one target and then reuse them from `window drag` or `window scroll` instead of repeating raw coordinates.

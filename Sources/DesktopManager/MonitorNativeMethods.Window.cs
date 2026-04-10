@@ -393,6 +393,12 @@ public static partial class MonitorNativeMethods
     public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
 
     /// <summary>
+    /// Sends a message to a window using a mutable string buffer parameter.
+    /// </summary>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, StringBuilder lParam);
+
+    /// <summary>
     /// Sends a message with a timeout.
     /// </summary>
     /// <param name="hWnd">Window handle.</param>

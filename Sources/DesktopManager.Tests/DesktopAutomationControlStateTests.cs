@@ -145,6 +145,105 @@ public class DesktopAutomationControlStateTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures check-state mutation can toggle a live WinForms checkbox resolved by handle.
+    /// </summary>
+    public void DesktopAutomationService_SetControlCheckState_TogglesLiveCheckbox() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowMutationTests();
+
+        const int wsChild = 0x40000000;
+        const int wsVisible = 0x10000000;
+        const int bsAutoCheckBox = 0x00000003;
+
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create("DesktopManager Check Control Harness");
+        IntPtr checkBoxHandle = MonitorNativeMethods.CreateWindowExW(
+            0,
+            "Button",
+            "Enable automation",
+            wsChild | wsVisible | bsAutoCheckBox,
+            10,
+            10,
+            160,
+            24,
+            harness.Form.Handle,
+            new IntPtr(1002),
+            IntPtr.Zero,
+            IntPtr.Zero);
+        if (checkBoxHandle == IntPtr.Zero) {
+            Assert.Inconclusive("Failed to create a native checkbox control for DesktopAutomationService testing.");
+        }
+
+        try {
+            DesktopAutomationService automation = new();
+            automation.SetControlCheckState(harness.Window.Handle, checkBoxHandle, false);
+            Application.DoEvents();
+            Task.Delay(100).Wait();
+
+            WindowControlInfo control = new() {
+                ParentWindowHandle = harness.Form.Handle,
+                Handle = checkBoxHandle,
+                ClassName = "Button",
+                Id = MonitorNativeMethods.GetDlgCtrlID(checkBoxHandle),
+                Text = "Enable automation"
+            };
+            Assert.IsFalse(WindowControlService.GetCheckState(control));
+
+            automation.SetControlCheckState(harness.Window.Handle, checkBoxHandle, true);
+            Application.DoEvents();
+            Task.Delay(100).Wait();
+
+            Assert.IsTrue(WindowControlService.GetCheckState(control));
+        } finally {
+            MonitorNativeMethods.DestroyWindow(checkBoxHandle);
+        }
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures combo-box selection can be changed through DesktopAutomationService using exact control handles.
+    /// </summary>
+    public void DesktopAutomationService_SetControlSelectedValue_UpdatesLiveComboBox() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowMutationTests();
+
+        ComboBox? comboBox = null;
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create(
+            "DesktopManager Combo Control Harness",
+            form => {
+                comboBox = new ComboBox {
+                    Name = "OptionsComboBox",
+                    Left = 12,
+                    Top = 12,
+                    Width = 180,
+                    DropDownStyle = ComboBoxStyle.DropDownList
+                };
+                comboBox.Items.AddRange(["Alpha", "Beta", "Gamma"]);
+                comboBox.SelectedIndex = 0;
+                form.Controls.Add(comboBox);
+            });
+
+        Assert.IsNotNull(comboBox);
+        DesktopAutomationService automation = new();
+        automation.SetControlSelectedValue(harness.Window.Handle, comboBox.Handle, "Beta");
+        Application.DoEvents();
+        Task.Delay(100).Wait();
+
+        Assert.AreEqual("Beta", comboBox.Text);
+
+        DesktopControlState? state = automation.GetControlState(harness.Window.Handle, comboBox.Handle);
+        Assert.IsNotNull(state);
+        Assert.AreEqual("Beta", state.SelectedValue);
+        Assert.AreEqual("Beta", state.Value);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures control focus can be redirected between live controls.
     /// </summary>
     public void DesktopAutomationService_FocusControl_FocusesLiveTextbox() {

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net472;net8.0-windows;net10.0-windows</TargetFrameworks>
+        <TargetFrameworks>net472;$(DesktopManagerNet8WindowsTfm);$(DesktopManagerNet10WindowsTfm)</TargetFrameworks>
         <Description>PowerShell Module for working Windows Desktop</Description>
         <AssemblyName>DesktopManager.PowerShell</AssemblyName>
         <AssemblyTitle>DesktopManager.PowerShell</AssemblyTitle>
@@ -44,7 +44,7 @@
         <Using Include="DesktopManager" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows'">
+    <ItemGroup Condition="'$(TargetFramework)' != '$(DesktopManagerNet10WindowsTfm)'">
         <!-- This is needed for XmlDoc2CmdletDoc to generate a PowerShell documentation. DLL itself
         will be removed/hidden -->
         <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.6.0">

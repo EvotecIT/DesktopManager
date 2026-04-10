@@ -24,12 +24,13 @@ public class ControlEnumerator {
                 SupportsBackgroundKeys = true
             };
 
-            info.Text = WindowTextHelper.GetWindowText(hWnd);
-            info.Value = info.Text;
-
             StringBuilder classSb = new StringBuilder(256);
             MonitorNativeMethods.GetClassName(hWnd, classSb, classSb.Capacity);
             info.ClassName = classSb.ToString();
+            info.Text = WindowTextHelper.GetWindowText(hWnd);
+            info.Value = WindowControlService.SupportsSelection(info)
+                ? WindowControlService.GetSelectedValue(info)
+                : info.Text;
             PopulateBounds(info, hWnd);
 
             controls.Add(info);

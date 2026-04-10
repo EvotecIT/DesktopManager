@@ -18,7 +18,7 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 
 1. `DesktopManager` is the shared desktop automation and evidence engine.
 2. `EasyControlX` is the remote session, preview, and transport layer.
-3. A Codex plugin exposes a long-lived MCP workflow for inspect -> act -> verify loops.
+3. A DesktopManager verification plugin exposes a long-lived MCP workflow for inspect -> act -> verify loops.
 4. Codex can safely verify real Windows work using screenshots, window/control inspection, targeted input, and artifact capture.
 
 ## What We Have Today
@@ -35,6 +35,14 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 - [x] Window move, snap, minimize, restore, and focus actions
 - [x] Window-relative click, drag, and scroll actions
 - [x] Named window targets
+- [x] Named visual baselines
+- [x] Visual baseline resolution for reusable pixel anchors
+- [x] OCR-backed window text extraction
+- [x] OCR-backed text-anchor resolution
+- [x] Direct click support for OCR-backed text anchors
+- [x] Direct drag/scroll support for OCR-backed text anchors
+- [x] Direct click support for saved visual-baseline anchors
+- [x] Direct drag/scroll support for saved visual-baseline anchors
 - [x] Named control targets
 - [x] Win32 and UI Automation control inspection
 - [x] Control click, text, and key actions
@@ -51,8 +59,21 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 - [x] Foreground-input opt-in
 - [x] Hosted-session and interactive-session awareness in the ecosystem
 - [x] Repo-owned test app for safer UI validation
+- [x] Repo-owned classic control matrix surface for textbox, checkbox, combo box, and button validation
 - [x] Better-than-basic window typing paths with fallback modes
 - [x] Geometry-aware window-relative mouse actions
+- [x] Built-in visual-change verification on mutating window/control actions
+- [x] Reusable visual baseline save/assert support for operator workflows
+- [x] Reusable visual baseline resolve support for operator workflows
+- [x] Direct mutation flow that can click a saved visual-baseline anchor
+- [x] Direct mutation flow that can drag and scroll from saved visual-baseline anchors
+- [x] Black-window regression coverage for WinUI and WebView-hosted window capture
+- [x] Hosted WPF command-bar discovery coverage
+- [x] WebView2 host and browser-root discovery coverage
+- [x] Inner WebView2 prompt discovery and text-mutation coverage
+- [x] Inner WebView2 button invoke coverage
+- [x] WebView2-hosted window capture parity coverage
+- [x] WinUI-hosted window capture parity coverage
 
 ### EasyControlX Today
 
@@ -135,6 +156,14 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 - [ ] Add stronger public APIs for remote-safe pointer and keyboard operations
 - [ ] Add public contracts for evidence and remote-session artifacts
 - [ ] Expand tests for real mouse movement, remote typing, and coordinate mapping
+- [ ] Add stronger public APIs for direct control state verification:
+- [x] checkbox state
+- [x] selected item
+- [x] UI Automation-backed checkbox state for zero-handle modern controls
+- [x] UI Automation-backed selected-value mutation for zero-handle modern controls
+- [x] Selector-based CLI/MCP mutation for zero-handle modern checkbox and picker controls
+- [x] button invoke outcome
+- [x] Add capture backends that can fall back from window render to desktop pixels without silently returning black artifacts
 
 ### G. EasyControlX Product Work
 
@@ -172,24 +201,33 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 - [x] Show a short next-step action cue on the preview overlay for live-session failure states
 - [x] Add clickable preview-overlay recovery buttons for live-session status and preview refresh
 
-### H. Codex Plugin and Skills
+### H. Verification Plugin and Skills
 
-- [ ] Create a dedicated local Codex plugin for Windows verification workflows
-- [ ] Add one MCP server definition that connects to the local or remote Windows host
-- [ ] Add a primary skill for inspect -> act -> verify desktop workflows
+- [x] Create a dedicated local verification plugin for Windows desktop workflows
+- [x] Add one MCP server definition that connects to the local Windows host
+- [x] Add a primary skill for inspect -> act -> verify desktop workflows
 - [ ] Add a skill for app smoke tests on Windows
 - [ ] Add a skill for visual verification and artifact capture
-- [ ] Add bootstrap scripts for host health checks, session startup, and artifact collection
+- [x] Add bootstrap scripts for host health checks and session startup
 - [ ] Make long-lived MCP sessions the default so UI Automation caches and state stay warm
 
 ### I. Test Harness and Validation
 
 - [x] Expand the repo-owned test app with remote-control scenarios
 - [x] Add scenarios for live typing into real edit fields
+- [x] Add scenarios for classic controls: checkbox, combo box, and button
 - [ ] Add scenarios for Chromium-style editable surfaces
+- [x] Add a WebView2-backed hosted browser surface for capture certification
+- [x] Add live discovery certification for hosted WPF inputs
+- [x] Add live discovery certification for WebView2 host and browser roots
+- [x] Add live text-mutation certification for inner WebView2 edit controls
+- [x] Add reliable invoke certification for inner WebView2 buttons
+- [x] Add scenarios for WinUI-hosted surfaces that are not classic child windows
 - [x] Add scenarios for drag and drop
 - [ ] Add scenarios for canvas or coordinate-driven interaction
 - [ ] Add end-to-end tests that prove "what was seen" matches "what was clicked"
+- [x] Add screenshot parity tests that compare window capture against desktop-crop evidence for the same live window
+- [x] Add end-to-end tests for checkbox toggle, combo selection, and button invoke verification
 - [x] Add end-to-end tests for service-hosted remote sessions, not only in-process calls
 
 ### J. Security and Policy
@@ -214,7 +252,7 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 - [ ] Document the remote session lifecycle
 - [ ] Document supported verification levels: structural, visual, interactive
 - [ ] Document safe operator guidance for live desktop sessions
-- [ ] Document how to install and use the Codex plugin locally
+- [x] Document how to install and use the verification plugin locally
 
 ## Suggested Delivery Phases
 
@@ -223,7 +261,7 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 - [ ] Decide the division of responsibility:
 - [ ] DesktopManager owns automation, coordinates, evidence, and capture primitives
 - [ ] EasyControlX owns transport, pairing, controller UX, and remote session lifecycle
-- [ ] Codex plugin owns MCP packaging, skills, and workflow guidance
+- [ ] Verification plugin owns MCP packaging, skills, and workflow guidance
 - [ ] Freeze the first session contract shape
 - [ ] Freeze the first capability model for remote view/input/control actions
 
@@ -234,7 +272,7 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 - [ ] Add richer evidence objects for actions
 - [x] Add EasyControlX attach-to-window session flow
 - [x] Add throttled live preview stream for a selected window or monitor
-- [ ] Add Codex plugin skeleton with one verification skill
+- [x] Add verification plugin skeleton with one verification skill
 
 ### Phase 2: Make It Feel Smooth
 
@@ -255,15 +293,15 @@ Create a smooth, safe, and verifiable Windows automation stack where:
 
 ## Definition of Done
 
-The stack is "smooth butter" for Codex when all of the following are true:
+The stack is "smooth butter" for MCP-capable desktop clients when all of the following are true:
 
-- [ ] Codex can start one long-lived MCP session against a Windows host
-- [ ] Codex can inspect windows, controls, and live frames in the same session
-- [ ] Codex can choose between absolute visual clicking and targeted control interaction
-- [ ] Codex can type into a selected window or control reliably
-- [ ] Codex can verify the result with structure plus screenshots
-- [ ] Codex can collect artifacts automatically when a workflow matters
-- [ ] Codex can run safely with clear host visibility, policies, and audit logs
+- [ ] The client can start one long-lived MCP session against a Windows host
+- [ ] The client can inspect windows, controls, and live frames in the same session
+- [ ] The client can choose between absolute visual clicking and targeted control interaction
+- [ ] The client can type into a selected window or control reliably
+- [ ] The client can verify the result with structure plus screenshots
+- [ ] The client can collect artifacts automatically when a workflow matters
+- [ ] The client can run safely with clear host visibility, policies, and audit logs
 - [ ] The main flows are covered by repo-owned end-to-end tests
 
 ## Immediate Next Recommended Steps
@@ -272,7 +310,15 @@ The stack is "smooth butter" for Codex when all of the following are true:
 - [x] Design the first remote session contract
 - [ ] Add DesktopManager coordinate-mapping helpers for remote sessions
 - [x] Add EasyControlX live window-session preview stream
-- [ ] Add a minimal Codex plugin skeleton with one MCP server and one skill
+- [x] Add a minimal verification plugin skeleton with one MCP server and one skill
+- [x] Turn `DesktopManager.TestApp` into a basic-control certification harness
+- [x] Add a separate minimal WebView2/WinUI harness that intentionally exercises modern opaque surfaces
+- [x] Add a WebView2-backed modern hosted surface inside `DesktopManager.TestApp`
+- [x] Add discovery-certification coverage for the hosted WPF command bar and WebView2 shell
+- [x] Add inner WebView2 edit-action certification and verified value writes
+- [x] Add DOM-backed verification for inner WebView2 actions
+- [x] Add a separate WinUI-hosted opaque surface once the browser-backed path is certified
+- [x] Add a capture-certification pass that fails if the window screenshot is black while the desktop crop is not
 - [ ] Build one golden-path end-to-end scenario:
 - [x] launch or attach to a test app
 - [x] stream the window

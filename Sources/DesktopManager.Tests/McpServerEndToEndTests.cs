@@ -798,14 +798,28 @@ public class McpServerEndToEndTests {
     private static string RequireTestAppExecutablePath() {
         DirectoryInfo? current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current != null) {
-            string candidate = Path.Combine(current.FullName, "Sources", "DesktopManager.TestApp", "bin", "Debug", "net8.0-windows", "DesktopManager.TestApp.exe");
-            if (File.Exists(candidate)) {
-                return candidate;
+            DirectoryInfo debugDirectory = new(Path.Combine(current.FullName, "Sources", "DesktopManager.TestApp", "bin", "Debug"));
+            if (debugDirectory.Exists) {
+                FileInfo? debugCandidate = debugDirectory
+                    .EnumerateDirectories("net8.0-windows*")
+                    .OrderByDescending(directory => directory.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(directory => new FileInfo(Path.Combine(directory.FullName, "DesktopManager.TestApp.exe")))
+                    .FirstOrDefault(file => file.Exists);
+                if (debugCandidate != null) {
+                    return debugCandidate.FullName;
+                }
             }
 
-            string releaseCandidate = Path.Combine(current.FullName, "Sources", "DesktopManager.TestApp", "bin", "Release", "net8.0-windows", "DesktopManager.TestApp.exe");
-            if (File.Exists(releaseCandidate)) {
-                return releaseCandidate;
+            DirectoryInfo releaseDirectory = new(Path.Combine(current.FullName, "Sources", "DesktopManager.TestApp", "bin", "Release"));
+            if (releaseDirectory.Exists) {
+                FileInfo? releaseCandidate = releaseDirectory
+                    .EnumerateDirectories("net8.0-windows*")
+                    .OrderByDescending(directory => directory.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(directory => new FileInfo(Path.Combine(directory.FullName, "DesktopManager.TestApp.exe")))
+                    .FirstOrDefault(file => file.Exists);
+                if (releaseCandidate != null) {
+                    return releaseCandidate.FullName;
+                }
             }
 
             current = current.Parent;

@@ -89,7 +89,7 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
         ResolveBinaryConflictsName        = 'DesktopManager.PowerShell'
         NETProjectName                    = 'DesktopManager.PowerShell'
         NETConfiguration                  = 'Release'
-        NETFramework                      = 'net8.0-windows', 'net472'
+        NETFramework                      = 'net8.0-windows10.0.19041.0', 'net472'
         NETSearchClass                    = 'DesktopManager.PowerShell.CmdletSetDesktopWallpaper'
         NETHandleAssemblyWithSameName     = $true
         NETBinaryModuleDocumenation       = $true

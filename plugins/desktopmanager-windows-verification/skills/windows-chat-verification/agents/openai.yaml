@@ -1,0 +1,10 @@
+display_name: Windows Chat Verification
+short_description: Verify real Windows chat-app workflows through DesktopManager MCP with inspect, act, and screenshot-backed confirmation.
+default_prompt: >-
+  Use DesktopManager MCP to verify a real Windows chat application. Inspect the
+  target window first, prefer control-aware actions over raw coordinates, use
+  diagnose_window_controls when modern app structure is weak, enable foreground
+  fallback only when explicitly allowed, and confirm the outcome with screenshots
+  and visible transcript changes. For IntelligenceX.Chat, prefer the app-owned
+  automation contract through ./scripts/invoke-intelligencex-chat-automation.ps1
+  when the visible WebView composer is not structurally actionable.

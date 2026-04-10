@@ -301,6 +301,531 @@ public sealed class DesktopControlWaitResult {
 }
 
 /// <summary>
+/// Represents sampled visual-difference metrics between two captures.
+/// </summary>
+public sealed class DesktopVisualDifferenceMetrics {
+    /// <summary>
+    /// Gets or sets the number of sampled points that were compared.
+    /// </summary>
+    public int SampleCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of sampled points whose difference exceeded the threshold.
+    /// </summary>
+    public int ChangedSampleCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ratio of changed sampled points from 0 to 1.
+    /// </summary>
+    public double ChangedSampleRatio { get; set; }
+
+    /// <summary>
+    /// Gets or sets the average sampled per-pixel difference from 0 to 255.
+    /// </summary>
+    public double AverageDifference { get; set; }
+
+    /// <summary>
+    /// Gets or sets the sampled comparison threshold from 0 to 255.
+    /// </summary>
+    public int DifferenceThreshold { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the compared captures had different dimensions.
+    /// </summary>
+    public bool SizeChanged { get; set; }
+}
+
+/// <summary>
+/// Represents the best sampled location of a template bitmap inside a larger capture.
+/// </summary>
+public sealed class DesktopVisualBitmapMatch {
+    /// <summary>
+    /// Gets or sets the matched X coordinate relative to the searched image.
+    /// </summary>
+    public int RelativeX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched Y coordinate relative to the searched image.
+    /// </summary>
+    public int RelativeY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched width in pixels.
+    /// </summary>
+    public int Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched height in pixels.
+    /// </summary>
+    public int Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the coarse scan step that was used.
+    /// </summary>
+    public int ScanStep { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many candidate positions were evaluated.
+    /// </summary>
+    public int EvaluatedPositionCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the best sampled difference metrics.
+    /// </summary>
+    public DesktopVisualDifferenceMetrics Metrics { get; set; } = new();
+}
+
+/// <summary>
+/// Represents a successful wait for visible change in a window capture.
+/// </summary>
+public sealed class DesktopWindowVisualChangeObservation {
+    /// <summary>
+    /// Gets or sets the elapsed wait time in milliseconds.
+    /// </summary>
+    public int ElapsedMilliseconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the observed window.
+    /// </summary>
+    public WindowInfo Window { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the observed window geometry.
+    /// </summary>
+    public DesktopWindowGeometry Geometry { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the optional named target used for capture.
+    /// </summary>
+    public string? TargetName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the comparison used the client area.
+    /// </summary>
+    public bool ClientArea { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum changed-sample ratio that was required.
+    /// </summary>
+    public double MinimumChangedRatio { get; set; }
+
+    /// <summary>
+    /// Gets or sets the sampled visual-difference metrics.
+    /// </summary>
+    public DesktopVisualDifferenceMetrics Metrics { get; set; } = new();
+}
+
+/// <summary>
+/// Represents a saved visual baseline definition and its persisted image metadata.
+/// </summary>
+public sealed class DesktopVisualBaselineDefinition {
+    /// <summary>
+    /// Gets or sets the optional description.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Gets or sets the saved named target used when capturing the baseline, when any.
+    /// </summary>
+    public string? TargetName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the baseline was captured from the client area when no named target was supplied.
+    /// </summary>
+    public bool ClientArea { get; set; }
+
+    /// <summary>
+    /// Gets or sets the saved image width.
+    /// </summary>
+    public int Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the saved image height.
+    /// </summary>
+    public int Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the UTC timestamp when the baseline was created.
+    /// </summary>
+    public string CreatedUtc { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Represents the result of comparing a live window capture against a saved visual baseline.
+/// </summary>
+public sealed class DesktopVisualBaselineAssertionResult {
+    /// <summary>
+    /// Gets or sets whether the live capture matched the saved baseline within the requested tolerance.
+    /// </summary>
+    public bool Matched { get; set; }
+
+    /// <summary>
+    /// Gets or sets the baseline metadata that was used.
+    /// </summary>
+    public DesktopVisualBaselineDefinition Baseline { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the observed window.
+    /// </summary>
+    public WindowInfo Window { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the observed geometry.
+    /// </summary>
+    public DesktopWindowGeometry Geometry { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the named target used for the comparison, when any.
+    /// </summary>
+    public string? TargetName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the comparison used the client area when no named target was supplied.
+    /// </summary>
+    public bool ClientArea { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum changed ratio allowed for a match.
+    /// </summary>
+    public double MaxChangedRatio { get; set; }
+
+    /// <summary>
+    /// Gets or sets the difference threshold used during the comparison.
+    /// </summary>
+    public int DifferenceThreshold { get; set; }
+
+    /// <summary>
+    /// Gets or sets the sampled comparison metrics.
+    /// </summary>
+    public DesktopVisualDifferenceMetrics Metrics { get; set; } = new();
+}
+
+/// <summary>
+/// Represents the best location of a saved visual baseline inside a live window capture.
+/// </summary>
+public sealed class DesktopVisualBaselineResolveResult {
+    /// <summary>
+    /// Gets or sets whether the best sampled location matched within the requested tolerance.
+    /// </summary>
+    public bool Matched { get; set; }
+
+    /// <summary>
+    /// Gets or sets the baseline metadata that was used.
+    /// </summary>
+    public DesktopVisualBaselineDefinition Baseline { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the observed window.
+    /// </summary>
+    public WindowInfo Window { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the observed geometry.
+    /// </summary>
+    public DesktopWindowGeometry Geometry { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets whether the search ran inside the client area.
+    /// </summary>
+    public bool ClientArea { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum average sampled difference allowed for a successful match.
+    /// </summary>
+    public double MaxAverageDifference { get; set; }
+
+    /// <summary>
+    /// Gets or sets the difference threshold used while evaluating sampled pixels.
+    /// </summary>
+    public int DifferenceThreshold { get; set; }
+
+    /// <summary>
+    /// Gets or sets the coarse scan step used during the initial search.
+    /// </summary>
+    public int ScanStep { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many candidate positions were evaluated.
+    /// </summary>
+    public int EvaluatedPositionCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched X coordinate relative to the searched bounds.
+    /// </summary>
+    public int RelativeX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched Y coordinate relative to the searched bounds.
+    /// </summary>
+    public int RelativeY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched width in pixels.
+    /// </summary>
+    public int Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched height in pixels.
+    /// </summary>
+    public int Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched screen-space X coordinate.
+    /// </summary>
+    public int ScreenX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the matched screen-space Y coordinate.
+    /// </summary>
+    public int ScreenY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the best sampled comparison metrics for the match candidate.
+    /// </summary>
+    public DesktopVisualDifferenceMetrics Metrics { get; set; } = new();
+}
+
+/// <summary>
+/// Represents OCR text extracted from a bitmap.
+/// </summary>
+public sealed class DesktopOcrReadResult {
+    /// <summary>
+    /// Gets or sets the recognizer language tag that produced the result.
+    /// </summary>
+    public string LanguageTag { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the full recognized text.
+    /// </summary>
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the recognized lines with bitmap-relative bounds.
+    /// </summary>
+    public IReadOnlyList<DesktopOcrLine> Lines { get; set; } = new List<DesktopOcrLine>();
+}
+
+/// <summary>
+/// Represents a recognized OCR line inside a bitmap.
+/// </summary>
+public sealed class DesktopOcrLine {
+    /// <summary>
+    /// Gets or sets the recognized line text.
+    /// </summary>
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative X coordinate.
+    /// </summary>
+    public int X { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative Y coordinate.
+    /// </summary>
+    public int Y { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative width.
+    /// </summary>
+    public int Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative height.
+    /// </summary>
+    public int Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the recognized words for the line.
+    /// </summary>
+    public IReadOnlyList<DesktopOcrWord> Words { get; set; } = new List<DesktopOcrWord>();
+}
+
+/// <summary>
+/// Represents a recognized OCR word inside a bitmap.
+/// </summary>
+public sealed class DesktopOcrWord {
+    /// <summary>
+    /// Gets or sets the recognized word text.
+    /// </summary>
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative X coordinate.
+    /// </summary>
+    public int X { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative Y coordinate.
+    /// </summary>
+    public int Y { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative width.
+    /// </summary>
+    public int Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative height.
+    /// </summary>
+    public int Height { get; set; }
+}
+
+/// <summary>
+/// Represents OCR text extracted from a window, client area, or named target capture.
+/// </summary>
+public sealed class DesktopWindowTextReadResult {
+    /// <summary>
+    /// Gets or sets the observed window.
+    /// </summary>
+    public WindowInfo Window { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the observed window geometry.
+    /// </summary>
+    public DesktopWindowGeometry Geometry { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the named target used for capture, when any.
+    /// </summary>
+    public string? TargetName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the capture used the client area when no named target was supplied.
+    /// </summary>
+    public bool ClientArea { get; set; }
+
+    /// <summary>
+    /// Gets or sets the screen-space left edge of the captured bitmap.
+    /// </summary>
+    public int CaptureScreenX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the screen-space top edge of the captured bitmap.
+    /// </summary>
+    public int CaptureScreenY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the recognizer language tag that produced the result.
+    /// </summary>
+    public string LanguageTag { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the full recognized text.
+    /// </summary>
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the recognized lines with bitmap-relative bounds.
+    /// </summary>
+    public IReadOnlyList<DesktopOcrLine> Lines { get; set; } = new List<DesktopOcrLine>();
+}
+
+/// <summary>
+/// Represents the best OCR text match found inside a window capture.
+/// </summary>
+public sealed class DesktopWindowTextResolveResult {
+    /// <summary>
+    /// Gets or sets whether a match was found.
+    /// </summary>
+    public bool Matched { get; set; }
+
+    /// <summary>
+    /// Gets or sets the query text that was searched for.
+    /// </summary>
+    public string QueryText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the match used substring containment instead of exact comparison.
+    /// </summary>
+    public bool ContainsMatch { get; set; }
+
+    /// <summary>
+    /// Gets or sets the observed window.
+    /// </summary>
+    public WindowInfo Window { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the observed geometry.
+    /// </summary>
+    public DesktopWindowGeometry Geometry { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the named target used for capture, when any.
+    /// </summary>
+    public string? TargetName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the capture used the client area when no named target was supplied.
+    /// </summary>
+    public bool ClientArea { get; set; }
+
+    /// <summary>
+    /// Gets or sets the recognizer language tag that produced the source OCR result.
+    /// </summary>
+    public string LanguageTag { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the winning match came from a line or a word.
+    /// </summary>
+    public string MatchKind { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the OCR text that matched.
+    /// </summary>
+    public string MatchedText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets how many candidate matches were found before the best match was chosen.
+    /// </summary>
+    public int CandidateCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative X coordinate of the match.
+    /// </summary>
+    public int RelativeX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative Y coordinate of the match.
+    /// </summary>
+    public int RelativeY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative width of the match.
+    /// </summary>
+    public int Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bitmap-relative height of the match.
+    /// </summary>
+    public int Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the screen-space X coordinate of the match.
+    /// </summary>
+    public int ScreenX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the screen-space Y coordinate of the match.
+    /// </summary>
+    public int ScreenY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the screen-space X coordinate of the default action point.
+    /// </summary>
+    public int ActionX { get; set; }
+
+    /// <summary>
+    /// Gets or sets the screen-space Y coordinate of the default action point.
+    /// </summary>
+    public int ActionY { get; set; }
+
+    /// <summary>
+    /// Gets or sets the OCR words that belong to the winning match.
+    /// </summary>
+    public IReadOnlyList<DesktopOcrWord> Words { get; set; } = new List<DesktopOcrWord>();
+}
+
+/// <summary>
 /// Represents diagnostics for control discovery against a single window.
 /// </summary>
 public sealed class DesktopControlDiscoveryDiagnostics {

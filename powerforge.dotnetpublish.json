@@ -27,7 +27,7 @@
       "ProjectPath": "Sources/DesktopManager.Cli/DesktopManager.Cli.csproj",
       "Publish": {
         "Style": "PortableCompat",
-        "Framework": "net8.0-windows",
+        "Framework": "net8.0-windows10.0.19041.0",
         "OutputPath": "Artefacts/PowerForge/DesktopManager/{rid}/{framework}/{style}",
         "UseStaging": true,
         "ClearOutput": true,
@@ -46,7 +46,7 @@
       "ProjectPath": "Sources/DesktopManager.Cli/DesktopManager.Cli.csproj",
       "Publish": {
         "Style": "PortableCompat",
-        "Framework": "net10.0-windows",
+        "Framework": "net10.0-windows10.0.19041.0",
         "OutputPath": "Artefacts/PowerForge/DesktopManager/{rid}/{framework}/{style}",
         "UseStaging": true,
         "ClearOutput": true,

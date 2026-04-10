@@ -60,6 +60,8 @@ Additional operator-focused docs for the newer CLI and MCP surfaces:
 - [Docs/DesktopManager.Cli.md](Docs/DesktopManager.Cli.md)
 - [Docs/DesktopManager.Mcp.md](Docs/DesktopManager.Mcp.md)
 - [Docs/DesktopManager.Architecture.md](Docs/DesktopManager.Architecture.md)
+- [Docs/DesktopManager.AutomationBasics.md](Docs/DesktopManager.AutomationBasics.md)
+- [Docs/DesktopManager.Plugin.md](Docs/DesktopManager.Plugin.md)
 - [.agents/skills/desktopmanager-operator/SKILL.md](.agents/skills/desktopmanager-operator/SKILL.md)
 - [.agents/skills/desktopmanager-build/SKILL.md](.agents/skills/desktopmanager-build/SKILL.md)
 
@@ -331,13 +333,13 @@ $env:RUN_EXPERIMENTAL_UI_TESTS = "true"
 $env:SKIP_UI_TESTS = "true"
 
 # Run the repo-owned window mutation slice
-dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj -f net8.0-windows --no-build --filter "WindowPositionTests|WindowStateHelpersTests|WindowVisibilityTests|WindowTransparencyTests|WindowStyleModificationTests|WindowLayoutTests"
+dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj -f net8.0-windows10.0.19041.0 --no-build --filter "WindowPositionTests|WindowStateHelpersTests|WindowVisibilityTests|WindowTransparencyTests|WindowStyleModificationTests|WindowLayoutTests"
 
 # Run the foreground-window slice
-dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj -f net8.0-windows --no-build --filter "DesktopAutomationAssertionTests|WindowManagerFilterTests|WindowTopMostActivationTests"
+dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj -f net8.0-windows10.0.19041.0 --no-build --filter "DesktopAutomationAssertionTests|WindowManagerFilterTests|WindowTopMostActivationTests"
 
 # Run the live MCP desktop pack backed by the repo-owned DesktopManager.TestApp harness
-dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj -f net8.0-windows --no-build --filter "McpServer_TestApp"
+dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj -f net8.0-windows10.0.19041.0 --no-build --filter "McpServer_TestApp"
 ```
 
 When the hosted-session or experimental live harnesses skip because focus or discoverability never stabilize, they now leave structured diagnostics and artifacts rather than failing silently. See [Docs/Build.Runbook.md](Docs/Build.Runbook.md) for the hosted-session artifact flow and gate guidance.
@@ -619,7 +621,7 @@ WindowKeepAlive.Instance.StopAll();
 
 ### C# API Highlights
 
-DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0`, `net8.0-windows`, and `net10.0-windows`. The main entry points are:
+DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0`, `net8.0-windows10.0.19041.0`, and `net10.0-windows10.0.19041.0`. The main entry points are:
 
 - `Monitors` for monitor enumeration, wallpaper management, brightness, resolution, orientation and slideshow control.
 - `WindowManager` for window enumeration, positioning, resizing and layout persistence.

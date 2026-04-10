@@ -67,6 +67,16 @@ public sealed class DesktopControlState {
     public bool? IsOffscreen { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the control is checked when that state is applicable.
+    /// </summary>
+    public bool? IsChecked { get; set; }
+
+    /// <summary>
+    /// Gets or sets the selected item text when the control exposes a native selection model.
+    /// </summary>
+    public string SelectedValue { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets whether the control supports background-safe click actions.
     /// </summary>
     public bool SupportsBackgroundClick { get; set; }

@@ -27,6 +27,7 @@ internal static class McpCatalog {
         "wait_for_window",
         "wait_for_window_close",
         "wait_for_window_to_lose_focus",
+        "wait_for_window_visual_change",
         "observe_window_text",
         "wait_for_observed_text",
         "get_focused_control",
@@ -40,6 +41,10 @@ internal static class McpCatalog {
         "click_control",
         "focus_control",
         "set_control_enabled",
+        "set_control_check_state",
+        "set_matching_control_check_state",
+        "set_control_selected_value",
+        "set_matching_control_selected_value",
         "set_control_visibility",
         "set_control_text",
         "send_control_keys",
@@ -79,6 +84,13 @@ internal static class McpCatalog {
         "get_named_target",
         "save_window_target",
         "resolve_window_target",
+        "list_named_visual_baselines",
+        "get_named_visual_baseline",
+        "save_visual_baseline",
+        "assert_visual_baseline",
+        "resolve_visual_baseline",
+        "read_window_text",
+        "resolve_window_text",
         "list_named_control_targets",
         "get_named_control_target",
         "save_control_target",
@@ -105,6 +117,10 @@ internal static class McpCatalog {
         "click_control",
         "focus_control",
         "set_control_enabled",
+        "set_control_check_state",
+        "set_matching_control_check_state",
+        "set_control_selected_value",
+        "set_matching_control_selected_value",
         "set_control_visibility",
         "set_control_text",
         "send_control_keys",
@@ -148,6 +164,10 @@ internal static class McpCatalog {
         "click_control",
         "focus_control",
         "set_control_enabled",
+        "set_control_check_state",
+        "set_matching_control_check_state",
+        "set_control_selected_value",
+        "set_matching_control_selected_value",
         "set_control_visibility",
         "set_control_text",
         "send_control_keys",
@@ -214,6 +234,9 @@ internal static class McpCatalog {
                 processPatterns = ExtractProcessPatternsFromFilePath(filePath);
                 return processPatterns.Length > 0;
             case "click_control":
+            case "set_matching_control_check_state":
+            case "set_matching_control_selected_value":
+            case "save_visual_baseline":
             case "set_control_text":
             case "send_control_keys":
             case "move_window":
@@ -256,6 +279,8 @@ internal static class McpCatalog {
                 return false;
             case "focus_control":
             case "set_control_enabled":
+            case "set_control_check_state":
+            case "set_control_selected_value":
             case "set_control_visibility":
                 return TryResolveProcessPatternsFromWindowHandle(arguments, "windowHandle", out processPatterns, out error);
             case "apply_named_layout":
@@ -382,6 +407,25 @@ internal static class McpCatalog {
                     ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
                     ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
                     ["all"] = CreateBooleanSchema("Track all matching windows instead of the first match."),
+                    ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
+                    ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
+                }), readOnly: true),
+            CreateTool("wait_for_window_visual_change", "Wait For Window Visual Change", "Wait until a matching window, client area, or saved target region changes visually.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
+                    ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
+                    ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["targetName"] = CreateStringSchema("Saved reusable target name to monitor instead of the full window."),
+                    ["clientArea"] = CreateBooleanSchema("Compare the window client area when no target name is provided."),
+                    ["minimumChangedRatio"] = CreateNumberSchema("Minimum changed-sample ratio from 0 to 1 required to treat the window as visually changed."),
+                    ["differenceThreshold"] = CreateIntegerSchema("Per-sample RGB difference threshold from 0 to 255."),
                     ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
                     ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
                 }), readOnly: true),
@@ -644,6 +688,76 @@ internal static class McpCatalog {
                     ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
                     ["enabled"] = CreateBooleanSchema("True to enable the control; false to disable it.")
                 }), new[] { "windowHandle", "controlHandle", "enabled" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_control_check_state", "Set Control Check State", "Check or uncheck a specific checkbox or radio button control handle.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+                    ["checked"] = CreateBooleanSchema("True to check the control; false to clear it.")
+                }), new[] { "windowHandle", "controlHandle", "checked" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_matching_control_check_state", "Set Matching Control Check State", "Check or uncheck matching checkbox-style controls using window and control selectors.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["windowClassName"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Window process identifier."),
+                    ["windowHandle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["controlClassName"] = CreateStringSchema("Control class filter."),
+                    ["controlText"] = CreateStringSchema("Control text filter."),
+                    ["controlValue"] = CreateStringSchema("Control value filter."),
+                    ["controlId"] = CreateIntegerSchema("Control identifier."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+                    ["controlAutomationId"] = CreateStringSchema("UI Automation automation identifier filter."),
+                    ["controlType"] = CreateStringSchema("UI Automation control type filter."),
+                    ["controlFrameworkId"] = CreateStringSchema("UI Automation framework identifier filter."),
+                    ["isEnabled"] = CreateBooleanSchema("Filter by whether the control is enabled."),
+                    ["isKeyboardFocusable"] = CreateBooleanSchema("Filter by whether the control can receive keyboard focus."),
+                    ["supportsBackgroundClick"] = CreateBooleanSchema("Filter by whether the control supports background-safe click or invoke actions."),
+                    ["supportsBackgroundText"] = CreateBooleanSchema("Filter by whether the control supports background-safe text updates."),
+                    ["supportsBackgroundKeys"] = CreateBooleanSchema("Filter by whether the control supports background-safe key delivery."),
+                    ["supportsForegroundInputFallback"] = CreateBooleanSchema("Filter by whether the control supports explicit foreground input fallback."),
+                    ["uiAutomation"] = CreateBooleanSchema("Use UI Automation for control discovery."),
+                    ["includeUiAutomation"] = CreateBooleanSchema("Combine Win32 and UI Automation control results."),
+                    ["ensureForegroundWindow"] = CreateBooleanSchema("Bring the target window to the foreground before UI Automation queries."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching controls."),
+                    ["allWindows"] = CreateBooleanSchema("Target controls in all matching windows."),
+                    ["checked"] = CreateBooleanSchema("True to check the control; false to clear it.")
+                }), new[] { "checked" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_control_selected_value", "Set Control Selected Value", "Select a combo-box item by its displayed text for a specific control handle.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+                    ["selectedValue"] = CreateStringSchema("Displayed item text to select.")
+                }), new[] { "windowHandle", "controlHandle", "selectedValue" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_matching_control_selected_value", "Set Matching Control Selected Value", "Select a displayed item on matching combo-box-style controls using window and control selectors.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["windowClassName"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Window process identifier."),
+                    ["windowHandle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["controlClassName"] = CreateStringSchema("Control class filter."),
+                    ["controlText"] = CreateStringSchema("Control text filter."),
+                    ["controlValue"] = CreateStringSchema("Control value filter."),
+                    ["controlId"] = CreateIntegerSchema("Control identifier."),
+                    ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+                    ["controlAutomationId"] = CreateStringSchema("UI Automation automation identifier filter."),
+                    ["controlType"] = CreateStringSchema("UI Automation control type filter."),
+                    ["controlFrameworkId"] = CreateStringSchema("UI Automation framework identifier filter."),
+                    ["isEnabled"] = CreateBooleanSchema("Filter by whether the control is enabled."),
+                    ["isKeyboardFocusable"] = CreateBooleanSchema("Filter by whether the control can receive keyboard focus."),
+                    ["supportsBackgroundClick"] = CreateBooleanSchema("Filter by whether the control supports background-safe click or invoke actions."),
+                    ["supportsBackgroundText"] = CreateBooleanSchema("Filter by whether the control supports background-safe text updates."),
+                    ["supportsBackgroundKeys"] = CreateBooleanSchema("Filter by whether the control supports background-safe key delivery."),
+                    ["supportsForegroundInputFallback"] = CreateBooleanSchema("Filter by whether the control supports explicit foreground input fallback."),
+                    ["uiAutomation"] = CreateBooleanSchema("Use UI Automation for control discovery."),
+                    ["includeUiAutomation"] = CreateBooleanSchema("Combine Win32 and UI Automation control results."),
+                    ["ensureForegroundWindow"] = CreateBooleanSchema("Bring the target window to the foreground before UI Automation queries."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching controls."),
+                    ["allWindows"] = CreateBooleanSchema("Target controls in all matching windows."),
+                    ["selectedValue"] = CreateStringSchema("Displayed item text to select.")
+                }), new[] { "selectedValue" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("set_control_visibility", "Set Control Visibility", "Show or hide a specific control handle.", CreateObjectSchema(
                 AddMutationArtifactProperties(new Dictionary<string, object> {
                     ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
@@ -741,6 +855,11 @@ internal static class McpCatalog {
                     ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
                     ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
                     ["targetName"] = CreateStringSchema("Saved reusable target name."),
+                    ["visualBaselineName"] = CreateStringSchema("Saved visual baseline name used as a reusable anchor."),
+                    ["ocrText"] = CreateStringSchema("Visible text to resolve through Windows OCR before clicking."),
+                    ["ocrTargetName"] = CreateStringSchema("Optional saved target name that narrows the OCR search region."),
+                    ["ocrContains"] = CreateBooleanSchema("Treat the OCR text query as a substring instead of requiring an exact match."),
+                    ["ocrLanguageTag"] = CreateStringSchema("Optional OCR language tag such as en-US."),
                     ["x"] = CreateIntegerSchema("Horizontal coordinate relative to the window bounds."),
                     ["y"] = CreateIntegerSchema("Vertical coordinate relative to the window bounds."),
                     ["xRatio"] = CreateNumberSchema("Horizontal coordinate ratio from 0 to 1."),
@@ -748,6 +867,9 @@ internal static class McpCatalog {
                     ["button"] = CreateStringSchema("Mouse button: left or right."),
                     ["activate"] = CreateBooleanSchema("Activate the window before clicking."),
                     ["clientArea"] = CreateBooleanSchema("Interpret coordinates relative to the window client area."),
+                    ["baselineMaxAverageDifference"] = CreateNumberSchema("Maximum sampled average difference allowed when resolving a saved visual baseline."),
+                    ["baselineDifferenceThreshold"] = CreateIntegerSchema("Per-sample average channel difference that counts as a changed pixel while resolving a saved visual baseline."),
+                    ["baselineScanStep"] = CreateIntegerSchema("Coarse scan step used while resolving a saved visual baseline."),
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 })), readOnly: false, destructive: false, idempotent: false),
             CreateTool("drag_window_points", "Drag Window Points", "Drag between two points relative to a matching window.", CreateObjectSchema(
@@ -760,6 +882,14 @@ internal static class McpCatalog {
                     ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
                     ["startTargetName"] = CreateStringSchema("Saved reusable starting target name."),
                     ["endTargetName"] = CreateStringSchema("Saved reusable ending target name."),
+                    ["startVisualBaselineName"] = CreateStringSchema("Saved visual baseline name used as the reusable starting anchor."),
+                    ["endVisualBaselineName"] = CreateStringSchema("Saved visual baseline name used as the reusable ending anchor."),
+                    ["startOcrText"] = CreateStringSchema("Visible text to resolve through Windows OCR before choosing the starting drag point."),
+                    ["endOcrText"] = CreateStringSchema("Visible text to resolve through Windows OCR before choosing the ending drag point."),
+                    ["startOcrTargetName"] = CreateStringSchema("Optional saved target name that narrows the OCR search region for the starting point."),
+                    ["endOcrTargetName"] = CreateStringSchema("Optional saved target name that narrows the OCR search region for the ending point."),
+                    ["ocrContains"] = CreateBooleanSchema("Treat the OCR text queries as substrings instead of requiring exact matches."),
+                    ["ocrLanguageTag"] = CreateStringSchema("Optional OCR language tag such as en-US."),
                     ["startX"] = CreateIntegerSchema("Horizontal starting coordinate relative to the window bounds."),
                     ["startY"] = CreateIntegerSchema("Vertical starting coordinate relative to the window bounds."),
                     ["startXRatio"] = CreateNumberSchema("Horizontal starting coordinate ratio from 0 to 1."),
@@ -772,6 +902,9 @@ internal static class McpCatalog {
                     ["stepDelayMs"] = CreateIntegerSchema("Delay in milliseconds between drag steps."),
                     ["activate"] = CreateBooleanSchema("Activate the window before dragging."),
                     ["clientArea"] = CreateBooleanSchema("Interpret coordinates relative to the window client area."),
+                    ["baselineMaxAverageDifference"] = CreateNumberSchema("Maximum sampled average difference allowed when resolving saved visual baselines."),
+                    ["baselineDifferenceThreshold"] = CreateIntegerSchema("Per-sample average channel difference that counts as a changed pixel while resolving saved visual baselines."),
+                    ["baselineScanStep"] = CreateIntegerSchema("Coarse scan step used while resolving saved visual baselines."),
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 })), readOnly: false, destructive: false, idempotent: false),
             CreateTool("scroll_window_point", "Scroll Window Point", "Scroll the mouse wheel at a point relative to a matching window.", CreateObjectSchema(
@@ -783,6 +916,11 @@ internal static class McpCatalog {
                     ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
                     ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
                     ["targetName"] = CreateStringSchema("Saved reusable target name."),
+                    ["visualBaselineName"] = CreateStringSchema("Saved visual baseline name used as a reusable anchor."),
+                    ["ocrText"] = CreateStringSchema("Visible text to resolve through Windows OCR before scrolling."),
+                    ["ocrTargetName"] = CreateStringSchema("Optional saved target name that narrows the OCR search region."),
+                    ["ocrContains"] = CreateBooleanSchema("Treat the OCR text query as a substring instead of requiring an exact match."),
+                    ["ocrLanguageTag"] = CreateStringSchema("Optional OCR language tag such as en-US."),
                     ["x"] = CreateIntegerSchema("Horizontal coordinate relative to the window bounds."),
                     ["y"] = CreateIntegerSchema("Vertical coordinate relative to the window bounds."),
                     ["xRatio"] = CreateNumberSchema("Horizontal coordinate ratio from 0 to 1."),
@@ -790,6 +928,9 @@ internal static class McpCatalog {
                     ["delta"] = CreateIntegerSchema("Scroll delta. Positive scrolls up."),
                     ["activate"] = CreateBooleanSchema("Activate the window before scrolling."),
                     ["clientArea"] = CreateBooleanSchema("Interpret coordinates relative to the window client area."),
+                    ["baselineMaxAverageDifference"] = CreateNumberSchema("Maximum sampled average difference allowed when resolving a saved visual baseline."),
+                    ["baselineDifferenceThreshold"] = CreateIntegerSchema("Per-sample average channel difference that counts as a changed pixel while resolving a saved visual baseline."),
+                    ["baselineScanStep"] = CreateIntegerSchema("Coarse scan step used while resolving a saved visual baseline."),
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 }), new[] { "delta" }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("type_window_text", "Type Window Text", "Type or paste text into a matching window.", CreateObjectSchema(
@@ -1043,6 +1184,78 @@ internal static class McpCatalog {
                     ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 }, new[] { "name" }), readOnly: true),
+            CreateTool("list_named_visual_baselines", "List Named Visual Baselines", "List saved reusable visual baselines.", CreateObjectSchema(), readOnly: true),
+            CreateTool("get_named_visual_baseline", "Get Named Visual Baseline", "Get a saved visual baseline definition and image metadata.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["name"] = CreateStringSchema("Visual baseline name.")
+                }, new[] { "name" }), readOnly: true),
+            CreateTool("save_visual_baseline", "Save Visual Baseline", "Save a reusable visual baseline from a live window, client area, or named target region.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["name"] = CreateStringSchema("Visual baseline name."),
+                    ["description"] = CreateStringSchema("Optional baseline description."),
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["targetName"] = CreateStringSchema("Optional saved target name to capture instead of the whole window."),
+                    ["clientArea"] = CreateBooleanSchema("Capture the client area when no saved target is supplied.")
+                }, new[] { "name" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("assert_visual_baseline", "Assert Visual Baseline", "Compare a live window, client area, or named target region against a saved visual baseline.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["name"] = CreateStringSchema("Visual baseline name."),
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["targetName"] = CreateStringSchema("Optional saved target name to compare instead of the stored baseline target."),
+                    ["clientArea"] = CreateBooleanSchema("Compare the client area when no saved target is supplied."),
+                    ["maxChangedRatio"] = CreateNumberSchema("Maximum sampled changed-pixel ratio allowed for a successful match."),
+                    ["differenceThreshold"] = CreateIntegerSchema("Per-sample average channel difference that counts as a visual change.")
+                }, new[] { "name" }), readOnly: true),
+            CreateTool("resolve_visual_baseline", "Resolve Visual Baseline", "Search a live window or client area for the best location of a saved visual baseline image.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["name"] = CreateStringSchema("Visual baseline name."),
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["clientArea"] = CreateBooleanSchema("Search inside the client area instead of the whole window."),
+                    ["maxAverageDifference"] = CreateNumberSchema("Maximum sampled average difference allowed for a successful match."),
+                    ["differenceThreshold"] = CreateIntegerSchema("Per-sample average channel difference that counts as a changed pixel."),
+                    ["scanStep"] = CreateIntegerSchema("Coarse scan step used during the initial search.")
+                }, new[] { "name" }), readOnly: true),
+            CreateTool("read_window_text", "Read Window Text", "Run Windows OCR over a live window, client area, or named target region and return recognized text with bounds.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["targetName"] = CreateStringSchema("Optional saved target name to OCR instead of the whole window."),
+                    ["clientArea"] = CreateBooleanSchema("Read text from the client area when no saved target is supplied."),
+                    ["languageTag"] = CreateStringSchema("Optional OCR language tag such as en-US.")
+                }), readOnly: true),
+            CreateTool("resolve_window_text", "Resolve Window Text", "Run Windows OCR over a live window capture and return the best match coordinates for visible text.", CreateObjectSchema(
+                new Dictionary<string, object> {
+                    ["queryText"] = CreateStringSchema("Visible text to resolve."),
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["targetName"] = CreateStringSchema("Optional saved target name to OCR instead of the whole window."),
+                    ["clientArea"] = CreateBooleanSchema("Read text from the client area when no saved target is supplied."),
+                    ["contains"] = CreateBooleanSchema("Treat the query text as a substring instead of requiring an exact OCR match."),
+                    ["languageTag"] = CreateStringSchema("Optional OCR language tag such as en-US.")
+                }, new[] { "queryText" }), readOnly: true),
             CreateTool("list_named_control_targets", "List Named Control Targets", "List saved reusable control selector targets.", CreateObjectSchema(), readOnly: true),
             CreateTool("get_named_control_target", "Get Named Control Target", "Get a saved reusable control selector target definition.", CreateObjectSchema(
                 new Dictionary<string, object> {
@@ -1178,6 +1391,13 @@ internal static class McpCatalog {
                 mimeType = "application/json"
             },
             new {
+                name = "desktop_visual_baselines",
+                title = "Named Visual Baselines",
+                uri = "desktop://visual-baselines",
+                description = "Saved reusable visual baselines as JSON.",
+                mimeType = "application/json"
+            },
+            new {
                 name = "desktop_control_targets",
                 title = "Named Control Targets",
                 uri = "desktop://control-targets",
@@ -1267,6 +1487,14 @@ internal static class McpCatalog {
                     ReadWindowCriteria(arguments, true),
                     ReadInt(arguments, "timeoutMs") ?? 10000,
                     ReadInt(arguments, "intervalMs") ?? 200),
+                "wait_for_window_visual_change" => DesktopOperations.WaitForWindowVisualChange(
+                    ReadWindowCriteria(arguments, true),
+                    ReadOptionalString(arguments, "targetName"),
+                    ReadBool(arguments, "clientArea"),
+                    ReadInt(arguments, "timeoutMs") ?? 10000,
+                    ReadInt(arguments, "intervalMs") ?? 200,
+                    ReadDouble(arguments, "minimumChangedRatio") ?? 0.01,
+                    ReadInt(arguments, "differenceThreshold") ?? 24),
                 "observe_window_text" => DesktopOperations.ObserveWindowText(
                     ReadWindowCriteria(arguments, true),
                     ReadOptionalString(arguments, "expectedText"),
@@ -1451,6 +1679,40 @@ internal static class McpCatalog {
                     ReadDouble(arguments, "heightRatio"),
                     ReadBool(arguments, "clientArea")),
                 "resolve_window_target" => DesktopOperations.ResolveWindowTargets(ReadWindowCriteria(arguments, true), ReadRequiredString(arguments, "name")),
+                "list_named_visual_baselines" => DesktopOperations.ListVisualBaselines(),
+                "get_named_visual_baseline" => DesktopOperations.GetVisualBaseline(ReadRequiredString(arguments, "name")),
+                "save_visual_baseline" => DesktopOperations.SaveVisualBaseline(
+                    ReadRequiredString(arguments, "name"),
+                    ReadWindowCriteria(arguments, true),
+                    ReadOptionalString(arguments, "targetName"),
+                    ReadBool(arguments, "clientArea"),
+                    ReadOptionalString(arguments, "description")),
+                "assert_visual_baseline" => DesktopOperations.AssertVisualBaseline(
+                    ReadRequiredString(arguments, "name"),
+                    ReadWindowCriteria(arguments, true),
+                    ReadOptionalString(arguments, "targetName"),
+                    TryReadProperty(arguments, "clientArea", out _) ? ReadBool(arguments, "clientArea") : null,
+                    ReadDouble(arguments, "maxChangedRatio") ?? 0.01,
+                    ReadInt(arguments, "differenceThreshold") ?? 24),
+                "resolve_visual_baseline" => DesktopOperations.ResolveVisualBaseline(
+                    ReadRequiredString(arguments, "name"),
+                    ReadWindowCriteria(arguments, true),
+                    ReadBool(arguments, "clientArea"),
+                    ReadDouble(arguments, "maxAverageDifference") ?? 12.0,
+                    ReadInt(arguments, "differenceThreshold") ?? 24,
+                    ReadInt(arguments, "scanStep") ?? 8),
+                "read_window_text" => DesktopOperations.ReadWindowText(
+                    ReadWindowCriteria(arguments, true),
+                    ReadOptionalString(arguments, "targetName"),
+                    ReadBool(arguments, "clientArea"),
+                    ReadOptionalString(arguments, "languageTag")),
+                "resolve_window_text" => DesktopOperations.ResolveWindowText(
+                    ReadWindowCriteria(arguments, true),
+                    ReadRequiredString(arguments, "queryText"),
+                    ReadBool(arguments, "contains"),
+                    ReadOptionalString(arguments, "targetName"),
+                    ReadBool(arguments, "clientArea"),
+                    ReadOptionalString(arguments, "languageTag")),
                 "list_named_control_targets" => DesktopOperations.ListControlTargets(),
                 "get_named_control_target" => DesktopOperations.GetControlTarget(ReadRequiredString(arguments, "name")),
                 "save_control_target" => DesktopOperations.SaveControlTarget(
@@ -1544,6 +1806,26 @@ internal static class McpCatalog {
                     ReadRequiredString(arguments, "windowHandle"),
                     ReadRequiredString(arguments, "controlHandle"),
                     ReadRequiredBool(arguments, "enabled")),
+                "set_control_check_state" => DesktopOperations.SetControlCheckState(
+                    ReadRequiredString(arguments, "windowHandle"),
+                    ReadRequiredString(arguments, "controlHandle"),
+                    ReadRequiredBool(arguments, "checked")),
+                "set_matching_control_check_state" => DesktopOperations.SetControlCheckState(
+                    ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),
+                    ReadControlCriteria(arguments),
+                    ReadRequiredBool(arguments, "checked"),
+                    ReadBool(arguments, "allWindows"),
+                    ReadMutationArtifactOptions(arguments)),
+                "set_control_selected_value" => DesktopOperations.SetControlSelectedValue(
+                    ReadRequiredString(arguments, "windowHandle"),
+                    ReadRequiredString(arguments, "controlHandle"),
+                    ReadRequiredString(arguments, "selectedValue")),
+                "set_matching_control_selected_value" => DesktopOperations.SetControlSelectedValue(
+                    ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),
+                    ReadControlCriteria(arguments),
+                    ReadRequiredString(arguments, "selectedValue"),
+                    ReadBool(arguments, "allWindows"),
+                    ReadMutationArtifactOptions(arguments)),
                 "set_control_visibility" => DesktopOperations.SetControlVisibility(
                     ReadRequiredString(arguments, "windowHandle"),
                     ReadRequiredString(arguments, "controlHandle"),
@@ -1640,6 +1922,7 @@ internal static class McpCatalog {
             "desktop://windows/active" => DesktopOperations.GetActiveWindow(),
             "desktop://layouts" => DesktopOperations.ListLayouts(),
             "desktop://targets" => DesktopOperations.ListWindowTargets(),
+            "desktop://visual-baselines" => DesktopOperations.ListVisualBaselines(),
             "desktop://control-targets" => DesktopOperations.ListControlTargets(),
             "desktop://snapshot/current" => DesktopOperations.GetCurrentSnapshotSummary(),
             _ => throw new CommandLineException($"Unknown resource '{uri}'.")
@@ -1760,6 +2043,34 @@ internal static class McpCatalog {
 
     private static object CallClickWindowPoint(JsonElement arguments) {
         WindowSelectionCriteria criteria = ReadWindowCriteria(arguments, true);
+        string? visualBaselineName = ReadOptionalString(arguments, "visualBaselineName");
+        if (!string.IsNullOrWhiteSpace(visualBaselineName)) {
+            return DesktopOperations.ClickWindowVisualBaseline(
+                criteria,
+                visualBaselineName,
+                ReadOptionalString(arguments, "button") ?? "left",
+                ReadBool(arguments, "activate"),
+                TryReadProperty(arguments, "clientArea", out _) ? ReadBool(arguments, "clientArea") : true,
+                ReadDouble(arguments, "baselineMaxAverageDifference") ?? 12.0,
+                ReadInt(arguments, "baselineDifferenceThreshold") ?? 24,
+                ReadInt(arguments, "baselineScanStep") ?? 8,
+                ReadMutationArtifactOptions(arguments));
+        }
+
+        string? ocrText = ReadOptionalString(arguments, "ocrText");
+        if (!string.IsNullOrWhiteSpace(ocrText)) {
+            return DesktopOperations.ClickWindowText(
+                criteria,
+                ocrText,
+                ReadOptionalString(arguments, "button") ?? "left",
+                ReadBool(arguments, "activate"),
+                ReadBool(arguments, "ocrContains"),
+                ReadOptionalString(arguments, "ocrTargetName"),
+                TryReadProperty(arguments, "clientArea", out _) ? ReadBool(arguments, "clientArea") : true,
+                ReadOptionalString(arguments, "ocrLanguageTag"),
+                ReadMutationArtifactOptions(arguments));
+        }
+
         string? targetName = ReadOptionalString(arguments, "targetName");
         if (!string.IsNullOrWhiteSpace(targetName)) {
             return DesktopOperations.ClickWindowTarget(
@@ -1784,6 +2095,39 @@ internal static class McpCatalog {
 
     private static object CallDragWindowPoints(JsonElement arguments) {
         WindowSelectionCriteria criteria = ReadWindowCriteria(arguments, true);
+        string? startVisualBaselineName = ReadOptionalString(arguments, "startVisualBaselineName");
+        if (!string.IsNullOrWhiteSpace(startVisualBaselineName)) {
+            return DesktopOperations.DragWindowVisualBaselines(
+                criteria,
+                startVisualBaselineName,
+                ReadRequiredString(arguments, "endVisualBaselineName"),
+                ReadOptionalString(arguments, "button") ?? "left",
+                ReadInt(arguments, "stepDelayMs") ?? 0,
+                ReadBool(arguments, "activate"),
+                TryReadProperty(arguments, "clientArea", out _) ? ReadBool(arguments, "clientArea") : true,
+                ReadDouble(arguments, "baselineMaxAverageDifference") ?? 12.0,
+                ReadInt(arguments, "baselineDifferenceThreshold") ?? 24,
+                ReadInt(arguments, "baselineScanStep") ?? 8,
+                ReadMutationArtifactOptions(arguments));
+        }
+
+        string? startOcrText = ReadOptionalString(arguments, "startOcrText");
+        if (!string.IsNullOrWhiteSpace(startOcrText)) {
+            return DesktopOperations.DragWindowText(
+                criteria,
+                startOcrText,
+                ReadRequiredString(arguments, "endOcrText"),
+                ReadOptionalString(arguments, "button") ?? "left",
+                ReadInt(arguments, "stepDelayMs") ?? 0,
+                ReadBool(arguments, "activate"),
+                ReadBool(arguments, "ocrContains"),
+                ReadOptionalString(arguments, "startOcrTargetName"),
+                ReadOptionalString(arguments, "endOcrTargetName"),
+                TryReadProperty(arguments, "clientArea", out _) ? ReadBool(arguments, "clientArea") : true,
+                ReadOptionalString(arguments, "ocrLanguageTag"),
+                ReadMutationArtifactOptions(arguments));
+        }
+
         string? startTargetName = ReadOptionalString(arguments, "startTargetName");
         if (!string.IsNullOrWhiteSpace(startTargetName)) {
             return DesktopOperations.DragWindowTargets(
@@ -1815,8 +2159,36 @@ internal static class McpCatalog {
 
     private static object CallScrollWindowPoint(JsonElement arguments) {
         WindowSelectionCriteria criteria = ReadWindowCriteria(arguments, true);
+        string? visualBaselineName = ReadOptionalString(arguments, "visualBaselineName");
         string? targetName = ReadOptionalString(arguments, "targetName");
         int delta = ReadInt(arguments, "delta") ?? throw new CommandLineException("Property 'delta' is required.");
+        if (!string.IsNullOrWhiteSpace(visualBaselineName)) {
+            return DesktopOperations.ScrollWindowVisualBaseline(
+                criteria,
+                visualBaselineName,
+                delta,
+                ReadBool(arguments, "activate"),
+                TryReadProperty(arguments, "clientArea", out _) ? ReadBool(arguments, "clientArea") : true,
+                ReadDouble(arguments, "baselineMaxAverageDifference") ?? 12.0,
+                ReadInt(arguments, "baselineDifferenceThreshold") ?? 24,
+                ReadInt(arguments, "baselineScanStep") ?? 8,
+                ReadMutationArtifactOptions(arguments));
+        }
+
+        string? ocrText = ReadOptionalString(arguments, "ocrText");
+        if (!string.IsNullOrWhiteSpace(ocrText)) {
+            return DesktopOperations.ScrollWindowText(
+                criteria,
+                ocrText,
+                delta,
+                ReadBool(arguments, "activate"),
+                ReadBool(arguments, "ocrContains"),
+                ReadOptionalString(arguments, "ocrTargetName"),
+                TryReadProperty(arguments, "clientArea", out _) ? ReadBool(arguments, "clientArea") : true,
+                ReadOptionalString(arguments, "ocrLanguageTag"),
+                ReadMutationArtifactOptions(arguments));
+        }
+
         if (!string.IsNullOrWhiteSpace(targetName)) {
             return DesktopOperations.ScrollWindowTarget(
                 criteria,
@@ -1926,6 +2298,13 @@ internal static class McpCatalog {
         properties["artifactDirectory"] = CreateStringSchema("Optional directory for mutation screenshots.");
         properties["verifyAfter"] = CreateBooleanSchema("Re-query the mutated target and report the observed postcondition after the mutation.");
         properties["verificationTolerancePixels"] = CreateIntegerSchema("Optional geometry verification tolerance in pixels. Providing it also enables post-mutation verification.");
+        properties["waitForVisualChange"] = CreateBooleanSchema("When supported, wait for a visible pixel change after the mutation instead of relying on a blind delay.");
+        properties["visualTargetName"] = CreateStringSchema("Optional saved window target name that narrows visual-change verification to a specific target region.");
+        properties["visualClientArea"] = CreateBooleanSchema("Observe the client area for visible change instead of the full window when no visual target is supplied.");
+        properties["visualTimeoutMs"] = CreateIntegerSchema("Maximum time in milliseconds to wait for visible change after the mutation.");
+        properties["visualIntervalMs"] = CreateIntegerSchema("Polling interval in milliseconds while waiting for visible change.");
+        properties["minimumChangedRatio"] = CreateNumberSchema("Minimum sampled pixel ratio that must change before visual verification succeeds.");
+        properties["differenceThreshold"] = CreateIntegerSchema("Per-sample average channel difference that counts as a visible pixel change.");
         return properties;
     }
 
@@ -2107,7 +2486,14 @@ internal static class McpCatalog {
         string? artifactDirectory = ReadOptionalString(element, "artifactDirectory");
         bool verifyAfter = ReadBool(element, "verifyAfter") || ReadInt(element, "verificationTolerancePixels").HasValue;
         int verificationTolerancePixels = ReadInt(element, "verificationTolerancePixels") ?? 10;
-        if (!captureBefore && !captureAfter && string.IsNullOrWhiteSpace(artifactDirectory) && !verifyAfter) {
+        bool waitForVisualChange = ReadBool(element, "waitForVisualChange");
+        string? visualTargetName = ReadOptionalString(element, "visualTargetName");
+        bool visualClientArea = ReadBool(element, "visualClientArea");
+        int visualTimeoutMilliseconds = ReadInt(element, "visualTimeoutMs") ?? 5000;
+        int visualIntervalMilliseconds = ReadInt(element, "visualIntervalMs") ?? 100;
+        double visualMinimumChangedRatio = ReadDouble(element, "minimumChangedRatio") ?? 0.01;
+        int visualDifferenceThreshold = ReadInt(element, "differenceThreshold") ?? 24;
+        if (!captureBefore && !captureAfter && string.IsNullOrWhiteSpace(artifactDirectory) && !verifyAfter && !waitForVisualChange) {
             return null;
         }
 
@@ -2116,7 +2502,14 @@ internal static class McpCatalog {
             CaptureAfter = captureAfter,
             ArtifactDirectory = artifactDirectory,
             VerifyAfter = verifyAfter,
-            VerificationTolerancePixels = verificationTolerancePixels
+            VerificationTolerancePixels = verificationTolerancePixels,
+            WaitForVisualChange = waitForVisualChange,
+            VisualTargetName = visualTargetName,
+            VisualClientArea = visualClientArea,
+            VisualTimeoutMilliseconds = visualTimeoutMilliseconds,
+            VisualIntervalMilliseconds = visualIntervalMilliseconds,
+            VisualMinimumChangedRatio = visualMinimumChangedRatio,
+            VisualDifferenceThreshold = visualDifferenceThreshold
         };
     }
 

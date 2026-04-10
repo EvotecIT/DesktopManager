@@ -45,7 +45,41 @@ internal sealed class TestAppStatusSnapshot {
 
     public string CommandBarText { get; set; } = string.Empty;
 
+    public long CommandBarHostHandle { get; set; }
+
+    public bool WebViewReady { get; set; }
+
+    public string WebViewStatusText { get; set; } = string.Empty;
+
+    public string WebViewPromptText { get; set; } = string.Empty;
+
+    public string WebViewDomStatusText { get; set; } = string.Empty;
+
+    public string WebViewLastEvent { get; set; } = string.Empty;
+
+    public long WebViewHostHandle { get; set; }
+
     public string StatusText { get; set; } = string.Empty;
+
+    public bool AutomationCheckBoxChecked { get; set; }
+
+    public long AutomationCheckBoxHandle { get; set; }
+
+    public string SelectedOption { get; set; } = string.Empty;
+
+    public long OptionsComboBoxHandle { get; set; }
+
+    public string BasicActionStatus { get; set; } = string.Empty;
+
+    public long ApplyButtonHandle { get; set; }
+
+    public long ScrollListHandle { get; set; }
+
+    public int ScrollTopIndex { get; set; }
+
+    public string ScrollTopItemText { get; set; } = string.Empty;
+
+    public string ScrollStatusText { get; set; } = string.Empty;
 
     public string DragPayload { get; set; } = string.Empty;
 
@@ -56,6 +90,20 @@ internal sealed class TestAppStatusSnapshot {
     public string DragDropStatus { get; set; } = string.Empty;
 
     public TestAppControlBounds EditorBounds { get; set; } = new();
+
+    public TestAppControlBounds CommandBarHostBounds { get; set; } = new();
+
+    public TestAppControlBounds WebViewHostBounds { get; set; } = new();
+
+    public TestAppControlBounds WebViewClientBounds { get; set; } = new();
+
+    public TestAppControlBounds AutomationCheckBoxBounds { get; set; } = new();
+
+    public TestAppControlBounds OptionsComboBoxBounds { get; set; } = new();
+
+    public TestAppControlBounds ApplyButtonBounds { get; set; } = new();
+
+    public TestAppControlBounds ScrollListBounds { get; set; } = new();
 
     public TestAppControlBounds DragSourceBounds { get; set; } = new();
 
