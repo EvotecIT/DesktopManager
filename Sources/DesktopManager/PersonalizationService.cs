@@ -17,6 +17,7 @@ public sealed class PersonalizationService {
     private const string AccentPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent";
     private const string ExplorerAdvancedPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
     private const string StartPath = @"Software\Microsoft\Windows\CurrentVersion\Start";
+    private const string LightingPath = @"Software\Microsoft\Lighting";
     private const string TaskbarAlignmentPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarAl";
     private const string TaskbarGroupingPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarGlomLevel";
     private const string TaskbarFlashingPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarFlashing";
@@ -182,6 +183,11 @@ public sealed class PersonalizationService {
                 settings.TaskbarWidgetsButtonVisible.Value ? "1" : "0");
         }
 
+        if (settings.DynamicLightingEnabled.HasValue) {
+            ApplyDwordSetting(LightingPath, "AmbientLightingEnabled",
+                settings.DynamicLightingEnabled.Value ? 1 : 0);
+        }
+
         BroadcastSettingChange();
     }
 
@@ -272,7 +278,8 @@ public sealed class PersonalizationService {
             TaskbarShowDesktop = ReadStringSetting(TaskbarShowDesktopPath, "SystemSettings_DesktopTaskbar_Sd"),
             TaskbarRecentSearches = ReadStringSetting(TaskbarRecentSearchesPath, "SystemSettings_DesktopTaskbar_Sh"),
             TaskbarTaskView = ReadStringSetting(TaskbarTaskViewPath, "SystemSettings_DesktopTaskbar_TaskView"),
-            TaskbarWidgets = ReadStringSetting(TaskbarWidgetsPath, "SystemSettings_DesktopTaskbar_Da")
+            TaskbarWidgets = ReadStringSetting(TaskbarWidgetsPath, "SystemSettings_DesktopTaskbar_Da"),
+            DynamicLightingEnabled = ReadDwordSetting(LightingPath, "AmbientLightingEnabled")
         };
     }
 
@@ -313,6 +320,7 @@ public sealed class PersonalizationService {
         ApplyStringSetting(TaskbarRecentSearchesPath, "SystemSettings_DesktopTaskbar_Sh", snapshot.TaskbarRecentSearches);
         ApplyStringSetting(TaskbarTaskViewPath, "SystemSettings_DesktopTaskbar_TaskView", snapshot.TaskbarTaskView);
         ApplyStringSetting(TaskbarWidgetsPath, "SystemSettings_DesktopTaskbar_Da", snapshot.TaskbarWidgets);
+        ApplyDwordSetting(LightingPath, "AmbientLightingEnabled", snapshot.DynamicLightingEnabled);
     }
 
     private static StringPolicyValue ReadStringPolicy(string keyPath, string valueName) {

@@ -196,6 +196,11 @@ public sealed class PersonalizationUserSnapshot {
     /// Gets or sets the widgets button visibility preference.
     /// </summary>
     public StringSettingValue TaskbarWidgets { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the Dynamic Lighting enablement preference.
+    /// </summary>
+    public DwordSettingValue DynamicLightingEnabled { get; set; } = new();
 }
 
 /// <summary>

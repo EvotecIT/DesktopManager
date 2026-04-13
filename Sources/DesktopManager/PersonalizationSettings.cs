@@ -105,6 +105,11 @@ public sealed class PersonalizationSettings {
     public bool? TaskbarWidgetsButtonVisible { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether Dynamic Lighting is enabled.
+    /// </summary>
+    public bool? DynamicLightingEnabled { get; set; }
+
+    /// <summary>
     /// Gets or sets the desktop wallpaper path.
     /// </summary>
     public string? DesktopWallpaperPath { get; set; }
