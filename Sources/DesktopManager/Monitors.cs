@@ -239,6 +239,22 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Gets the current system theme.
+    /// </summary>
+    /// <returns>The current <see cref="SystemTheme"/>.</returns>
+    public SystemTheme GetSystemTheme() {
+        return _monitorService.GetSystemTheme();
+    }
+
+    /// <summary>
+    /// Sets the current system theme.
+    /// </summary>
+    /// <param name="theme">The desired theme.</param>
+    public void SetSystemTheme(SystemTheme theme) {
+        _monitorService.SetSystemTheme(theme);
+    }
+
+    /// <summary>
     /// Sets the logon (lock screen) wallpaper.
     /// </summary>
     /// <param name="imagePath">Path to the image file.</param>

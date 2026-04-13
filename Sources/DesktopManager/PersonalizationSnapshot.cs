@@ -31,6 +31,11 @@ public sealed class PersonalizationSnapshot {
     /// Gets or sets the policy-based personalization snapshot.
     /// </summary>
     public PersonalizationPolicySnapshot Policy { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the user-scoped personalization snapshot.
+    /// </summary>
+    public PersonalizationUserSnapshot User { get; set; } = new();
 }
 
 /// <summary>
@@ -84,6 +89,61 @@ public sealed class PersonalizationPolicySnapshot {
 }
 
 /// <summary>
+/// Captures user-scoped personalization settings.
+/// </summary>
+public sealed class PersonalizationUserSnapshot {
+    /// <summary>
+    /// Gets or sets the system theme preference.
+    /// </summary>
+    public DwordSettingValue SystemUsesLightTheme { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the apps theme preference.
+    /// </summary>
+    public DwordSettingValue AppsUseLightTheme { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the transparency effects preference.
+    /// </summary>
+    public DwordSettingValue EnableTransparency { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the accent color.
+    /// </summary>
+    public DwordSettingValue AccentColor { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the colorization color.
+    /// </summary>
+    public DwordSettingValue ColorizationColor { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the accent color menu value.
+    /// </summary>
+    public DwordSettingValue AccentColorMenu { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the start color menu value.
+    /// </summary>
+    public DwordSettingValue StartColorMenu { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the color prevalence toggle.
+    /// </summary>
+    public DwordSettingValue ColorPrevalence { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the window colorization toggle.
+    /// </summary>
+    public DwordSettingValue EnableWindowColorization { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the accent palette.
+    /// </summary>
+    public BinarySettingValue AccentPalette { get; set; } = new();
+}
+
+/// <summary>
 /// Represents a string policy value with state tracking.
 /// </summary>
 public sealed class StringPolicyValue {
@@ -111,4 +171,34 @@ public sealed class DwordPolicyValue {
     /// Gets or sets the stored policy value.
     /// </summary>
     public int Value { get; set; }
+}
+
+/// <summary>
+/// Represents a DWORD setting value with state tracking.
+/// </summary>
+public sealed class DwordSettingValue {
+    /// <summary>
+    /// Gets or sets a value indicating whether the setting value existed.
+    /// </summary>
+    public bool IsSet { get; set; }
+
+    /// <summary>
+    /// Gets or sets the stored setting value.
+    /// </summary>
+    public int Value { get; set; }
+}
+
+/// <summary>
+/// Represents a binary setting value with state tracking.
+/// </summary>
+public sealed class BinarySettingValue {
+    /// <summary>
+    /// Gets or sets a value indicating whether the setting value existed.
+    /// </summary>
+    public bool IsSet { get; set; }
+
+    /// <summary>
+    /// Gets or sets the stored setting value.
+    /// </summary>
+    public byte[]? Value { get; set; }
 }

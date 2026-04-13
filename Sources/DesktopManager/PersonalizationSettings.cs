@@ -25,6 +25,31 @@ public sealed class PersonalizationSettings {
     public bool? DisableWindowsSpotlightOnLockScreen { get; set; }
 
     /// <summary>
+    /// Gets or sets the system theme to apply.
+    /// </summary>
+    public SystemTheme? SystemTheme { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to enable transparency effects.
+    /// </summary>
+    public bool? EnableTransparency { get; set; }
+
+    /// <summary>
+    /// Gets or sets the accent color (ARGB).
+    /// </summary>
+    public uint? AccentColor { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to show the accent color on Start and taskbar.
+    /// </summary>
+    public bool? UseAccentColorOnStartTaskbar { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to show the accent color on title bars and window borders.
+    /// </summary>
+    public bool? UseAccentColorOnTitleBars { get; set; }
+
+    /// <summary>
     /// Gets or sets the desktop wallpaper path.
     /// </summary>
     public string? DesktopWallpaperPath { get; set; }
