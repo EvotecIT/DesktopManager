@@ -141,6 +141,61 @@ public sealed class PersonalizationUserSnapshot {
     /// Gets or sets the accent palette.
     /// </summary>
     public BinarySettingValue AccentPalette { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the Start layout preference.
+    /// </summary>
+    public DwordSettingValue StartLayout { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the Start show all pins preference.
+    /// </summary>
+    public DwordSettingValue StartShowAllPins { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the Start recommendations preference.
+    /// </summary>
+    public DwordSettingValue StartRecommendations { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the taskbar alignment preference.
+    /// </summary>
+    public StringSettingValue TaskbarAlignment { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the taskbar grouping preference.
+    /// </summary>
+    public StringSettingValue TaskbarGrouping { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the taskbar flashing preference.
+    /// </summary>
+    public StringSettingValue TaskbarFlashing { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the taskbar share window preference.
+    /// </summary>
+    public StringSettingValue TaskbarShareWindow { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the taskbar show desktop preference.
+    /// </summary>
+    public StringSettingValue TaskbarShowDesktop { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the taskbar recent searches preference.
+    /// </summary>
+    public StringSettingValue TaskbarRecentSearches { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the task view button visibility preference.
+    /// </summary>
+    public StringSettingValue TaskbarTaskView { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the widgets button visibility preference.
+    /// </summary>
+    public StringSettingValue TaskbarWidgets { get; set; } = new();
 }
 
 /// <summary>
@@ -201,4 +256,19 @@ public sealed class BinarySettingValue {
     /// Gets or sets the stored setting value.
     /// </summary>
     public byte[]? Value { get; set; }
+}
+
+/// <summary>
+/// Represents a string setting value with state tracking.
+/// </summary>
+public sealed class StringSettingValue {
+    /// <summary>
+    /// Gets or sets a value indicating whether the setting value existed.
+    /// </summary>
+    public bool IsSet { get; set; }
+
+    /// <summary>
+    /// Gets or sets the stored setting value.
+    /// </summary>
+    public string? Value { get; set; }
 }

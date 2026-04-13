@@ -50,6 +50,61 @@ public sealed class PersonalizationSettings {
     public bool? UseAccentColorOnTitleBars { get; set; }
 
     /// <summary>
+    /// Gets or sets the Start layout preference.
+    /// </summary>
+    public StartLayoutPreference? StartLayout { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether all pins are shown by default in Start.
+    /// </summary>
+    public bool? StartShowAllPins { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether Start recommendations are enabled.
+    /// </summary>
+    public bool? StartRecommendationsEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the taskbar alignment preference.
+    /// </summary>
+    public TaskbarAlignmentPreference? TaskbarAlignment { get; set; }
+
+    /// <summary>
+    /// Gets or sets the taskbar grouping preference.
+    /// </summary>
+    public TaskbarGroupingPreference? TaskbarGrouping { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether taskbar flashing is enabled.
+    /// </summary>
+    public bool? TaskbarFlashingEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether taskbar share window is enabled.
+    /// </summary>
+    public bool? TaskbarShareWindowEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether taskbar show desktop is enabled.
+    /// </summary>
+    public bool? TaskbarShowDesktopEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether taskbar recent searches are shown on hover.
+    /// </summary>
+    public bool? TaskbarRecentSearchesEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the task view button is shown on the taskbar.
+    /// </summary>
+    public bool? TaskbarTaskViewButtonVisible { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the Widgets button is shown on the taskbar.
+    /// </summary>
+    public bool? TaskbarWidgetsButtonVisible { get; set; }
+
+    /// <summary>
     /// Gets or sets the desktop wallpaper path.
     /// </summary>
     public string? DesktopWallpaperPath { get; set; }

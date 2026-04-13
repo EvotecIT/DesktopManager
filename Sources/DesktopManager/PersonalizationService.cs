@@ -15,6 +15,16 @@ public sealed class PersonalizationService {
     private const string PersonalizePath = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private const string DwmPath = @"Software\Microsoft\Windows\DWM";
     private const string AccentPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent";
+    private const string ExplorerAdvancedPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+    private const string StartPath = @"Software\Microsoft\Windows\CurrentVersion\Start";
+    private const string TaskbarAlignmentPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarAl";
+    private const string TaskbarGroupingPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarGlomLevel";
+    private const string TaskbarFlashingPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarFlashing";
+    private const string TaskbarShareWindowPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarSn";
+    private const string TaskbarShowDesktopPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarSd";
+    private const string TaskbarTaskViewPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowTaskViewButton";
+    private const string TaskbarWidgetsPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDa";
+    private const string TaskbarRecentSearchesPath = @"Software\Microsoft\Windows\CurrentVersion\Feeds\DSB\OpenOnHover";
     private readonly Monitors _monitors;
 
     /// <summary>
@@ -120,6 +130,58 @@ public sealed class PersonalizationService {
                 settings.DisableWindowsSpotlightOnLockScreen.Value ? 1 : 0);
         }
 
+        if (settings.StartLayout.HasValue) {
+            ApplyDwordSetting(ExplorerAdvancedPath, "Start_Layout", (int)settings.StartLayout.Value);
+        }
+
+        if (settings.StartShowAllPins.HasValue) {
+            ApplyDwordSetting(StartPath, "ShowAllPinsList", settings.StartShowAllPins.Value ? 1 : 0);
+        }
+
+        if (settings.StartRecommendationsEnabled.HasValue) {
+            ApplyDwordSetting(ExplorerAdvancedPath, "Start_IrisRecommendations", settings.StartRecommendationsEnabled.Value ? 1 : 0);
+        }
+
+        if (settings.TaskbarAlignment.HasValue) {
+            ApplyStringSetting(TaskbarAlignmentPath, "SystemSettings_DesktopTaskbar_Al",
+                ((int)settings.TaskbarAlignment.Value).ToString());
+        }
+
+        if (settings.TaskbarGrouping.HasValue) {
+            ApplyStringSetting(TaskbarGroupingPath, "SystemSettings_DesktopTaskbar_GroupingMode",
+                ((int)settings.TaskbarGrouping.Value).ToString());
+        }
+
+        if (settings.TaskbarFlashingEnabled.HasValue) {
+            ApplyStringSetting(TaskbarFlashingPath, "SystemSettings_DesktopTaskbar_Flashing",
+                settings.TaskbarFlashingEnabled.Value ? "1" : "0");
+        }
+
+        if (settings.TaskbarShareWindowEnabled.HasValue) {
+            ApplyStringSetting(TaskbarShareWindowPath, "SystemSettings_DesktopTaskbar_Sn",
+                settings.TaskbarShareWindowEnabled.Value ? "1" : "0");
+        }
+
+        if (settings.TaskbarShowDesktopEnabled.HasValue) {
+            ApplyStringSetting(TaskbarShowDesktopPath, "SystemSettings_DesktopTaskbar_Sd",
+                settings.TaskbarShowDesktopEnabled.Value ? "1" : "0");
+        }
+
+        if (settings.TaskbarRecentSearchesEnabled.HasValue) {
+            ApplyStringSetting(TaskbarRecentSearchesPath, "SystemSettings_DesktopTaskbar_Sh",
+                settings.TaskbarRecentSearchesEnabled.Value ? "1" : "0");
+        }
+
+        if (settings.TaskbarTaskViewButtonVisible.HasValue) {
+            ApplyStringSetting(TaskbarTaskViewPath, "SystemSettings_DesktopTaskbar_TaskView",
+                settings.TaskbarTaskViewButtonVisible.Value ? "1" : "0");
+        }
+
+        if (settings.TaskbarWidgetsButtonVisible.HasValue) {
+            ApplyStringSetting(TaskbarWidgetsPath, "SystemSettings_DesktopTaskbar_Da",
+                settings.TaskbarWidgetsButtonVisible.Value ? "1" : "0");
+        }
+
         BroadcastSettingChange();
     }
 
@@ -199,7 +261,18 @@ public sealed class PersonalizationService {
             EnableWindowColorization = ReadDwordSetting(DwmPath, "EnableWindowColorization"),
             AccentColorMenu = ReadDwordSetting(AccentPath, "AccentColorMenu"),
             StartColorMenu = ReadDwordSetting(AccentPath, "StartColorMenu"),
-            AccentPalette = ReadBinarySetting(AccentPath, "AccentPalette")
+            AccentPalette = ReadBinarySetting(AccentPath, "AccentPalette"),
+            StartLayout = ReadDwordSetting(ExplorerAdvancedPath, "Start_Layout"),
+            StartShowAllPins = ReadDwordSetting(StartPath, "ShowAllPinsList"),
+            StartRecommendations = ReadDwordSetting(ExplorerAdvancedPath, "Start_IrisRecommendations"),
+            TaskbarAlignment = ReadStringSetting(TaskbarAlignmentPath, "SystemSettings_DesktopTaskbar_Al"),
+            TaskbarGrouping = ReadStringSetting(TaskbarGroupingPath, "SystemSettings_DesktopTaskbar_GroupingMode"),
+            TaskbarFlashing = ReadStringSetting(TaskbarFlashingPath, "SystemSettings_DesktopTaskbar_Flashing"),
+            TaskbarShareWindow = ReadStringSetting(TaskbarShareWindowPath, "SystemSettings_DesktopTaskbar_Sn"),
+            TaskbarShowDesktop = ReadStringSetting(TaskbarShowDesktopPath, "SystemSettings_DesktopTaskbar_Sd"),
+            TaskbarRecentSearches = ReadStringSetting(TaskbarRecentSearchesPath, "SystemSettings_DesktopTaskbar_Sh"),
+            TaskbarTaskView = ReadStringSetting(TaskbarTaskViewPath, "SystemSettings_DesktopTaskbar_TaskView"),
+            TaskbarWidgets = ReadStringSetting(TaskbarWidgetsPath, "SystemSettings_DesktopTaskbar_Da")
         };
     }
 
@@ -229,6 +302,17 @@ public sealed class PersonalizationService {
         ApplyDwordSetting(AccentPath, "AccentColorMenu", snapshot.AccentColorMenu);
         ApplyDwordSetting(AccentPath, "StartColorMenu", snapshot.StartColorMenu);
         ApplyBinarySetting(AccentPath, "AccentPalette", snapshot.AccentPalette);
+        ApplyDwordSetting(ExplorerAdvancedPath, "Start_Layout", snapshot.StartLayout);
+        ApplyDwordSetting(StartPath, "ShowAllPinsList", snapshot.StartShowAllPins);
+        ApplyDwordSetting(ExplorerAdvancedPath, "Start_IrisRecommendations", snapshot.StartRecommendations);
+        ApplyStringSetting(TaskbarAlignmentPath, "SystemSettings_DesktopTaskbar_Al", snapshot.TaskbarAlignment);
+        ApplyStringSetting(TaskbarGroupingPath, "SystemSettings_DesktopTaskbar_GroupingMode", snapshot.TaskbarGrouping);
+        ApplyStringSetting(TaskbarFlashingPath, "SystemSettings_DesktopTaskbar_Flashing", snapshot.TaskbarFlashing);
+        ApplyStringSetting(TaskbarShareWindowPath, "SystemSettings_DesktopTaskbar_Sn", snapshot.TaskbarShareWindow);
+        ApplyStringSetting(TaskbarShowDesktopPath, "SystemSettings_DesktopTaskbar_Sd", snapshot.TaskbarShowDesktop);
+        ApplyStringSetting(TaskbarRecentSearchesPath, "SystemSettings_DesktopTaskbar_Sh", snapshot.TaskbarRecentSearches);
+        ApplyStringSetting(TaskbarTaskViewPath, "SystemSettings_DesktopTaskbar_TaskView", snapshot.TaskbarTaskView);
+        ApplyStringSetting(TaskbarWidgetsPath, "SystemSettings_DesktopTaskbar_Da", snapshot.TaskbarWidgets);
     }
 
     private static StringPolicyValue ReadStringPolicy(string keyPath, string valueName) {
@@ -313,6 +397,23 @@ public sealed class PersonalizationService {
         return new BinarySettingValue();
     }
 
+    private static StringSettingValue ReadStringSetting(string keyPath, string valueName) {
+        using RegistryKey? key = Registry.CurrentUser.OpenSubKey(keyPath, false);
+        if (key == null) {
+            return new StringSettingValue();
+        }
+
+        object? value = key.GetValue(valueName);
+        if (value == null) {
+            return new StringSettingValue();
+        }
+
+        return new StringSettingValue {
+            IsSet = true,
+            Value = value.ToString()
+        };
+    }
+
     private static void ApplyStringPolicy(string keyPath, string valueName, string value) {
         PrivilegeChecker.EnsureElevated();
         using RegistryKey? key = Registry.LocalMachine.CreateSubKey(keyPath);
@@ -389,6 +490,25 @@ public sealed class PersonalizationService {
 
         using RegistryKey? removeKey = Registry.CurrentUser.OpenSubKey(keyPath, true);
         removeKey?.DeleteValue(valueName, false);
+    }
+
+    private static void ApplyStringSetting(string keyPath, string valueName, string value) {
+        using RegistryKey? key = Registry.CurrentUser.CreateSubKey(keyPath);
+        key?.SetValue(valueName, value, RegistryValueKind.String);
+    }
+
+    private static void ApplyStringSetting(string keyPath, string valueName, StringSettingValue state) {
+        if (state == null) {
+            throw new ArgumentNullException(nameof(state));
+        }
+
+        if (state.IsSet) {
+            ApplyStringSetting(keyPath, valueName, state.Value ?? string.Empty);
+            return;
+        }
+
+        using RegistryKey? key = Registry.CurrentUser.OpenSubKey(keyPath, true);
+        key?.DeleteValue(valueName, false);
     }
 
     private static void ApplyAccentColor(uint accentColor) {
