@@ -87,7 +87,13 @@ public sealed class PersonalizationService {
         }
 
         if (settings.SystemTheme.HasValue) {
-            _monitors.SetSystemTheme(settings.SystemTheme.Value);
+            int value = settings.SystemTheme.Value == SystemTheme.Dark ? 0 : 1;
+            ApplyDwordSetting(PersonalizePath, "SystemUsesLightTheme", value);
+        }
+
+        if (settings.AppsTheme.HasValue) {
+            int value = settings.AppsTheme.Value == SystemTheme.Dark ? 0 : 1;
+            ApplyDwordSetting(PersonalizePath, "AppsUseLightTheme", value);
         }
 
         if (settings.EnableTransparency.HasValue) {

@@ -30,6 +30,11 @@ public sealed class PersonalizationSettings {
     public SystemTheme? SystemTheme { get; set; }
 
     /// <summary>
+    /// Gets or sets the apps theme to apply.
+    /// </summary>
+    public SystemTheme? AppsTheme { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether to enable transparency effects.
     /// </summary>
     public bool? EnableTransparency { get; set; }
