@@ -5,7 +5,7 @@
         <Description>PowerShell Module for working Windows Desktop</Description>
         <AssemblyName>DesktopManager.PowerShell</AssemblyName>
         <AssemblyTitle>DesktopManager.PowerShell</AssemblyTitle>
-        <VersionPrefix>3.6.0</VersionPrefix>
+        <VersionPrefix>3.6.1</VersionPrefix>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <Company>Evotec</Company>
         <Authors>Przemyslaw Klys</Authors>

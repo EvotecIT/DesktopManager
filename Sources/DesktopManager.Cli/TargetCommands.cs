@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 
 namespace DesktopManager.Cli;
@@ -75,18 +76,30 @@ internal static class TargetCommands {
         writer.WriteLine(result.Name);
         writer.WriteLine($"- Path: {result.Path}");
         writer.WriteLine($"- ClientArea: {(result.Target.ClientArea ? "Yes" : "No")}");
-        writer.WriteLine($"- X: {result.Target.X?.ToString() ?? "-"}");
-        writer.WriteLine($"- Y: {result.Target.Y?.ToString() ?? "-"}");
-        writer.WriteLine($"- XRatio: {result.Target.XRatio?.ToString() ?? "-"}");
-        writer.WriteLine($"- YRatio: {result.Target.YRatio?.ToString() ?? "-"}");
-        writer.WriteLine($"- Width: {result.Target.Width?.ToString() ?? "-"}");
-        writer.WriteLine($"- Height: {result.Target.Height?.ToString() ?? "-"}");
-        writer.WriteLine($"- WidthRatio: {result.Target.WidthRatio?.ToString() ?? "-"}");
-        writer.WriteLine($"- HeightRatio: {result.Target.HeightRatio?.ToString() ?? "-"}");
+        writer.WriteLine($"- X: {FormatNumber(result.Target.X)}");
+        writer.WriteLine($"- Y: {FormatNumber(result.Target.Y)}");
+        writer.WriteLine($"- XRatio: {FormatNumber(result.Target.XRatio)}");
+        writer.WriteLine($"- YRatio: {FormatNumber(result.Target.YRatio)}");
+        writer.WriteLine($"- Width: {FormatNumber(result.Target.Width)}");
+        writer.WriteLine($"- Height: {FormatNumber(result.Target.Height)}");
+        writer.WriteLine($"- WidthRatio: {FormatNumber(result.Target.WidthRatio)}");
+        writer.WriteLine($"- HeightRatio: {FormatNumber(result.Target.HeightRatio)}");
         if (!string.IsNullOrWhiteSpace(result.Target.Description)) {
             writer.WriteLine($"- Description: {result.Target.Description}");
         }
         return 0;
+    }
+
+    private static string FormatNumber(int? value) {
+        return value.HasValue
+            ? value.Value.ToString(CultureInfo.InvariantCulture)
+            : "-";
+    }
+
+    private static string FormatNumber(double? value) {
+        return value.HasValue
+            ? value.Value.ToString(CultureInfo.InvariantCulture)
+            : "-";
     }
 
     internal static int WriteSavedTargetResult(WindowTargetResult result, TextWriter writer) {
