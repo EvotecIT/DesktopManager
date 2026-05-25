@@ -109,4 +109,81 @@ public static partial class MonitorNativeMethods
         /// <summary>Clears all objects from the collection.</summary>
         void Clear();
     }
+
+    /// <summary>
+    /// Interface for shell item arrays returned by desktop wallpaper slideshow APIs.
+    /// </summary>
+    [ComImport, Guid("B63EA76D-1F85-456F-A19C-48159EFA858B"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IShellItemArray {
+        /// <summary>Binds the shell item array to a handler.</summary>
+        [PreserveSig]
+        int BindToHandler(IntPtr pbc, ref Guid bhid, ref Guid riid, out IntPtr ppvOut);
+
+        /// <summary>Gets a property store for the array.</summary>
+        [PreserveSig]
+        int GetPropertyStore(int flags, ref Guid riid, out IntPtr ppv);
+
+        /// <summary>Gets a property description list for the array.</summary>
+        [PreserveSig]
+        int GetPropertyDescriptionList(IntPtr keyType, ref Guid riid, out IntPtr ppv);
+
+        /// <summary>Gets array attributes.</summary>
+        [PreserveSig]
+        int GetAttributes(int attribFlags, uint sfgaoMask, out uint psfgaoAttribs);
+
+        /// <summary>Gets the number of items in the array.</summary>
+        [PreserveSig]
+        int GetCount(out uint pdwNumItems);
+
+        /// <summary>Gets an item by index.</summary>
+        [PreserveSig]
+        int GetItemAt(uint dwIndex, out IShellItem ppsi);
+
+        /// <summary>Enumerates the shell items.</summary>
+        [PreserveSig]
+        int EnumItems(out IntPtr ppenumShellItems);
+    }
+
+    /// <summary>
+    /// Interface for a shell item.
+    /// </summary>
+    [ComImport, Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IShellItem {
+        /// <summary>Binds the shell item to a handler.</summary>
+        [PreserveSig]
+        int BindToHandler(IntPtr pbc, ref Guid bhid, ref Guid riid, out IntPtr ppv);
+
+        /// <summary>Gets the parent shell item.</summary>
+        [PreserveSig]
+        int GetParent(out IShellItem ppsi);
+
+        /// <summary>Gets the display name for the shell item.</summary>
+        [PreserveSig]
+        int GetDisplayName(SIGDN sigdnName, out IntPtr ppszName);
+
+        /// <summary>Gets shell item attributes.</summary>
+        [PreserveSig]
+        int GetAttributes(uint sfgaoMask, out uint psfgaoAttribs);
+
+        /// <summary>Compares shell items.</summary>
+        [PreserveSig]
+        int Compare(IShellItem psi, uint hint, out int piOrder);
+    }
+
+    /// <summary>
+    /// Shell display name formats.
+    /// </summary>
+    public enum SIGDN : uint {
+        /// <summary>Returns the file system path when one exists.</summary>
+        FileSystemPath = 0x80058000,
+        /// <summary>Returns the normal display name.</summary>
+        NormalDisplay = 0x00000000
+    }
+
+    /// <summary>
+    /// Frees memory allocated by COM.
+    /// </summary>
+    /// <param name="pv">Pointer to release.</param>
+    [DllImport("ole32.dll")]
+    public static extern void CoTaskMemFree(IntPtr pv);
 }

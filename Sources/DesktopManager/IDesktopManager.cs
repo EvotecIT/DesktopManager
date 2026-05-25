@@ -77,24 +77,26 @@ public interface IDesktopManager {
     /// <summary>
     /// Gets the slideshow items.
     /// </summary>
-    /// <returns>The slideshow items.</returns>
-    IntPtr GetSlideshow();
+    /// <param name="items">The slideshow items.</param>
+    /// <returns>An HRESULT value.</returns>
+    [PreserveSig]
+    uint GetSlideshow(out IntPtr items);
 
     /// <summary>
     /// Sets the slideshow options.
     /// </summary>
-    /// <param name="options">The slideshow direction options.</param>
+    /// <param name="options">The slideshow options.</param>
     /// <param name="slideshowTick">The slideshow tick interval.</param>
-    void SetSlideshowOptions(DesktopSlideshowDirection options, uint slideshowTick);
+    void SetSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick);
 
     /// <summary>
     /// Gets the slideshow options.
     /// </summary>
-    /// <param name="options">The slideshow direction options.</param>
+    /// <param name="options">The slideshow options.</param>
     /// <param name="slideshowTick">The slideshow tick interval.</param>
     /// <returns>The slideshow options.</returns>
     [PreserveSig]
-    uint GetSlideshowOptions(out DesktopSlideshowDirection options, out uint slideshowTick);
+    uint GetSlideshowOptions(out DesktopSlideshowOptions options, out uint slideshowTick);
 
     /// <summary>
     /// Advances the slideshow in the specified direction.
@@ -106,8 +108,9 @@ public interface IDesktopManager {
     /// <summary>
     /// Gets the status of the slideshow.
     /// </summary>
-    /// <returns>The status of the slideshow.</returns>
-    DesktopSlideshowDirection GetStatus();
+    /// <param name="state">The status of the slideshow.</param>
+    [PreserveSig]
+    uint GetStatus(out DesktopSlideshowState state);
 
     /// <summary>
     /// Enables or disables the desktop wallpaper.

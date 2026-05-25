@@ -59,15 +59,15 @@ public class MonitorServiceCleanupTests {
         /// <summary>
         /// Test for GetSlideshow.
         /// </summary>
-        public IntPtr GetSlideshow() => IntPtr.Zero;
+        public uint GetSlideshow(out IntPtr items) { items = IntPtr.Zero; return 0; }
         /// <summary>
         /// Test for SetSlideshowOptions.
         /// </summary>
-        public void SetSlideshowOptions(DesktopSlideshowDirection options, uint slideshowTick) { }
+        public void SetSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) { }
         /// <summary>
         /// Test for GetSlideshowOptions.
         /// </summary>
-        public uint GetSlideshowOptions(out DesktopSlideshowDirection options, out uint slideshowTick) { options = DesktopSlideshowDirection.Forward; slideshowTick = 0; return 0; }
+        public uint GetSlideshowOptions(out DesktopSlideshowOptions options, out uint slideshowTick) { options = DesktopSlideshowOptions.None; slideshowTick = 0; return 0; }
         /// <summary>
         /// Test for AdvanceSlideshow.
         /// </summary>
@@ -75,7 +75,7 @@ public class MonitorServiceCleanupTests {
         /// <summary>
         /// Test for GetStatus.
         /// </summary>
-        public DesktopSlideshowDirection GetStatus() => DesktopSlideshowDirection.Forward;
+        public uint GetStatus(out DesktopSlideshowState state) { state = DesktopSlideshowState.Enabled; return 0; }
         /// <summary>
         /// Test for Enable.
         /// </summary>

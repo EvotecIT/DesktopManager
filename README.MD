@@ -1,4 +1,4 @@
-﻿# DesktopManager - C# Library and PowerShell Module
+# DesktopManager - C# Library and PowerShell Module
 
 DesktopManager is available as NuGet from the Nuget Gallery.
 
@@ -138,6 +138,8 @@ The important part is that CLI, MCP, and PowerShell are meant to stay aligned by
 | Set-DesktopWallpaper | Apply wallpaper from path, URL or stream |
 | Get-DesktopWallpaperHistory | List stored wallpaper history entries |
 | Set-DesktopWallpaperHistory | Update or clear wallpaper history file |
+| Get-DesktopSlideshow | Inspect slideshow images, state, options and tick interval |
+| Set-DesktopSlideshowOptions | Update slideshow shuffle behavior and tick interval |
 | Start-DesktopSlideshow | Begin wallpaper slideshow across monitors |
 | Stop-DesktopSlideshow | Stop currently running slideshow |
 | Advance-DesktopSlideshow | Move slideshow forward or backward |
@@ -199,6 +201,8 @@ The table below shows the most relevant API methods behind each PowerShell cmdle
 | Set-DesktopWallpaper | `Monitors.SetWallpaper`, `Monitors.SetWallpaperFromUrl` |
 | Get-DesktopWallpaperHistory | `WallpaperHistory.GetHistory` |
 | Set-DesktopWallpaperHistory | `WallpaperHistory.SetHistory` |
+| Get-DesktopSlideshow | `Monitors.GetWallpaperSlideshow` |
+| Set-DesktopSlideshowOptions | `Monitors.SetWallpaperSlideshowOptions` |
 | Start-DesktopSlideshow | `Monitors.StartWallpaperSlideshow` |
 | Stop-DesktopSlideshow | `Monitors.StopWallpaperSlideshow` |
 | Advance-DesktopSlideshow | `Monitors.AdvanceWallpaperSlide` |
@@ -445,7 +449,9 @@ Get-DesktopBackgroundColor
 #### Example in PowerShell - Wallpaper Slideshow
 
 ```powershell
-Start-DesktopSlideshow -ImagePath 'C:\Wallpapers\img1.jpg','C:\Wallpapers\img2.jpg'
+Start-DesktopSlideshow -ImagePath 'C:\Wallpapers\img1.jpg','C:\Wallpapers\img2.jpg' -Shuffle -SlideshowTick 300000
+Get-DesktopSlideshow
+Set-DesktopSlideshowOptions -NoShuffle -SlideshowTick 600000
 Advance-DesktopSlideshow -Direction Forward
 Stop-DesktopSlideshow
 ```

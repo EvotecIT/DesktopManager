@@ -37,6 +37,12 @@ desktopmanager control send-keys
 
 desktopmanager monitor list
 
+desktopmanager desktop slideshow
+desktopmanager desktop start-slideshow
+desktopmanager desktop set-slideshow-options
+desktopmanager desktop advance-slideshow
+desktopmanager desktop stop-slideshow
+
 desktopmanager process start
 desktopmanager process start-and-wait
 
@@ -90,6 +96,9 @@ desktopmanager mcp serve --dry-run
 - `visual` stores reusable JSON metadata plus PNG baseline images under `%AppData%\DesktopManager\visual-baselines`.
 - `control-target` stores reusable JSON control selector definitions under `%AppData%\DesktopManager\control-targets`.
 - `monitor list` reports the desktop-coordinate bounds used by monitor screenshots.
+- `desktop slideshow` reports configured wallpaper slideshow images, state flags, options, shuffle state, and slideshow tick interval.
+- `desktop start-slideshow` can replace the slideshow image set and optionally apply shuffle and tick settings in the same call.
+- `desktop set-slideshow-options` updates shuffle and tick settings without replacing the slideshow images.
 - snapshots currently reuse the window layout format and are therefore windows-only for now.
 - `process start` launches a desktop application and can optionally wait for input idle and for a launched window to appear.
 - `process start` can now also validate the launched window by title or class and optionally require that a real matching window be found before returning.

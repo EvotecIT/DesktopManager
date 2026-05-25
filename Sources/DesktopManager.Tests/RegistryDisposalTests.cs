@@ -21,11 +21,11 @@ public class RegistryDisposalTests {
         public void SetPosition(DesktopWallpaperPosition position) => throw new COMException();
         public DesktopWallpaperPosition GetPosition() => throw new COMException();
         public void SetSlideshow(IntPtr items) => throw new COMException();
-        public IntPtr GetSlideshow() => throw new COMException();
-        public void SetSlideshowOptions(DesktopSlideshowDirection options, uint slideshowTick) => throw new COMException();
-        public uint GetSlideshowOptions(out DesktopSlideshowDirection options, out uint slideshowTick) { throw new COMException(); }
+        public uint GetSlideshow(out IntPtr items) { throw new COMException(); }
+        public void SetSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) => throw new COMException();
+        public uint GetSlideshowOptions(out DesktopSlideshowOptions options, out uint slideshowTick) { throw new COMException(); }
         public void AdvanceSlideshow(string? monitorId, DesktopSlideshowDirection direction) => throw new COMException();
-        public DesktopSlideshowDirection GetStatus() => throw new COMException();
+        public uint GetStatus(out DesktopSlideshowState state) { throw new COMException(); }
         public void Enable(bool enable) => throw new COMException();
     }
 

@@ -101,6 +101,19 @@ internal sealed class CommandLineArguments {
         return GetIntOption(name) ?? throw new CommandLineException($"Missing required option '--{name}'.");
     }
 
+    public uint? GetUIntOption(string name) {
+        string? value = GetOption(name);
+        if (string.IsNullOrEmpty(value)) {
+            return null;
+        }
+
+        if (uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint parsed)) {
+            return parsed;
+        }
+
+        throw new CommandLineException($"Option '--{name}' expects an unsigned integer value.");
+    }
+
     public double? GetDoubleOption(string name) {
         string? value = GetOption(name);
         if (string.IsNullOrEmpty(value)) {

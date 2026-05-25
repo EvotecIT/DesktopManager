@@ -202,11 +202,21 @@ public sealed class DesktopAutomationService {
     /// </summary>
     /// <param name="imagePaths">Wallpaper image paths.</param>
     public void StartDesktopSlideshow(IEnumerable<string> imagePaths) {
+        StartDesktopSlideshow(imagePaths, null, null);
+    }
+
+    /// <summary>
+    /// Starts a desktop wallpaper slideshow with optional slideshow settings.
+    /// </summary>
+    /// <param name="imagePaths">Wallpaper image paths.</param>
+    /// <param name="options">Optional slideshow options.</param>
+    /// <param name="slideshowTick">Optional slideshow tick interval in milliseconds.</param>
+    public void StartDesktopSlideshow(IEnumerable<string> imagePaths, DesktopSlideshowOptions? options, uint? slideshowTick) {
         if (imagePaths == null) {
             throw new ArgumentNullException(nameof(imagePaths));
         }
 
-        _monitors.StartWallpaperSlideshow(imagePaths);
+        _monitors.StartWallpaperSlideshow(imagePaths, options, slideshowTick);
     }
 
     /// <summary>
@@ -222,6 +232,23 @@ public sealed class DesktopAutomationService {
     /// <param name="direction">Direction to advance.</param>
     public void AdvanceDesktopSlideshow(DesktopSlideshowDirection direction) {
         _monitors.AdvanceWallpaperSlide(direction);
+    }
+
+    /// <summary>
+    /// Gets the current desktop wallpaper slideshow configuration and state.
+    /// </summary>
+    /// <returns>The current wallpaper slideshow details.</returns>
+    public DesktopWallpaperSlideshow GetDesktopSlideshow() {
+        return _monitors.GetWallpaperSlideshow();
+    }
+
+    /// <summary>
+    /// Sets desktop wallpaper slideshow options.
+    /// </summary>
+    /// <param name="options">Slideshow options.</param>
+    /// <param name="slideshowTick">Slideshow tick interval in milliseconds.</param>
+    public void SetDesktopSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) {
+        _monitors.SetWallpaperSlideshowOptions(options, slideshowTick);
     }
 
     /// <summary>

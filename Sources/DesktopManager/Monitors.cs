@@ -274,7 +274,7 @@ public class Monitors {
     }
 
     /// <summary>
-    /// Gets the current logon (lock screen) wallpaper path if available.       
+    /// Gets the current logon (lock screen) wallpaper path if available.
     /// </summary>
     /// <returns>Path to the wallpaper or empty string.</returns>
     [SupportedOSPlatform("windows10.0.10240.0")]
@@ -389,6 +389,16 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Starts a wallpaper slideshow on the desktop with optional slideshow settings.
+    /// </summary>
+    /// <param name="wallpaperPath">Paths to slideshow images.</param>
+    /// <param name="options">Optional slideshow options.</param>
+    /// <param name="slideshowTick">Optional slideshow tick interval in milliseconds.</param>
+    public void StartWallpaperSlideshow(IEnumerable<string> wallpaperPath, DesktopSlideshowOptions? options, uint? slideshowTick) {
+        _monitorService.StartWallpaperSlideshow(wallpaperPath, options, slideshowTick);
+    }
+
+    /// <summary>
     /// Stops any running wallpaper slideshow.
     /// </summary>
     public void StopWallpaperSlideshow() {
@@ -401,6 +411,23 @@ public class Monitors {
     /// <param name="direction">Direction to advance.</param>
     public void AdvanceWallpaperSlide(DesktopSlideshowDirection direction) {
         _monitorService.AdvanceWallpaperSlide(direction);
+    }
+
+    /// <summary>
+    /// Gets the current wallpaper slideshow configuration and state.
+    /// </summary>
+    /// <returns>The current wallpaper slideshow details.</returns>
+    public DesktopWallpaperSlideshow GetWallpaperSlideshow() {
+        return _monitorService.GetWallpaperSlideshow();
+    }
+
+    /// <summary>
+    /// Sets the wallpaper slideshow options.
+    /// </summary>
+    /// <param name="options">Slideshow options.</param>
+    /// <param name="slideshowTick">Slideshow tick interval in milliseconds.</param>
+    public void SetWallpaperSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) {
+        _monitorService.SetWallpaperSlideshowOptions(options, slideshowTick);
     }
 
     /// <summary>

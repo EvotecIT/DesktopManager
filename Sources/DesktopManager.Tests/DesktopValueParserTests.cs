@@ -25,5 +25,15 @@ public class DesktopValueParserTests {
 
         Assert.AreEqual(0x00FF10u, color);
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures unsigned integer CLI options parse correctly.
+    /// </summary>
+    public void CommandLineArguments_GetUIntOption_ReturnsUnsignedInteger() {
+        var arguments = DesktopManager.Cli.CommandLineArguments.Parse(new[] { "--slideshow-tick", "300000" });
+
+        Assert.AreEqual((uint)300000, arguments.GetUIntOption("slideshow-tick"));
+    }
 }
 #endif

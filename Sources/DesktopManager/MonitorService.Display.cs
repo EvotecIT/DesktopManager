@@ -506,6 +506,16 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="wallpaperPaths">Collection of wallpaper file paths.</param>
     public void StartWallpaperSlideshow(IEnumerable<string> wallpaperPaths) {
+        StartWallpaperSlideshow(wallpaperPaths, null, null);
+    }
+
+    /// <summary>
+    /// Starts a wallpaper slideshow using the provided images and optional slideshow settings.
+    /// </summary>
+    /// <param name="wallpaperPaths">Collection of wallpaper file paths.</param>
+    /// <param name="options">Optional slideshow options.</param>
+    /// <param name="slideshowTick">Optional slideshow tick interval in milliseconds.</param>
+    public void StartWallpaperSlideshow(IEnumerable<string> wallpaperPaths, DesktopSlideshowOptions? options, uint? slideshowTick) {
         if (wallpaperPaths == null) {
             throw new ArgumentNullException(nameof(wallpaperPaths));
         }
@@ -516,6 +526,12 @@ public partial class MonitorService {
         try {
             arrayPtr = CreateShellItemArray(wallpaperPaths);
             Execute(() => _desktopManager.SetSlideshow(arrayPtr), nameof(IDesktopManager.SetSlideshow));
+            if (options.HasValue || slideshowTick.HasValue) {
+                var current = GetWallpaperSlideshow();
+                SetWallpaperSlideshowOptions(
+                    options ?? current.Options,
+                    slideshowTick ?? current.SlideshowTick);
+            }
         } finally {
             if (arrayPtr != IntPtr.Zero) {
                 Marshal.Release(arrayPtr);
@@ -538,10 +554,118 @@ public partial class MonitorService {
         Execute(() => _desktopManager.AdvanceSlideshow(null, direction), nameof(IDesktopManager.AdvanceSlideshow));
     }
 
-    private static IntPtr CreateShellItemArray(IEnumerable<string> paths) {     
+    /// <summary>
+    /// Gets the current desktop wallpaper slideshow configuration and state.
+    /// </summary>
+    /// <returns>The current wallpaper slideshow details.</returns>
+    public DesktopWallpaperSlideshow GetWallpaperSlideshow() {
+        DesktopSlideshowOptions options = DesktopSlideshowOptions.None;
+        uint slideshowTick = 0;
+        try {
+            uint optionsHResult = _desktopManager.GetSlideshowOptions(out DesktopSlideshowOptions currentOptions, out uint currentTick);
+            if (optionsHResult == 0) {
+                options = currentOptions;
+                slideshowTick = currentTick;
+            }
+        } catch (COMException) {
+        } catch (DesktopManagerException) {
+        }
+
+        DesktopSlideshowState state = DesktopSlideshowState.None;
+        try {
+            uint statusHResult = _desktopManager.GetStatus(out DesktopSlideshowState currentState);
+            if (statusHResult == 0) {
+                state = currentState;
+            }
+        } catch (COMException) {
+        } catch (DesktopManagerException) {
+        }
+
+        return new DesktopWallpaperSlideshow {
+            ImagePaths = GetWallpaperSlideshowPaths(),
+            State = state,
+            Options = options,
+            SlideshowTick = slideshowTick
+        };
+    }
+
+    /// <summary>
+    /// Sets desktop wallpaper slideshow options.
+    /// </summary>
+    /// <param name="options">Slideshow options.</param>
+    /// <param name="slideshowTick">Slideshow tick interval in milliseconds.</param>
+    public void SetWallpaperSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) {
+        Execute(() => _desktopManager.SetSlideshowOptions(options, slideshowTick), nameof(IDesktopManager.SetSlideshowOptions));
+    }
+
+    private IReadOnlyList<string> GetWallpaperSlideshowPaths() {
+        IntPtr arrayPtr = IntPtr.Zero;
+        uint hresult;
+        try {
+            hresult = _desktopManager.GetSlideshow(out arrayPtr);
+        } catch (COMException) {
+            return Array.Empty<string>();
+        } catch (DesktopManagerException) {
+            return Array.Empty<string>();
+        }
+
+        if (hresult != 0 || arrayPtr == IntPtr.Zero) {
+            return Array.Empty<string>();
+        }
+
+        try {
+            var array = (MonitorNativeMethods.IShellItemArray)Marshal.GetObjectForIUnknown(arrayPtr);
+            try {
+                int countResult = array.GetCount(out uint count);
+                if (countResult != 0 || count == 0) {
+                    return Array.Empty<string>();
+                }
+
+                var paths = new List<string>();
+                for (uint index = 0; index < count; index++) {
+                    int itemResult = array.GetItemAt(index, out MonitorNativeMethods.IShellItem item);
+                    if (itemResult != 0 || item == null) {
+                        continue;
+                    }
+
+                    try {
+                        var path = GetShellItemDisplayName(item, MonitorNativeMethods.SIGDN.FileSystemPath)
+                            ?? GetShellItemDisplayName(item, MonitorNativeMethods.SIGDN.NormalDisplay);
+                        if (!string.IsNullOrWhiteSpace(path)) {
+                            paths.Add(path!);
+                        }
+                    } finally {
+                        Marshal.ReleaseComObject(item);
+                    }
+                }
+
+                return paths;
+            } finally {
+                Marshal.ReleaseComObject(array);
+            }
+        } finally {
+            Marshal.Release(arrayPtr);
+        }
+    }
+
+    private static string? GetShellItemDisplayName(MonitorNativeMethods.IShellItem item, MonitorNativeMethods.SIGDN displayName) {
+        IntPtr namePtr = IntPtr.Zero;
+        int result = item.GetDisplayName(displayName, out namePtr);
+        if (result != 0 || namePtr == IntPtr.Zero) {
+            return null;
+        }
+
+        try {
+            return Marshal.PtrToStringUni(namePtr);
+        } finally {
+            MonitorNativeMethods.CoTaskMemFree(namePtr);
+        }
+    }
+
+    private static IntPtr CreateShellItemArray(IEnumerable<string> paths) {
         Guid clsidEnum = new("2d3468c1-36a7-43b6-ac24-d3f02fd9607a");
-        Guid iidShellItem = new("43826D1E-E718-42EE-BC55-A1E261C37BFE");        
-        Guid iidShellItemArray = new("b63ea76d-1f85-456f-a19c-48159efa858b");   
+        Guid iidShellItem = new("43826D1E-E718-42EE-BC55-A1E261C37BFE");
+        Guid iidShellItemArray = new("b63ea76d-1f85-456f-a19c-48159efa858b");
 
         Type collectionType = Type.GetTypeFromCLSID(clsidEnum)
             ?? throw new InvalidOperationException("IObjectCollection CLSID not available.");

@@ -26,6 +26,12 @@ Return the wallpaper path for a monitor.
 ### [Set-DesktopWallpaper](Set-DesktopWallpaper.md)
 Apply a new wallpaper to one or more monitors.
 
+### [Get-DesktopSlideshow](Get-DesktopSlideshow.md)
+Return the current desktop wallpaper slideshow images, state, options and tick interval.
+
+### [Set-DesktopSlideshowOptions](Set-DesktopSlideshowOptions.md)
+Update wallpaper slideshow shuffle behavior and tick interval.
+
 ### [Get-DesktopBackgroundColor](Get-DesktopBackgroundColor.md)
 Get the current desktop background color.
 
