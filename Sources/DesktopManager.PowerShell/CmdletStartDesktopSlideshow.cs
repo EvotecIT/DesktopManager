@@ -17,6 +17,18 @@ public sealed class CmdletStartDesktopSlideshow : PSCmdlet {
     public string[] ImagePath { get; set; }
 
     /// <summary>
+    /// <para type="description">Enables randomized image order for the slideshow.</para>
+    /// </summary>
+    [Parameter]
+    public SwitchParameter Shuffle { get; set; }
+
+    /// <summary>
+    /// <para type="description">Slideshow tick interval in milliseconds.</para>
+    /// </summary>
+    [Parameter]
+    public uint SlideshowTick { get; set; }
+
+    /// <summary>
     /// Begins processing the cmdlet.
     /// </summary>
     protected override void BeginProcessing() {
@@ -24,6 +36,8 @@ public sealed class CmdletStartDesktopSlideshow : PSCmdlet {
             return;
         }
 
-        new DesktopAutomationService().StartDesktopSlideshow(ImagePath);
+        DesktopSlideshowOptions? options = Shuffle.IsPresent ? DesktopSlideshowOptions.ShuffleImages : null;
+        uint? slideshowTick = MyInvocation.BoundParameters.ContainsKey(nameof(SlideshowTick)) ? SlideshowTick : null;
+        new DesktopAutomationService().StartDesktopSlideshow(ImagePath, options, slideshowTick);
     }
 }

@@ -52,15 +52,15 @@ public class MonitorFallbackTests {
         /// <summary>
         /// Test for GetSlideshow.
         /// </summary>
-        public IntPtr GetSlideshow() => throw new COMException();
+        public uint GetSlideshow(out IntPtr items) { throw new COMException(); }
         /// <summary>
         /// Test for SetSlideshowOptions.
         /// </summary>
-        public void SetSlideshowOptions(DesktopSlideshowDirection options, uint slideshowTick) => throw new COMException();
+        public void SetSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) => throw new COMException();
         /// <summary>
         /// Test for GetSlideshowOptions.
         /// </summary>
-        public uint GetSlideshowOptions(out DesktopSlideshowDirection options, out uint slideshowTick) { throw new COMException(); }
+        public uint GetSlideshowOptions(out DesktopSlideshowOptions options, out uint slideshowTick) { throw new COMException(); }
         /// <summary>
         /// Test for AdvanceSlideshow.
         /// </summary>
@@ -68,7 +68,7 @@ public class MonitorFallbackTests {
         /// <summary>
         /// Test for GetStatus.
         /// </summary>
-        public DesktopSlideshowDirection GetStatus() => throw new COMException();
+        public uint GetStatus(out DesktopSlideshowState state) { throw new COMException(); }
         /// <summary>
         /// Test for Enable.
         /// </summary>

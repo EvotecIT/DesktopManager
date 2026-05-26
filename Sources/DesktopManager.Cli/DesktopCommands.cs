@@ -10,7 +10,9 @@ internal static class DesktopCommands {
             "set-background-color" => SetBackgroundColor(arguments),
             "wallpaper-position" => WallpaperPosition(arguments),
             "set-wallpaper-position" => SetWallpaperPosition(arguments),
+            "slideshow" => Slideshow(arguments),
             "start-slideshow" => StartSlideshow(arguments),
+            "set-slideshow-options" => SetSlideshowOptions(arguments),
             "stop-slideshow" => StopSlideshow(arguments),
             "advance-slideshow" => AdvanceSlideshow(arguments),
             _ => throw new CommandLineException($"Unknown desktop command '{action}'.")
@@ -60,6 +62,16 @@ internal static class DesktopCommands {
         return WriteWallpaperPositionResult(result, Console.Out);
     }
 
+    private static int Slideshow(CommandLineArguments arguments) {
+        DesktopSlideshowResult result = DesktopOperations.GetDesktopSlideshow();
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(result);
+            return 0;
+        }
+
+        return WriteSlideshowResult(result, Console.Out);
+    }
+
     private static int StartSlideshow(CommandLineArguments arguments) {
         IReadOnlyList<string> imagePaths = arguments.GetOptions("image");
         if (imagePaths.Count == 0) {
@@ -67,7 +79,38 @@ internal static class DesktopCommands {
             imagePaths = new[] { single };
         }
 
-        DesktopSlideshowResult result = DesktopOperations.StartDesktopSlideshow(imagePaths);
+        DesktopSlideshowOptions? options = arguments.GetBoolFlag("shuffle")
+            ? DesktopSlideshowOptions.ShuffleImages
+            : null;
+        uint? slideshowTick = arguments.GetUIntOption("slideshow-tick");
+
+        DesktopSlideshowResult result = DesktopOperations.StartDesktopSlideshow(imagePaths, options, slideshowTick);
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(result);
+            return 0;
+        }
+
+        return WriteSlideshowResult(result, Console.Out);
+    }
+
+    private static int SetSlideshowOptions(CommandLineArguments arguments) {
+        if (arguments.GetBoolFlag("shuffle") && arguments.GetBoolFlag("no-shuffle")) {
+            throw new CommandLineException("Specify only one of --shuffle or --no-shuffle.");
+        }
+
+        DesktopSlideshowResult current = DesktopOperations.GetDesktopSlideshow();
+        DesktopSlideshowOptions options = current.ShuffleImages
+            ? DesktopSlideshowOptions.ShuffleImages
+            : DesktopSlideshowOptions.None;
+        if (arguments.GetBoolFlag("shuffle")) {
+            options |= DesktopSlideshowOptions.ShuffleImages;
+        }
+        if (arguments.GetBoolFlag("no-shuffle")) {
+            options &= ~DesktopSlideshowOptions.ShuffleImages;
+        }
+
+        uint slideshowTick = arguments.GetUIntOption("slideshow-tick") ?? current.SlideshowTick;
+        DesktopSlideshowResult result = DesktopOperations.SetDesktopSlideshowOptions(options, slideshowTick);
         if (arguments.GetBoolFlag("json")) {
             OutputFormatter.WriteJson(result);
             return 0;
@@ -111,11 +154,18 @@ internal static class DesktopCommands {
 
     internal static int WriteSlideshowResult(DesktopSlideshowResult result, TextWriter writer) {
         writer.WriteLine($"{result.Action}: running={result.IsRunning}");
+        writer.WriteLine($"- State: {result.State}");
+        writer.WriteLine($"- Options: {result.Options}");
+        writer.WriteLine($"- SlideshowTick: {result.SlideshowTick}");
+        writer.WriteLine($"- ShuffleImages: {result.ShuffleImages}");
         if (!string.IsNullOrWhiteSpace(result.Direction)) {
             writer.WriteLine($"- Direction: {result.Direction}");
         }
         if (result.ImageCount.HasValue) {
             writer.WriteLine($"- ImageCount: {result.ImageCount.Value}");
+        }
+        foreach (string image in result.Images) {
+            writer.WriteLine($"- Image: {image}");
         }
 
         return 0;

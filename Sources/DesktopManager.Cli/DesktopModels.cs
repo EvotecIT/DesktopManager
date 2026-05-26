@@ -299,6 +299,13 @@ internal sealed class DesktopWallpaperPositionResult {
 internal sealed class DesktopSlideshowResult {
     public string Action { get; set; } = string.Empty;
     public bool IsRunning { get; set; }
+    public bool IsEnabled { get; set; }
+    public bool IsDisabledByRemoteSession { get; set; }
+    public string State { get; set; } = string.Empty;
+    public string Options { get; set; } = string.Empty;
+    public bool ShuffleImages { get; set; }
+    public uint SlideshowTick { get; set; }
+    public IReadOnlyList<string> Images { get; set; } = Array.Empty<string>();
     public string? Direction { get; set; }
     public int? ImageCount { get; set; }
 }

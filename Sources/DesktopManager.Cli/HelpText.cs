@@ -182,7 +182,9 @@ Desktop commands:
   desktopmanager desktop set-background-color --color <decimal|0xRRGGBB|#RRGGBB> [--json]
   desktopmanager desktop wallpaper-position [--json]
   desktopmanager desktop set-wallpaper-position --position <center|tile|stretch|fit|fill|span> [--json]
-  desktopmanager desktop start-slideshow --image <path> [--image <path>...] [--json]
+  desktopmanager desktop slideshow [--json]
+  desktopmanager desktop start-slideshow --image <path> [--image <path>...] [--shuffle] [--slideshow-tick <milliseconds>] [--json]
+  desktopmanager desktop set-slideshow-options [--shuffle|--no-shuffle] [--slideshow-tick <milliseconds>] [--json]
   desktopmanager desktop stop-slideshow [--json]
   desktopmanager desktop advance-slideshow --direction <forward|backward> [--json]
 
@@ -191,7 +193,9 @@ Examples:
   desktopmanager desktop set-background-color --color 0x102040
   desktopmanager desktop wallpaper-position --json
   desktopmanager desktop set-wallpaper-position --position fill
-  desktopmanager desktop start-slideshow --image C:\Wallpapers\img1.jpg --image C:\Wallpapers\img2.jpg
+  desktopmanager desktop slideshow --json
+  desktopmanager desktop start-slideshow --image C:\Wallpapers\img1.jpg --image C:\Wallpapers\img2.jpg --shuffle --slideshow-tick 300000
+  desktopmanager desktop set-slideshow-options --no-shuffle --slideshow-tick 600000
   desktopmanager desktop stop-slideshow
   desktopmanager desktop advance-slideshow --direction forward
 """;

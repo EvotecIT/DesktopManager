@@ -806,39 +806,47 @@ internal static partial class DesktopOperations {
         });
     }
 
-    public static DesktopSlideshowResult StartDesktopSlideshow(IReadOnlyList<string> imagePaths) {
+    public static DesktopSlideshowResult GetDesktopSlideshow() {
+        return ExecuteCore(() => MapDesktopSlideshow("get-desktop-slideshow", new DesktopAutomationService().GetDesktopSlideshow()));
+    }
+
+    public static DesktopSlideshowResult StartDesktopSlideshow(IReadOnlyList<string> imagePaths, DesktopSlideshowOptions? options = null, uint? slideshowTick = null) {
         if (imagePaths == null || imagePaths.Count == 0) {
             throw new CommandLineException("At least one slideshow image path is required.");
         }
 
         return ExecuteCore(() => {
-            new DesktopAutomationService().StartDesktopSlideshow(imagePaths);
-            return new DesktopSlideshowResult {
-                Action = "start-desktop-slideshow",
-                IsRunning = true,
-                ImageCount = imagePaths.Count
-            };
+            var automation = new DesktopAutomationService();
+            automation.StartDesktopSlideshow(imagePaths, options, slideshowTick);
+            var result = MapDesktopSlideshow("start-desktop-slideshow", automation.GetDesktopSlideshow());
+            result.ImageCount = imagePaths.Count;
+            return result;
         });
     }
 
     public static DesktopSlideshowResult StopDesktopSlideshow() {
         return ExecuteCore(() => {
-            new DesktopAutomationService().StopDesktopSlideshow();
-            return new DesktopSlideshowResult {
-                Action = "stop-desktop-slideshow",
-                IsRunning = false
-            };
+            var automation = new DesktopAutomationService();
+            automation.StopDesktopSlideshow();
+            return MapDesktopSlideshow("stop-desktop-slideshow", automation.GetDesktopSlideshow());
         });
     }
 
     public static DesktopSlideshowResult AdvanceDesktopSlideshow(DesktopSlideshowDirection direction) {
         return ExecuteCore(() => {
-            new DesktopAutomationService().AdvanceDesktopSlideshow(direction);
-            return new DesktopSlideshowResult {
-                Action = "advance-desktop-slideshow",
-                IsRunning = true,
-                Direction = direction.ToString()
-            };
+            var automation = new DesktopAutomationService();
+            automation.AdvanceDesktopSlideshow(direction);
+            var result = MapDesktopSlideshow("advance-desktop-slideshow", automation.GetDesktopSlideshow());
+            result.Direction = direction.ToString();
+            return result;
+        });
+    }
+
+    public static DesktopSlideshowResult SetDesktopSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            automation.SetDesktopSlideshowOptions(options, slideshowTick);
+            return MapDesktopSlideshow("set-desktop-slideshow-options", automation.GetDesktopSlideshow());
         });
     }
 
@@ -2434,6 +2442,21 @@ internal static partial class DesktopOperations {
     private static DesktopWallpaperPositionResult MapDesktopWallpaperPosition(DesktopWallpaperPosition position) {
         return new DesktopWallpaperPositionResult {
             Position = position.ToString()
+        };
+    }
+
+    private static DesktopSlideshowResult MapDesktopSlideshow(string action, DesktopWallpaperSlideshow slideshow) {
+        return new DesktopSlideshowResult {
+            Action = action,
+            IsEnabled = slideshow.IsEnabled,
+            IsRunning = slideshow.IsRunning,
+            IsDisabledByRemoteSession = slideshow.IsDisabledByRemoteSession,
+            State = slideshow.State.ToString(),
+            Options = slideshow.Options.ToString(),
+            ShuffleImages = slideshow.ShuffleImages,
+            SlideshowTick = slideshow.SlideshowTick,
+            Images = slideshow.ImagePaths,
+            ImageCount = slideshow.ImagePaths.Count
         };
     }
 

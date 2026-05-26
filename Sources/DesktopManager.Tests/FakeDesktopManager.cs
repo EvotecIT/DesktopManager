@@ -25,6 +25,18 @@ internal class FakeDesktopManager : IDesktopManager {
     /// <summary>Tracks calls to slideshow operations.</summary>
     public List<IntPtr> SetSlideshowCalls = new();
 
+    /// <summary>Value returned by GetSlideshow.</summary>
+    public IntPtr SlideshowItems = IntPtr.Zero;
+
+    /// <summary>Last set slideshow options.</summary>
+    public DesktopSlideshowOptions SlideshowOptions;
+
+    /// <summary>Last set slideshow tick.</summary>
+    public uint SlideshowTick;
+
+    /// <summary>Current slideshow state.</summary>
+    public DesktopSlideshowState SlideshowState = DesktopSlideshowState.Enabled;
+
     /// <summary>Direction of the last AdvanceWallpaperSlide call.</summary>
     public DesktopSlideshowDirection LastAdvanceDirection;
 
@@ -87,19 +99,25 @@ internal class FakeDesktopManager : IDesktopManager {
     /// <summary>
     /// Test for GetSlideshow.
     /// </summary>
-    public IntPtr GetSlideshow() => IntPtr.Zero;
+    public uint GetSlideshow(out IntPtr items) {
+        items = SlideshowItems;
+        return 0;
+    }
 
     /// <summary>
     /// Test for SetSlideshowOptions.
     /// </summary>
-    public void SetSlideshowOptions(DesktopSlideshowDirection options, uint slideshowTick) { }
+    public void SetSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) {
+        SlideshowOptions = options;
+        SlideshowTick = slideshowTick;
+    }
 
     /// <summary>
     /// Test for GetSlideshowOptions.
     /// </summary>
-    public uint GetSlideshowOptions(out DesktopSlideshowDirection options, out uint slideshowTick) {
-        options = DesktopSlideshowDirection.Forward;
-        slideshowTick = 0;
+    public uint GetSlideshowOptions(out DesktopSlideshowOptions options, out uint slideshowTick) {
+        options = SlideshowOptions;
+        slideshowTick = SlideshowTick;
         return 0;
     }
 
@@ -111,7 +129,10 @@ internal class FakeDesktopManager : IDesktopManager {
     /// <summary>
     /// Test for GetStatus.
     /// </summary>
-    public DesktopSlideshowDirection GetStatus() => DesktopSlideshowDirection.Forward;
+    public uint GetStatus(out DesktopSlideshowState state) {
+        state = SlideshowState;
+        return 0;
+    }
 
     /// <summary>
     /// Test for Enable.

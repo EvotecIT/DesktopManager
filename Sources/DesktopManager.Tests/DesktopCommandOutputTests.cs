@@ -56,7 +56,13 @@ public class DesktopCommandOutputTests {
         var result = new global::DesktopManager.Cli.DesktopSlideshowResult {
             Action = "start-desktop-slideshow",
             IsRunning = true,
-            ImageCount = 2
+            IsEnabled = true,
+            State = "Enabled, Slideshow",
+            Options = "ShuffleImages",
+            ShuffleImages = true,
+            SlideshowTick = 300000,
+            ImageCount = 2,
+            Images = new[] { "C:\\Wallpapers\\img1.jpg", "C:\\Wallpapers\\img2.jpg" }
         };
 
         using var writer = new StringWriter();
@@ -67,7 +73,11 @@ public class DesktopCommandOutputTests {
         Assert.AreEqual(0, exitCode);
         StringAssert.Contains(output, "start-desktop-slideshow");
         StringAssert.Contains(output, "running=True");
+        StringAssert.Contains(output, "State: Enabled, Slideshow");
+        StringAssert.Contains(output, "Options: ShuffleImages");
+        StringAssert.Contains(output, "SlideshowTick: 300000");
         StringAssert.Contains(output, "ImageCount: 2");
+        StringAssert.Contains(output, "C:\\Wallpapers\\img1.jpg");
     }
 }
 #endif

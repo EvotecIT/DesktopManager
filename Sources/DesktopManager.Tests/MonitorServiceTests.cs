@@ -222,6 +222,41 @@ public class MonitorServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Test for SetWallpaperSlideshowOptions_Forwards.
+    /// </summary>
+    public void SetWallpaperSlideshowOptions_Forwards() {
+        var fake = new FakeDesktopManager();
+        var service = new MonitorService(fake);
+
+        service.SetWallpaperSlideshowOptions(DesktopSlideshowOptions.ShuffleImages, 60000);
+
+        Assert.AreEqual(DesktopSlideshowOptions.ShuffleImages, fake.SlideshowOptions);
+        Assert.AreEqual((uint)60000, fake.SlideshowTick);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Test for GetWallpaperSlideshow_ReturnsStateAndOptions.
+    /// </summary>
+    public void GetWallpaperSlideshow_ReturnsStateAndOptions() {
+        var fake = new FakeDesktopManager {
+            SlideshowOptions = DesktopSlideshowOptions.ShuffleImages,
+            SlideshowTick = 300000,
+            SlideshowState = DesktopSlideshowState.Enabled | DesktopSlideshowState.Slideshow
+        };
+        var service = new MonitorService(fake);
+
+        var slideshow = service.GetWallpaperSlideshow();
+
+        Assert.IsTrue(slideshow.IsEnabled);
+        Assert.IsTrue(slideshow.IsRunning);
+        Assert.IsTrue(slideshow.ShuffleImages);
+        Assert.AreEqual((uint)300000, slideshow.SlideshowTick);
+        Assert.AreEqual(0, slideshow.ImagePaths.Count);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Test for StartWallpaperSlideshow_ThrowsOnNull.
     /// </summary>
     public void StartWallpaperSlideshow_ThrowsOnNull() {
