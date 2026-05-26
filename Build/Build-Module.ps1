@@ -88,6 +88,7 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
         ResolveBinaryConflicts            = $true
         ResolveBinaryConflictsName        = 'DesktopManager.PowerShell'
         NETProjectName                    = 'DesktopManager.PowerShell'
+        NETProjectPath                    = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\Sources\DesktopManager.PowerShell\DesktopManager.PowerShell.csproj')).Path
         NETConfiguration                  = 'Release'
         NETFramework                      = 'net8.0-windows10.0.19041.0', 'net472'
         NETSearchClass                    = 'DesktopManager.PowerShell.CmdletSetDesktopWallpaper'
@@ -106,5 +107,5 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
 
     # global options for publishing to github/psgallery
     #New-ConfigurationPublish -Type PowerShellGallery -FilePath 'C:\Support\Important\PowerShellGalleryAPI.txt' -Enabled:$true
-    #New-ConfigurationPublish -Type GitHub -FilePath 'C:\Support\Important\GitHubAPI.txt' -UserName 'EvotecIT' -Enabled:$true -ID 'ToGitHub' -OverwriteTagName 'DesktopManager-PowerShellModule.<TagModuleVersionWithPreRelease>'
+    #New-ConfigurationPublish -Type GitHub -FilePath 'C:\Support\Important\GitHubAPI.txt' -UserName 'EvotecIT' -Enabled:$true -ID 'ToGitHub' -OverwriteTagName 'DesktopManager-PowerShellModule.<TagModuleVersionWithPreRelease>' -GenerateReleaseNotes
 }
