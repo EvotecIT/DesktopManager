@@ -3,6 +3,9 @@ using System.IO;
 using System.Management.Automation;
 using System.Reflection;
 using System.Collections.Generic;
+#if NET5_0_OR_GREATER
+using System.Runtime.Loader;
+#endif
 
 /// <summary>
 /// OnModuleImportAndRemove is a class that implements the IModuleAssemblyInitializer and IModuleAssemblyCleanup interfaces.
@@ -16,6 +19,13 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
         if (IsNetFramework()) {
             AppDomain.CurrentDomain.AssemblyResolve += MyResolveEventHandler;
         }
+#if NET5_0_OR_GREATER
+        else {
+            if (IsLoadedInDefaultContext()) {
+                AssemblyLoadContext.Default.Resolving += ResolveAlc;
+            }
+        }
+#endif
     }
 
     /// <summary>
@@ -26,6 +36,13 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
         if (IsNetFramework()) {
             AppDomain.CurrentDomain.AssemblyResolve -= MyResolveEventHandler;
         }
+#if NET5_0_OR_GREATER
+        else {
+            if (IsLoadedInDefaultContext()) {
+                AssemblyLoadContext.Default.Resolving -= ResolveAlc;
+            }
+        }
+#endif
     }
 
     /// <summary>
@@ -36,10 +53,13 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
     /// <returns>The loaded assembly or <c>null</c> if not found.</returns>
     private static Assembly MyResolveEventHandler(object sender, ResolveEventArgs args) {
         var libDirectory = Path.GetDirectoryName(typeof(OnModuleImportAndRemove).Assembly.Location);
-        var directoriesToSearch = new List<string> { libDirectory };
+        var directoriesToSearch = new List<string>();
 
-        if (Directory.Exists(libDirectory)) {
-            directoriesToSearch.AddRange(Directory.GetDirectories(libDirectory, "*", SearchOption.AllDirectories));
+        if (!string.IsNullOrEmpty(libDirectory)) {
+            directoriesToSearch.Add(libDirectory);
+            if (Directory.Exists(libDirectory)) {
+                directoriesToSearch.AddRange(Directory.GetDirectories(libDirectory, "*", SearchOption.AllDirectories));
+            }
         }
 
         var requestedAssemblyName = new AssemblyName(args.Name).Name + ".dll";
@@ -59,6 +79,60 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
         return null;
     }
 
+#if NET5_0_OR_GREATER
+    private sealed class LoadContext : AssemblyLoadContext {
+        private readonly string _assemblyDir;
+
+        public LoadContext(string assemblyDir)
+            : base(name: "DesktopManager", isCollectible: false) {
+            _assemblyDir = assemblyDir;
+        }
+
+        protected override Assembly Load(AssemblyName assemblyName) {
+            string asmPath = Path.Combine(_assemblyDir, $"{assemblyName.Name}.dll");
+            if (File.Exists(asmPath)) {
+                return LoadFromAssemblyPath(asmPath);
+            }
+
+            return null;
+        }
+    }
+
+    private static readonly string _assemblyDir = Path.GetDirectoryName(typeof(OnModuleImportAndRemove).Assembly.Location) ?? string.Empty;
+
+    private static readonly LoadContext _alc = new LoadContext(_assemblyDir);
+
+    private static bool IsLoadedInDefaultContext() {
+        return AssemblyLoadContext.GetLoadContext(typeof(OnModuleImportAndRemove).Assembly) == AssemblyLoadContext.Default;
+    }
+
+    private static Assembly ResolveAlc(AssemblyLoadContext defaultAlc, AssemblyName assemblyToResolve) {
+        string asmPath = Path.Combine(_assemblyDir, $"{assemblyToResolve.Name}.dll");
+        if (IsSatisfyingAssembly(assemblyToResolve, asmPath)) {
+            return _alc.LoadFromAssemblyName(assemblyToResolve);
+        }
+
+        return null;
+    }
+
+    private static bool IsSatisfyingAssembly(AssemblyName requiredAssemblyName, string assemblyPath) {
+        if (requiredAssemblyName.Name == "DesktopManager.PowerShell" || !File.Exists(assemblyPath)) {
+            return false;
+        }
+
+        AssemblyName asmToLoadName = AssemblyName.GetAssemblyName(assemblyPath);
+        if (!string.Equals(asmToLoadName.Name, requiredAssemblyName.Name, StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        if (requiredAssemblyName.Version != null && asmToLoadName.Version != null) {
+            return asmToLoadName.Version >= requiredAssemblyName.Version;
+        }
+
+        return true;
+    }
+#endif
+
     /// <summary>
     /// Determines whether the current runtime is .NET Framework.
     /// </summary>
@@ -67,23 +141,4 @@ public class OnModuleImportAndRemove : IModuleAssemblyInitializer, IModuleAssemb
         return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Determines whether the current runtime is .NET Core.
-    /// </summary>
-    /// <returns><c>true</c> if running on .NET Core; otherwise <c>false</c>.</returns>
-    private bool IsNetCore() {
-        return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET Core", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Determines whether the current runtime is .NET 5 or higher.
-    /// </summary>
-    /// <returns><c>true</c> if running on .NET 5 or newer; otherwise <c>false</c>.</returns>
-    private bool IsNet5OrHigher() {
-        return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET 5", StringComparison.OrdinalIgnoreCase) ||
-               System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET 6", StringComparison.OrdinalIgnoreCase) ||
-               System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET 7", StringComparison.OrdinalIgnoreCase) ||
-               System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET 8", StringComparison.OrdinalIgnoreCase) ||
-               System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.StartsWith(".NET 9", StringComparison.OrdinalIgnoreCase);
-    }
 }

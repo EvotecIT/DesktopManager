@@ -12,12 +12,22 @@ $DevelopmentEnv = $env:DESKTOPMANAGER_DEVELOPMENT
 if ($DevelopmentEnv) {
     $Development = $DevelopmentEnv.ToString().ToLowerInvariant() -in @('1', 'true', 'yes', 'on')
 }
-$DevelopmentPath = "$PSScriptRoot\Sources\DesktopManager.PowerShell\bin\Debug"
+$DevelopmentPath = "$PSScriptRoot\Sources\DesktopManager.PowerShell\bin"
+$DevelopmentConfiguration = 'Release'
+if ($DevelopmentEnv -and (Test-Path "$DevelopmentPath\Debug")) {
+    $DevelopmentConfiguration = 'Debug'
+} elseif (-not (Test-Path "$DevelopmentPath\$DevelopmentConfiguration") -and (Test-Path "$DevelopmentPath\Debug")) {
+    $DevelopmentConfiguration = 'Debug'
+}
+$DevelopmentBuildPath = "$DevelopmentPath\$DevelopmentConfiguration"
+if (-not $DevelopmentEnv -and (Test-Path $DevelopmentBuildPath)) {
+    $Development = $true
+}
 $DevelopmentFolderCore = "net8.0-windows10.0.19041.0"
 $DevelopmentFolderDefault = "net472"
-$DevelopmentCoreFolder = Get-ChildItem -Path $DevelopmentPath -Directory -Filter 'net8.0-windows*' -ErrorAction SilentlyContinue | Select-Object -First 1
+$DevelopmentCoreFolder = Get-ChildItem -Path $DevelopmentBuildPath -Directory -Filter 'net8.0-windows*' -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $DevelopmentCoreFolder) {
-    $DevelopmentCoreFolder = Get-ChildItem -Path $DevelopmentPath -Directory -Filter 'net8.*' -ErrorAction SilentlyContinue | Select-Object -First 1
+    $DevelopmentCoreFolder = Get-ChildItem -Path $DevelopmentBuildPath -Directory -Filter 'net8.*' -ErrorAction SilentlyContinue | Select-Object -First 1
 }
 if ($DevelopmentCoreFolder) {
     $DevelopmentFolderCore = $DevelopmentCoreFolder.Name
@@ -67,9 +77,9 @@ if ($Standard -and $Core -and $Default) {
 $Assembly = @(
     if ($Development) {
         if ($PSEdition -eq 'Core') {
-            Get-ChildItem -Path $DevelopmentPath\$DevelopmentFolderCore\*.dll -ErrorAction SilentlyContinue -Recurse
+            Get-ChildItem -Path $DevelopmentBuildPath\$DevelopmentFolderCore\*.dll -ErrorAction SilentlyContinue -Recurse
         } else {
-            Get-ChildItem -Path $DevelopmentPath\$DevelopmentFolderDefault\*.dll -ErrorAction SilentlyContinue -Recurse
+            Get-ChildItem -Path $DevelopmentBuildPath\$DevelopmentFolderDefault\*.dll -ErrorAction SilentlyContinue -Recurse
         }
     } else {
         if ($Framework -and $PSEdition -eq 'Core') {
@@ -86,12 +96,16 @@ if ($Development) {
     $BinaryDev = @(
         foreach ($BinaryModule in $BinaryModules) {
             if ($PSEdition -eq 'Core') {
-                $Variable = Resolve-Path "$DevelopmentPath\$DevelopmentFolderCore\$BinaryModule"
+                $Variable = Resolve-Path "$DevelopmentBuildPath\$DevelopmentFolderCore\$BinaryModule"
             } else {
-                $Variable = Resolve-Path "$DevelopmentPath\$DevelopmentFolderDefault\$BinaryModule"
+                $Variable = Resolve-Path "$DevelopmentBuildPath\$DevelopmentFolderDefault\$BinaryModule"
             }
             $Variable
-            Write-Warning "Development mode: Using binaries from $Variable"
+            if ($DevelopmentEnv) {
+                Write-Warning "Development mode: Using binaries from $Variable"
+            } else {
+                Write-Verbose "Development mode: Using binaries from $Variable"
+            }
         }
     )
 }

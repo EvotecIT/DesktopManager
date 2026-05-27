@@ -21,7 +21,7 @@ public class PowerShellCoreCmdletSurfaceTests {
     [DataRow("CmdletSetDesktopWallpaper", "Index", "DeviceId", "DeviceName", "ConnectedOnly", "PrimaryOnly", "All", "AllUsers", "ExcludeDefaultUserProfile", "WallpaperPosition", "WallpaperPath", "Url", "ImageData")]
     [DataRow("CmdletGetLogonWallpaper")]
     [DataRow("CmdletSetLogonWallpaper", "ImagePath")]
-    [DataRow("CmdletAdvanceDesktopSlideshow", "Direction")]
+    [DataRow("CmdletStepDesktopSlideshow", "Direction")]
     [DataRow("CmdletGetDesktopSlideshow")]
     [DataRow("CmdletSetDesktopSlideshowOptions", "Shuffle", "NoShuffle", "SlideshowTick")]
     [DataRow("CmdletStartDesktopSlideshow", "ImagePath", "Shuffle", "SlideshowTick")]
