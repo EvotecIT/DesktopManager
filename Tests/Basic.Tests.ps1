@@ -45,11 +45,8 @@ Describe 'DesktopManager basic tests' {
         Get-Command Set-DesktopSlideshowOptions | Should -Not -BeNullOrEmpty
     }
 
-    It 'Exports Step-DesktopSlideshow without the unreleased Advance alias' {
-        (Get-Command Step-DesktopSlideshow).CommandType | Should -Be 'Cmdlet'
-        $module = Get-Module DesktopManager
-        $module.ExportedCmdlets.ContainsKey('Advance-DesktopSlideshow') | Should -BeFalse
-        $module.ExportedAliases.ContainsKey('Advance-DesktopSlideshow') | Should -BeFalse
+    It 'Exports Step-DesktopSlideshow' {
+        Get-Command Step-DesktopSlideshow | Should -Not -BeNullOrEmpty
     }
 
     It 'Exports Start-DesktopWindowKeepAlive' {

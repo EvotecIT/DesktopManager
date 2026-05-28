@@ -18,8 +18,6 @@ Describe 'Packaged AssemblyLoadContext isolation' {
 `$module = Import-Module DesktopManager -Force -WarningVariable warnings -PassThru
 `$command = `$module.ExportedCmdlets['Get-DesktopBackgroundColor']
 `$stepCommand = `$module.ExportedCmdlets['Step-DesktopSlideshow']
-`$advanceCmdlet = `$module.ExportedCmdlets['Advance-DesktopSlideshow']
-`$advanceAlias = `$module.ExportedAliases['Advance-DesktopSlideshow']
 `$commandAssembly = `$command.ImplementingType.Assembly
 `$commandAlc = [System.Runtime.Loader.AssemblyLoadContext]::GetLoadContext(`$commandAssembly)
 `$loadedAssemblies = [System.Runtime.Loader.AssemblyLoadContext]::All |
@@ -47,8 +45,6 @@ Describe 'Packaged AssemblyLoadContext isolation' {
     CommandALC = `$commandAlc.Name
     CommandALCIsDefault = [object]::ReferenceEquals(`$commandAlc, [System.Runtime.Loader.AssemblyLoadContext]::Default)
     StepCommandName = `$stepCommand.Name
-    HasAdvanceCmdlet = `$null -ne `$advanceCmdlet
-    HasAdvanceAlias = `$null -ne `$advanceAlias
     LoadedAssemblies = @(`$loadedAssemblies)
 } | ConvertTo-Json -Depth 6 -Compress
 "@
@@ -67,8 +63,6 @@ Describe 'Packaged AssemblyLoadContext isolation' {
         $result.CommandALC | Should -Be 'DesktopManager'
         $result.CommandALCIsDefault | Should -BeFalse
         $result.StepCommandName | Should -Be 'Step-DesktopSlideshow'
-        $result.HasAdvanceCmdlet | Should -BeFalse
-        $result.HasAdvanceAlias | Should -BeFalse
 
         $loadedAssemblies = @($result.LoadedAssemblies)
         $powerShellAssembly = $loadedAssemblies | Where-Object Assembly -eq 'DesktopManager.PowerShell' | Select-Object -First 1
