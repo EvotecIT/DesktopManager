@@ -4,129 +4,31 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Invoke-DesktopScreenshot
+# Set-DesktopControlText
 ## SYNOPSIS
-Takes a screenshot of the desktop.
+Sets text on a specific window control.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Invoke-DesktopScreenshot [[-Path] <string>] [-Index <int>] [-DeviceId <string>] [-DeviceName <string>] [-PrimaryOnly] [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [<CommonParameters>]
+Set-DesktopControlText [-Control] <WindowControlInfo> [-Text] <string> [-EnsureForeground] [-AllowForegroundInput] [-Verify] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Captures a screenshot of the desktop.
-
-Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.
+Writes text directly to a control without depending on foreground focus.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Invoke-DesktopScreenshot -Path 'C:\Path'
+Set-DesktopControlText -Control $ctrl -Text "Hello world"
 ```
 
 
 ## PARAMETERS
 
-### -DeviceId
-Identifier of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: MonitorID
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -DeviceName
-Name of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Height
-Height of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: Bottom
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-Index of the monitor to capture. Defaults to the entire virtual screen.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Left
-Left coordinate of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Path
-Optional path to save the screenshot as a PNG file.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 0
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -PrimaryOnly
-Capture the primary monitor only.
+### -AllowForegroundInput
+Explicitly allow focused foreground input fallback for zero-handle UI Automation controls.
 
 ```yaml
 Type: SwitchParameter
@@ -141,11 +43,27 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Top
-Top coordinate of the region to capture.
+### -Control
+Control to update.
 
 ```yaml
-Type: Nullable`1
+Type: WindowControlInfo
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -EnsureForeground
+Bring the parent window to the foreground before UI Automation text fallback.
+
+```yaml
+Type: SwitchParameter
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -157,13 +75,45 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Width
-Width of the region to capture.
+### -PassThru
+Return a structured mutation result object for the targeted control.
 
 ```yaml
-Type: Nullable`1
+Type: SwitchParameter
 Parameter Sets: __AllParameterSets
-Aliases: Right
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Text
+Text to apply to the control.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 1
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Verify
+Re-query the control after setting text and report the observed postcondition.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
 Possible values:
 
 Required: False

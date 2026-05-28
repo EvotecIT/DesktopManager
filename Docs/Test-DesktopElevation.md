@@ -4,26 +4,26 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Test-DesktopElevation
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Tests whether the current DesktopManager host process is elevated.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Test-DesktopElevation [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
+Tests whether the current DesktopManager host process is elevated.
 
-Returns configured slideshow images, runtime state, options, and tick interval.
+Returns true when the current DesktopManager host is running with administrative privileges; otherwise returns false.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Test-DesktopElevation
 ```
 
 
@@ -38,7 +38,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 

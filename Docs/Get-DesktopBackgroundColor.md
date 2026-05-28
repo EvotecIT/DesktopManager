@@ -1,27 +1,45 @@
 ---
 external help file: DesktopManager-help.xml
 Module Name: DesktopManager
-online version:
+online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-
 # Get-DesktopBackgroundColor
-
 ## SYNOPSIS
-Retrieves the current desktop background color.
+Gets the desktop background color.
+
+## SYNTAX
+### __AllParameterSets
+```powershell
+Get-DesktopBackgroundColor [<CommonParameters>]
+```
 
 ## DESCRIPTION
-Returns the desktop background color as a numeric RGB value.
+Gets the desktop background color.
+
+Returns the RGB color value currently used as the desktop background.
 
 ## EXAMPLES
 
-### Example 1
+### EXAMPLE 1
 ```powershell
-PS C:\> Get-DesktopBackgroundColor
+Get-DesktopBackgroundColor
 ```
-Gets the current background color.
+
+
+## PARAMETERS
+
+### CommonParameters
+This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see [about_CommonParameters](http://go.microsoft.com/fwlink/?LinkID=113216).
+
+## INPUTS
+
+- `None`
 
 ## OUTPUTS
 
-### System.UInt32
+- `System.Object`
 
+## RELATED LINKS
+
+- None

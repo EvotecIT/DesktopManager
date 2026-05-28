@@ -4,26 +4,26 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Get-DesktopMouseState
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Gets the current desktop mouse state.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Get-DesktopMouseState [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
+Gets the current desktop mouse state.
 
-Returns configured slideshow images, runtime state, options, and tick interval.
+Returns the current cursor position, button state, and cursor visibility from the DesktopManager automation core.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Get-DesktopMouseState
 ```
 
 
@@ -38,7 +38,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 

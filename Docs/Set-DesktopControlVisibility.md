@@ -4,33 +4,49 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Set-DesktopControlVisibility
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Shows or hides a desktop control.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopControlVisibility [-Control] <WindowControlInfo> -Visible <bool> [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
+Shows or hides a desktop control.
 
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Updates the visibility state of a previously resolved Win32-backed control.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Get-DesktopWindowControl -ActiveWindow | Select-Object -First 1 | Set-DesktopControlVisibility -Visible:$false -PassThru
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -Control
+Control to update.
+
+```yaml
+Type: WindowControlInfo
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: True (ByValue)
+Accept wildcard characters: True
+```
+
+### -PassThru
+Return the updated control state.
 
 ```yaml
 Type: SwitchParameter
@@ -45,32 +61,16 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -Visible
+True to show the control; false to hide it.
 
 ```yaml
-Type: SwitchParameter
+Type: Boolean
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
-
-```yaml
-Type: UInt32
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
+Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
@@ -82,7 +82,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-- `None`
+- `DesktopManager.WindowControlInfo`
 
 ## OUTPUTS
 

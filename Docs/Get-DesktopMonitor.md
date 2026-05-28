@@ -4,48 +4,63 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopWallpaper
+# Get-DesktopMonitor
 ## SYNOPSIS
-Gets the current desktop wallpaper for one or more monitors.
+Gets the desktop monitors information.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopWallpaper [[-Index] <int>] [[-DeviceId] <string>] [[-DeviceName] <string>] [-ConnectedOnly] [-PrimaryOnly] [<CommonParameters>]
+Get-DesktopMonitor [[-Index] <int>] [[-DeviceId] <string>] [[-DeviceName] <string>] [-ConnectedOnly] [-PrimaryOnly] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the current desktop wallpaper for one or more monitors.
+Gets the desktop monitors information.
 
-Retrieves the current desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also get the wallpaper for all monitors or only the primary monitor.
+Retrieves information about the desktop monitors connected to the system. You can filter the monitors by index, device ID, device name, connection status, or primary monitor status.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopWallpaper
+Get-DesktopMonitor
 ```
 
-Get the wallpaper for all monitors
+Get information for all monitors
+
+Retrieves information for all connected desktop monitors.
 
 ### EXAMPLE 2
 ```powershell
-Get-DesktopWallpaper -Index 1
+Get-DesktopMonitor -Index 1
 ```
 
-Get the wallpaper for a specific monitor by index
+Get information for a specific monitor by index
+
+Retrieves information for the monitor specified by the index.
 
 ### EXAMPLE 3
 ```powershell
-Get-DesktopWallpaper -PrimaryOnly
+Get-DesktopMonitor -ConnectedOnly
 ```
 
-Get the wallpaper for the primary monitor only
+Get information for connected monitors only
+
+Retrieves information for all connected monitors only.
+
+### EXAMPLE 4
+```powershell
+Get-DesktopMonitor -PrimaryOnly
+```
+
+Get information for the primary monitor only
+
+Retrieves information for the primary monitor only.
 
 ## PARAMETERS
 
 ### -ConnectedOnly
-Get the wallpaper for connected monitors only.
+Get information for connected monitors only.
 
 ```yaml
 Type: SwitchParameter
@@ -61,7 +76,7 @@ Accept wildcard characters: True
 ```
 
 ### -DeviceId
-The device ID of the monitor to get the wallpaper for.
+The device ID of the monitor to get information for.
 
 ```yaml
 Type: String
@@ -77,7 +92,7 @@ Accept wildcard characters: True
 ```
 
 ### -DeviceName
-The device name of the monitor to get the wallpaper for.
+The device name of the monitor to get information for.
 
 ```yaml
 Type: String
@@ -93,7 +108,7 @@ Accept wildcard characters: True
 ```
 
 ### -Index
-The index of the monitor to get the wallpaper for.
+The index of the monitor to get information for.
 
 ```yaml
 Type: Int32
@@ -109,7 +124,7 @@ Accept wildcard characters: True
 ```
 
 ### -PrimaryOnly
-Get the wallpaper for the primary monitor only.
+Get information for the primary monitor only.
 
 ```yaml
 Type: SwitchParameter

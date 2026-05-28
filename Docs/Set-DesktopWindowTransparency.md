@@ -4,34 +4,51 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Set-DesktopWindowTransparency
 ## SYNOPSIS
-Sets the desktop background color.
+Sets the transparency level of a desktop window.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopWindowTransparency [-Name] <string> [-Alpha] <byte> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Sets the transparency level of a desktop window.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Set-DesktopWindowTransparency -Name "*Notepad*" -Alpha 128
 ```
 
+Make Notepad semi-transparent
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -Alpha
+Transparency alpha from 0 (transparent) to 255 (opaque).
 
 ```yaml
-Type: UInt32
+Type: Byte
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 1
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Name
+Title of the window. Supports wildcards.
+
+```yaml
+Type: String
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:

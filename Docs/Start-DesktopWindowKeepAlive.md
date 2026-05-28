@@ -4,34 +4,52 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Start-DesktopWindowKeepAlive
 ## SYNOPSIS
-Sets the desktop background color.
+Starts sending keep-alive input to a window.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Start-DesktopWindowKeepAlive [-Name] <string> [-Interval <timespan>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Starts sending keep-alive input to a window.
+
+Periodically sends a harmless input message to the specified window so that the session stays active.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Start-DesktopWindowKeepAlive -Name "*Notepad*"
 ```
 
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -Interval
+Interval between keep-alive messages.
 
 ```yaml
-Type: UInt32
+Type: TimeSpan
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Name
+Window title to match. Supports wildcards.
+
+```yaml
+Type: String
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:

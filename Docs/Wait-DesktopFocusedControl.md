@@ -4,121 +4,122 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopWallpaper
+# Wait-DesktopFocusedControl
 ## SYNOPSIS
-Gets the current desktop wallpaper for one or more monitors.
+Waits until a desktop window exposes a focused control.
 
 ## SYNTAX
-### __AllParameterSets
+### ByName
 ```powershell
-Get-DesktopWallpaper [[-Index] <int>] [[-DeviceId] <string>] [[-DeviceName] <string>] [-ConnectedOnly] [-PrimaryOnly] [<CommonParameters>]
+Wait-DesktopFocusedControl [-Name] <string> [-TimeoutMs <int>] [-IntervalMs <int>] [<CommonParameters>]
+```
+
+### ByHandle
+```powershell
+Wait-DesktopFocusedControl -Handle <string> [-TimeoutMs <int>] [-IntervalMs <int>] [<CommonParameters>]
+```
+
+### ActiveWindow
+```powershell
+Wait-DesktopFocusedControl -ActiveWindow [-TimeoutMs <int>] [-IntervalMs <int>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the current desktop wallpaper for one or more monitors.
+Waits until a desktop window exposes a focused control.
 
-Retrieves the current desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also get the wallpaper for all monitors or only the primary monitor.
+Polls DesktopManager focused-control observation until the selected window exposes a focused child control.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopWallpaper
+Wait-DesktopFocusedControl -ActiveWindow -TimeoutMs 5000
 ```
 
-Get the wallpaper for all monitors
 
 ### EXAMPLE 2
 ```powershell
-Get-DesktopWallpaper -Index 1
+Wait-DesktopFocusedControl -Handle 0x123456 -TimeoutMs 5000
 ```
 
-Get the wallpaper for a specific monitor by index
-
-### EXAMPLE 3
-```powershell
-Get-DesktopWallpaper -PrimaryOnly
-```
-
-Get the wallpaper for the primary monitor only
 
 ## PARAMETERS
 
-### -ConnectedOnly
-Get the wallpaper for connected monitors only.
+### -ActiveWindow
+Use the current foreground window.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Parameter Sets: ActiveWindow
 Aliases: None
 Possible values:
 
-Required: False
-Position: 3
+Required: True
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceId
-The device ID of the monitor to get the wallpaper for.
+### -Handle
+Window handle in decimal or hexadecimal format.
 
 ```yaml
 Type: String
-Parameter Sets: __AllParameterSets
+Parameter Sets: ByHandle
 Aliases: None
 Possible values:
 
-Required: False
-Position: 1
+Required: True
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceName
-The device name of the monitor to get the wallpaper for.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 2
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-The index of the monitor to get the wallpaper for.
+### -IntervalMs
+Polling interval in milliseconds.
 
 ```yaml
 Type: Int32
-Parameter Sets: __AllParameterSets
+Parameter Sets: ByName, ByHandle, ActiveWindow
 Aliases: None
 Possible values:
 
 Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Name
+Title of the window to inspect. Supports wildcards.
+
+```yaml
+Type: String
+Parameter Sets: ByName
+Aliases: None
+Possible values:
+
+Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -PrimaryOnly
-Get the wallpaper for the primary monitor only.
+### -TimeoutMs
+Timeout in milliseconds. Zero waits indefinitely.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Type: Int32
+Parameter Sets: ByName, ByHandle, ActiveWindow
 Aliases: None
 Possible values:
 
 Required: False
-Position: 4
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

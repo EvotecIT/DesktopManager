@@ -4,74 +4,90 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Get-DesktopFocusedControl
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Gets the focused control for a desktop window.
 
 ## SYNTAX
-### __AllParameterSets
+### ByName
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Get-DesktopFocusedControl [-Name] <string> [<CommonParameters>]
+```
+
+### ByHandle
+```powershell
+Get-DesktopFocusedControl -Handle <string> [<CommonParameters>]
+```
+
+### ActiveWindow
+```powershell
+Get-DesktopFocusedControl -ActiveWindow [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
+Gets the focused control for a desktop window.
 
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Returns focused-control metadata for a specific window selected by title, handle, or the current foreground window.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Get-DesktopFocusedControl -ActiveWindow
+```
+
+
+### EXAMPLE 2
+```powershell
+Get-DesktopFocusedControl -Handle 0x123456
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -ActiveWindow
+Use the current foreground window.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Parameter Sets: ActiveWindow
 Aliases: None
 Possible values:
 
-Required: False
+Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -Handle
+Window handle in decimal or hexadecimal format.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Type: String
+Parameter Sets: ByHandle
 Aliases: None
 Possible values:
 
-Required: False
+Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
+### -Name
+Title of the window to inspect. Supports wildcards.
 
 ```yaml
-Type: UInt32
-Parameter Sets: __AllParameterSets
+Type: String
+Parameter Sets: ByName
 Aliases: None
 Possible values:
 
-Required: False
-Position: named
+Required: True
+Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

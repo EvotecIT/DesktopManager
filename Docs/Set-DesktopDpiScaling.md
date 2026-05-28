@@ -4,61 +4,45 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBrightness
+# Set-DesktopDpiScaling
 ## SYNOPSIS
-Sets the brightness for one or more desktop monitors.
+Sets DPI scaling for one or more desktop monitors.
 
 ## SYNTAX
 ### Index (Default)
 ```powershell
-Set-DesktopBrightness [[-Index] <int>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopDpiScaling [[-Index] <int>] [-Scaling] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceID
 ```powershell
-Set-DesktopBrightness [[-DeviceId] <string>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopDpiScaling [[-DeviceId] <string>] [-Scaling] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceName
 ```powershell
-Set-DesktopBrightness [[-DeviceName] <string>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopDpiScaling [[-DeviceName] <string>] [-Scaling] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### PrimaryOnly
 ```powershell
-Set-DesktopBrightness [-PrimaryOnly] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopDpiScaling [-PrimaryOnly] [-Scaling] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the brightness for one or more desktop monitors.
+Sets DPI scaling for one or more desktop monitors.
 
-Changes the brightness level for one or more monitors. You can target monitors by index, device ID or name, or limit the action to the primary monitor.
+Changes the DPI scaling level for monitors. You can target monitors by index, device ID or name, or limit the action to the primary monitor.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBrightness -Brightness 1
+Set-DesktopDpiScaling -DeviceId 'Value'
 ```
 
 
 ## PARAMETERS
-
-### -Brightness
-Brightness level to set.
-
-```yaml
-Type: Int32
-Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
-Aliases: None
-Possible values:
-
-Required: True
-Position: 4
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
 
 ### -DeviceId
 The device ID of the monitor.
@@ -109,7 +93,7 @@ Accept wildcard characters: True
 ```
 
 ### -PrimaryOnly
-Set brightness for the primary monitor only.
+Set scaling for the primary monitor only.
 
 ```yaml
 Type: SwitchParameter
@@ -119,6 +103,22 @@ Possible values:
 
 Required: False
 Position: 3
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Scaling
+Scaling percentage to set.
+
+```yaml
+Type: Int32
+Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
+Aliases: None
+Possible values:
+
+Required: True
+Position: 4
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

@@ -4,100 +4,42 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Invoke-DesktopScreenshot
+# Start-DesktopProcess
 ## SYNOPSIS
-Takes a screenshot of the desktop.
+Starts a desktop application or process.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Invoke-DesktopScreenshot [[-Path] <string>] [-Index <int>] [-DeviceId <string>] [-DeviceName <string>] [-PrimaryOnly] [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [<CommonParameters>]
+Start-DesktopProcess [-Path] <string> [-ArgumentList <string>] [-WorkingDirectory <string>] [-WaitForInputIdleMilliseconds <int>] [-WaitForWindowMilliseconds <int>] [-WaitForWindowIntervalMilliseconds <int>] [-WindowTitle <string>] [-WindowClassName <string>] [-RequireWindow] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Captures a screenshot of the desktop.
+Starts a desktop application or process.
 
-Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.
+Launches a desktop process and returns the launch metadata, including the launched process identifier and any correlated main window.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Invoke-DesktopScreenshot -Path 'C:\Path'
+Start-DesktopProcess -Path notepad.exe
+```
+
+
+### EXAMPLE 2
+```powershell
+Start-DesktopProcess -Path notepad.exe -RequireWindow -WaitForWindowMilliseconds 3000
 ```
 
 
 ## PARAMETERS
 
-### -DeviceId
-Identifier of the monitor to capture.
+### -ArgumentList
+Optional argument string passed to the launched process.
 
 ```yaml
 Type: String
-Parameter Sets: __AllParameterSets
-Aliases: MonitorID
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -DeviceName
-Name of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Height
-Height of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: Bottom
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-Index of the monitor to capture. Defaults to the entire virtual screen.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Left
-Left coordinate of the region to capture.
-
-```yaml
-Type: Nullable`1
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -110,7 +52,7 @@ Accept wildcard characters: True
 ```
 
 ### -Path
-Optional path to save the screenshot as a PNG file.
+Executable path or shell command to launch.
 
 ```yaml
 Type: String
@@ -118,15 +60,15 @@ Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: False
+Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -PrimaryOnly
-Capture the primary monitor only.
+### -RequireWindow
+Require a user-facing launched window before returning.
 
 ```yaml
 Type: SwitchParameter
@@ -141,8 +83,8 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Top
-Top coordinate of the region to capture.
+### -WaitForInputIdleMilliseconds
+Optional time to wait for UI input idle in milliseconds.
 
 ```yaml
 Type: Nullable`1
@@ -157,13 +99,77 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Width
-Width of the region to capture.
+### -WaitForWindowIntervalMilliseconds
+Polling interval while waiting for a launched window.
 
 ```yaml
 Type: Nullable`1
 Parameter Sets: __AllParameterSets
-Aliases: Right
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -WaitForWindowMilliseconds
+Optional time to wait for a launched window in milliseconds.
+
+```yaml
+Type: Nullable`1
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -WindowClassName
+Optional launched-window class filter.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -WindowTitle
+Optional launched-window title filter.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -WorkingDirectory
+Optional working directory for the launched process.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
 Possible values:
 
 Required: False

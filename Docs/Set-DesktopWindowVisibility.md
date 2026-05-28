@@ -4,73 +4,84 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Set-DesktopWindowVisibility
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Shows or hides a desktop window.
 
 ## SYNTAX
-### __AllParameterSets
+### Show (Default)
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopWindowVisibility [-Name] <string> -Show [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### Hide
+```powershell
+Set-DesktopWindowVisibility [-Name] <string> -Hide [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
-
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Shows or hides a desktop window.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Set-DesktopWindowVisibility -Name "*Notepad*" -Hide
 ```
 
+Hide all Notepad windows
+
+### EXAMPLE 2
+```powershell
+Set-DesktopWindowVisibility -Name "*Notepad*" -Show
+```
+
+Show all Notepad windows
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -Hide
+Hide the window.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Parameter Sets: Hide
 Aliases: None
 Possible values:
 
-Required: False
+Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -Name
+Window title to match. Supports wildcards.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Type: String
+Parameter Sets: Show, Hide
 Aliases: None
 Possible values:
 
-Required: False
-Position: named
+Required: True
+Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
+### -Show
+Show the window.
 
 ```yaml
-Type: UInt32
-Parameter Sets: __AllParameterSets
+Type: SwitchParameter
+Parameter Sets: Show
 Aliases: None
 Possible values:
 
-Required: False
+Required: True
 Position: named
 Default value: None
 Accept pipeline input: False

@@ -4,117 +4,100 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Invoke-DesktopScreenshot
+# Set-DesktopResolution
 ## SYNOPSIS
-Takes a screenshot of the desktop.
+Sets the resolution of a desktop monitor.
 
 ## SYNTAX
-### __AllParameterSets
+### Index (Default)
 ```powershell
-Invoke-DesktopScreenshot [[-Path] <string>] [-Index <int>] [-DeviceId <string>] [-DeviceName <string>] [-PrimaryOnly] [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [<CommonParameters>]
+Set-DesktopResolution [[-Index] <int>] [-Width] <int> [-Height] <int> [[-Orientation] <DisplayOrientation>] [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### DeviceID
+```powershell
+Set-DesktopResolution [[-DeviceId] <string>] [-Width] <int> [-Height] <int> [[-Orientation] <DisplayOrientation>] [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### DeviceName
+```powershell
+Set-DesktopResolution [[-DeviceName] <string>] [-Width] <int> [-Height] <int> [[-Orientation] <DisplayOrientation>] [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### PrimaryOnly
+```powershell
+Set-DesktopResolution [-PrimaryOnly] [-Width] <int> [-Height] <int> [[-Orientation] <DisplayOrientation>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Captures a screenshot of the desktop.
+Sets the resolution of a desktop monitor.
 
-Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.
+Allows changing the resolution and orientation of a monitor identified by index or device ID.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Invoke-DesktopScreenshot -Path 'C:\Path'
+Set-DesktopResolution -DeviceId 'Value'
 ```
 
 
 ## PARAMETERS
 
 ### -DeviceId
-Identifier of the monitor to capture.
+The device ID of the monitor.
 
 ```yaml
 Type: String
-Parameter Sets: __AllParameterSets
+Parameter Sets: DeviceID
 Aliases: MonitorID
 Possible values:
 
 Required: False
-Position: named
+Position: 1
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
 ### -DeviceName
-Name of the monitor to capture.
+The device name of the monitor.
 
 ```yaml
 Type: String
-Parameter Sets: __AllParameterSets
+Parameter Sets: DeviceName
 Aliases: None
 Possible values:
 
 Required: False
-Position: named
+Position: 2
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
 ### -Height
-Height of the region to capture.
+Resolution height.
 
 ```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: Bottom
+Type: Int32
+Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
+Aliases: None
 Possible values:
 
-Required: False
-Position: named
+Required: True
+Position: 5
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
 ### -Index
-Index of the monitor to capture. Defaults to the entire virtual screen.
+The index of the monitor.
 
 ```yaml
 Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Left
-Left coordinate of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Path
-Optional path to save the screenshot as a PNG file.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
+Parameter Sets: Index
 Aliases: None
 Possible values:
 
@@ -125,49 +108,49 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -PrimaryOnly
-Capture the primary monitor only.
+### -Orientation
+Optional display orientation.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Type: Nullable`1
+Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
 Aliases: None
 Possible values:
 
 Required: False
-Position: named
+Position: 6
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Top
-Top coordinate of the region to capture.
+### -PrimaryOnly
+Set resolution for the primary monitor only.
 
 ```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
+Type: SwitchParameter
+Parameter Sets: PrimaryOnly
 Aliases: None
 Possible values:
 
 Required: False
-Position: named
+Position: 3
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
 ### -Width
-Width of the region to capture.
+Resolution width.
 
 ```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: Right
+Type: Int32
+Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
+Aliases: None
 Possible values:
 
-Required: False
-Position: named
+Required: True
+Position: 4
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

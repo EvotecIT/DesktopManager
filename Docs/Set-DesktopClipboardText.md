@@ -4,33 +4,33 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Set-DesktopClipboardText
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Sets Unicode text on the desktop clipboard.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopClipboardText [-Text] <string> [-RetryCount <int>] [-RetryDelayMilliseconds <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
+Sets Unicode text on the desktop clipboard.
 
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Writes Unicode text to the Windows clipboard through the DesktopManager automation core.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Set-DesktopClipboardText -Text "Hello from DesktopManager"
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -PassThru
+Return the clipboard text after the update.
 
 ```yaml
 Type: SwitchParameter
@@ -45,11 +45,11 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -RetryCount
+Number of attempts to open the clipboard.
 
 ```yaml
-Type: SwitchParameter
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -61,11 +61,11 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
+### -RetryDelayMilliseconds
+Delay between clipboard retry attempts in milliseconds.
 
 ```yaml
-Type: UInt32
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -74,6 +74,22 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Text
+Text to place on the clipboard.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: True
 ```
 
@@ -82,7 +98,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-- `None`
+- `System.String`
 
 ## OUTPUTS
 

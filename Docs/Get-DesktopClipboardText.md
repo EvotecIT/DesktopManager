@@ -4,40 +4,58 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Get-DesktopClipboardText
 ## SYNOPSIS
-Sets the desktop background color.
+Gets Unicode text from the desktop clipboard.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Get-DesktopClipboardText [-RetryCount <int>] [-RetryDelayMilliseconds <int>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Gets Unicode text from the desktop clipboard.
+
+Returns the current Unicode clipboard text when available. When the clipboard does not currently contain Unicode text, the cmdlet returns no output.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Get-DesktopClipboardText
 ```
 
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -RetryCount
+Number of attempts to open the clipboard.
 
 ```yaml
-Type: UInt32
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: True
-Position: 0
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -RetryDelayMilliseconds
+Delay between clipboard retry attempts in milliseconds.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

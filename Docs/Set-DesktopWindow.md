@@ -4,129 +4,48 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Invoke-DesktopScreenshot
+# Set-DesktopWindow
 ## SYNOPSIS
-Takes a screenshot of the desktop.
+Sets the position, size and state of a desktop window.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Invoke-DesktopScreenshot [[-Path] <string>] [-Index <int>] [-DeviceId <string>] [-DeviceName <string>] [-PrimaryOnly] [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [<CommonParameters>]
+Set-DesktopWindow [-Name] <string> [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [-MonitorIndex <int>] [-State <WindowState>] [-TopMost] [-Activate] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Captures a screenshot of the desktop.
+Sets the position, size and state of a desktop window.
 
-Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.
+Sets the position, size and state of a window on the desktop. You can identify the window by its title (supports wildcards).
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Invoke-DesktopScreenshot -Path 'C:\Path'
+Set-DesktopWindowPosition -Name "Calculator" -Left 100 -Top 100
 ```
 
+Move a specific window to coordinates (100,100)
+
+### EXAMPLE 2
+```powershell
+Set-DesktopWindowPosition -Name "Notepad" -Left 100 -Top 100 -Width 800 -Height 600
+```
+
+Set window position and size
+
+### EXAMPLE 3
+```powershell
+Set-DesktopWindowPosition -Name "Calculator" -State Minimize
+```
+
+Minimize a window
 
 ## PARAMETERS
 
-### -DeviceId
-Identifier of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: MonitorID
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -DeviceName
-Name of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Height
-Height of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: Bottom
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-Index of the monitor to capture. Defaults to the entire virtual screen.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Left
-Left coordinate of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Path
-Optional path to save the screenshot as a PNG file.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 0
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -PrimaryOnly
-Capture the primary monitor only.
+### -Activate
+Activate the window.
 
 ```yaml
 Type: SwitchParameter
@@ -141,8 +60,40 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Top
-Top coordinate of the region to capture.
+### -Height
+The height of the window. If not specified, current height is maintained.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Left
+The left position of the window.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -MonitorIndex
+Target monitor index to move the window to.
 
 ```yaml
 Type: Nullable`1
@@ -157,13 +108,125 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Width
-Width of the region to capture.
+### -Name
+The title of the window to move. Supports wildcards.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -PassThru
+Return a structured mutation result object for each matching window.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -State
+The desired window state (Normal, Minimize, Maximize, or Close).
 
 ```yaml
 Type: Nullable`1
 Parameter Sets: __AllParameterSets
-Aliases: Right
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Top
+The top position of the window.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -TopMost
+Set the window as top-most.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -VerificationTolerancePixels
+Geometry verification tolerance in pixels.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Verify
+Re-query the mutated window and report the observed postcondition instead of relying only on mutation success.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Width
+The width of the window. If not specified, current width is maintained.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
 Possible values:
 
 Required: False

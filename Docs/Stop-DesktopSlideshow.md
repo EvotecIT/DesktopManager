@@ -4,26 +4,26 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Stop-DesktopSlideshow
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Stops the desktop wallpaper slideshow.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Stop-DesktopSlideshow [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
+Stops the desktop wallpaper slideshow.
 
-Returns configured slideshow images, runtime state, options, and tick interval.
+Ends any running wallpaper slideshow on all monitors.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Stop-DesktopSlideshow
 ```
 
 
@@ -38,7 +38,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 

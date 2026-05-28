@@ -4,33 +4,33 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Stop-DesktopWindowProcess
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Stops the process that owns a desktop window.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Stop-DesktopWindowProcess [-InputObject] <WindowInfo> [-EntireProcessTree] [-WaitForExitMilliseconds <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
+Stops the process that owns a desktop window.
 
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Terminates the process associated with a resolved desktop window and optionally returns the termination result from the DesktopManager automation core.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Get-DesktopWindow -ActiveWindow | Stop-DesktopWindowProcess
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -EntireProcessTree
+Whether to terminate the full process tree.
 
 ```yaml
 Type: SwitchParameter
@@ -45,8 +45,24 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -InputObject
+Window whose owning process should be terminated.
+
+```yaml
+Type: WindowInfo
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: True (ByValue)
+Accept wildcard characters: True
+```
+
+### -PassThru
+Return the termination result.
 
 ```yaml
 Type: SwitchParameter
@@ -61,11 +77,11 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
+### -WaitForExitMilliseconds
+How long to wait for the process to exit in milliseconds.
 
 ```yaml
-Type: UInt32
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -82,7 +98,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-- `None`
+- `DesktopManager.WindowInfo`
 
 ## OUTPUTS
 

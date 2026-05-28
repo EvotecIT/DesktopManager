@@ -4,40 +4,56 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Restore-DesktopWindowLayout
 ## SYNOPSIS
-Sets the desktop background color.
+Restores window positions from a saved layout.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Restore-DesktopWindowLayout [-Path] <string> [-Validate] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Restores desktop window layout.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Restore-DesktopWindowLayout -Path 'C:\Path'
 ```
 
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -Path
+Path to the layout file.
 
 ```yaml
-Type: UInt32
+Type: String
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
 Required: True
 Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Validate
+Validate layout before applying.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

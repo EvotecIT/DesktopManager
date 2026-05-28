@@ -4,26 +4,27 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Get-DesktopWallpaperHistory
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Returns stored wallpaper history.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Get-DesktopWallpaperHistory [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
+Gets previously used wallpaper paths.
 
-Returns configured slideshow images, runtime state, options, and tick interval.
+Retrieves the wallpaper history saved by the module.
+The list is returned in most‑recent‑first order.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Get-DesktopWallpaperHistory
 ```
 
 
@@ -38,7 +39,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 

@@ -4,40 +4,56 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Invoke-DesktopMouseMove
 ## SYNOPSIS
-Sets the desktop background color.
+Moves the mouse cursor.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Invoke-DesktopMouseMove [-X] <int> [-Y] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Moves the mouse cursor to specific coordinates.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Invoke-DesktopMouseMove -X 100 -Y 100
 ```
 
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -X
+X coordinate in pixels.
 
 ```yaml
-Type: UInt32
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
 Required: True
 Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Y
+Y coordinate in pixels.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 1
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

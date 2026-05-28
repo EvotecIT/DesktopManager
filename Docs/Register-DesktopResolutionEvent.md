@@ -4,40 +4,58 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Register-DesktopResolutionEvent
 ## SYNOPSIS
-Sets the desktop background color.
+Registers for desktop resolution change events.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Register-DesktopResolutionEvent [-Action <scriptblock>] [-Duration <timespan>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Registers for desktop resolution change events.
+
+Subscribes to resolution changes and returns the event subscription.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Register-DesktopResolutionEvent -Duration (New-TimeSpan -Minutes 5)
 ```
 
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -Action
+The script block to run when the event is raised.
 
 ```yaml
-Type: UInt32
+Type: ScriptBlock
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: True
-Position: 0
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Duration
+The duration to monitor before automatically unregistering.
+
+```yaml
+Type: TimeSpan
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

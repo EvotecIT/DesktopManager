@@ -4,30 +4,44 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Invoke-DesktopMouseClick
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Simulates a mouse click.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Invoke-DesktopMouseClick [-Button <MouseButton>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
-
-Returns configured slideshow images, runtime state, options, and tick interval.
+Simulates a mouse click.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Invoke-DesktopMouseClick -Button Left
 ```
 
 
 ## PARAMETERS
+
+### -Button
+Button to click. Defaults to Left.
+
+```yaml
+Type: MouseButton
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values: Left, Right
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
 
 ### CommonParameters
 This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see [about_CommonParameters](http://go.microsoft.com/fwlink/?LinkID=113216).
@@ -38,7 +52,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 

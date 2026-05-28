@@ -4,34 +4,36 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Get-DesktopControlState
 ## SYNOPSIS
-Sets the desktop background color.
+Gets the observable state for a desktop control.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Get-DesktopControlState [-Control] <WindowControlInfo> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Gets the observable state for a desktop control.
+
+Returns the current enabled, visible, focused, and capability state for a previously resolved window control.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Get-DesktopWindowControl -ActiveWindow | Select-Object -First 1 | Get-DesktopControlState
 ```
 
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -Control
+Control to inspect.
 
 ```yaml
-Type: UInt32
+Type: WindowControlInfo
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -39,7 +41,7 @@ Possible values:
 Required: True
 Position: 0
 Default value: None
-Accept pipeline input: False
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: True
 ```
 
@@ -48,7 +50,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-- `None`
+- `DesktopManager.WindowControlInfo`
 
 ## OUTPUTS
 

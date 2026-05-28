@@ -4,112 +4,63 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopWallpaper
+# Set-DesktopControlCheck
 ## SYNOPSIS
-Gets the current desktop wallpaper for one or more monitors.
+Sets the check state of a button control.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopWallpaper [[-Index] <int>] [[-DeviceId] <string>] [[-DeviceName] <string>] [-ConnectedOnly] [-PrimaryOnly] [<CommonParameters>]
+Set-DesktopControlCheck [-Control] <WindowControlInfo> [-Check] <bool> [-Verify] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the current desktop wallpaper for one or more monitors.
-
-Retrieves the current desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also get the wallpaper for all monitors or only the primary monitor.
+Checks or unchecks a button control.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopWallpaper
+Set-DesktopControlCheck -Control $ctrl -Check $true
 ```
 
-Get the wallpaper for all monitors
-
-### EXAMPLE 2
-```powershell
-Get-DesktopWallpaper -Index 1
-```
-
-Get the wallpaper for a specific monitor by index
-
-### EXAMPLE 3
-```powershell
-Get-DesktopWallpaper -PrimaryOnly
-```
-
-Get the wallpaper for the primary monitor only
 
 ## PARAMETERS
 
-### -ConnectedOnly
-Get the wallpaper for connected monitors only.
+### -Check
+Desired check state.
 
 ```yaml
-Type: SwitchParameter
+Type: Boolean
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: False
-Position: 3
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -DeviceId
-The device ID of the monitor to get the wallpaper for.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
+Required: True
 Position: 1
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceName
-The device name of the monitor to get the wallpaper for.
+### -Control
+Control to modify.
 
 ```yaml
-Type: String
+Type: WindowControlInfo
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: False
-Position: 2
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-The index of the monitor to get the wallpaper for.
-
-```yaml
-Type: Int32
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
+Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -PrimaryOnly
-Get the wallpaper for the primary monitor only.
+### -PassThru
+Return a structured mutation result object for the targeted control.
 
 ```yaml
 Type: SwitchParameter
@@ -118,7 +69,23 @@ Aliases: None
 Possible values:
 
 Required: False
-Position: 4
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Verify
+Re-query the control after changing the check state and report the observed postcondition.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

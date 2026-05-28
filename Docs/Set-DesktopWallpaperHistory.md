@@ -4,35 +4,62 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Set-DesktopWallpaperHistory
 ## SYNOPSIS
-Sets the desktop background color.
+Updates wallpaper history file.
 
 ## SYNTAX
-### __AllParameterSets
+### Paths (Default)
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopWallpaperHistory [-WallpaperPath] <string[]> [-WhatIf] [-Confirm] [<CommonParameters>]
+```
+
+### Clear
+```powershell
+Set-DesktopWallpaperHistory -Clear [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Updates wallpaper history file.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Set-DesktopWallpaperHistory -WallpaperPath @('C:\Path')
+```
+
+
+### EXAMPLE 2
+```powershell
+Set-DesktopWallpaperHistory -Clear
 ```
 
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -Clear
+Clear existing wallpaper history entries.
 
 ```yaml
-Type: UInt32
-Parameter Sets: __AllParameterSets
+Type: SwitchParameter
+Parameter Sets: Clear
+Aliases: None
+Possible values:
+
+Required: True
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -WallpaperPath
+Array of wallpaper file paths to store in the history file.
+
+```yaml
+Type: String[]
+Parameter Sets: Paths
 Aliases: None
 Possible values:
 

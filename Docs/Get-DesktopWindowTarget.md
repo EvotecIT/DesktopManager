@@ -4,48 +4,43 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopWallpaper
+# Get-DesktopWindowTarget
 ## SYNOPSIS
-Gets the current desktop wallpaper for one or more monitors.
+Gets saved reusable window-relative targets, or resolves one against live windows.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopWallpaper [[-Index] <int>] [[-DeviceId] <string>] [[-DeviceName] <string>] [-ConnectedOnly] [-PrimaryOnly] [<CommonParameters>]
+Get-DesktopWindowTarget [[-Name] <string>] [-Resolve] [-WindowName <string>] [-ActiveWindow] [-All] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the current desktop wallpaper for one or more monitors.
-
-Retrieves the current desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also get the wallpaper for all monitors or only the primary monitor.
+Returns saved DesktopManager window targets.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopWallpaper
+Get-DesktopWindowTarget
 ```
 
-Get the wallpaper for all monitors
 
 ### EXAMPLE 2
 ```powershell
-Get-DesktopWallpaper -Index 1
+Get-DesktopWindowTarget -Name "editor-center"
 ```
 
-Get the wallpaper for a specific monitor by index
 
 ### EXAMPLE 3
 ```powershell
-Get-DesktopWallpaper -PrimaryOnly
+Get-DesktopWindowTarget -Name "editor-center" -Resolve -WindowName "*Notepad*"
 ```
 
-Get the wallpaper for the primary monitor only
 
 ## PARAMETERS
 
-### -ConnectedOnly
-Get the wallpaper for connected monitors only.
+### -ActiveWindow
+Use the current foreground window when resolving a target.
 
 ```yaml
 Type: SwitchParameter
@@ -54,49 +49,33 @@ Aliases: None
 Possible values:
 
 Required: False
-Position: 3
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceId
-The device ID of the monitor to get the wallpaper for.
+### -All
+Return resolved points for all matching windows instead of only the first.
 
 ```yaml
-Type: String
+Type: SwitchParameter
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
 Required: False
-Position: 1
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceName
-The device name of the monitor to get the wallpaper for.
+### -Name
+Optional saved target name. When omitted, all saved target names are returned.
 
 ```yaml
 Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 2
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-The index of the monitor to get the wallpaper for.
-
-```yaml
-Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -108,8 +87,8 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -PrimaryOnly
-Get the wallpaper for the primary monitor only.
+### -Resolve
+Resolve the saved target against one or more live windows instead of returning only the saved definition.
 
 ```yaml
 Type: SwitchParameter
@@ -118,7 +97,23 @@ Aliases: None
 Possible values:
 
 Required: False
-Position: 4
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -WindowName
+Window title filter to use when resolving a target. Supports wildcards.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

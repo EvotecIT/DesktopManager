@@ -4,74 +4,78 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Invoke-DesktopWindowScreenshot
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Takes a screenshot of a window or control.
 
 ## SYNTAX
-### __AllParameterSets
+### Window
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Invoke-DesktopWindowScreenshot [-Window] <WindowInfo> [[-Path] <string>] [<CommonParameters>]
+```
+
+### Control
+```powershell
+Invoke-DesktopWindowScreenshot [-Control] <WindowControlInfo> [[-Path] <string>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
-
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Captures a screenshot of a window or control.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+$wnd = Get-DesktopWindow -Name "*Notepad*" | Select-Object -First 1
+            Invoke-DesktopWindowScreenshot -Window $wnd -Path "window.png"
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -Control
+Control to capture.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Type: WindowControlInfo
+Parameter Sets: Control
 Aliases: None
 Possible values:
 
-Required: False
-Position: named
+Required: True
+Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -Path
+Optional path to save the PNG image.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: __AllParameterSets
+Type: String
+Parameter Sets: Window, Control
 Aliases: None
 Possible values:
 
 Required: False
-Position: named
+Position: 1
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
+### -Window
+Window to capture.
 
 ```yaml
-Type: UInt32
-Parameter Sets: __AllParameterSets
+Type: WindowInfo
+Parameter Sets: Window
 Aliases: None
 Possible values:
 
-Required: False
-Position: named
+Required: True
+Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

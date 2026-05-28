@@ -4,129 +4,43 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Invoke-DesktopScreenshot
+# Get-DesktopControlTarget
 ## SYNOPSIS
-Takes a screenshot of the desktop.
+Gets saved reusable control targets, or resolves one against live windows.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Invoke-DesktopScreenshot [[-Path] <string>] [-Index <int>] [-DeviceId <string>] [-DeviceName <string>] [-PrimaryOnly] [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [<CommonParameters>]
+Get-DesktopControlTarget [[-Name] <string>] [-Resolve] [-WindowName <string>] [-ActiveWindow] [-AllWindows] [-AllControls] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Captures a screenshot of the desktop.
-
-Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.
+Returns saved DesktopManager control targets.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Invoke-DesktopScreenshot -Path 'C:\Path'
+Get-DesktopControlTarget
+```
+
+
+### EXAMPLE 2
+```powershell
+Get-DesktopControlTarget -Name "edge-address"
+```
+
+
+### EXAMPLE 3
+```powershell
+Get-DesktopControlTarget -Name "edge-address" -Resolve -WindowName "*Edge*"
 ```
 
 
 ## PARAMETERS
 
-### -DeviceId
-Identifier of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: MonitorID
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -DeviceName
-Name of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Height
-Height of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: Bottom
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-Index of the monitor to capture. Defaults to the entire virtual screen.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Left
-Left coordinate of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Path
-Optional path to save the screenshot as a PNG file.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 0
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -PrimaryOnly
-Capture the primary monitor only.
+### -ActiveWindow
+Use the current foreground window when resolving the target.
 
 ```yaml
 Type: SwitchParameter
@@ -141,11 +55,11 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Top
-Top coordinate of the region to capture.
+### -AllControls
+Return all matching controls instead of only the first resolved control.
 
 ```yaml
-Type: Nullable`1
+Type: SwitchParameter
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -157,13 +71,61 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Width
-Width of the region to capture.
+### -AllWindows
+Return resolved controls for all matching windows.
 
 ```yaml
-Type: Nullable`1
+Type: SwitchParameter
 Parameter Sets: __AllParameterSets
-Aliases: Right
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Name
+Optional saved control target name. When omitted, all saved target names are returned.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Resolve
+Resolve the saved target against one or more live windows instead of returning only the saved definition.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -WindowName
+Window title filter to use when resolving the target. Supports wildcards.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
 Possible values:
 
 Required: False

@@ -77,7 +77,7 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
     New-ConfigurationFormat -ApplyTo 'DefaultPSD1', 'DefaultPSM1' -EnableFormatting -Sort None
     New-ConfigurationFormat -ApplyTo 'DefaultPSD1', 'OnMergePSD1' -PSD1Style 'Minimal'
 
-    New-ConfigurationDocumentation -Enable:$false -StartClean -UpdateWhenNew -PathReadme 'Docs\Readme.md' -Path 'Docs'
+    New-ConfigurationDocumentation -Enable:$true -PathReadme 'Docs\Readme.md' -Path 'Docs'
 
     $newConfigurationBuild = @{
         Enable                            = $true

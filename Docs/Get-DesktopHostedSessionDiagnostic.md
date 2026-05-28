@@ -4,64 +4,51 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopWallpaper
+# Get-DesktopHostedSessionDiagnostic
 ## SYNOPSIS
-Gets the current desktop wallpaper for one or more monitors.
+Gets the latest hosted-session diagnostic artifact or a specific hosted-session artifact.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopWallpaper [[-Index] <int>] [[-DeviceId] <string>] [[-DeviceName] <string>] [-ConnectedOnly] [-PrimaryOnly] [<CommonParameters>]
+Get-DesktopHostedSessionDiagnostic [[-ArtifactPath] <string>] [-ArtifactDirectory <string>] [-RepositoryRoot <string>] [-SummaryOnly] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the current desktop wallpaper for one or more monitors.
+Reads hosted-session typing diagnostics from the DesktopManager artifact folder.
 
-Retrieves the current desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also get the wallpaper for all monitors or only the primary monitor.
+Prefers the companion summary file when one exists and falls back to the JSON diagnostic artifact otherwise.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopWallpaper
+Get-DesktopHostedSessionDiagnostic
 ```
 
-Get the wallpaper for all monitors
 
 ### EXAMPLE 2
 ```powershell
-Get-DesktopWallpaper -Index 1
+Get-DesktopHostedSessionDiagnostic -SummaryOnly
 ```
 
-Get the wallpaper for a specific monitor by index
 
 ### EXAMPLE 3
 ```powershell
-Get-DesktopWallpaper -PrimaryOnly
+Get-DesktopHostedSessionDiagnostic -RepositoryRoot C:\Support\GitHub\DesktopManager
 ```
 
-Get the wallpaper for the primary monitor only
+
+### EXAMPLE 4
+```powershell
+Get-DesktopHostedSessionDiagnostic -ArtifactPath C:\Support\GitHub\DesktopManager\Artifacts\HostedSessionTyping\sample.json
+```
+
 
 ## PARAMETERS
 
-### -ConnectedOnly
-Get the wallpaper for connected monitors only.
-
-```yaml
-Type: SwitchParameter
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 3
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -DeviceId
-The device ID of the monitor to get the wallpaper for.
+### -ArtifactDirectory
+Directory containing hosted-session JSON artifacts and summary companion files.
 
 ```yaml
 Type: String
@@ -70,33 +57,17 @@ Aliases: None
 Possible values:
 
 Required: False
-Position: 1
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceName
-The device name of the monitor to get the wallpaper for.
+### -ArtifactPath
+Specific hosted-session JSON artifact to read.
 
 ```yaml
 Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 2
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-The index of the monitor to get the wallpaper for.
-
-```yaml
-Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -108,8 +79,24 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -PrimaryOnly
-Get the wallpaper for the primary monitor only.
+### -RepositoryRoot
+Repository root used to resolve Artifacts\HostedSessionTyping when ArtifactPath is not supplied.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -SummaryOnly
+Returns only the resolved summary text instead of the structured diagnostic record.
 
 ```yaml
 Type: SwitchParameter
@@ -118,7 +105,7 @@ Aliases: None
 Possible values:
 
 Required: False
-Position: 4
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

@@ -4,129 +4,31 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Invoke-DesktopScreenshot
+# Set-DesktopWindowTarget
 ## SYNOPSIS
-Takes a screenshot of the desktop.
+Saves or updates a reusable window-relative target.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Invoke-DesktopScreenshot [[-Path] <string>] [-Index <int>] [-DeviceId <string>] [-DeviceName <string>] [-PrimaryOnly] [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [<CommonParameters>]
+Set-DesktopWindowTarget [-Name] <string> [-Description <string>] [-X <int>] [-Y <int>] [-XRatio <double>] [-YRatio <double>] [-ClientArea] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Captures a screenshot of the desktop.
-
-Captures the current desktop image. When a path is provided the image is saved as PNG; otherwise a Bitmap object is returned. The screenshot can target a specific monitor or any region.
+Persists a named DesktopManager window target.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Invoke-DesktopScreenshot -Path 'C:\Path'
+Set-DesktopWindowTarget -Name "editor-center" -XRatio 0.5 -YRatio 0.5 -ClientArea
 ```
 
 
 ## PARAMETERS
 
-### -DeviceId
-Identifier of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: MonitorID
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -DeviceName
-Name of the monitor to capture.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Height
-Height of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: Bottom
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Index
-Index of the monitor to capture. Defaults to the entire virtual screen.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Left
-Left coordinate of the region to capture.
-
-```yaml
-Type: Nullable`1
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Path
-Optional path to save the screenshot as a PNG file.
-
-```yaml
-Type: String
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: 0
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -PrimaryOnly
-Capture the primary monitor only.
+### -ClientArea
+Interpret the target relative to the window client area instead of the outer bounds.
 
 ```yaml
 Type: SwitchParameter
@@ -141,8 +43,40 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Top
-Top coordinate of the region to capture.
+### -Description
+Optional target description.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Name
+Saved target name.
+
+```yaml
+Type: String
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -X
+Horizontal coordinate relative to the target bounds.
 
 ```yaml
 Type: Nullable`1
@@ -157,13 +91,45 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Width
-Width of the region to capture.
+### -XRatio
+Horizontal coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
 Type: Nullable`1
 Parameter Sets: __AllParameterSets
-Aliases: Right
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Y
+Vertical coordinate relative to the target bounds.
+
+```yaml
+Type: Nullable`1
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -YRatio
+Vertical coordinate ratio from 0 to 1 relative to the target bounds.
+
+```yaml
+Type: Nullable`1
+Parameter Sets: __AllParameterSets
+Aliases: None
 Possible values:
 
 Required: False

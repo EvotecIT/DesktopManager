@@ -4,49 +4,49 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Start-DesktopSlideshow
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Starts a desktop wallpaper slideshow.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Start-DesktopSlideshow [-ImagePath] <string[]> [-Shuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
+Starts a desktop wallpaper slideshow.
 
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Begins a slideshow using the provided image paths for all monitors.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Start-DesktopSlideshow -ImagePath 'C:\Wallpapers\img1.jpg','C:\Wallpapers\img2.jpg'
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -ImagePath
+Paths to images used for the slideshow.
 
 ```yaml
-Type: SwitchParameter
+Type: String[]
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: False
-Position: named
+Required: True
+Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
 ### -Shuffle
-Enable randomized image order.
+Enables randomized image order for the slideshow.
 
 ```yaml
 Type: SwitchParameter

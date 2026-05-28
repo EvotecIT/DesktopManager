@@ -4,40 +4,59 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBackgroundColor
+# Wait-DesktopWindow
 ## SYNOPSIS
-Sets the desktop background color.
+Waits for a desktop window to appear.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopBackgroundColor [-Color] <uint> [-WhatIf] [-Confirm] [<CommonParameters>]
+Wait-DesktopWindow [-Name] <string> [-TimeoutMs <int>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the desktop background color.
+Waits for a desktop window to appear.
+
+Polls for a window matching the specified title. Supports wildcards. Throws if the timeout is exceeded.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBackgroundColor -Color 1
+Wait-DesktopWindow -Name "*Notepad*" -TimeoutMs 10000
 ```
 
+Wait up to 10 seconds for Notepad
 
 ## PARAMETERS
 
-### -Color
-Color as RGB value.
+### -Name
+Title of the window to wait for. Supports wildcards.
 
 ```yaml
-Type: UInt32
+Type: String
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
 Required: True
 Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -TimeoutMs
+Timeout in milliseconds. Zero waits indefinitely.
+
+```yaml
+Type: Int32
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

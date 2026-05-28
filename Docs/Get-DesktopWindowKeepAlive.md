@@ -4,26 +4,26 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Get-DesktopWindowKeepAlive
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Lists windows currently kept alive.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Get-DesktopWindowKeepAlive [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
+Lists windows currently kept alive.
 
-Returns configured slideshow images, runtime state, options, and tick interval.
+Returns information about windows that have active keep-alive timers.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Get-DesktopWindowKeepAlive
 ```
 
 
@@ -38,7 +38,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 

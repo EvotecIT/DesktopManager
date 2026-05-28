@@ -4,33 +4,31 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Get-DesktopWindowGeometry
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Gets outer-window and client-area geometry for desktop windows.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Get-DesktopWindowGeometry [[-Name] <string>] [-ActiveWindow] [-All] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
-
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Returns window and client-area geometry for matching desktop windows.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Get-DesktopWindowGeometry -Name "*Notepad*"
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -ActiveWindow
+Use the current foreground window instead of matching by name.
 
 ```yaml
 Type: SwitchParameter
@@ -45,8 +43,8 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -All
+Return geometry for all matching windows instead of only the first.
 
 ```yaml
 Type: SwitchParameter
@@ -61,17 +59,17 @@ Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
+### -Name
+Title of the window to match. Supports wildcards.
 
 ```yaml
-Type: UInt32
+Type: String
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
 Required: False
-Position: named
+Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

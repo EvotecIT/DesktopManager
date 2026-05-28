@@ -1,122 +1,254 @@
 ---
 external help file: DesktopManager-help.xml
 Module Name: DesktopManager
-online version:
+online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-
 # Set-DesktopWallpaper
-
 ## SYNOPSIS
 Sets the desktop wallpaper for one or more monitors.
 
 ## SYNTAX
-
 ### Index (Default)
-```
-Set-DesktopWallpaper [-Index <Int32>] [-WallpaperPath <String>] [-Position <DesktopWallpaperPosition>]
- [<CommonParameters>]
+```powershell
+Set-DesktopWallpaper [[-Index] <int>] [-ConnectedOnly] [-PrimaryOnly] [[-WallpaperPosition] <DesktopWallpaperPosition>] [[-WallpaperPath] <string>] [-AllUsers] [-ExcludeDefaultUserProfile] [-Url <string>] [-ImageData <Stream>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
-### MonitorID
+### DeviceId
+```powershell
+Set-DesktopWallpaper [[-DeviceId] <string>] [[-WallpaperPosition] <DesktopWallpaperPosition>] [[-WallpaperPath] <string>] [-AllUsers] [-ExcludeDefaultUserProfile] [-Url <string>] [-ImageData <Stream>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
-Set-DesktopWallpaper [-MonitorID <String>] [-WallpaperPath <String>] [-Position <DesktopWallpaperPosition>]
- [<CommonParameters>]
+
+### DeviceName
+```powershell
+Set-DesktopWallpaper [[-DeviceName] <string>] [[-WallpaperPosition] <DesktopWallpaperPosition>] [[-WallpaperPath] <string>] [-AllUsers] [-ExcludeDefaultUserProfile] [-Url <string>] [-ImageData <Stream>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### All
-```
-Set-DesktopWallpaper [-All] [-WallpaperPath <String>] [-Position <DesktopWallpaperPosition>]
- [<CommonParameters>]
+```powershell
+Set-DesktopWallpaper [-All] [[-WallpaperPosition] <DesktopWallpaperPosition>] [[-WallpaperPath] <string>] [-AllUsers] [-ExcludeDefaultUserProfile] [-Url <string>] [-ImageData <Stream>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Applies the specified image to the selected monitor. You can target a monitor by index or device identifier, or update all monitors at once. The wallpaper position can be set to Center, Fill, Fit, Stretch, Tile or Span.
+Sets the desktop wallpaper for one or more monitors.
+
+Sets the desktop wallpaper for one or more monitors. You can specify the monitor by index, device ID, or device name. You can also set the wallpaper for all monitors or only the primary monitor. Optionally, you can specify the wallpaper position.
 
 ## EXAMPLES
 
-### Example 1
+### EXAMPLE 1
 ```powershell
-PS C:\> Set-DesktopWallpaper -Index 0 -WallpaperPath "C:\Wallpapers\image.jpg" -Position Fill
+Set-DesktopWallpaper -All -WallpaperPath "C:\Path\To\Wallpaper.jpg"
 ```
-Sets the wallpaper on the first monitor using the specified image.
+
+Set the wallpaper for all monitors
+
+### EXAMPLE 2
+```powershell
+Set-DesktopWallpaper -Index 1 -WallpaperPath "C:\Path\To\Wallpaper.jpg"
+```
+
+Set the wallpaper for a specific monitor by index
+
+### EXAMPLE 3
+```powershell
+Set-DesktopWallpaper -PrimaryOnly -WallpaperPath "C:\Path\To\Wallpaper.jpg"
+```
+
+Set the wallpaper for the primary monitor only
 
 ## PARAMETERS
 
 ### -All
-Apply the wallpaper to every monitor.
+Set the wallpaper for all monitors.
 
 ```yaml
 Type: SwitchParameter
 Parameter Sets: All
-Aliases:
+Aliases: None
+Possible values:
 
 Required: False
-Position: Named
+Position: 5
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: False
+Accept wildcard characters: True
+```
+
+### -AllUsers
+Apply the wallpaper for all user profiles.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: Index, DeviceId, DeviceName, All
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -ConnectedOnly
+Set the wallpaper for connected monitors only.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: Index
+Aliases: None
+Possible values:
+
+Required: False
+Position: 3
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -DeviceId
+The device ID of the monitor to set the wallpaper for.
+
+```yaml
+Type: String
+Parameter Sets: DeviceId
+Aliases: MonitorID
+Possible values:
+
+Required: False
+Position: 1
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -DeviceName
+The device name of the monitor to set the wallpaper for.
+
+```yaml
+Type: String
+Parameter Sets: DeviceName
+Aliases: None
+Possible values:
+
+Required: False
+Position: 2
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -ExcludeDefaultUserProfile
+Exclude the default user profile when applying to all users.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: Index, DeviceId, DeviceName, All
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -ImageData
+Image data stream to use as wallpaper.
+
+```yaml
+Type: Stream
+Parameter Sets: Index, DeviceId, DeviceName, All
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
 ```
 
 ### -Index
-Index of the monitor returned by `Get-DesktopMonitor`.
+The index of the monitor to set the wallpaper for.
 
 ```yaml
-Type: Int32
+Type: Nullable`1
 Parameter Sets: Index
-Aliases:
+Aliases: None
+Possible values:
 
 Required: False
-Position: Named
+Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: False
+Accept wildcard characters: True
 ```
 
-### -MonitorID
-Device identifier of the monitor.
+### -PrimaryOnly
+Set the wallpaper for the primary monitor only.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: Index
+Aliases: None
+Possible values:
+
+Required: False
+Position: 4
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Url
+URL of the wallpaper image.
 
 ```yaml
 Type: String
-Parameter Sets: MonitorID
-Aliases:
+Parameter Sets: Index, DeviceId, DeviceName, All
+Aliases: None
+Possible values:
 
 Required: False
-Position: Named
+Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -Position
-Wallpaper placement mode.
-
-```yaml
-Type: DesktopWallpaperPosition
-Parameter Sets: (All)
-Aliases:
-Accepted values: Center, Tile, Stretch, Fit, Fill, Span
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
+Accept wildcard characters: True
 ```
 
 ### -WallpaperPath
-Path to the image file used as wallpaper.
+The file path of the wallpaper image.
 
 ```yaml
 Type: String
-Parameter Sets: (All)
-Aliases: FilePath
+Parameter Sets: Index, DeviceId, DeviceName, All
+Aliases: FilePath, Path
+Possible values:
 
 Required: False
-Position: Named
+Position: 7
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: False
+Accept wildcard characters: True
+```
+
+### -WallpaperPosition
+The position of the wallpaper on the monitor.
+
+```yaml
+Type: Nullable`1
+Parameter Sets: Index, DeviceId, DeviceName, All
+Aliases: Position
+Possible values:
+
+Required: False
+Position: 6
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
 ```
 
 ### CommonParameters
@@ -124,11 +256,12 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-### None
+- `None`
 
 ## OUTPUTS
 
-### System.Object
-## NOTES
+- `System.Object`
 
 ## RELATED LINKS
+
+- None

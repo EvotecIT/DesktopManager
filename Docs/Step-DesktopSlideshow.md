@@ -4,30 +4,46 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Step-DesktopSlideshow
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Steps the desktop wallpaper slideshow.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Step-DesktopSlideshow [-Direction] <DesktopSlideshowDirection> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
+Steps the desktop wallpaper slideshow.
 
-Returns configured slideshow images, runtime state, options, and tick interval.
+Moves the wallpaper slideshow forward or backward on all monitors.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Step-DesktopSlideshow -Direction 'Value'
 ```
 
 
 ## PARAMETERS
+
+### -Direction
+Direction to advance the slideshow.
+
+```yaml
+Type: DesktopSlideshowDirection
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values: Forward, Backward
+
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
 
 ### CommonParameters
 This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see [about_CommonParameters](http://go.microsoft.com/fwlink/?LinkID=113216).
@@ -38,7 +54,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 

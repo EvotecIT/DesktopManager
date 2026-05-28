@@ -4,68 +4,68 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopSlideshowOptions
+# Set-DesktopControlEnabled
 ## SYNOPSIS
-Sets desktop wallpaper slideshow options.
+Enables or disables a desktop control.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopSlideshowOptions [-Shuffle] [-NoShuffle] [-SlideshowTick <uint>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopControlEnabled [-Control] <WindowControlInfo> -Enabled <bool> [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets desktop wallpaper slideshow options.
+Enables or disables a desktop control.
 
-Updates slideshow shuffle behavior and tick interval without replacing the slideshow images.
+Updates the enabled state of a previously resolved Win32-backed control.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopSlideshowOptions -NoShuffle
+Get-DesktopWindowControl -ActiveWindow | Select-Object -First 1 | Set-DesktopControlEnabled -Enabled:$false -PassThru
 ```
 
 
 ## PARAMETERS
 
-### -NoShuffle
-Disable randomized image order.
+### -Control
+Control to update.
 
 ```yaml
-Type: SwitchParameter
+Type: WindowControlInfo
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
 
-Required: False
+Required: True
+Position: 0
+Default value: None
+Accept pipeline input: True (ByValue)
+Accept wildcard characters: True
+```
+
+### -Enabled
+True to enable the control; false to disable it.
+
+```yaml
+Type: Boolean
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Shuffle
-Enable randomized image order.
+### -PassThru
+Return the updated control state.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: __AllParameterSets
-Aliases: None
-Possible values:
-
-Required: False
-Position: named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -SlideshowTick
-Slideshow tick interval in milliseconds.
-
-```yaml
-Type: UInt32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -82,7 +82,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-- `None`
+- `DesktopManager.WindowControlInfo`
 
 ## OUTPUTS
 

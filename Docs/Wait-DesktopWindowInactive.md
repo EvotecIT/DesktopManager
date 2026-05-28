@@ -4,121 +4,116 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Set-DesktopBrightness
+# Wait-DesktopWindowInactive
 ## SYNOPSIS
-Sets the brightness for one or more desktop monitors.
+Waits for a desktop window to become inactive.
 
 ## SYNTAX
-### Index (Default)
+### ByName
 ```powershell
-Set-DesktopBrightness [[-Index] <int>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Wait-DesktopWindowInactive [-Name] <string> [-TimeoutMs <int>] [-IntervalMs <int>] [<CommonParameters>]
 ```
 
-### DeviceID
+### ByHandle
 ```powershell
-Set-DesktopBrightness [[-DeviceId] <string>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Wait-DesktopWindowInactive -Handle <string> [-TimeoutMs <int>] [-IntervalMs <int>] [<CommonParameters>]
 ```
 
-### DeviceName
+### ActiveWindow
 ```powershell
-Set-DesktopBrightness [[-DeviceName] <string>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
-```
-
-### PrimaryOnly
-```powershell
-Set-DesktopBrightness [-PrimaryOnly] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Wait-DesktopWindowInactive -ActiveWindow [-TimeoutMs <int>] [-IntervalMs <int>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Sets the brightness for one or more desktop monitors.
+Waits for a desktop window to become inactive.
 
-Changes the brightness level for one or more monitors. You can target monitors by index, device ID or name, or limit the action to the primary monitor.
+Tracks the selected window until it no longer owns the foreground focus.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopBrightness -Brightness 1
+Wait-DesktopWindowInactive -ActiveWindow -TimeoutMs 5000
 ```
 
 
 ## PARAMETERS
 
-### -Brightness
-Brightness level to set.
+### -ActiveWindow
+Use the current foreground window.
 
 ```yaml
-Type: Int32
-Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
+Type: SwitchParameter
+Parameter Sets: ActiveWindow
 Aliases: None
 Possible values:
 
 Required: True
-Position: 4
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceId
-The device ID of the monitor.
+### -Handle
+Window handle in decimal or hexadecimal format.
 
 ```yaml
 Type: String
-Parameter Sets: DeviceID
-Aliases: MonitorID
+Parameter Sets: ByHandle
+Aliases: None
 Possible values:
 
-Required: False
-Position: 1
+Required: True
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -DeviceName
-The device name of the monitor.
+### -IntervalMs
+Polling interval in milliseconds.
 
 ```yaml
-Type: String
-Parameter Sets: DeviceName
+Type: Int32
+Parameter Sets: ByName, ByHandle, ActiveWindow
 Aliases: None
 Possible values:
 
 Required: False
-Position: 2
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -Index
-The index of the monitor.
+### -Name
+Title of the window to inspect. Supports wildcards.
 
 ```yaml
-Type: Nullable`1
-Parameter Sets: Index
+Type: String
+Parameter Sets: ByName
 Aliases: None
 Possible values:
 
-Required: False
+Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True
 ```
 
-### -PrimaryOnly
-Set brightness for the primary monitor only.
+### -TimeoutMs
+Timeout in milliseconds. Zero waits indefinitely.
 
 ```yaml
-Type: SwitchParameter
-Parameter Sets: PrimaryOnly
+Type: Int32
+Parameter Sets: ByName, ByHandle, ActiveWindow
 Aliases: None
 Possible values:
 
 Required: False
-Position: 3
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

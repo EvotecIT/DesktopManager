@@ -4,26 +4,24 @@ Module Name: DesktopManager
 online version: https://github.com/EvotecIT/DesktopManager
 schema: 2.0.0
 ---
-# Get-DesktopSlideshow
+# Get-LogonWallpaper
 ## SYNOPSIS
-Gets the desktop wallpaper slideshow configuration and state.
+Gets the current logon (lock screen) wallpaper.
 
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopSlideshow [<CommonParameters>]
+Get-LogonWallpaper [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-Gets the desktop wallpaper slideshow configuration and state.
-
-Returns configured slideshow images, runtime state, options, and tick interval.
+Retrieves the logon wallpaper path using native API when possible and falls back to registry.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```powershell
-Get-DesktopSlideshow
+Get-LogonWallpaper
 ```
 
 
@@ -38,7 +36,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `DesktopManager.DesktopWallpaperSlideshow`
+- `System.Object`
 
 ## RELATED LINKS
 
