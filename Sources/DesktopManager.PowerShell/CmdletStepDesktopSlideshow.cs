@@ -2,11 +2,11 @@ using System.Management.Automation;
 
 namespace DesktopManager.PowerShell;
 
-/// <summary>Advances the desktop wallpaper slideshow.</summary>
-/// <para type="synopsis">Advances the desktop wallpaper slideshow.</para>
+/// <summary>Steps the desktop wallpaper slideshow.</summary>
+/// <para type="synopsis">Steps the desktop wallpaper slideshow.</para>
 /// <para type="description">Moves the wallpaper slideshow forward or backward on all monitors.</para>
-[Cmdlet("Advance", "DesktopSlideshow", SupportsShouldProcess = false)]
-public sealed class CmdletAdvanceDesktopSlideshow : PSCmdlet {
+[Cmdlet(VerbsCommon.Step, "DesktopSlideshow", SupportsShouldProcess = false)]
+public sealed class CmdletStepDesktopSlideshow : PSCmdlet {
     /// <summary>
     /// <para type="description">Direction to advance the slideshow.</para>
     /// </summary>
@@ -14,8 +14,8 @@ public sealed class CmdletAdvanceDesktopSlideshow : PSCmdlet {
     public DesktopSlideshowDirection Direction { get; set; }
 
     /// <example>
-    ///   <summary>Advance to the next slide</summary>
-    ///   <code>Advance-DesktopSlideshow -Direction Forward</code>
+    ///   <summary>Step to the next slide</summary>
+    ///   <code>Step-DesktopSlideshow -Direction Forward</code>
     /// </example>
 
     /// <summary>Begin processing.</summary>

@@ -1,7 +1,7 @@
 ﻿@{
     AliasesToExport        = @('Get-DesktopMonitors', 'Get-LockScreenWallpaper', 'Set-LockScreenWallpaper')
     Author                 = 'Przemyslaw Klys'
-    CmdletsToExport        = @('Advance-DesktopSlideshow', 'Get-DesktopBackgroundColor', 'Get-DesktopBrightness', 'Get-DesktopControlCheck', 'Get-DesktopMonitor', 'Get-DesktopSlideshow', 'Get-DesktopWallpaper', 'Get-DesktopWallpaperHistory', 'Get-DesktopWindow', 'Get-DesktopWindowControl', 'Get-DesktopWindowKeepAlive', 'Get-DesktopWindowProcessInfo', 'Get-LogonWallpaper', 'Invoke-DesktopControlClick', 'Invoke-DesktopKeyPress', 'Invoke-DesktopMouseClick', 'Invoke-DesktopMouseDrag', 'Invoke-DesktopMouseMove', 'Invoke-DesktopMouseScroll', 'Invoke-DesktopScreenshot', 'Invoke-DesktopWindowScreenshot', 'Register-DesktopHotkey', 'Register-DesktopMonitorEvent', 'Register-DesktopOrientationEvent', 'Register-DesktopResolutionEvent', 'Restore-DesktopWindowLayout', 'Save-DesktopWindowLayout', 'Send-DesktopControlKey', 'Set-DefaultAudioDevice', 'Set-DesktopBackgroundColor', 'Set-DesktopBrightness', 'Set-DesktopControlCheck', 'Set-DesktopDpiScaling', 'Set-DesktopPosition', 'Set-DesktopResolution', 'Set-DesktopSlideshowOptions', 'Set-DesktopWallpaper', 'Set-DesktopWallpaperHistory', 'Set-DesktopWindow', 'Set-DesktopWindowSnap', 'Set-DesktopWindowStyle', 'Set-DesktopWindowText', 'Set-DesktopWindowTransparency', 'Set-DesktopWindowVisibility', 'Set-LogonWallpaper', 'Set-TaskbarPosition', 'Start-DesktopSlideshow', 'Start-DesktopWindowKeepAlive', 'Stop-DesktopSlideshow', 'Stop-DesktopWindowKeepAlive', 'Unregister-DesktopHotkey', 'Wait-DesktopWindow')
+    CmdletsToExport        = @('Get-DesktopBackgroundColor', 'Get-DesktopBrightness', 'Get-DesktopControlCheck', 'Get-DesktopMonitor', 'Get-DesktopSlideshow', 'Get-DesktopWallpaper', 'Get-DesktopWallpaperHistory', 'Get-DesktopWindow', 'Get-DesktopWindowControl', 'Get-DesktopWindowKeepAlive', 'Get-DesktopWindowProcessInfo', 'Get-LogonWallpaper', 'Invoke-DesktopControlClick', 'Invoke-DesktopKeyPress', 'Invoke-DesktopMouseClick', 'Invoke-DesktopMouseDrag', 'Invoke-DesktopMouseMove', 'Invoke-DesktopMouseScroll', 'Invoke-DesktopScreenshot', 'Invoke-DesktopWindowScreenshot', 'Register-DesktopHotkey', 'Register-DesktopMonitorEvent', 'Register-DesktopOrientationEvent', 'Register-DesktopResolutionEvent', 'Restore-DesktopWindowLayout', 'Save-DesktopWindowLayout', 'Send-DesktopControlKey', 'Set-DefaultAudioDevice', 'Set-DesktopBackgroundColor', 'Set-DesktopBrightness', 'Set-DesktopControlCheck', 'Set-DesktopDpiScaling', 'Set-DesktopPosition', 'Set-DesktopResolution', 'Set-DesktopSlideshowOptions', 'Set-DesktopWallpaper', 'Set-DesktopWallpaperHistory', 'Set-DesktopWindow', 'Set-DesktopWindowSnap', 'Set-DesktopWindowStyle', 'Set-DesktopWindowText', 'Set-DesktopWindowTransparency', 'Set-DesktopWindowVisibility', 'Set-LogonWallpaper', 'Set-TaskbarPosition', 'Start-DesktopSlideshow', 'Start-DesktopWindowKeepAlive', 'Step-DesktopSlideshow', 'Stop-DesktopSlideshow', 'Stop-DesktopWindowKeepAlive', 'Unregister-DesktopHotkey', 'Wait-DesktopWindow')
     CompanyName            = 'Evotec'
     CompatiblePSEditions   = @('Desktop', 'Core')
     Copyright              = '(c) 2011 - 2026 Przemyslaw Klys @ Evotec. All rights reserved.'
@@ -9,7 +9,7 @@
     DotNetFrameworkVersion = '4.7.2'
     FunctionsToExport      = @()
     GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
-    ModuleVersion          = '3.6.1'
+    ModuleVersion          = '4.0.0'
     PowerShellVersion      = '5.1'
     PrivateData            = @{
         PSData = @{

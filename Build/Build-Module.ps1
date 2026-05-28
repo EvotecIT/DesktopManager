@@ -35,7 +35,7 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
         PowerShellVersion      = '5.1'
         CompatiblePSEditions   = @('Desktop', 'Core')
         GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
-        ModuleVersion          = '3.6.1'
+        ModuleVersion          = '4.X.0'
         Author                 = 'Przemyslaw Klys'
         CompanyName            = 'Evotec'
         Copyright              = "(c) 2011 - $((Get-Date).Year) Przemyslaw Klys @ Evotec. All rights reserved."

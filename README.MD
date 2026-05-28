@@ -142,7 +142,7 @@ The important part is that CLI, MCP, and PowerShell are meant to stay aligned by
 | Set-DesktopSlideshowOptions | Update slideshow shuffle behavior and tick interval |
 | Start-DesktopSlideshow | Begin wallpaper slideshow across monitors |
 | Stop-DesktopSlideshow | Stop currently running slideshow |
-| Advance-DesktopSlideshow | Move slideshow forward or backward |
+| Step-DesktopSlideshow | Move slideshow forward or backward |
 | Get-DesktopBackgroundColor | Read current desktop background color |
 | Set-DesktopBackgroundColor | Change desktop background color |
 | Get-DesktopBrightness | Read monitor brightness level |
@@ -205,7 +205,7 @@ The table below shows the most relevant API methods behind each PowerShell cmdle
 | Set-DesktopSlideshowOptions | `Monitors.SetWallpaperSlideshowOptions` |
 | Start-DesktopSlideshow | `Monitors.StartWallpaperSlideshow` |
 | Stop-DesktopSlideshow | `Monitors.StopWallpaperSlideshow` |
-| Advance-DesktopSlideshow | `Monitors.AdvanceWallpaperSlide` |
+| Step-DesktopSlideshow | `Monitors.AdvanceWallpaperSlide` |
 | Get-DesktopBackgroundColor | `Monitors.GetBackgroundColor` |
 | Set-DesktopBackgroundColor | `Monitors.SetBackgroundColor` |
 | Get-DesktopBrightness | `Monitors.GetMonitorBrightness` |
@@ -452,7 +452,7 @@ Get-DesktopBackgroundColor
 Start-DesktopSlideshow -ImagePath 'C:\Wallpapers\img1.jpg','C:\Wallpapers\img2.jpg' -Shuffle -SlideshowTick 300000
 Get-DesktopSlideshow
 Set-DesktopSlideshowOptions -NoShuffle -SlideshowTick 600000
-Advance-DesktopSlideshow -Direction Forward
+Step-DesktopSlideshow -Direction Forward
 Stop-DesktopSlideshow
 ```
 
