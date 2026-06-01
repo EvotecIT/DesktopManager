@@ -92,7 +92,7 @@ flowchart LR
 
 If you want the fuller component and request-flow diagrams, see [Docs/DesktopManager.Architecture.md](Docs/DesktopManager.Architecture.md).
 
-The practical rule of thumb is:
+The practical way to think about this:
 
 - use the library when DesktopManager is part of your own application
 - use PowerShell when you want scriptable admin/operator automation
