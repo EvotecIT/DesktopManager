@@ -18,11 +18,11 @@ public sealed class HotkeyProfile {
     /// <summary>Whether closing the window should keep the hotkey host running in the notification area.</summary>
     public bool MinimizeToTray { get; set; } = true;
 
-    /// <summary>Hotkey registration backend. Use RegisterHotKey unless explicitly testing hooks.</summary>
-    public string HotkeyBackend { get; set; } = HotkeyBackendKinds.RegisterHotKey;
+    /// <summary>Hotkey registration backend.</summary>
+    public string HotkeyBackend { get; set; } = HotkeyBackendKinds.NativeHotkeyHost;
 
     /// <summary>Foreground process names where low-level hook chords should be captured exclusively.</summary>
-    public List<string> LowLevelHookExclusiveProcessNames { get; set; } = new();
+    public List<string> LowLevelHookExclusiveProcessNames { get; set; } = HotkeyProfileDefaults.CreateDefaultExclusiveProcessNames();
 
     /// <summary>Friendly profile name shown in the tray application.</summary>
     public string ProfileName { get; set; } = "Workstation";

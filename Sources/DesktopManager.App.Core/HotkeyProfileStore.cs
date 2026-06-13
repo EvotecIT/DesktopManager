@@ -51,6 +51,7 @@ public static class HotkeyProfileStore {
             throw new InvalidDataException("DesktopManager hotkey profile JSON did not contain a profile document.");
         }
 
+        HotkeyProfileDefaults.ApplyRuntimeDefaults(profile);
         return profile;
     }
 

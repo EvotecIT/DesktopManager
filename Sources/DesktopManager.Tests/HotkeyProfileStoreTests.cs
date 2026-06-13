@@ -17,7 +17,9 @@ public class HotkeyProfileStoreTests {
         Assert.IsTrue(profile.Enabled);
         Assert.IsFalse(profile.StartWithWindows);
         Assert.IsTrue(profile.MinimizeToTray);
-        Assert.AreEqual(HotkeyBackendKinds.RegisterHotKey, profile.HotkeyBackend);
+        Assert.AreEqual(HotkeyBackendKinds.NativeHotkeyHost, profile.HotkeyBackend);
+        CollectionAssert.Contains(profile.LowLevelHookExclusiveProcessNames, "RemoteDesktopManager");
+        CollectionAssert.Contains(profile.LowLevelHookExclusiveProcessNames, "mstsc");
         Assert.AreEqual("EVOMAGIC 4 monitors", profile.ProfileName);
         Assert.AreEqual(9, profile.Functions.Count);
         Assert.IsTrue(profile.Functions.Any(function => function.Name == "Move Window to Top Left Monitor" && function.Hotkey == "Ctrl+Alt+Shift+5"));
@@ -60,7 +62,34 @@ public class HotkeyProfileStoreTests {
             Assert.IsTrue(json.Contains("EVOMAGIC 4 monitors", StringComparison.Ordinal));
             Assert.IsTrue(json.Contains("startWithWindows", StringComparison.Ordinal));
             Assert.IsTrue(json.Contains("minimizeToTray", StringComparison.Ordinal));
+            Assert.IsTrue(json.Contains("NativeHotkeyHost", StringComparison.Ordinal));
+            Assert.IsTrue(json.Contains("RemoteDesktopManager", StringComparison.Ordinal));
             Assert.IsTrue(json.Contains("Ctrl+Alt+Shift+5", StringComparison.Ordinal));
+        } finally {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Loading an earlier proof profile should opt into the native host needed by remote desktop clients.
+    /// </summary>
+    [TestMethod]
+    public void LoadOrCreate_LegacyRegisterHotKeyProfile_NormalizesRemoteDesktopBackend() {
+        string directory = CreateTemporaryDirectory();
+        string path = Path.Combine(directory, "profile.json");
+
+        try {
+            HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+            profile.HotkeyBackend = HotkeyBackendKinds.RegisterHotKey;
+            profile.LowLevelHookExclusiveProcessNames.Clear();
+            HotkeyProfileStore.Save(path, profile);
+
+            HotkeyProfile loaded = HotkeyProfileStore.LoadOrCreate(path);
+
+            Assert.AreEqual(HotkeyBackendKinds.NativeHotkeyHost, loaded.HotkeyBackend);
+            CollectionAssert.Contains(loaded.LowLevelHookExclusiveProcessNames, "RemoteDesktopManager");
+            CollectionAssert.Contains(loaded.LowLevelHookExclusiveProcessNames, "mstsc");
+            Assert.IsTrue(HotkeyProfileValidator.Validate(loaded).IsValid);
         } finally {
             Directory.Delete(directory, recursive: true);
         }

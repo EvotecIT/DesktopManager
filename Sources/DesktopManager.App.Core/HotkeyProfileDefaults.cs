@@ -4,6 +4,12 @@ namespace DesktopManager.App.Core;
 /// Provides the first-run DesktopManager hotkey profile.
 /// </summary>
 public static class HotkeyProfileDefaults {
+    private static readonly string[] DefaultExclusiveProcessNames = [
+        "RemoteDesktopManager",
+        "Devolutions.RemoteDesktopManager",
+        "mstsc"
+    ];
+
     /// <summary>
     /// Creates a default profile for common four-monitor window movement.
     /// </summary>
@@ -13,6 +19,8 @@ public static class HotkeyProfileDefaults {
             SchemaVersion = 1,
             Enabled = true,
             ProfileName = "EVOMAGIC 4 monitors",
+            HotkeyBackend = HotkeyBackendKinds.NativeHotkeyHost,
+            LowLevelHookExclusiveProcessNames = CreateDefaultExclusiveProcessNames(),
             Functions = {
                 CreateMonitorMove("move-top-left-maximize", "Move Window to Top Left Monitor", "Ctrl+Alt+Shift+5", MonitorTargets.TopLeft, 1),
                 CreateMonitorMove("move-top-right-maximize", "Move Window to Top Right Monitor", "Ctrl+Alt+Shift+6", MonitorTargets.TopRight, 0),
@@ -25,6 +33,37 @@ public static class HotkeyProfileDefaults {
                 CreateWindowManagement("maximize-active-window", "Maximize Active Window", "Ctrl+Alt+Shift+9", WindowPlacements.Maximize)
             }
         };
+    }
+
+    /// <summary>
+    /// Creates the default foreground process list where hook chords should be consumed before remote clients forward them.
+    /// </summary>
+    /// <returns>A mutable list of process names.</returns>
+    public static List<string> CreateDefaultExclusiveProcessNames() {
+        return new List<string>(DefaultExclusiveProcessNames);
+    }
+
+    /// <summary>
+    /// Applies runtime defaults to profiles created by earlier proof builds.
+    /// </summary>
+    /// <param name="profile">Profile to normalize.</param>
+    public static void ApplyRuntimeDefaults(HotkeyProfile profile) {
+        if (profile == null) {
+            throw new ArgumentNullException(nameof(profile));
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.HotkeyBackend) ||
+            string.Equals(profile.HotkeyBackend, HotkeyBackendKinds.RegisterHotKey, StringComparison.OrdinalIgnoreCase)) {
+            profile.HotkeyBackend = HotkeyBackendKinds.NativeHotkeyHost;
+        }
+
+        profile.LowLevelHookExclusiveProcessNames ??= new List<string>();
+        foreach (string processName in DefaultExclusiveProcessNames) {
+            if (!profile.LowLevelHookExclusiveProcessNames.Any(existing =>
+                string.Equals(existing, processName, StringComparison.OrdinalIgnoreCase))) {
+                profile.LowLevelHookExclusiveProcessNames.Add(processName);
+            }
+        }
     }
 
     private static HotkeyFunctionDefinition CreateMonitorMove(string id, string name, string hotkey, string monitor, int monitorIndex) {
