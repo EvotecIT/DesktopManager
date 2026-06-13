@@ -1,0 +1,249 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+
+namespace DesktopManager;
+
+public partial class MonitorService {
+    /// <summary>
+    /// Gets Advanced Color and HDR state for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <returns>The current Advanced Color and HDR state.</returns>
+    public MonitorAdvancedColorInfo GetMonitorAdvancedColor(string deviceId) {
+        Monitor monitor = ResolveMonitorForAdvancedColor(deviceId);
+        DisplayConfigPathInfo path = ResolveDisplayConfigPathForMonitor(monitor);
+
+        MonitorAdvancedColorInfo result;
+        if (TryGetAdvancedColorInfo2(monitor, path, out MonitorAdvancedColorInfo? advancedColorInfo2)) {
+            result = advancedColorInfo2!;
+        } else {
+            result = GetAdvancedColorInfoLegacy(monitor, path);
+        }
+
+        if (TryGetSdrWhiteLevel(path, out uint sdrWhiteLevel)) {
+            result.SdrWhiteLevel = sdrWhiteLevel;
+            result.SdrWhiteLevelNits = sdrWhiteLevel / 1000d * 80d;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Sets HDR for a monitor, falling back to the legacy Advanced Color packet on older Windows builds.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="enabled">Whether HDR should be enabled.</param>
+    public void SetMonitorHdr(string deviceId, bool enabled) {
+        Monitor monitor = ResolveMonitorForAdvancedColor(deviceId);
+        DisplayConfigPathInfo path = ResolveDisplayConfigPathForMonitor(monitor);
+
+        if (TrySetHdrState(path, enabled)) {
+            return;
+        }
+
+        int error = SetAdvancedColorState(path, enabled);
+        if (error != MonitorNativeMethods.DisplayConfigErrorSuccess) {
+            throw new InvalidOperationException($"Unable to set monitor HDR/Advanced Color state. Error: {error}");
+        }
+    }
+
+    private Monitor ResolveMonitorForAdvancedColor(string deviceId) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        Monitor? monitor = GetMonitors()
+            .FirstOrDefault(m => string.Equals(m.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase));
+        if (monitor == null) {
+            throw new ArgumentException($"Monitor with device ID '{deviceId}' not found", nameof(deviceId));
+        }
+
+        return monitor;
+    }
+
+    private static DisplayConfigPathInfo ResolveDisplayConfigPathForMonitor(Monitor monitor) {
+        if (string.IsNullOrWhiteSpace(monitor.DeviceName)) {
+            throw new InvalidOperationException($"Monitor '{monitor.DeviceId}' does not have a display device name.");
+        }
+
+        IReadOnlyList<DisplayConfigPathInfo> paths = QueryActiveDisplayConfigPaths();
+        foreach (DisplayConfigPathInfo path in paths) {
+            if (TryGetSourceDeviceName(path, out string sourceDeviceName) &&
+                string.Equals(sourceDeviceName, monitor.DeviceName, StringComparison.OrdinalIgnoreCase)) {
+                return path;
+            }
+        }
+
+        throw new InvalidOperationException($"Unable to resolve active DisplayConfig path for monitor '{monitor.DeviceName}'.");
+    }
+
+    private static IReadOnlyList<DisplayConfigPathInfo> QueryActiveDisplayConfigPaths() {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            int sizeError = MonitorNativeMethods.GetDisplayConfigBufferSizes(
+                MonitorNativeMethods.QdcOnlyActivePaths,
+                out uint pathCount,
+                out uint modeInfoCount);
+            if (sizeError != MonitorNativeMethods.DisplayConfigErrorSuccess) {
+                throw new InvalidOperationException($"GetDisplayConfigBufferSizes failed. Error: {sizeError}");
+            }
+
+            DisplayConfigPathInfo[] paths = new DisplayConfigPathInfo[pathCount];
+            DisplayConfigModeInfo[] modes = new DisplayConfigModeInfo[modeInfoCount];
+            int queryError = MonitorNativeMethods.QueryDisplayConfig(
+                MonitorNativeMethods.QdcOnlyActivePaths,
+                ref pathCount,
+                paths,
+                ref modeInfoCount,
+                modes,
+                IntPtr.Zero);
+
+            if (queryError == MonitorNativeMethods.DisplayConfigErrorSuccess) {
+                return paths.Take((int)pathCount).ToArray();
+            }
+
+            if (queryError != MonitorNativeMethods.DisplayConfigErrorInsufficientBuffer) {
+                throw new InvalidOperationException($"QueryDisplayConfig failed. Error: {queryError}");
+            }
+        }
+
+        throw new InvalidOperationException("QueryDisplayConfig failed because the display topology changed while it was being queried.");
+    }
+
+    private static bool TryGetSourceDeviceName(DisplayConfigPathInfo path, out string sourceDeviceName) {
+        DisplayConfigSourceDeviceName sourceName = new() {
+            Header = CreateDeviceInfoHeader(
+                DisplayConfigDeviceInfoType.GetSourceName,
+                Marshal.SizeOf<DisplayConfigSourceDeviceName>(),
+                path.SourceInfo.AdapterId,
+                path.SourceInfo.Id),
+            ViewGdiDeviceName = string.Empty
+        };
+
+        int error = MonitorNativeMethods.DisplayConfigGetSourceDeviceName(ref sourceName);
+        sourceDeviceName = error == MonitorNativeMethods.DisplayConfigErrorSuccess
+            ? sourceName.ViewGdiDeviceName
+            : string.Empty;
+        return error == MonitorNativeMethods.DisplayConfigErrorSuccess;
+    }
+
+    private static bool TryGetAdvancedColorInfo2(Monitor monitor, DisplayConfigPathInfo path, out MonitorAdvancedColorInfo? result) {
+        DisplayConfigGetAdvancedColorInfo2 info = new() {
+            Header = CreateTargetDeviceInfoHeader(
+                DisplayConfigDeviceInfoType.GetAdvancedColorInfo2,
+                Marshal.SizeOf<DisplayConfigGetAdvancedColorInfo2>(),
+                path)
+        };
+
+        int error = MonitorNativeMethods.DisplayConfigGetAdvancedColorInfo2(ref info);
+        if (error != MonitorNativeMethods.DisplayConfigErrorSuccess) {
+            result = null;
+            return false;
+        }
+
+        result = CreateBaseAdvancedColorInfo(monitor);
+        result.AdvancedColorSupported = info.AdvancedColorSupported;
+        result.AdvancedColorEnabled = info.AdvancedColorActive;
+        result.HdrSupported = info.HighDynamicRangeSupported;
+        result.HdrEnabled = info.HighDynamicRangeUserEnabled;
+        result.WideColorSupported = info.WideColorSupported;
+        result.WideColorEnabled = info.WideColorUserEnabled;
+        result.AdvancedColorLimitedByPolicy = info.AdvancedColorLimitedByPolicy;
+        result.ActiveColorMode = info.ActiveColorMode.ToString();
+        result.ColorEncoding = info.ColorEncoding.ToString();
+        result.BitsPerColorChannel = info.BitsPerColorChannel;
+        return true;
+    }
+
+    private static MonitorAdvancedColorInfo GetAdvancedColorInfoLegacy(Monitor monitor, DisplayConfigPathInfo path) {
+        DisplayConfigGetAdvancedColorInfo info = new() {
+            Header = CreateTargetDeviceInfoHeader(
+                DisplayConfigDeviceInfoType.GetAdvancedColorInfo,
+                Marshal.SizeOf<DisplayConfigGetAdvancedColorInfo>(),
+                path)
+        };
+
+        int error = MonitorNativeMethods.DisplayConfigGetAdvancedColorInfo(ref info);
+        if (error != MonitorNativeMethods.DisplayConfigErrorSuccess) {
+            throw new InvalidOperationException($"DisplayConfigGetDeviceInfo advanced color query failed. Error: {error}");
+        }
+
+        MonitorAdvancedColorInfo result = CreateBaseAdvancedColorInfo(monitor);
+        result.AdvancedColorSupported = info.AdvancedColorSupported;
+        result.AdvancedColorEnabled = info.AdvancedColorEnabled;
+        result.HdrSupported = info.AdvancedColorSupported;
+        result.HdrEnabled = info.AdvancedColorEnabled;
+        result.WideColorEnforced = info.WideColorEnforced;
+        result.AdvancedColorLimitedByPolicy = info.AdvancedColorForceDisabled;
+        result.ColorEncoding = info.ColorEncoding.ToString();
+        result.BitsPerColorChannel = info.BitsPerColorChannel;
+        return result;
+    }
+
+    private static bool TryGetSdrWhiteLevel(DisplayConfigPathInfo path, out uint sdrWhiteLevel) {
+        DisplayConfigSdrWhiteLevel info = new() {
+            Header = CreateTargetDeviceInfoHeader(
+                DisplayConfigDeviceInfoType.GetSdrWhiteLevel,
+                Marshal.SizeOf<DisplayConfigSdrWhiteLevel>(),
+                path)
+        };
+
+        int error = MonitorNativeMethods.DisplayConfigGetSdrWhiteLevel(ref info);
+        sdrWhiteLevel = info.SdrWhiteLevel;
+        return error == MonitorNativeMethods.DisplayConfigErrorSuccess;
+    }
+
+    private static bool TrySetHdrState(DisplayConfigPathInfo path, bool enabled) {
+        DisplayConfigSetHdrState state = new() {
+            Header = CreateTargetDeviceInfoHeader(
+                DisplayConfigDeviceInfoType.SetHdrState,
+                Marshal.SizeOf<DisplayConfigSetHdrState>(),
+                path),
+            Value = enabled ? 1u : 0u
+        };
+
+        return MonitorNativeMethods.DisplayConfigSetHdrState(ref state) == MonitorNativeMethods.DisplayConfigErrorSuccess;
+    }
+
+    private static int SetAdvancedColorState(DisplayConfigPathInfo path, bool enabled) {
+        DisplayConfigSetAdvancedColorState state = new() {
+            Header = CreateTargetDeviceInfoHeader(
+                DisplayConfigDeviceInfoType.SetAdvancedColorState,
+                Marshal.SizeOf<DisplayConfigSetAdvancedColorState>(),
+                path),
+            Value = enabled ? 1u : 0u
+        };
+
+        return MonitorNativeMethods.DisplayConfigSetAdvancedColorState(ref state);
+    }
+
+    private static MonitorAdvancedColorInfo CreateBaseAdvancedColorInfo(Monitor monitor) {
+        return new MonitorAdvancedColorInfo {
+            Index = monitor.Index,
+            DeviceName = monitor.DeviceName,
+            DeviceId = monitor.DeviceId,
+            IsPrimary = monitor.IsPrimary
+        };
+    }
+
+    private static DisplayConfigDeviceInfoHeader CreateTargetDeviceInfoHeader(
+        DisplayConfigDeviceInfoType type,
+        int size,
+        DisplayConfigPathInfo path) {
+        return CreateDeviceInfoHeader(type, size, path.TargetInfo.AdapterId, path.TargetInfo.Id);
+    }
+
+    private static DisplayConfigDeviceInfoHeader CreateDeviceInfoHeader(
+        DisplayConfigDeviceInfoType type,
+        int size,
+        Luid adapterId,
+        uint id) {
+        return new DisplayConfigDeviceInfoHeader {
+            Type = type,
+            Size = (uint)size,
+            AdapterId = adapterId,
+            Id = id
+        };
+    }
+}

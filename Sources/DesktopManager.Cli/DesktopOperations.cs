@@ -279,6 +279,52 @@ internal static partial class DesktopOperations {
                 activate));
     }
 
+    public static WindowChangeResult PlaceWindow(WindowSelectionCriteria criteria, WindowPlacementKind placement, WindowMonitorTargetKind monitorTarget, int? monitorIndex, int? x, int? y, int? width, int? height, MutationArtifactOptions? artifactOptions = null) {
+        return ExecuteWindowMutation(
+            "place",
+            criteria,
+            "window-placement",
+            artifactOptions,
+            automation => {
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                var placedWindows = new List<WindowInfo>(windows.Count);
+                foreach (WindowInfo window in windows) {
+                    WindowPlacementResult result = automation.ApplyWindowPlacement(new WindowPlacementRequest {
+                        TargetWindowHandle = window.Handle,
+                        Placement = placement,
+                        MonitorTarget = monitorTarget,
+                        MonitorIndex = monitorIndex,
+                        ExactLeft = x,
+                        ExactTop = y,
+                        ExactWidth = width,
+                        ExactHeight = height,
+                        VerifyAfterAction = true
+                    });
+
+                    if (!result.Verified) {
+                        throw new InvalidOperationException($"Window placement for 0x{result.Window.Handle.ToInt64():X} was not verified.");
+                    }
+
+                    placedWindows.Add(result.Window);
+                }
+
+                return placedWindows;
+            },
+            verify: (automation, windows, options) => placement == WindowPlacementKind.ExactRectangle
+                ? BuildWindowPostconditionVerificationResult(
+                    "place",
+                    windows,
+                    ObserveWindowsByHandle(automation, windows),
+                    SafeGetActiveWindowInfo(automation),
+                    options.VerificationTolerancePixels,
+                    monitorIndex,
+                    x,
+                    y,
+                    width,
+                    height)
+                : BuildWindowPresenceVerificationResult("place", windows, ObserveWindowsByHandle(automation, windows), options.VerificationTolerancePixels));
+    }
+
     public static WindowChangeResult FocusWindow(WindowSelectionCriteria criteria, MutationArtifactOptions? artifactOptions = null) {
         return ExecuteWindowMutation(
             "focus",
@@ -715,6 +761,15 @@ internal static partial class DesktopOperations {
         });
     }
 
+    public static IReadOnlyList<MonitorAdvancedColorResult> GetMonitorAdvancedColor(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            return automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName)
+                .Select(monitor => MapAdvancedColor(automation.GetMonitorAdvancedColor(monitor.DeviceId)))
+                .ToArray();
+        });
+    }
+
     public static IReadOnlyList<MonitorWallpaperResult> GetMonitorWallpaper(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
         return ExecuteCore(() => {
             var automation = new DesktopAutomationService();
@@ -779,6 +834,18 @@ internal static partial class DesktopOperations {
                 IsPrimary = monitor.IsPrimary,
                 Brightness = automation.GetMonitorBrightness(monitor.DeviceId)
             }).ToArray();
+        });
+    }
+
+    public static IReadOnlyList<MonitorAdvancedColorResult> SetMonitorHdr(bool enabled, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+        return ExecuteCore(() => {
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+            foreach (Monitor monitor in monitors) {
+                automation.SetMonitorHdr(monitor.DeviceId, enabled);
+            }
+
+            return monitors.Select(monitor => MapAdvancedColor(automation.GetMonitorAdvancedColor(monitor.DeviceId))).ToArray();
         });
     }
 
@@ -910,6 +977,28 @@ internal static partial class DesktopOperations {
 
             return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);
         });
+    }
+
+    private static MonitorAdvancedColorResult MapAdvancedColor(MonitorAdvancedColorInfo info) {
+        return new MonitorAdvancedColorResult {
+            Index = info.Index,
+            DeviceName = info.DeviceName,
+            DeviceId = info.DeviceId,
+            IsPrimary = info.IsPrimary,
+            AdvancedColorSupported = info.AdvancedColorSupported,
+            AdvancedColorEnabled = info.AdvancedColorEnabled,
+            HdrSupported = info.HdrSupported,
+            HdrEnabled = info.HdrEnabled,
+            WideColorSupported = info.WideColorSupported,
+            WideColorEnabled = info.WideColorEnabled,
+            WideColorEnforced = info.WideColorEnforced,
+            AdvancedColorLimitedByPolicy = info.AdvancedColorLimitedByPolicy,
+            ActiveColorMode = info.ActiveColorMode,
+            ColorEncoding = info.ColorEncoding,
+            BitsPerColorChannel = info.BitsPerColorChannel,
+            SdrWhiteLevel = info.SdrWhiteLevel,
+            SdrWhiteLevelNits = info.SdrWhiteLevelNits
+        };
     }
 
     public static IReadOnlyList<ControlResult> ListControls(WindowSelectionCriteria windowCriteria, ControlSelectionCriteria controlCriteria, bool allWindows) {

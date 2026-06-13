@@ -9,9 +9,11 @@ internal static class MonitorCommands {
         return action switch {
             "list" => List(arguments),
             "brightness" => Brightness(arguments),
+            "advanced-color" or "hdr" => AdvancedColor(arguments),
             "wallpaper" => Wallpaper(arguments),
             "set-wallpaper" => SetWallpaper(arguments),
             "set-brightness" => SetBrightness(arguments),
+            "set-hdr" => SetHdr(arguments),
             "set-position" => SetPosition(arguments),
             "set-resolution" => SetResolution(arguments),
             "set-dpi-scaling" => SetDpiScaling(arguments),
@@ -52,6 +54,22 @@ internal static class MonitorCommands {
         return WriteMonitorBrightnessResults(results, Console.Out);
     }
 
+    private static int AdvancedColor(CommandLineArguments arguments) {
+        IReadOnlyList<MonitorAdvancedColorResult> results = DesktopOperations.GetMonitorAdvancedColor(
+            connectedOnly: GetConnectedOnly(arguments),
+            primaryOnly: GetPrimaryOnly(arguments),
+            index: arguments.GetIntOption("index"),
+            deviceId: arguments.GetOption("device-id"),
+            deviceName: arguments.GetOption("device-name"));
+
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(results);
+            return 0;
+        }
+
+        return WriteMonitorAdvancedColorResults(results, Console.Out);
+    }
+
     private static int Wallpaper(CommandLineArguments arguments) {
         IReadOnlyList<MonitorWallpaperResult> results = DesktopOperations.GetMonitorWallpaper(
             connectedOnly: GetConnectedOnly(arguments),
@@ -83,6 +101,29 @@ internal static class MonitorCommands {
         }
 
         return WriteMonitorBrightnessResults(results, Console.Out);
+    }
+
+    private static int SetHdr(CommandLineArguments arguments) {
+        bool enable = arguments.GetBoolFlag("enable");
+        bool disable = arguments.GetBoolFlag("disable");
+        if (enable == disable) {
+            throw new CommandLineException("Specify exactly one of '--enable' or '--disable'.");
+        }
+
+        IReadOnlyList<MonitorAdvancedColorResult> results = DesktopOperations.SetMonitorHdr(
+            enable,
+            connectedOnly: GetConnectedOnly(arguments),
+            primaryOnly: GetPrimaryOnly(arguments),
+            index: arguments.GetIntOption("index"),
+            deviceId: arguments.GetOption("device-id"),
+            deviceName: arguments.GetOption("device-name"));
+
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(results);
+            return 0;
+        }
+
+        return WriteMonitorAdvancedColorResults(results, Console.Out);
     }
 
     private static int SetPosition(CommandLineArguments arguments) {
@@ -198,6 +239,27 @@ internal static class MonitorCommands {
             .ToArray();
 
         OutputFormatter.WriteTable(writer, new[] { "Idx", "Primary", "Brightness", "DeviceName", "DeviceId" }, rows);
+        return 0;
+    }
+
+    internal static int WriteMonitorAdvancedColorResults(IReadOnlyList<MonitorAdvancedColorResult> results, TextWriter writer) {
+        IReadOnlyList<IReadOnlyList<string>> rows = results
+            .Select(monitor => (IReadOnlyList<string>)new[] {
+                monitor.Index.ToString(),
+                monitor.IsPrimary ? "Yes" : "No",
+                monitor.HdrSupported ? "Yes" : "No",
+                monitor.HdrEnabled ? "Yes" : "No",
+                monitor.AdvancedColorSupported ? "Yes" : "No",
+                monitor.AdvancedColorEnabled ? "Yes" : "No",
+                monitor.ActiveColorMode,
+                monitor.ColorEncoding,
+                monitor.BitsPerColorChannel.ToString(),
+                monitor.SdrWhiteLevelNits?.ToString("0.##") ?? string.Empty,
+                monitor.DeviceName
+            })
+            .ToArray();
+
+        OutputFormatter.WriteTable(writer, new[] { "Idx", "Primary", "HDR", "Enabled", "AdvColor", "Active", "Mode", "Encoding", "Bits", "SDR nits", "DeviceName" }, rows);
         return 0;
     }
 

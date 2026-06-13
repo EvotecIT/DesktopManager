@@ -151,6 +151,22 @@ public class Monitor {
     }
 
     /// <summary>
+    /// Gets the Advanced Color and HDR state of the monitor.
+    /// </summary>
+    /// <returns>The Advanced Color and HDR state of the monitor.</returns>
+    public MonitorAdvancedColorInfo GetAdvancedColor() {
+        return _monitorService.GetMonitorAdvancedColor(DeviceId);
+    }
+
+    /// <summary>
+    /// Enables or disables HDR for the monitor.
+    /// </summary>
+    /// <param name="enabled">Whether HDR should be enabled.</param>
+    public void SetHdr(bool enabled) {
+        _monitorService.SetMonitorHdr(DeviceId, enabled);
+    }
+
+    /// <summary>
     /// Gets the bounds of the monitor.
     /// </summary>
     /// <returns>The bounds of the monitor.</returns>

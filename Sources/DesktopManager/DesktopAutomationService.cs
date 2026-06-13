@@ -278,6 +278,32 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Gets Advanced Color and HDR state for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <returns>The Advanced Color and HDR state.</returns>
+    public MonitorAdvancedColorInfo GetMonitorAdvancedColor(string deviceId) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        return _monitors.GetMonitorAdvancedColor(deviceId);
+    }
+
+    /// <summary>
+    /// Enables or disables HDR for a monitor.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="enabled">Whether HDR should be enabled.</param>
+    public void SetMonitorHdr(string deviceId, bool enabled) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        _monitors.SetMonitorHdr(deviceId, enabled);
+    }
+
+    /// <summary>
     /// Gets the current position for a monitor.
     /// </summary>
     /// <param name="deviceId">Monitor device identifier.</param>
@@ -776,6 +802,15 @@ public sealed class DesktopAutomationService {
     /// <returns>True when the window moved to a different monitor; otherwise false.</returns>
     public bool MoveWindowToMonitor(IntPtr windowHandle, int monitorIndex) {
         return MoveWindowToMonitor(ResolveWindowByHandle(windowHandle), monitorIndex);
+    }
+
+    /// <summary>
+    /// Applies a reusable reliable placement request to a desktop window.
+    /// </summary>
+    /// <param name="request">Placement request describing the target window, monitor, geometry, verification, and retry behavior.</param>
+    /// <returns>The observed placement result, including final window state and diagnostic snapshots.</returns>
+    public WindowPlacementResult ApplyWindowPlacement(WindowPlacementRequest request) {
+        return new WindowPlacementService(_windowManager, _monitors).Apply(request);
     }
 
     /// <summary>

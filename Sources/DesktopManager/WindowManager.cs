@@ -63,7 +63,9 @@ public partial class WindowManager {
             var handles = new List<IntPtr>();
             var shellWindowhWnd = MonitorNativeMethods.GetShellWindow();
             bool includeHidden = options.IncludeHidden || options.IsVisible == false;
-            IntPtr activeWindowHandle = options.ActiveWindow ? MonitorNativeMethods.GetForegroundWindow() : IntPtr.Zero;
+            IntPtr activeWindowHandle = options.ActiveWindow
+                ? GetRootWindowHandle(MonitorNativeMethods.GetForegroundWindow())
+                : IntPtr.Zero;
 
             if (!MonitorNativeMethods.EnumWindows(
                 (handle, lParam) => {

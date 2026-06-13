@@ -346,6 +346,7 @@ public partial class WindowManager
         /// <param name="windowInfo">The window information.</param>
         public void RestoreWindow(WindowInfo windowInfo) {
             ValidateWindowInfo(windowInfo);
+            MonitorNativeMethods.ShowWindow(windowInfo.Handle, MonitorNativeMethods.SW_RESTORE);
             MonitorNativeMethods.SendMessage(
                 windowInfo.Handle,
                 (uint)WindowMessage.WM_SYSCOMMAND,
