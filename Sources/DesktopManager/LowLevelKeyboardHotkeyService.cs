@@ -287,7 +287,7 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
                 }
 
                 if (!registration.HasOnlyRequiredModifiersDown(IsTrackedKeyDown) ||
-                    registration.CountRequiredModifiersDown(IsTrackedKeyDown) < registration.RequiredModifierCount) {
+                    registration.CountRequiredModifiersDown(IsTrackedKeyDown) == 0) {
                     continue;
                 }
 
@@ -430,7 +430,8 @@ internal sealed class LowLevelKeyboardHotkeyRegistration {
             IsModifierSatisfied(HotkeyModifiers.Control, VirtualKey.VK_CONTROL, VirtualKey.VK_LCONTROL, VirtualKey.VK_RCONTROL, isKeyDown) &&
             IsModifierSatisfied(HotkeyModifiers.Alt, VirtualKey.VK_MENU, VirtualKey.VK_LMENU, VirtualKey.VK_RMENU, isKeyDown) &&
             IsModifierSatisfied(HotkeyModifiers.Shift, VirtualKey.VK_SHIFT, VirtualKey.VK_LSHIFT, VirtualKey.VK_RSHIFT, isKeyDown) &&
-            IsModifierSatisfied(HotkeyModifiers.Win, VirtualKey.VK_LWIN, VirtualKey.VK_LWIN, VirtualKey.VK_RWIN, isKeyDown);
+            IsModifierSatisfied(HotkeyModifiers.Win, VirtualKey.VK_LWIN, VirtualKey.VK_LWIN, VirtualKey.VK_RWIN, isKeyDown) &&
+            HasOnlyRequiredModifiersDown(isKeyDown);
     }
 
     public bool ShouldSuppressPotentialChordKeys(IntPtr foregroundHandle) {

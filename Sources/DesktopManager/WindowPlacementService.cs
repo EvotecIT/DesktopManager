@@ -109,6 +109,8 @@ public sealed class WindowPlacementService {
             if (capturedWindow != null) {
                 return capturedWindow;
             }
+
+            throw new InvalidOperationException($"Window 0x{rootHandle.ToInt64():X} could not be resolved.");
         }
 
         return _windowManager.GetActiveWindow(
@@ -150,6 +152,10 @@ public sealed class WindowPlacementService {
 
         if (explicitMonitor != null) {
             return explicitMonitor;
+        }
+
+        if (request.MonitorIndex.HasValue) {
+            throw new InvalidOperationException($"Monitor index {request.MonitorIndex.Value} was not found.");
         }
 
         if (request.MonitorTarget == WindowMonitorTargetKind.Current) {
@@ -280,7 +286,8 @@ public sealed class WindowPlacementService {
         return window.MonitorIndex == monitor.Index &&
             IsNear(window.Left, expectedLeft, request.GeometryTolerancePixels) &&
             IsNear(window.Top, monitor.PositionTop, request.GeometryTolerancePixels) &&
-            IsNear(window.Width, width / 2, request.GeometryTolerancePixels);
+            IsNear(window.Width, width / 2, request.GeometryTolerancePixels) &&
+            IsNear(window.Height, monitor.PositionBottom - monitor.PositionTop, request.GeometryTolerancePixels);
     }
 
     private bool WaitForWindow(IntPtr handle, Func<WindowInfo, bool> predicate, WindowPlacementRequest request) {

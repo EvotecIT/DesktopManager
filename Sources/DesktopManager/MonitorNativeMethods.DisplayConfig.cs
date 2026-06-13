@@ -9,6 +9,8 @@ namespace DesktopManager;
 public static partial class MonitorNativeMethods {
     internal const int DisplayConfigErrorSuccess = 0;
     internal const int DisplayConfigErrorInsufficientBuffer = 122;
+    internal const int ErrorInvalidParameter = 87;
+    internal const int ErrorNotSupported = 50;
     internal const uint QdcOnlyActivePaths = 0x00000002;
 
     [DllImport("user32.dll")]

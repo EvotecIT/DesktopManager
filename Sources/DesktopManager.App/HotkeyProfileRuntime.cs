@@ -8,14 +8,19 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
     private readonly WindowHotkeyActionExecutor _executor = new();
     private readonly List<HotkeyRegistrationHandle> _registrations = new();
     private readonly SemaphoreSlim _executionGate = new(1, 1);
+    private readonly ManualResetEventSlim _executionDrained = new(true);
+    private readonly object _lifetimeSync = new();
     private string _hotkeyBackend = HotkeyBackendKinds.RegisterHotKey;
     private global::DesktopManager.LowLevelKeyboardHotkeyOptions _lowLevelHookOptions = new();
+    private int _queuedExecutions;
+    private bool _disposed;
 
     public event EventHandler<string>? StatusChanged;
 
     public int RegisteredCount => _registrations.Count;
 
     public void Start(HotkeyProfile profile) {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         Stop();
 
         if (!profile.Enabled) {
@@ -68,8 +73,14 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
     }
 
     public void Dispose() {
+        lock (_lifetimeSync) {
+            _disposed = true;
+        }
+
         Stop();
+        _executionDrained.Wait();
         _executionGate.Dispose();
+        _executionDrained.Dispose();
     }
 
     public void Execute(HotkeyFunctionDefinition function) {
@@ -119,6 +130,16 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
     }
 
     private void QueueExecution(HotkeyFunctionDefinition function, IntPtr targetWindowHandle, string source) {
+        lock (_lifetimeSync) {
+            if (_disposed) {
+                HotkeyDiagnosticsWriter.WriteRuntimeEvent("dropped", function, "Runtime is disposed.");
+                return;
+            }
+
+            _queuedExecutions++;
+            _executionDrained.Reset();
+        }
+
         IntPtr rawWindowHandle = targetWindowHandle;
         IntPtr capturedWindowHandle = targetWindowHandle;
         if (targetWindowHandle == IntPtr.Zero) {
@@ -136,27 +157,31 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
             });
 
         ThreadPool.QueueUserWorkItem(_ => {
-            _executionGate.Wait();
             try {
-                HotkeyDiagnosticsWriter.WriteRuntimeEvent(
-                    "started",
-                    function,
-                    details: new {
-                        Source = source,
-                        CapturedHandle = FormatHandle(capturedWindowHandle)
-                    });
-                HotkeyExecutionResult result = _executor.Execute(function, capturedWindowHandle);
-                HotkeyDiagnosticsWriter.WriteRuntimeEvent(
-                    "completed",
-                    function,
-                    details: new {
-                        Source = source,
-                        WindowHandle = FormatHandle(result.WindowHandle),
-                        result.Verified,
-                        result.Attempts,
-                        result.DiagnosticPath
-                    });
-                OnStatusChanged(result.ToStatusMessage());
+                _executionGate.Wait();
+                try {
+                    HotkeyDiagnosticsWriter.WriteRuntimeEvent(
+                        "started",
+                        function,
+                        details: new {
+                            Source = source,
+                            CapturedHandle = FormatHandle(capturedWindowHandle)
+                        });
+                    HotkeyExecutionResult result = _executor.Execute(function, capturedWindowHandle);
+                    HotkeyDiagnosticsWriter.WriteRuntimeEvent(
+                        "completed",
+                        function,
+                        details: new {
+                            Source = source,
+                            WindowHandle = FormatHandle(result.WindowHandle),
+                            result.Verified,
+                            result.Attempts,
+                            result.DiagnosticPath
+                        });
+                    OnStatusChanged(result.ToStatusMessage());
+                } finally {
+                    _executionGate.Release();
+                }
             } catch (Exception ex) {
                 HotkeyDiagnosticsWriter.WriteRuntimeEvent(
                     "failed",
@@ -168,7 +193,12 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
                     });
                 OnStatusChanged($"{function.Name}: {ex.Message}");
             } finally {
-                _executionGate.Release();
+                lock (_lifetimeSync) {
+                    _queuedExecutions--;
+                    if (_queuedExecutions == 0) {
+                        _executionDrained.Set();
+                    }
+                }
             }
         });
     }

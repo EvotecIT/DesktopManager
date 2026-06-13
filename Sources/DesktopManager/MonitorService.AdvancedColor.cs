@@ -39,8 +39,13 @@ public partial class MonitorService {
         Monitor monitor = ResolveMonitorForAdvancedColor(deviceId);
         DisplayConfigPathInfo path = ResolveDisplayConfigPathForMonitor(monitor);
 
-        if (TrySetHdrState(path, enabled)) {
+        int hdrError = SetHdrState(path, enabled);
+        if (hdrError == MonitorNativeMethods.DisplayConfigErrorSuccess) {
             return;
+        }
+
+        if (!IsUnsupportedDeviceInfoPacketError(hdrError)) {
+            throw new InvalidOperationException($"Unable to set monitor HDR state. Error: {hdrError}");
         }
 
         int error = SetAdvancedColorState(path, enabled);
@@ -194,7 +199,7 @@ public partial class MonitorService {
         return error == MonitorNativeMethods.DisplayConfigErrorSuccess;
     }
 
-    private static bool TrySetHdrState(DisplayConfigPathInfo path, bool enabled) {
+    private static int SetHdrState(DisplayConfigPathInfo path, bool enabled) {
         DisplayConfigSetHdrState state = new() {
             Header = CreateTargetDeviceInfoHeader(
                 DisplayConfigDeviceInfoType.SetHdrState,
@@ -203,7 +208,12 @@ public partial class MonitorService {
             Value = enabled ? 1u : 0u
         };
 
-        return MonitorNativeMethods.DisplayConfigSetHdrState(ref state) == MonitorNativeMethods.DisplayConfigErrorSuccess;
+        return MonitorNativeMethods.DisplayConfigSetHdrState(ref state);
+    }
+
+    private static bool IsUnsupportedDeviceInfoPacketError(int error) {
+        return error == MonitorNativeMethods.ErrorInvalidParameter ||
+            error == MonitorNativeMethods.ErrorNotSupported;
     }
 
     private static int SetAdvancedColorState(DisplayConfigPathInfo path, bool enabled) {
