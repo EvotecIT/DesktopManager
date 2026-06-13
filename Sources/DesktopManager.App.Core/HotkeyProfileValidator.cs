@@ -72,8 +72,10 @@ public static class HotkeyProfileValidator {
                 case "windows":
                     win = true;
                     break;
+                case "norepeat":
+                    break;
                 default:
-                    keys.Add(part);
+                    keys.Add(NormalizeKeyToken(part));
                     break;
             }
         }
@@ -97,5 +99,26 @@ public static class HotkeyProfileValidator {
 
         canonical.AddRange(keys.OrderBy(static key => key, StringComparer.OrdinalIgnoreCase));
         return string.Join("+", canonical);
+    }
+
+    private static string NormalizeKeyToken(string key) {
+        string trimmed = key.Trim();
+        if (trimmed.StartsWith("vk_", StringComparison.OrdinalIgnoreCase)) {
+            return trimmed.ToUpperInvariant();
+        }
+
+        if (trimmed.Length == 1 && char.IsDigit(trimmed[0])) {
+            return "VK_" + trimmed;
+        }
+
+        if (trimmed.Length == 1 && char.IsLetter(trimmed[0])) {
+            return "VK_" + char.ToUpperInvariant(trimmed[0]);
+        }
+
+        if (trimmed.Length > 1 && trimmed[0] == 'f' && trimmed.Skip(1).All(char.IsDigit)) {
+            return "VK_" + trimmed.ToUpperInvariant();
+        }
+
+        return "VK_" + trimmed.ToUpperInvariant();
     }
 }

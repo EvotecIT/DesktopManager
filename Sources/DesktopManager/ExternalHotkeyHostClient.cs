@@ -137,6 +137,9 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
         int timeout = Math.Max(1000, options.StartupTimeoutMilliseconds);
         if (!_ready.Wait(timeout)) {
             string error = TryReadError(_process);
+            TryStopHelper(_process);
+            _input = null;
+            _process = null;
             throw new InvalidOperationException($"Hotkey helper '{helperPath}' did not become ready within {timeout} ms.{error}");
         }
     }
@@ -225,12 +228,28 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
 
     private static string TryReadError(Process process) {
         try {
+            if (!process.HasExited) {
+                return string.Empty;
+            }
+
             string error = process.StandardError.ReadToEnd();
             return string.IsNullOrWhiteSpace(error) ? string.Empty : $" Error: {error.Trim()}";
         } catch (InvalidOperationException) {
             return string.Empty;
         } catch (Win32Exception) {
             return string.Empty;
+        }
+    }
+
+    private static void TryStopHelper(Process process) {
+        try {
+            if (!process.HasExited) {
+                process.Kill();
+            }
+
+            process.Dispose();
+        } catch (InvalidOperationException) {
+        } catch (Win32Exception) {
         }
     }
 }

@@ -171,7 +171,7 @@ public sealed class WindowPlacementService {
             throw new InvalidOperationException("No connected monitors were found.");
         }
 
-        int rowSize = Math.Max(1, (int)Math.Ceiling(monitors.Count / 2.0));
+        int rowSize = GetTopRowSize(monitors);
         List<Monitor> topRow = monitors.Take(rowSize).OrderBy(monitor => monitor.PositionLeft).ToList();
         List<Monitor> bottomRow = monitors.Skip(rowSize).OrderBy(monitor => monitor.PositionLeft).ToList();
         if (bottomRow.Count == 0) {
@@ -185,6 +185,28 @@ public sealed class WindowPlacementService {
             WindowMonitorTargetKind.BottomRight => bottomRow.Last(),
             _ => ResolveCurrentMonitor(window)
         };
+    }
+
+    private static int GetTopRowSize(IReadOnlyList<Monitor> monitors) {
+        if (monitors.Count <= 1) {
+            return monitors.Count;
+        }
+
+        int splitIndex = monitors.Count;
+        int largestGap = 0;
+        for (int index = 1; index < monitors.Count; index++) {
+            int gap = GetVerticalCenter(monitors[index]) - GetVerticalCenter(monitors[index - 1]);
+            if (gap > largestGap) {
+                largestGap = gap;
+                splitIndex = index;
+            }
+        }
+
+        return largestGap > 0 ? splitIndex : monitors.Count;
+    }
+
+    private static int GetVerticalCenter(Monitor monitor) {
+        return monitor.PositionTop + (monitor.PositionBottom - monitor.PositionTop) / 2;
     }
 
     private Monitor ResolveCurrentMonitor(WindowInfo window) {

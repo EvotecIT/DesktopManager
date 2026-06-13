@@ -126,7 +126,11 @@ public sealed class CmdletSetDesktopWindowPlacement : PSCmdlet {
                     WriteObject(result);
                 }
             } catch (Exception ex) {
-                WriteWarning($"Failed to place window '{window.Title}': {ex.Message}");
+                WriteError(new ErrorRecord(
+                    ex,
+                    "DesktopWindowPlacementFailed",
+                    ErrorCategory.InvalidOperation,
+                    window));
             }
         }
     }

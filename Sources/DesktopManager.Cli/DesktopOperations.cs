@@ -286,7 +286,8 @@ internal static partial class DesktopOperations {
             "window-placement",
             artifactOptions,
             automation => {
-                IReadOnlyList<WindowInfo> windows = ResolveWindowsForMutation(automation, criteria);
+                MutationArtifactOptions options = artifactOptions ?? new MutationArtifactOptions();
+                IReadOnlyList<WindowInfo> windows = ResolveWindowsForPlacement(automation, criteria);
                 var placedWindows = new List<WindowInfo>(windows.Count);
                 foreach (WindowInfo window in windows) {
                     WindowPlacementResult result = automation.ApplyWindowPlacement(new WindowPlacementRequest {
@@ -298,11 +299,11 @@ internal static partial class DesktopOperations {
                         ExactTop = y,
                         ExactWidth = width,
                         ExactHeight = height,
-                        VerifyAfterAction = true,
-                        GeometryTolerancePixels = artifactOptions?.VerificationTolerancePixels ?? new WindowPlacementRequest().GeometryTolerancePixels
+                        VerifyAfterAction = options.VerifyAfter,
+                        GeometryTolerancePixels = options.VerificationTolerancePixels
                     });
 
-                    if (!result.Verified) {
+                    if (options.VerifyAfter && !result.Verified) {
                         throw new InvalidOperationException($"Window placement for 0x{result.Window.Handle.ToInt64():X} was not verified.");
                     }
 
@@ -324,6 +325,21 @@ internal static partial class DesktopOperations {
                     width,
                     height)
                 : BuildWindowPresenceVerificationResult("place", windows, ObserveWindowsByHandle(automation, windows), options.VerificationTolerancePixels));
+    }
+
+    private static IReadOnlyList<WindowInfo> ResolveWindowsForPlacement(DesktopAutomationService automation, WindowSelectionCriteria criteria) {
+        if (string.IsNullOrWhiteSpace(criteria.Handle)) {
+            return ResolveWindowsForMutation(automation, criteria);
+        }
+
+        WindowQueryOptions query = CreateWindowQuery(criteria);
+        query.Handle = WindowManager.GetRootWindowHandle(DesktopHandleParser.Parse(criteria.Handle));
+        IReadOnlyList<WindowInfo> windows = automation.GetWindows(query);
+        if (criteria.All || windows.Count <= 1) {
+            return windows;
+        }
+
+        return new[] { windows[0] };
     }
 
     public static WindowChangeResult FocusWindow(WindowSelectionCriteria criteria, MutationArtifactOptions? artifactOptions = null) {
