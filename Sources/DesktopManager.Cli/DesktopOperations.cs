@@ -298,7 +298,8 @@ internal static partial class DesktopOperations {
                         ExactTop = y,
                         ExactWidth = width,
                         ExactHeight = height,
-                        VerifyAfterAction = true
+                        VerifyAfterAction = true,
+                        GeometryTolerancePixels = artifactOptions?.VerificationTolerancePixels ?? new WindowPlacementRequest().GeometryTolerancePixels
                     });
 
                     if (!result.Verified) {

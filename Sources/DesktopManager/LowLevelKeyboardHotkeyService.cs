@@ -152,7 +152,7 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
             _hookHandle = MonitorNativeMethods.SetWindowsHookEx(
                 MonitorNativeMethods.WH_KEYBOARD_LL,
                 _hookProc,
-                IntPtr.Zero,
+                MonitorNativeMethods.GetModuleHandle(null),
                 0);
 
             if (_hookHandle == IntPtr.Zero) {

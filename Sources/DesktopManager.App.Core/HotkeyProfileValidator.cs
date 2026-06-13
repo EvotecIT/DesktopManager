@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System;
+using System.Linq;
 
 namespace DesktopManager.App.Core;
 
@@ -48,6 +50,52 @@ public static class HotkeyProfileValidator {
     }
 
     private static string NormalizeHotkey(string hotkey) {
-        return hotkey.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase);
+        bool control = false;
+        bool alt = false;
+        bool shift = false;
+        bool win = false;
+        var keys = new List<string>();
+        foreach (string rawPart in hotkey.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
+            string part = rawPart.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase).ToLowerInvariant();
+            switch (part) {
+                case "ctrl":
+                case "control":
+                    control = true;
+                    break;
+                case "alt":
+                    alt = true;
+                    break;
+                case "shift":
+                    shift = true;
+                    break;
+                case "win":
+                case "windows":
+                    win = true;
+                    break;
+                default:
+                    keys.Add(part);
+                    break;
+            }
+        }
+
+        var canonical = new List<string>();
+        if (control) {
+            canonical.Add("ctrl");
+        }
+
+        if (alt) {
+            canonical.Add("alt");
+        }
+
+        if (shift) {
+            canonical.Add("shift");
+        }
+
+        if (win) {
+            canonical.Add("win");
+        }
+
+        canonical.AddRange(keys.OrderBy(static key => key, StringComparer.OrdinalIgnoreCase));
+        return string.Join("+", canonical);
     }
 }

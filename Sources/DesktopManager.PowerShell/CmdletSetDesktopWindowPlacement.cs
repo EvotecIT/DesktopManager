@@ -113,6 +113,15 @@ public sealed class CmdletSetDesktopWindowPlacement : PSCmdlet {
                     VerifyAfterAction = !NoVerify.IsPresent
                 });
 
+                if (!NoVerify.IsPresent && !result.Verified) {
+                    WriteError(new ErrorRecord(
+                        new InvalidOperationException($"Window placement for '{window.Title}' was not verified."),
+                        "DesktopWindowPlacementNotVerified",
+                        ErrorCategory.InvalidResult,
+                        window));
+                    continue;
+                }
+
                 if (PassThru.IsPresent) {
                     WriteObject(result);
                 }

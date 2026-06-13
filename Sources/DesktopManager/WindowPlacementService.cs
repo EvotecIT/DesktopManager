@@ -268,9 +268,7 @@ public sealed class WindowPlacementService {
         }
 
         if (request.Placement == WindowPlacementKind.Restore) {
-            return window.State != WindowState.Minimize &&
-                window.Width > 200 &&
-                window.Height > 100;
+            return window.State != WindowState.Minimize;
         }
 
         if (monitor == null) {

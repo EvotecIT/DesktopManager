@@ -106,6 +106,21 @@ public class HotkeyProfileStoreTests {
         Assert.IsTrue(result.Errors.Any(error => error.Contains("duplicate hotkey", StringComparison.OrdinalIgnoreCase)));
     }
 
+    /// <summary>
+    /// Equivalent enabled hotkeys with reordered modifier aliases should be rejected before registration.
+    /// </summary>
+    [TestMethod]
+    public void Validate_EquivalentDuplicateEnabledHotkeys_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].Hotkey = "Ctrl+Alt+Shift+1";
+        profile.Functions[1].Hotkey = "Alt+Control+Shift+1";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("duplicate hotkey", StringComparison.OrdinalIgnoreCase)));
+    }
+
     private static string CreateTemporaryDirectory() {
         string directory = Path.Combine(Path.GetTempPath(), "DesktopManager.App.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
