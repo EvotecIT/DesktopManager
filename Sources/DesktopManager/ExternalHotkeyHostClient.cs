@@ -51,7 +51,10 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
 
         options ??= new ExternalHotkeyHostOptions();
         lock (_syncRoot) {
-            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_disposed) {
+                throw new ObjectDisposedException(nameof(ExternalHotkeyHostClient));
+            }
+
             EnsureStarted(options);
 
             int id = ++_nextId;
@@ -140,9 +143,10 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
 
     private static string ResolveHelperPath(string? configuredPath) {
         if (!string.IsNullOrWhiteSpace(configuredPath)) {
-            return File.Exists(configuredPath)
-                ? configuredPath
-                : throw new FileNotFoundException("Configured hotkey helper was not found.", configuredPath);
+            string helperPath = configuredPath!;
+            return File.Exists(helperPath)
+                ? helperPath
+                : throw new FileNotFoundException("Configured hotkey helper was not found.", helperPath);
         }
 
         string helperName = "DesktopManager.HotkeyHost.exe";
