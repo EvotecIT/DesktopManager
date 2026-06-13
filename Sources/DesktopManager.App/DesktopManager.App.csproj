@@ -25,4 +25,15 @@
     <ProjectReference Include="..\DesktopManager.App.Core\DesktopManager.App.Core.csproj" />
   </ItemGroup>
 
+  <Target Name="BuildHotkeyHost" BeforeTargets="Build">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\DesktopManager.HotkeyHost.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(DesktopManagerNet10WindowsTfm);RuntimeIdentifier=win-x64" />
+  </Target>
+
+  <Target Name="CopyHotkeyHostDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <HotkeyHostFiles Include="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\bin\$(Configuration)\$(DesktopManagerNet10WindowsTfm)\win-x64\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(HotkeyHostFiles)" DestinationFiles="@(HotkeyHostFiles->'$(OutDir)DesktopManager.HotkeyHost\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

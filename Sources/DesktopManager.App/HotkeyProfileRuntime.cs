@@ -92,6 +92,23 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
     }
 
     private HotkeyRegistrationHandle RegisterHotkey(DesktopHotkeyModifiers modifiers, DesktopVirtualKey key, HotkeyFunctionDefinition function) {
+        if (string.Equals(_hotkeyBackend, HotkeyBackendKinds.NativeHotkeyHost, StringComparison.OrdinalIgnoreCase)) {
+            var options = new global::DesktopManager.ExternalHotkeyHostOptions {
+                SuppressPotentialChordKeys = _lowLevelHookOptions.SuppressPotentialChordKeys,
+                ExclusiveForegroundProcessNames = _lowLevelHookOptions.ExclusiveForegroundProcessNames
+            };
+            int id = global::DesktopManager.ExternalHotkeyHostClient.Instance.RegisterHotkey(
+                modifiers,
+                key,
+                options,
+                capturedWindowHandle => QueueExecution(function, capturedWindowHandle, "native-hotkey-host"));
+
+            return new HotkeyRegistrationHandle(
+                id,
+                "NativeHotkeyHost",
+                () => global::DesktopManager.ExternalHotkeyHostClient.Instance.UnregisterHotkey(id));
+        }
+
         if (!string.Equals(_hotkeyBackend, HotkeyBackendKinds.LowLevelKeyboardHook, StringComparison.OrdinalIgnoreCase)) {
             int id = global::DesktopManager.HotkeyService.Instance.RegisterHotkey(
                 modifiers,

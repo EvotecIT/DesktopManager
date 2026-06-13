@@ -40,4 +40,7 @@ public static class HotkeyBackendKinds {
 
     /// <summary>Use the experimental low-level keyboard hook backend.</summary>
     public const string LowLevelKeyboardHook = "LowLevelKeyboardHook";
+
+    /// <summary>Use the out-of-process native hotkey host backend.</summary>
+    public const string NativeHotkeyHost = "NativeHotkeyHost";
 }
