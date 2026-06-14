@@ -174,12 +174,17 @@ public partial class MonitorService {
             throw new InvalidOperationException($"DisplayConfigGetDeviceInfo advanced color query failed. Error: {error}");
         }
 
+        MonitorAdvancedColorInfo result = CreateLegacyAdvancedColorInfo(monitor, info);
+        return result;
+    }
+
+    internal static MonitorAdvancedColorInfo CreateLegacyAdvancedColorInfo(Monitor monitor, DisplayConfigGetAdvancedColorInfo info) {
         MonitorAdvancedColorInfo result = CreateBaseAdvancedColorInfo(monitor);
         result.AdvancedColorSupported = info.AdvancedColorSupported;
         result.AdvancedColorEnabled = info.AdvancedColorEnabled;
-        result.HdrSupported = info.AdvancedColorSupported;
-        result.HdrEnabled = info.AdvancedColorEnabled;
         result.WideColorEnforced = info.WideColorEnforced;
+        result.HdrSupported = info.AdvancedColorSupported && info.WideColorEnforced;
+        result.HdrEnabled = info.AdvancedColorEnabled && info.WideColorEnforced;
         result.AdvancedColorLimitedByPolicy = info.AdvancedColorForceDisabled;
         result.ColorEncoding = info.ColorEncoding.ToString();
         result.BitsPerColorChannel = info.BitsPerColorChannel;

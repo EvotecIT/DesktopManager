@@ -1,9 +1,20 @@
 using DesktopHotkeyModifiers = global::DesktopManager.HotkeyModifiers;
 using DesktopVirtualKey = global::DesktopManager.VirtualKey;
 
-namespace DesktopManager.App;
+namespace DesktopManager.App.Core;
 
-internal static class HotkeyGestureParser {
+/// <summary>
+/// Parses profile hotkey gestures into DesktopManager hotkey registration values.
+/// </summary>
+public static class HotkeyGestureParser {
+    /// <summary>
+    /// Parses a profile hotkey gesture.
+    /// </summary>
+    /// <param name="gesture">Gesture text such as Ctrl+Alt+Shift+1.</param>
+    /// <param name="modifiers">Parsed modifier flags.</param>
+    /// <param name="key">Parsed virtual key.</param>
+    /// <param name="error">Actionable parse error when parsing fails.</param>
+    /// <returns><c>true</c> when the gesture can be registered.</returns>
     public static bool TryParse(string gesture, out DesktopHotkeyModifiers modifiers, out DesktopVirtualKey key, out string error) {
         modifiers = DesktopHotkeyModifiers.None;
         key = default;
@@ -40,12 +51,47 @@ internal static class HotkeyGestureParser {
             }
         }
 
-        string keyToken = NormalizeKey(parts[^1]);
+        string keyToken = NormalizeKey(parts[parts.Length - 1]);
         if (!Enum.TryParse(keyToken, ignoreCase: true, out key)) {
-            error = $"Unknown hotkey key '{parts[^1]}'.";
+            error = $"Unknown hotkey key '{parts[parts.Length - 1]}'.";
             return false;
         }
 
+        return true;
+    }
+
+    /// <summary>
+    /// Parses and normalizes a profile hotkey gesture for duplicate detection.
+    /// </summary>
+    /// <param name="gesture">Gesture text.</param>
+    /// <param name="normalizedGesture">Canonical gesture value when parsing succeeds.</param>
+    /// <param name="error">Actionable parse error when parsing fails.</param>
+    /// <returns><c>true</c> when the gesture can be normalized.</returns>
+    public static bool TryNormalize(string gesture, out string normalizedGesture, out string error) {
+        normalizedGesture = string.Empty;
+        if (!TryParse(gesture, out DesktopHotkeyModifiers modifiers, out DesktopVirtualKey key, out error)) {
+            return false;
+        }
+
+        var parts = new List<string>();
+        if ((modifiers & DesktopHotkeyModifiers.Control) != 0) {
+            parts.Add("ctrl");
+        }
+
+        if ((modifiers & DesktopHotkeyModifiers.Alt) != 0) {
+            parts.Add("alt");
+        }
+
+        if ((modifiers & DesktopHotkeyModifiers.Shift) != 0) {
+            parts.Add("shift");
+        }
+
+        if ((modifiers & DesktopHotkeyModifiers.Win) != 0) {
+            parts.Add("win");
+        }
+
+        parts.Add(key.ToString().ToUpperInvariant());
+        normalizedGesture = string.Join("+", parts);
         return true;
     }
 
@@ -63,7 +109,7 @@ internal static class HotkeyGestureParser {
             return "VK_" + char.ToUpperInvariant(trimmed[0]);
         }
 
-        if (trimmed.Length > 1 && trimmed[0] == 'F' && trimmed.Skip(1).All(char.IsDigit)) {
+        if (trimmed.Length > 1 && char.ToUpperInvariant(trimmed[0]) == 'F' && trimmed.Skip(1).All(char.IsDigit)) {
             return "VK_" + trimmed.ToUpperInvariant();
         }
 

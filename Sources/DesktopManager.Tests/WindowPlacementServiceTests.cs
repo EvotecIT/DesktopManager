@@ -11,6 +11,20 @@ namespace DesktopManager.Tests;
 public class WindowPlacementServiceTests {
     [TestMethod]
     /// <summary>
+    /// Side-by-side monitors with different heights should still resolve as one row.
+    /// </summary>
+    public void GroupMonitorRows_SideBySideDifferentHeights_KeepsSingleRow() {
+        Monitor left = CreateMonitor(1, 0, 0, 1920, 1080);
+        Monitor right = CreateMonitor(2, 1920, 0, 3840, 1440);
+
+        IReadOnlyList<IReadOnlyList<Monitor>> rows = WindowPlacementService.GroupMonitorRows(new[] { left, right });
+
+        Assert.AreEqual(1, rows.Count);
+        CollectionAssert.AreEqual(new[] { 1, 2 }, rows[0].Select(monitor => monitor.Index).ToArray());
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Child/session-surface handles are normalized to the root window before placement.
     /// </summary>
     public void Apply_ChildHandleExactRectangle_MovesRootWindow() {
@@ -95,5 +109,25 @@ public class WindowPlacementServiceTests {
         } finally {
             manager.SetWindowPosition(harness.Window, original.Left, original.Top, original.Right - original.Left, original.Bottom - original.Top);
         }
+    }
+
+    private static Monitor CreateMonitor(int index, int left, int top, int right, int bottom) {
+        string deviceId = $"DISPLAY{index}";
+        RECT rect = new() {
+            Left = left,
+            Top = top,
+            Right = right,
+            Bottom = bottom
+        };
+
+        return new Monitor(new MonitorService(new StubDesktopManager(new Dictionary<string, RECT> {
+            [deviceId] = rect
+        }))) {
+            Index = index,
+            DeviceId = deviceId,
+            DeviceName = $"\\\\.\\DISPLAY{index}",
+            StateFlags = DisplayDeviceStateFlags.AttachedToDesktop,
+            Rect = rect
+        };
     }
 }

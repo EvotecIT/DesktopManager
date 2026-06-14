@@ -9,4 +9,8 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DesktopManager\DesktopManager.csproj" />
+  </ItemGroup>
+
 </Project>

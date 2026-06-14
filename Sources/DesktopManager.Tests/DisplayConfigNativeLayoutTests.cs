@@ -32,5 +32,30 @@ public class DisplayConfigNativeLayoutTests {
         Assert.AreEqual(72, Marshal.SizeOf<DisplayConfigPathInfo>());
         Assert.AreEqual(64, Marshal.SizeOf<DisplayConfigModeInfo>());
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Legacy Advanced Color packets should not report WCG-only panels as HDR.
+    /// </summary>
+    public void CreateLegacyAdvancedColorInfo_WideColorNotEnforced_DoesNotReportHdr() {
+        Monitor monitor = new(new MonitorService(new StubDesktopManager())) {
+            Index = 1,
+            DeviceId = "DISPLAY1",
+            DeviceName = "\\\\.\\DISPLAY1"
+        };
+        DisplayConfigGetAdvancedColorInfo packet = new() {
+            Value = 0x3,
+            ColorEncoding = DisplayConfigColorEncoding.Rgb,
+            BitsPerColorChannel = 10
+        };
+
+        MonitorAdvancedColorInfo result = MonitorService.CreateLegacyAdvancedColorInfo(monitor, packet);
+
+        Assert.IsTrue(result.AdvancedColorSupported);
+        Assert.IsTrue(result.AdvancedColorEnabled);
+        Assert.IsFalse(result.WideColorEnforced);
+        Assert.IsFalse(result.HdrSupported);
+        Assert.IsFalse(result.HdrEnabled);
+    }
 }
 #endif

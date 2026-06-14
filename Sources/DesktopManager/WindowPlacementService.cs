@@ -171,12 +171,9 @@ public sealed class WindowPlacementService {
             throw new InvalidOperationException("No connected monitors were found.");
         }
 
-        int rowSize = GetTopRowSize(monitors);
-        List<Monitor> topRow = monitors.Take(rowSize).OrderBy(monitor => monitor.PositionLeft).ToList();
-        List<Monitor> bottomRow = monitors.Skip(rowSize).OrderBy(monitor => monitor.PositionLeft).ToList();
-        if (bottomRow.Count == 0) {
-            bottomRow = topRow;
-        }
+        IReadOnlyList<IReadOnlyList<Monitor>> rows = GroupMonitorRows(monitors);
+        IReadOnlyList<Monitor> topRow = rows[0];
+        IReadOnlyList<Monitor> bottomRow = rows[rows.Count - 1];
 
         return request.MonitorTarget switch {
             WindowMonitorTargetKind.TopLeft => topRow.First(),
@@ -187,26 +184,32 @@ public sealed class WindowPlacementService {
         };
     }
 
-    private static int GetTopRowSize(IReadOnlyList<Monitor> monitors) {
-        if (monitors.Count <= 1) {
-            return monitors.Count;
+    internal static IReadOnlyList<IReadOnlyList<Monitor>> GroupMonitorRows(IReadOnlyList<Monitor> monitors) {
+        if (monitors.Count == 0) {
+            return Array.Empty<IReadOnlyList<Monitor>>();
         }
 
-        int splitIndex = monitors.Count;
-        int largestGap = 0;
-        for (int index = 1; index < monitors.Count; index++) {
-            int gap = GetVerticalCenter(monitors[index]) - GetVerticalCenter(monitors[index - 1]);
-            if (gap > largestGap) {
-                largestGap = gap;
-                splitIndex = index;
+        var rows = new List<List<Monitor>>();
+        foreach (Monitor monitor in monitors.OrderBy(monitor => monitor.PositionTop).ThenBy(monitor => monitor.PositionLeft)) {
+            List<Monitor>? row = rows.FirstOrDefault(candidateRow => candidateRow.Any(existing => VerticallyOverlaps(existing, monitor)));
+            if (row == null) {
+                row = new List<Monitor>();
+                rows.Add(row);
             }
+
+            row.Add(monitor);
         }
 
-        return largestGap > 0 ? splitIndex : monitors.Count;
+        return rows
+            .Select(row => (IReadOnlyList<Monitor>)row.OrderBy(monitor => monitor.PositionLeft).ToArray())
+            .OrderBy(row => row.Min(monitor => monitor.PositionTop))
+            .ThenBy(row => row.Min(monitor => monitor.PositionLeft))
+            .ToArray();
     }
 
-    private static int GetVerticalCenter(Monitor monitor) {
-        return monitor.PositionTop + (monitor.PositionBottom - monitor.PositionTop) / 2;
+    private static bool VerticallyOverlaps(Monitor first, Monitor second) {
+        return first.PositionTop < second.PositionBottom &&
+            second.PositionTop < first.PositionBottom;
     }
 
     private Monitor ResolveCurrentMonitor(WindowInfo window) {

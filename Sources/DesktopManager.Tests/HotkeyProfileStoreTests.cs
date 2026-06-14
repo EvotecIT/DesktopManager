@@ -177,6 +177,43 @@ public class HotkeyProfileStoreTests {
         Assert.IsTrue(result.Errors.Any(error => error.Contains("duplicate hotkey", StringComparison.OrdinalIgnoreCase)));
     }
 
+    /// <summary>
+    /// Unparsable enabled hotkeys should be rejected before a runtime silently skips them.
+    /// </summary>
+    [TestMethod]
+    public void Validate_UnparsableEnabledHotkey_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].Hotkey = "Ctrl+Alt+Shfit+1";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("invalid hotkey", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Named monitor-relative placements should not be converted to stale exact rectangles.
+    /// </summary>
+    [TestMethod]
+    public void CreatePlacementRequest_NamedPlacementWithExactRectangle_IgnoresExactRectangle() {
+        WindowHotkeyActionDefinition action = new() {
+            Monitor = MonitorTargets.TopLeft,
+            MonitorIndex = 4,
+            Placement = WindowPlacements.LeftHalf,
+            ExactLeft = -3840,
+            ExactTop = 19,
+            ExactWidth = 1920,
+            ExactHeight = 2088
+        };
+
+        WindowPlacementRequest request = WindowHotkeyPlacementRequestFactory.Create(action, IntPtr.Zero);
+
+        Assert.AreEqual(WindowPlacementKind.LeftHalf, request.Placement);
+        Assert.AreEqual(WindowMonitorTargetKind.TopLeft, request.MonitorTarget);
+        Assert.AreEqual(4, request.MonitorIndex);
+        Assert.IsFalse(request.HasExactRectangle);
+    }
+
     private static string CreateTemporaryDirectory() {
         string directory = Path.Combine(Path.GetTempPath(), "DesktopManager.App.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);

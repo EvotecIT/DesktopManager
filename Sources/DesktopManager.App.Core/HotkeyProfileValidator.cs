@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System;
-using System.Linq;
 
 namespace DesktopManager.App.Core;
 
@@ -40,85 +39,14 @@ public static class HotkeyProfileValidator {
             if (function.Enabled) {
                 if (string.IsNullOrWhiteSpace(function.Hotkey)) {
                     result.Errors.Add($"{prefix} is enabled but has no hotkey.");
-                } else if (!enabledHotkeys.Add(NormalizeHotkey(function.Hotkey))) {
+                } else if (!HotkeyGestureParser.TryNormalize(function.Hotkey, out string normalizedHotkey, out string hotkeyError)) {
+                    result.Errors.Add($"{prefix} has invalid hotkey '{function.Hotkey}': {hotkeyError}");
+                } else if (!enabledHotkeys.Add(normalizedHotkey)) {
                     result.Errors.Add($"{prefix} uses duplicate hotkey '{function.Hotkey}'.");
                 }
             }
         }
 
         return result;
-    }
-
-    private static string NormalizeHotkey(string hotkey) {
-        bool control = false;
-        bool alt = false;
-        bool shift = false;
-        bool win = false;
-        var keys = new List<string>();
-        foreach (string rawPart in hotkey.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
-            string part = rawPart.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase).ToLowerInvariant();
-            switch (part) {
-                case "ctrl":
-                case "control":
-                    control = true;
-                    break;
-                case "alt":
-                    alt = true;
-                    break;
-                case "shift":
-                    shift = true;
-                    break;
-                case "win":
-                case "windows":
-                    win = true;
-                    break;
-                case "norepeat":
-                    break;
-                default:
-                    keys.Add(NormalizeKeyToken(part));
-                    break;
-            }
-        }
-
-        var canonical = new List<string>();
-        if (control) {
-            canonical.Add("ctrl");
-        }
-
-        if (alt) {
-            canonical.Add("alt");
-        }
-
-        if (shift) {
-            canonical.Add("shift");
-        }
-
-        if (win) {
-            canonical.Add("win");
-        }
-
-        canonical.AddRange(keys.OrderBy(static key => key, StringComparer.OrdinalIgnoreCase));
-        return string.Join("+", canonical);
-    }
-
-    private static string NormalizeKeyToken(string key) {
-        string trimmed = key.Trim();
-        if (trimmed.StartsWith("vk_", StringComparison.OrdinalIgnoreCase)) {
-            return trimmed.ToUpperInvariant();
-        }
-
-        if (trimmed.Length == 1 && char.IsDigit(trimmed[0])) {
-            return "VK_" + trimmed;
-        }
-
-        if (trimmed.Length == 1 && char.IsLetter(trimmed[0])) {
-            return "VK_" + char.ToUpperInvariant(trimmed[0]);
-        }
-
-        if (trimmed.Length > 1 && trimmed[0] == 'f' && trimmed.Skip(1).All(char.IsDigit)) {
-            return "VK_" + trimmed.ToUpperInvariant();
-        }
-
-        return "VK_" + trimmed.ToUpperInvariant();
     }
 }

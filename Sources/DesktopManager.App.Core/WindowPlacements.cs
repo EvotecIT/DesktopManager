@@ -15,4 +15,7 @@ public static class WindowPlacements {
 
     /// <summary>Restore the target window without changing monitor placement.</summary>
     public const string Restore = "Restore";
+
+    /// <summary>Move the target window to a fixed rectangle.</summary>
+    public const string ExactRectangle = "ExactRectangle";
 }
