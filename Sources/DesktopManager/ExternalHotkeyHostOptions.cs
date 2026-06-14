@@ -10,10 +10,13 @@ public sealed class ExternalHotkeyHostOptions {
     /// <summary>Optional full path to the helper executable.</summary>
     public string? HelperPath { get; set; }
 
-    /// <summary>Whether required modifier keys should be consumed while a registered chord is in progress.</summary>
+    /// <summary>
+    /// Legacy request to consume required modifiers while a registered chord is in progress.
+    /// The helper keeps standalone modifiers visible to the foreground app and consumes only matched shortcut keys.
+    /// </summary>
     public bool SuppressPotentialChordKeys { get; set; }
 
-    /// <summary>Foreground process names where modifier suppression is allowed.</summary>
+    /// <summary>Foreground process names retained for compatibility with legacy suppression requests.</summary>
     public IReadOnlyList<string> ExclusiveForegroundProcessNames { get; set; } = Array.Empty<string>();
 
     /// <summary>Milliseconds to wait for the helper process to report readiness.</summary>

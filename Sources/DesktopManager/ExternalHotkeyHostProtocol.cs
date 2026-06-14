@@ -19,10 +19,12 @@ public sealed class ExternalHotkeyHostCommand {
     /// <summary>Virtual-key code.</summary>
     public int Key { get; set; }
 
-    /// <summary>Whether the helper should suppress in-progress chord modifiers.</summary>
+    /// <summary>
+    /// Legacy request to suppress in-progress chord modifiers. Standalone modifiers are preserved.
+    /// </summary>
     public bool SuppressPotentialChordKeys { get; set; }
 
-    /// <summary>Foreground process names where modifier suppression is allowed.</summary>
+    /// <summary>Foreground process names retained for compatibility with legacy suppression requests.</summary>
     public List<string> ExclusiveForegroundProcessNames { get; set; } = new();
 }
 

@@ -26,7 +26,6 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
     private readonly Dictionary<int, LowLevelKeyboardHotkeyRegistration> _registrations = new();
     private readonly HashSet<int> _pressedRegistrations = new();
     private readonly HashSet<VirtualKey> _pressedKeys = new();
-    private readonly HashSet<VirtualKey> _suppressedKeys = new();
     private readonly ManualResetEventSlim _ready = new(false);
     private readonly Queue<Action> _actions = new();
     private readonly object _syncRoot = new();
@@ -107,7 +106,6 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
                 _registrations.Remove(id);
                 _pressedRegistrations.Remove(id);
                 if (_registrations.Count == 0) {
-                    _suppressedKeys.Clear();
                     _pressedKeys.Clear();
                 }
             }
@@ -216,11 +214,7 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
                 return new IntPtr(1);
             }
 
-            bool suppressed = ReleaseSuppressedKey(key);
             TrackKeyUp(key);
-            if (suppressed) {
-                return new IntPtr(1);
-            }
 
             return MonitorNativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
         }
@@ -231,10 +225,6 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
 
         TrackKeyDown(key);
         if (TryHandleKeyDown(key)) {
-            return new IntPtr(1);
-        }
-
-        if (TrySuppressPotentialChordKey(key)) {
             return new IntPtr(1);
         }
 
@@ -268,41 +258,6 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
         }
 
         return true;
-    }
-
-    private bool TrySuppressPotentialChordKey(VirtualKey key) {
-        if (!LowLevelKeyboardHotkeyRegistration.IsModifierKey(key)) {
-            return false;
-        }
-
-        IntPtr foregroundHandle = MonitorNativeMethods.GetForegroundWindow();
-        lock (_syncRoot) {
-            foreach (LowLevelKeyboardHotkeyRegistration registration in _registrations.Values) {
-                if (!registration.ShouldSuppressPotentialChordKeys(foregroundHandle)) {
-                    continue;
-                }
-
-                if (!registration.IsRequiredModifierKey(key)) {
-                    continue;
-                }
-
-                if (!registration.HasOnlyRequiredModifiersDown(IsTrackedKeyDown) ||
-                    registration.CountRequiredModifiersDown(IsTrackedKeyDown) == 0) {
-                    continue;
-                }
-
-                _suppressedKeys.Add(key);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private bool ReleaseSuppressedKey(VirtualKey key) {
-        lock (_syncRoot) {
-            return _suppressedKeys.Remove(key);
-        }
     }
 
     private bool ReleasePressedRegistrations(VirtualKey key) {
@@ -402,29 +357,6 @@ internal sealed class LowLevelKeyboardHotkeyRegistration {
     public Action<IntPtr> Callback { get; }
     public LowLevelKeyboardHotkeyOptions Options { get; }
 
-    public int RequiredModifierCount {
-        get {
-            int count = 0;
-            if (Modifiers.HasFlag(HotkeyModifiers.Control)) {
-                count++;
-            }
-
-            if (Modifiers.HasFlag(HotkeyModifiers.Alt)) {
-                count++;
-            }
-
-            if (Modifiers.HasFlag(HotkeyModifiers.Shift)) {
-                count++;
-            }
-
-            if (Modifiers.HasFlag(HotkeyModifiers.Win)) {
-                count++;
-            }
-
-            return count;
-        }
-    }
-
     public bool Matches(VirtualKey key, Func<VirtualKey, bool> isKeyDown) {
         return Key == key &&
             IsModifierSatisfied(HotkeyModifiers.Control, VirtualKey.VK_CONTROL, VirtualKey.VK_LCONTROL, VirtualKey.VK_RCONTROL, isKeyDown) &&
@@ -434,79 +366,11 @@ internal sealed class LowLevelKeyboardHotkeyRegistration {
             HasOnlyRequiredModifiersDown(isKeyDown);
     }
 
-    public bool ShouldSuppressPotentialChordKeys(IntPtr foregroundHandle) {
-        return Options.SuppressPotentialChordKeys &&
-            LowLevelKeyboardHotkeyService.ForegroundProcessMatches(foregroundHandle, Options.ExclusiveForegroundProcessNames);
-    }
-
-    public IReadOnlyList<VirtualKey> GetChordKeys() {
-        var keys = new List<VirtualKey> { Key };
-        AddModifierKeys(keys, HotkeyModifiers.Control, VirtualKey.VK_CONTROL, VirtualKey.VK_LCONTROL, VirtualKey.VK_RCONTROL);
-        AddModifierKeys(keys, HotkeyModifiers.Alt, VirtualKey.VK_MENU, VirtualKey.VK_LMENU, VirtualKey.VK_RMENU);
-        AddModifierKeys(keys, HotkeyModifiers.Shift, VirtualKey.VK_SHIFT, VirtualKey.VK_LSHIFT, VirtualKey.VK_RSHIFT);
-        AddModifierKeys(keys, HotkeyModifiers.Win, VirtualKey.VK_LWIN, VirtualKey.VK_LWIN, VirtualKey.VK_RWIN);
-        return keys;
-    }
-
-    public bool IsRequiredModifierKey(VirtualKey key) {
-        return Modifiers.HasFlag(HotkeyModifiers.Control) && IsControlKey(key) ||
-            Modifiers.HasFlag(HotkeyModifiers.Alt) && IsAltKey(key) ||
-            Modifiers.HasFlag(HotkeyModifiers.Shift) && IsShiftKey(key) ||
-            Modifiers.HasFlag(HotkeyModifiers.Win) && IsWinKey(key);
-    }
-
     public bool HasOnlyRequiredModifiersDown(Func<VirtualKey, bool> isKeyDown) {
         return IsOptionalModifierAllowed(HotkeyModifiers.Control, VirtualKey.VK_CONTROL, VirtualKey.VK_LCONTROL, VirtualKey.VK_RCONTROL, isKeyDown) &&
             IsOptionalModifierAllowed(HotkeyModifiers.Alt, VirtualKey.VK_MENU, VirtualKey.VK_LMENU, VirtualKey.VK_RMENU, isKeyDown) &&
             IsOptionalModifierAllowed(HotkeyModifiers.Shift, VirtualKey.VK_SHIFT, VirtualKey.VK_LSHIFT, VirtualKey.VK_RSHIFT, isKeyDown) &&
             IsOptionalModifierAllowed(HotkeyModifiers.Win, VirtualKey.VK_LWIN, VirtualKey.VK_LWIN, VirtualKey.VK_RWIN, isKeyDown);
-    }
-
-    public int CountRequiredModifiersDown(Func<VirtualKey, bool> isKeyDown) {
-        int count = 0;
-        if (Modifiers.HasFlag(HotkeyModifiers.Control) &&
-            IsAnyDown(VirtualKey.VK_CONTROL, VirtualKey.VK_LCONTROL, VirtualKey.VK_RCONTROL, isKeyDown)) {
-            count++;
-        }
-
-        if (Modifiers.HasFlag(HotkeyModifiers.Alt) &&
-            IsAnyDown(VirtualKey.VK_MENU, VirtualKey.VK_LMENU, VirtualKey.VK_RMENU, isKeyDown)) {
-            count++;
-        }
-
-        if (Modifiers.HasFlag(HotkeyModifiers.Shift) &&
-            IsAnyDown(VirtualKey.VK_SHIFT, VirtualKey.VK_LSHIFT, VirtualKey.VK_RSHIFT, isKeyDown)) {
-            count++;
-        }
-
-        if (Modifiers.HasFlag(HotkeyModifiers.Win) &&
-            IsAnyDown(VirtualKey.VK_LWIN, VirtualKey.VK_LWIN, VirtualKey.VK_RWIN, isKeyDown)) {
-            count++;
-        }
-
-        return count;
-    }
-
-    public static bool IsModifierKey(VirtualKey key) {
-        return IsControlKey(key) || IsAltKey(key) || IsShiftKey(key) || IsWinKey(key);
-    }
-
-    private void AddModifierKeys(List<VirtualKey> keys, HotkeyModifiers modifier, VirtualKey commonKey, VirtualKey leftKey, VirtualKey rightKey) {
-        if (!Modifiers.HasFlag(modifier)) {
-            return;
-        }
-
-        if (!keys.Contains(commonKey)) {
-            keys.Add(commonKey);
-        }
-
-        if (!keys.Contains(leftKey)) {
-            keys.Add(leftKey);
-        }
-
-        if (!keys.Contains(rightKey)) {
-            keys.Add(rightKey);
-        }
     }
 
     private bool IsModifierSatisfied(
