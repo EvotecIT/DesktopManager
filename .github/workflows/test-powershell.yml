@@ -36,7 +36,11 @@ jobs:
       - name: Setup PowerShell modules
         shell: pwsh
         run: |
-          Install-Module PSPublishModule -Force -Scope CurrentUser -AllowClobber
+          if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+            Register-PSRepository -Default
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PSPublishModule -Repository PSGallery -Force -Scope CurrentUser -AllowClobber -SkipPublisherCheck
 
       - name: Refresh module manifest
         shell: pwsh
