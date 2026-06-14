@@ -52,18 +52,11 @@ public static class HotkeyProfileDefaults {
             throw new ArgumentNullException(nameof(profile));
         }
 
-        if (string.IsNullOrWhiteSpace(profile.HotkeyBackend) ||
-            string.Equals(profile.HotkeyBackend, HotkeyBackendKinds.RegisterHotKey, StringComparison.OrdinalIgnoreCase)) {
+        if (string.IsNullOrWhiteSpace(profile.HotkeyBackend)) {
             profile.HotkeyBackend = HotkeyBackendKinds.NativeHotkeyHost;
         }
 
-        profile.LowLevelHookExclusiveProcessNames ??= new List<string>();
-        foreach (string processName in DefaultExclusiveProcessNames) {
-            if (!profile.LowLevelHookExclusiveProcessNames.Any(existing =>
-                string.Equals(existing, processName, StringComparison.OrdinalIgnoreCase))) {
-                profile.LowLevelHookExclusiveProcessNames.Add(processName);
-            }
-        }
+        profile.LowLevelHookExclusiveProcessNames ??= CreateDefaultExclusiveProcessNames();
     }
 
     private static HotkeyFunctionDefinition CreateMonitorMove(string id, string name, string hotkey, string monitor, int monitorIndex) {

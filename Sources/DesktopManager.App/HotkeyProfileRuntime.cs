@@ -32,7 +32,7 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
             ? HotkeyBackendKinds.RegisterHotKey
             : profile.HotkeyBackend;
         _lowLevelHookOptions = new global::DesktopManager.LowLevelKeyboardHotkeyOptions {
-            SuppressPotentialChordKeys = profile.LowLevelHookExclusiveProcessNames.Count > 0,
+            SuppressPotentialChordKeys = false,
             ExclusiveForegroundProcessNames = profile.LowLevelHookExclusiveProcessNames.ToArray()
         };
 

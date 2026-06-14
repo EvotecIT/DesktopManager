@@ -25,8 +25,8 @@
     <ProjectReference Include="..\DesktopManager.App.Core\DesktopManager.App.Core.csproj" />
   </ItemGroup>
 
-  <Target Name="BuildHotkeyHost" BeforeTargets="Build">
-    <MSBuild Projects="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\DesktopManager.HotkeyHost.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(DesktopManagerNet10WindowsTfm);RuntimeIdentifier=win-x64" />
+  <Target Name="PublishHotkeyHost" BeforeTargets="Build;Publish">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\DesktopManager.HotkeyHost.csproj" Targets="Publish" Properties="Configuration=$(Configuration);TargetFramework=$(DesktopManagerNet10WindowsTfm);RuntimeIdentifier=win-x64" />
   </Target>
 
   <Target Name="CopyHotkeyHostDependencies" AfterTargets="Build">

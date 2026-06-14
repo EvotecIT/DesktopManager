@@ -71,10 +71,10 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
-    /// Loading an earlier proof profile should opt into the native host needed by remote desktop clients.
+    /// Explicit backend and process-list choices should survive runtime default normalization.
     /// </summary>
     [TestMethod]
-    public void LoadOrCreate_LegacyRegisterHotKeyProfile_NormalizesRemoteDesktopBackend() {
+    public void LoadOrCreate_ExplicitRegisterHotKeyProfile_PreservesOptOuts() {
         string directory = CreateTemporaryDirectory();
         string path = Path.Combine(directory, "profile.json");
 
@@ -86,13 +86,25 @@ public class HotkeyProfileStoreTests {
 
             HotkeyProfile loaded = HotkeyProfileStore.LoadOrCreate(path);
 
-            Assert.AreEqual(HotkeyBackendKinds.NativeHotkeyHost, loaded.HotkeyBackend);
-            CollectionAssert.Contains(loaded.LowLevelHookExclusiveProcessNames, "RemoteDesktopManager");
-            CollectionAssert.Contains(loaded.LowLevelHookExclusiveProcessNames, "mstsc");
+            Assert.AreEqual(HotkeyBackendKinds.RegisterHotKey, loaded.HotkeyBackend);
+            Assert.AreEqual(0, loaded.LowLevelHookExclusiveProcessNames.Count);
             Assert.IsTrue(HotkeyProfileValidator.Validate(loaded).IsValid);
         } finally {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Profiles without a backend should receive the current native-host default.
+    /// </summary>
+    [TestMethod]
+    public void ApplyRuntimeDefaults_MissingBackend_UsesNativeHotkeyHost() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.HotkeyBackend = string.Empty;
+
+        HotkeyProfileDefaults.ApplyRuntimeDefaults(profile);
+
+        Assert.AreEqual(HotkeyBackendKinds.NativeHotkeyHost, profile.HotkeyBackend);
     }
 
     /// <summary>

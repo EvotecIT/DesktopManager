@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace DesktopManager.Tests;
@@ -12,6 +13,12 @@ public class WindowRootHandleTests {
     /// Ensures child control handles resolve to the owning top-level window handle.
     /// </summary>
     public void GetRootWindowHandle_ChildControl_ReturnsTopLevelWindow() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+
         using WinFormsWindowHarness harness = WinFormsWindowHarness.Create(
             "DesktopManager Root Handle Harness",
             form => {

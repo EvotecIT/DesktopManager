@@ -18,17 +18,21 @@ internal static class HotkeyDiagnosticsWriter {
         HotkeyFunctionDefinition? function = null,
         string? message = null,
         object? details = null) {
-        return WriteJsonLine(new HotkeyRuntimeDiagnostic {
-            EventName = eventName,
-            FunctionName = function?.Name ?? string.Empty,
-            Hotkey = function?.Hotkey ?? string.Empty,
-            Placement = function?.WindowAction.Placement ?? string.Empty,
-            Target = function?.WindowAction.Target ?? string.Empty,
-            Monitor = function?.WindowAction.Monitor ?? string.Empty,
-            MonitorIndex = function?.WindowAction.MonitorIndex,
-            Message = message,
-            Details = details
-        });
+        try {
+            return WriteJsonLine(new HotkeyRuntimeDiagnostic {
+                EventName = eventName,
+                FunctionName = function?.Name ?? string.Empty,
+                Hotkey = function?.Hotkey ?? string.Empty,
+                Placement = function?.WindowAction.Placement ?? string.Empty,
+                Target = function?.WindowAction.Target ?? string.Empty,
+                Monitor = function?.WindowAction.Monitor ?? string.Empty,
+                MonitorIndex = function?.WindowAction.MonitorIndex,
+                Message = message,
+                Details = details
+            });
+        } catch {
+            return string.Empty;
+        }
     }
 
     private static string WriteJsonLine(object value) {
