@@ -10,7 +10,7 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
     private readonly SemaphoreSlim _executionGate = new(1, 1);
     private readonly ManualResetEventSlim _executionDrained = new(true);
     private readonly object _lifetimeSync = new();
-    private string _hotkeyBackend = HotkeyBackendKinds.RegisterHotKey;
+    private string _hotkeyBackend = HotkeyBackendKinds.LowLevelKeyboardHook;
     private global::DesktopManager.LowLevelKeyboardHotkeyOptions _lowLevelHookOptions = new();
     private int _queuedExecutions;
     private bool _disposed;
@@ -29,7 +29,7 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
         }
 
         _hotkeyBackend = string.IsNullOrWhiteSpace(profile.HotkeyBackend)
-            ? HotkeyBackendKinds.RegisterHotKey
+            ? HotkeyBackendKinds.LowLevelKeyboardHook
             : profile.HotkeyBackend;
         _lowLevelHookOptions = new global::DesktopManager.LowLevelKeyboardHotkeyOptions {
             SuppressPotentialChordKeys = false,

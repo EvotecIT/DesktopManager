@@ -19,7 +19,7 @@ public static class HotkeyProfileDefaults {
             SchemaVersion = 1,
             Enabled = true,
             ProfileName = "EVOMAGIC 4 monitors",
-            HotkeyBackend = HotkeyBackendKinds.NativeHotkeyHost,
+            HotkeyBackend = HotkeyBackendKinds.LowLevelKeyboardHook,
             LowLevelHookExclusiveProcessNames = CreateDefaultExclusiveProcessNames(),
             Functions = {
                 CreateMonitorMove("move-top-left-maximize", "Move Window to Top Left Monitor", "Ctrl+Alt+Shift+5", MonitorTargets.TopLeft, 1),
@@ -53,7 +53,7 @@ public static class HotkeyProfileDefaults {
         }
 
         if (string.IsNullOrWhiteSpace(profile.HotkeyBackend)) {
-            profile.HotkeyBackend = HotkeyBackendKinds.NativeHotkeyHost;
+            profile.HotkeyBackend = HotkeyBackendKinds.LowLevelKeyboardHook;
         }
 
         profile.LowLevelHookExclusiveProcessNames ??= CreateDefaultExclusiveProcessNames();

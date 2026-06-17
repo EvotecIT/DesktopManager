@@ -19,7 +19,7 @@ public sealed class HotkeyProfile {
     public bool MinimizeToTray { get; set; } = true;
 
     /// <summary>Hotkey registration backend.</summary>
-    public string HotkeyBackend { get; set; } = HotkeyBackendKinds.NativeHotkeyHost;
+    public string HotkeyBackend { get; set; } = HotkeyBackendKinds.LowLevelKeyboardHook;
 
     /// <summary>Foreground process names where low-level hook chords should be captured exclusively.</summary>
     public List<string> LowLevelHookExclusiveProcessNames { get; set; } = HotkeyProfileDefaults.CreateDefaultExclusiveProcessNames();
@@ -38,9 +38,9 @@ public static class HotkeyBackendKinds {
     /// <summary>Use the standard Windows RegisterHotKey API.</summary>
     public const string RegisterHotKey = "RegisterHotKey";
 
-    /// <summary>Use the experimental low-level keyboard hook backend.</summary>
+    /// <summary>Use the in-process low-level keyboard hook backend.</summary>
     public const string LowLevelKeyboardHook = "LowLevelKeyboardHook";
 
-    /// <summary>Use the out-of-process native hotkey host backend.</summary>
+    /// <summary>Use the advanced out-of-process native hotkey host backend.</summary>
     public const string NativeHotkeyHost = "NativeHotkeyHost";
 }

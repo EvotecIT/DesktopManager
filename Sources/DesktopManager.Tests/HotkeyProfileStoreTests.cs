@@ -17,7 +17,7 @@ public class HotkeyProfileStoreTests {
         Assert.IsTrue(profile.Enabled);
         Assert.IsFalse(profile.StartWithWindows);
         Assert.IsTrue(profile.MinimizeToTray);
-        Assert.AreEqual(HotkeyBackendKinds.NativeHotkeyHost, profile.HotkeyBackend);
+        Assert.AreEqual(HotkeyBackendKinds.LowLevelKeyboardHook, profile.HotkeyBackend);
         CollectionAssert.Contains(profile.LowLevelHookExclusiveProcessNames, "RemoteDesktopManager");
         CollectionAssert.Contains(profile.LowLevelHookExclusiveProcessNames, "mstsc");
         Assert.AreEqual("EVOMAGIC 4 monitors", profile.ProfileName);
@@ -62,7 +62,7 @@ public class HotkeyProfileStoreTests {
             Assert.IsTrue(json.Contains("EVOMAGIC 4 monitors", StringComparison.Ordinal));
             Assert.IsTrue(json.Contains("startWithWindows", StringComparison.Ordinal));
             Assert.IsTrue(json.Contains("minimizeToTray", StringComparison.Ordinal));
-            Assert.IsTrue(json.Contains("NativeHotkeyHost", StringComparison.Ordinal));
+            Assert.IsTrue(json.Contains("LowLevelKeyboardHook", StringComparison.Ordinal));
             Assert.IsTrue(json.Contains("RemoteDesktopManager", StringComparison.Ordinal));
             Assert.IsTrue(json.Contains("Ctrl+Alt+Shift+5", StringComparison.Ordinal));
         } finally {
@@ -95,12 +95,25 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
-    /// Profiles without a backend should receive the current native-host default.
+    /// Profiles without a backend should receive the current single-process default.
     /// </summary>
     [TestMethod]
-    public void ApplyRuntimeDefaults_MissingBackend_UsesNativeHotkeyHost() {
+    public void ApplyRuntimeDefaults_MissingBackend_UsesLowLevelKeyboardHook() {
         HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
         profile.HotkeyBackend = string.Empty;
+
+        HotkeyProfileDefaults.ApplyRuntimeDefaults(profile);
+
+        Assert.AreEqual(HotkeyBackendKinds.LowLevelKeyboardHook, profile.HotkeyBackend);
+    }
+
+    /// <summary>
+    /// Explicit advanced host choices should survive runtime default normalization.
+    /// </summary>
+    [TestMethod]
+    public void ApplyRuntimeDefaults_ExplicitNativeHotkeyHost_PreservesAdvancedBackend() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.HotkeyBackend = HotkeyBackendKinds.NativeHotkeyHost;
 
         HotkeyProfileDefaults.ApplyRuntimeDefaults(profile);
 
