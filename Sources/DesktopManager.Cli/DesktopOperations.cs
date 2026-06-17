@@ -781,6 +781,7 @@ internal static partial class DesktopOperations {
     public static IReadOnlyList<MonitorAdvancedColorResult> GetMonitorAdvancedColor(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
         return ExecuteCore(() => {
             var automation = new DesktopAutomationService();
+            connectedOnly = ResolveActiveDisplayConnectedOnly(connectedOnly, index, deviceId, deviceName);
             return automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName)
                 .Select(monitor => MapAdvancedColor(automation.GetMonitorAdvancedColor(monitor.DeviceId)))
                 .ToArray();
@@ -857,6 +858,7 @@ internal static partial class DesktopOperations {
     public static IReadOnlyList<MonitorAdvancedColorResult> SetMonitorHdr(bool enabled, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
         return ExecuteCore(() => {
             var automation = new DesktopAutomationService();
+            connectedOnly = ResolveActiveDisplayConnectedOnly(connectedOnly, index, deviceId, deviceName);
             IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
             foreach (Monitor monitor in monitors) {
                 automation.SetMonitorHdr(monitor.DeviceId, enabled);
@@ -864,6 +866,20 @@ internal static partial class DesktopOperations {
 
             return monitors.Select(monitor => MapAdvancedColor(automation.GetMonitorAdvancedColor(monitor.DeviceId))).ToArray();
         });
+    }
+
+    internal static bool? ResolveActiveDisplayConnectedOnly(bool? connectedOnly, int? index, string? deviceId, string? deviceName) {
+        if (connectedOnly.HasValue) {
+            return connectedOnly;
+        }
+
+        if (index.HasValue ||
+            !string.IsNullOrWhiteSpace(deviceId) ||
+            !string.IsNullOrWhiteSpace(deviceName)) {
+            return null;
+        }
+
+        return true;
     }
 
     public static DesktopColorResult GetDesktopBackgroundColor() {

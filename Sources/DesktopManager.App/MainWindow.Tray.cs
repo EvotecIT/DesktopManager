@@ -38,7 +38,7 @@ public sealed partial class MainWindow {
     }
 
     private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args) {
-        if (_exitRequested || !_profile.MinimizeToTray) {
+        if (_exitRequested || !_profile.MinimizeToTray || !_trayIconAdded) {
             return;
         }
 
@@ -81,6 +81,9 @@ public sealed partial class MainWindow {
     private void AddTrayIcon() {
         NOTIFYICONDATA data = CreateNotifyIconData();
         _trayIconAdded = Shell_NotifyIcon(NIM_ADD, ref data);
+        if (!_trayIconAdded) {
+            AddLog("Tray icon unavailable; close-to-tray disabled until the icon can be added.");
+        }
     }
 
     private void ShowTrayMenu() {

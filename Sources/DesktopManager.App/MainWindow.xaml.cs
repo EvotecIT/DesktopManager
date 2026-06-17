@@ -116,20 +116,21 @@ public sealed partial class MainWindow : Window {
     }
 
     private void LoadProfileIntoView() {
+        HotkeyProfileValidationResult validation = HotkeyProfileValidator.Validate(_profile);
+        List<HotkeyFunctionDefinition> functions = _profile.Functions ?? new List<HotkeyFunctionDefinition>();
         _loadingProfile = true;
         try {
             EnabledSwitch.IsOn = _profile.Enabled;
             StartWithWindowsSwitch.IsOn = _profile.StartWithWindows && StartupRegistrationService.IsEnabled();
             MinimizeToTraySwitch.IsOn = _profile.MinimizeToTray;
             ProfilePathText.Text = $"{_profile.ProfileName} profile - {_profilePath}";
-            FunctionCountText.Text = $"{_profile.Functions.Count} function(s) loaded";
-            FunctionsList.ItemsSource = _profile.Functions;
-            FunctionsList.SelectedIndex = _profile.Functions.Count > 0 ? 0 : -1;
+            FunctionCountText.Text = $"{functions.Count} function(s) loaded";
+            FunctionsList.ItemsSource = functions;
+            FunctionsList.SelectedIndex = functions.Count > 0 ? 0 : -1;
         } finally {
             _loadingProfile = false;
         }
 
-        HotkeyProfileValidationResult validation = HotkeyProfileValidator.Validate(_profile);
         ValidationInfo.IsOpen = !validation.IsValid;
         ValidationInfo.Message = validation.IsValid ? string.Empty : string.Join(" ", validation.Errors);
     }

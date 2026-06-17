@@ -205,6 +205,48 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
+    /// Null function lists from hand-edited JSON should produce validation errors instead of host crashes.
+    /// </summary>
+    [TestMethod]
+    public void Validate_NullFunctionList_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions = null!;
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("functions list", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Null function entries from hand-edited JSON should produce validation errors instead of host crashes.
+    /// </summary>
+    [TestMethod]
+    public void Validate_NullFunctionEntry_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions.Add(null!);
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("empty", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Unknown monitor targets should be rejected before a hotkey can move to the current monitor by accident.
+    /// </summary>
+    [TestMethod]
+    public void Validate_UnknownMonitorTarget_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].WindowAction.Monitor = "TopLfet";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("invalid monitor target", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
     /// Named monitor-relative placements should not be converted to stale exact rectangles.
     /// </summary>
     [TestMethod]
@@ -225,6 +267,22 @@ public class HotkeyProfileStoreTests {
         Assert.AreEqual(WindowMonitorTargetKind.TopLeft, request.MonitorTarget);
         Assert.AreEqual(4, request.MonitorIndex);
         Assert.IsFalse(request.HasExactRectangle);
+    }
+
+    /// <summary>
+    /// Unknown monitor targets should fail fast when a profile action is converted to a placement request.
+    /// </summary>
+    [TestMethod]
+    public void CreatePlacementRequest_UnknownMonitorTarget_Throws() {
+        WindowHotkeyActionDefinition action = new() {
+            Monitor = "TopLfet",
+            Placement = WindowPlacements.Maximize
+        };
+
+        InvalidOperationException exception = Assert.ThrowsException<InvalidOperationException>(
+            () => WindowHotkeyPlacementRequestFactory.Create(action, IntPtr.Zero));
+
+        StringAssert.Contains(exception.Message, "Unsupported monitor target");
     }
 
     private static string CreateTemporaryDirectory() {

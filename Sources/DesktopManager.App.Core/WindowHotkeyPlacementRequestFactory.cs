@@ -30,14 +30,27 @@ public static class WindowHotkeyPlacementRequestFactory {
     }
 
     private static global::DesktopManager.WindowMonitorTargetKind ParseMonitorTarget(string monitor) {
-        return monitor switch {
-            MonitorTargets.TopLeft => global::DesktopManager.WindowMonitorTargetKind.TopLeft,
-            MonitorTargets.TopRight => global::DesktopManager.WindowMonitorTargetKind.TopRight,
-            MonitorTargets.BottomLeft => global::DesktopManager.WindowMonitorTargetKind.BottomLeft,
-            MonitorTargets.BottomRight => global::DesktopManager.WindowMonitorTargetKind.BottomRight,
-            MonitorTargets.Current => global::DesktopManager.WindowMonitorTargetKind.Current,
-            _ => global::DesktopManager.WindowMonitorTargetKind.Current
-        };
+        if (string.Equals(monitor, MonitorTargets.TopLeft, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowMonitorTargetKind.TopLeft;
+        }
+
+        if (string.Equals(monitor, MonitorTargets.TopRight, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowMonitorTargetKind.TopRight;
+        }
+
+        if (string.Equals(monitor, MonitorTargets.BottomLeft, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowMonitorTargetKind.BottomLeft;
+        }
+
+        if (string.Equals(monitor, MonitorTargets.BottomRight, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowMonitorTargetKind.BottomRight;
+        }
+
+        if (string.Equals(monitor, MonitorTargets.Current, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowMonitorTargetKind.Current;
+        }
+
+        throw new InvalidOperationException($"Unsupported monitor target '{monitor}'.");
     }
 
     private static global::DesktopManager.WindowPlacementKind ParsePlacement(WindowHotkeyActionDefinition action) {
