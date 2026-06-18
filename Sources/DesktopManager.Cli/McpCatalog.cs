@@ -49,6 +49,7 @@ internal static class McpCatalog {
         "set_control_text",
         "send_control_keys",
         "move_window",
+        "place_window",
         "click_window_point",
         "drag_window_points",
         "scroll_window_point",
@@ -68,9 +69,11 @@ internal static class McpCatalog {
         "snap_window",
         "list_monitors",
         "get_monitor_brightness",
+        "get_monitor_advanced_color",
         "get_monitor_wallpaper",
         "set_monitor_wallpaper",
         "set_monitor_brightness",
+        "set_monitor_hdr",
         "set_monitor_position",
         "set_monitor_resolution",
         "set_monitor_dpi_scaling",
@@ -125,6 +128,7 @@ internal static class McpCatalog {
         "set_control_text",
         "send_control_keys",
         "move_window",
+        "place_window",
         "click_window_point",
         "drag_window_points",
         "scroll_window_point",
@@ -142,6 +146,7 @@ internal static class McpCatalog {
         "set_window_transparency",
         "snap_window",
         "set_monitor_brightness",
+        "set_monitor_hdr",
         "set_monitor_wallpaper",
         "set_monitor_position",
         "set_monitor_resolution",
@@ -172,6 +177,7 @@ internal static class McpCatalog {
         "set_control_text",
         "send_control_keys",
         "move_window",
+        "place_window",
         "click_window_point",
         "drag_window_points",
         "scroll_window_point",
@@ -240,6 +246,7 @@ internal static class McpCatalog {
             case "set_control_text":
             case "send_control_keys":
             case "move_window":
+            case "place_window":
             case "click_window_point":
             case "drag_window_points":
             case "scroll_window_point":
@@ -846,6 +853,23 @@ internal static class McpCatalog {
                     ["activate"] = CreateBooleanSchema("Activate the window after moving."),
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 })), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("place_window", "Place Window", "Apply reliable semantic monitor placement to one or more matching windows.", CreateObjectSchema(
+                AddMutationArtifactProperties(new Dictionary<string, object> {
+                    ["windowTitle"] = CreateStringSchema("Window title filter."),
+                    ["processName"] = CreateStringSchema("Process name filter."),
+                    ["className"] = CreateStringSchema("Window class filter."),
+                    ["processId"] = CreateIntegerSchema("Process identifier."),
+                    ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+                    ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+                    ["placement"] = CreateStringSchema("Placement: restore, maximize, left-half, right-half, or exact-rectangle."),
+                    ["monitorTarget"] = CreateStringSchema("Semantic monitor target: current, top-left, top-right, bottom-left, or bottom-right."),
+                    ["monitor"] = CreateIntegerSchema("Explicit target monitor index."),
+                    ["x"] = CreateIntegerSchema("Exact rectangle left coordinate."),
+                    ["y"] = CreateIntegerSchema("Exact rectangle top coordinate."),
+                    ["width"] = CreateIntegerSchema("Exact rectangle width."),
+                    ["height"] = CreateIntegerSchema("Exact rectangle height."),
+                    ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
+                }), new[] { "placement" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("click_window_point", "Click Window Point", "Click a point relative to a matching window.", CreateObjectSchema(
                 AddMutationArtifactProperties(new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),
@@ -1057,6 +1081,8 @@ internal static class McpCatalog {
                 CreateMonitorSelectorProperties()), readOnly: true),
             CreateTool("get_monitor_brightness", "Get Monitor Brightness", "Return brightness values for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorSelectorProperties()), readOnly: true),
+            CreateTool("get_monitor_advanced_color", "Get Monitor Advanced Color", "Return HDR and advanced-color state for one or more matching monitors.", CreateObjectSchema(
+                CreateMonitorSelectorProperties()), readOnly: true),
             CreateTool("get_monitor_wallpaper", "Get Monitor Wallpaper", "Return wallpaper paths for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorSelectorProperties()), readOnly: true),
             CreateTool("set_monitor_wallpaper", "Set Monitor Wallpaper", "Set wallpaper for one or more matching monitors.", CreateObjectSchema(
@@ -1069,6 +1095,10 @@ internal static class McpCatalog {
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["brightness"] = CreateIntegerSchema("Brightness level to apply from 0 to 100.")
                 }), new[] { "brightness" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("set_monitor_hdr", "Set Monitor HDR", "Enable or disable HDR for one or more matching monitors when supported.", CreateObjectSchema(
+                CreateMonitorMutationProperties(new Dictionary<string, object> {
+                    ["enabled"] = CreateBooleanSchema("True to enable HDR; false to disable it.")
+                }), new[] { "enabled" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("set_monitor_position", "Set Monitor Position", "Set monitor bounds for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["left"] = CreateIntegerSchema("Monitor left coordinate."),
@@ -1526,6 +1556,16 @@ internal static class McpCatalog {
                     ReadInt(arguments, "height"),
                     ReadBool(arguments, "activate"),
                     ReadMutationArtifactOptions(arguments)),
+                "place_window" => DesktopOperations.PlaceWindow(
+                    ReadWindowCriteria(arguments, true),
+                    ReadWindowPlacement(arguments, "placement"),
+                    ReadWindowMonitorTarget(arguments, "monitorTarget"),
+                    ReadInt(arguments, "monitor"),
+                    ReadInt(arguments, "x"),
+                    ReadInt(arguments, "y"),
+                    ReadInt(arguments, "width"),
+                    ReadInt(arguments, "height"),
+                    ReadMutationArtifactOptions(arguments)),
                 "click_window_point" => CallClickWindowPoint(arguments),
                 "drag_window_points" => CallDragWindowPoints(arguments),
                 "scroll_window_point" => CallScrollWindowPoint(arguments),
@@ -1564,6 +1604,12 @@ internal static class McpCatalog {
                     ReadInt(arguments, "index"),
                     ReadOptionalString(arguments, "deviceId"),
                     ReadOptionalString(arguments, "deviceName")),
+                "get_monitor_advanced_color" => DesktopOperations.GetMonitorAdvancedColor(
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
                 "get_monitor_wallpaper" => DesktopOperations.GetMonitorWallpaper(
                     ReadNullableBool(arguments, "connectedOnly"),
                     ReadNullableBool(arguments, "primaryOnly"),
@@ -1581,6 +1627,13 @@ internal static class McpCatalog {
                     ReadOptionalString(arguments, "deviceName")),
                 "set_monitor_brightness" => DesktopOperations.SetMonitorBrightness(
                     ReadInt(arguments, "brightness") ?? throw new CommandLineException("Property 'brightness' is required."),
+                    ReadNullableBool(arguments, "connectedOnly"),
+                    ReadNullableBool(arguments, "primaryOnly"),
+                    ReadInt(arguments, "index"),
+                    ReadOptionalString(arguments, "deviceId"),
+                    ReadOptionalString(arguments, "deviceName")),
+                "set_monitor_hdr" => DesktopOperations.SetMonitorHdr(
+                    ReadRequiredBool(arguments, "enabled"),
                     ReadNullableBool(arguments, "connectedOnly"),
                     ReadNullableBool(arguments, "primaryOnly"),
                     ReadInt(arguments, "index"),
@@ -2465,6 +2518,34 @@ internal static class McpCatalog {
 
     private static DisplayOrientation? ReadDisplayOrientation(JsonElement element, string propertyName) {
         return DesktopValueParser.ParseOptionalDisplayOrientation(ReadOptionalString(element, propertyName), $"Property '{propertyName}'");
+    }
+
+    private static WindowPlacementKind ReadWindowPlacement(JsonElement element, string propertyName) {
+        string value = ReadRequiredString(element, propertyName);
+        return value.ToLowerInvariant() switch {
+            "restore" => WindowPlacementKind.Restore,
+            "maximize" => WindowPlacementKind.Maximize,
+            "left-half" or "lefthalf" => WindowPlacementKind.LeftHalf,
+            "right-half" or "righthalf" => WindowPlacementKind.RightHalf,
+            "exact-rectangle" or "exactrectangle" or "exact" => WindowPlacementKind.ExactRectangle,
+            _ => throw new CommandLineException($"Unsupported placement '{value}'.")
+        };
+    }
+
+    private static WindowMonitorTargetKind ReadWindowMonitorTarget(JsonElement element, string propertyName) {
+        string? value = ReadOptionalString(element, propertyName);
+        if (string.IsNullOrWhiteSpace(value)) {
+            return WindowMonitorTargetKind.Current;
+        }
+
+        return value.ToLowerInvariant() switch {
+            "current" => WindowMonitorTargetKind.Current,
+            "top-left" or "topleft" => WindowMonitorTargetKind.TopLeft,
+            "top-right" or "topright" => WindowMonitorTargetKind.TopRight,
+            "bottom-left" or "bottomleft" => WindowMonitorTargetKind.BottomLeft,
+            "bottom-right" or "bottomright" => WindowMonitorTargetKind.BottomRight,
+            _ => throw new CommandLineException($"Unsupported monitor target '{value}'.")
+        };
     }
 
     private static uint ReadColor(JsonElement element, string propertyName) {

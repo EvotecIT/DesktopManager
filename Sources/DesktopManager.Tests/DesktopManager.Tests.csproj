@@ -27,6 +27,7 @@
 
   <ItemGroup Condition="'$(TargetFramework)' != 'net472'">
     <ProjectReference Include="..\DesktopManager.Cli\DesktopManager.Cli.csproj" />
+    <ProjectReference Include="..\DesktopManager.App.Core\DesktopManager.App.Core.csproj" />
     <ProjectReference Include="..\DesktopManager.PowerShell\DesktopManager.PowerShell.csproj" />
     <ProjectReference Include="..\DesktopManager.TestApp\DesktopManager.TestApp.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
@@ -34,6 +35,7 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <Compile Remove="DesktopManagerAutomationBasicsTests.cs" />
     <Compile Remove="DesktopManagerWinUiHarnessTests.cs" />
+    <Compile Remove="HotkeyProfileStoreTests.cs" />
   </ItemGroup>
 
   <Target Name="CopyWindowHelperDependencies" AfterTargets="Build">

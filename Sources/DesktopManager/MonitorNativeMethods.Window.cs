@@ -120,6 +120,20 @@ public static partial class MonitorNativeMethods
     public static extern IntPtr GetParent(IntPtr hWnd);
 
     /// <summary>
+    /// Retrieves the ancestor of the specified window.
+    /// </summary>
+    /// <param name="hWnd">The window handle.</param>
+    /// <param name="gaFlags">Ancestor relationship to retrieve.</param>
+    /// <returns>The requested ancestor window handle.</returns>
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
+
+    /// <summary>
+    /// Retrieves the root parent window.
+    /// </summary>
+    public const uint GA_ROOT = 2;
+
+    /// <summary>
     /// Retrieves a handle to a window with a specified relationship.
     /// </summary>
     /// <param name="hWnd">The window handle.</param>

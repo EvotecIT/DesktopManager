@@ -75,6 +75,7 @@ Window commands:
   desktopmanager window exists [selector] [--json]
   desktopmanager window active-matches [selector] [--json]
   desktopmanager window move [selector] [--monitor <index>] [--x <value>] [--y <value>] [--width <value>] [--height <value>] [--activate] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window place [selector] --placement <restore|maximize|left-half|right-half|exact-rectangle> [--monitor <index> | --monitor-target <current|top-left|top-right|bottom-left|bottom-right>] [--x <value>] [--y <value>] [--width <value>] [--height <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window click [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name> | --visual-baseline <name> | --ocr-text <text>) [--button <left|right>] [--activate] [--client-area] [--ocr-target <name>] [--ocr-contains] [--ocr-language <tag>] [--baseline-max-average-difference <value>] [--baseline-difference-threshold <value>] [--baseline-scan-step <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window drag [selector] (((--start-x <value> --start-y <value>) | (--start-x-ratio <value> --start-y-ratio <value>)) ((--end-x <value> --end-y <value>) | (--end-x-ratio <value> --end-y-ratio <value>)) | (--start-target <name> --end-target <name>) | (--start-visual-baseline <name> --end-visual-baseline <name>) | (--start-ocr-text <text> --end-ocr-text <text>)) [--button <left|right>] [--step-delay-ms <value>] [--activate] [--client-area] [--start-ocr-target <name>] [--end-ocr-target <name>] [--ocr-contains] [--ocr-language <tag>] [--baseline-max-average-difference <value>] [--baseline-difference-threshold <value>] [--baseline-scan-step <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window scroll [selector] ((--x <value> --y <value> | --x-ratio <value> --y-ratio <value>) | --target <name> | --visual-baseline <name> | --ocr-text <text>) --delta <value> [--activate] [--client-area] [--ocr-target <name>] [--ocr-contains] [--ocr-language <tag>] [--baseline-max-average-difference <value>] [--baseline-difference-threshold <value>] [--baseline-scan-step <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
@@ -148,6 +149,8 @@ Examples:
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "Write-Host 'hi'`nGet-Date" --script --foreground-input --line-delay-ms 20
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --activate
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --verify --verify-tolerance-px 12
+  desktopmanager window place --title "Remote Desktop Manager*" --placement maximize --monitor 1 --verify
+  desktopmanager window place --title "Visual Studio Code*" --placement exact-rectangle --x -3840 --y 19 --width 1920 --height 2088 --verify
   desktopmanager window keep-alive-list
   desktopmanager window keep-alive-start --process notepad --interval-ms 30000
   desktopmanager window keep-alive-stop --all-sessions
@@ -431,9 +434,12 @@ Examples:
 Monitor commands:
   desktopmanager monitor list [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor brightness [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor advanced-color [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor hdr [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor wallpaper [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-wallpaper [--wallpaper-path <path> | --url <value>] [--position <center|tile|stretch|fit|fill|span>] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-brightness --brightness <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-hdr --enable|--disable [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-position --left <value> --top <value> --right <value> --bottom <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-resolution --width <value> --height <value> [--orientation <default|degrees90|degrees180|degrees270>] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-dpi-scaling --scaling-percent <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
@@ -444,9 +450,11 @@ Examples:
   desktopmanager monitor list --json
   desktopmanager monitor list --primary
   desktopmanager monitor brightness --primary
+  desktopmanager monitor hdr --primary --json
   desktopmanager monitor wallpaper --index 1 --json
   desktopmanager monitor set-wallpaper --primary --wallpaper-path C:\Wallpapers\Aurora.jpg --position fill
   desktopmanager monitor set-brightness --primary --brightness 65
+  desktopmanager monitor set-hdr --primary --enable
   desktopmanager monitor set-position --device-name \\.\DISPLAY2 --left 1920 --top 0 --right 3840 --bottom 1440
   desktopmanager monitor set-resolution --primary --width 2560 --height 1440 --orientation default
   desktopmanager monitor set-dpi-scaling --primary --scaling-percent 150

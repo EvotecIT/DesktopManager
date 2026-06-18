@@ -287,6 +287,26 @@ internal sealed class MonitorWallpaperResult {
     public string Wallpaper { get; set; } = string.Empty;
 }
 
+internal sealed class MonitorAdvancedColorResult {
+    public int Index { get; set; }
+    public string DeviceName { get; set; } = string.Empty;
+    public string DeviceId { get; set; } = string.Empty;
+    public bool IsPrimary { get; set; }
+    public bool AdvancedColorSupported { get; set; }
+    public bool AdvancedColorEnabled { get; set; }
+    public bool HdrSupported { get; set; }
+    public bool HdrEnabled { get; set; }
+    public bool WideColorSupported { get; set; }
+    public bool WideColorEnabled { get; set; }
+    public bool WideColorEnforced { get; set; }
+    public bool AdvancedColorLimitedByPolicy { get; set; }
+    public string ActiveColorMode { get; set; } = string.Empty;
+    public string ColorEncoding { get; set; } = string.Empty;
+    public uint BitsPerColorChannel { get; set; }
+    public uint? SdrWhiteLevel { get; set; }
+    public double? SdrWhiteLevelNits { get; set; }
+}
+
 internal sealed class DesktopColorResult {
     public uint Value { get; set; }
     public string HexValue { get; set; } = string.Empty;

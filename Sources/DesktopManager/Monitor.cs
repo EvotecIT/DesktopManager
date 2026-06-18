@@ -100,6 +100,11 @@ public class Monitor {
     internal RECT Rect { get; set; }
 
     /// <summary>
+    /// Gets or sets the desktop work area of the monitor, excluding taskbars and app bars.
+    /// </summary>
+    internal RECT WorkArea { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="Monitor"/> class with the specified monitor service.
     /// </summary>
     /// <param name="monitorService">The monitor service.</param>
@@ -151,11 +156,47 @@ public class Monitor {
     }
 
     /// <summary>
+    /// Gets the Advanced Color and HDR state of the monitor.
+    /// </summary>
+    /// <returns>The Advanced Color and HDR state of the monitor.</returns>
+    public MonitorAdvancedColorInfo GetAdvancedColor() {
+        return _monitorService.GetMonitorAdvancedColor(DeviceId);
+    }
+
+    /// <summary>
+    /// Enables or disables HDR for the monitor.
+    /// </summary>
+    /// <param name="enabled">Whether HDR should be enabled.</param>
+    public void SetHdr(bool enabled) {
+        _monitorService.SetMonitorHdr(DeviceId, enabled);
+    }
+
+    /// <summary>
     /// Gets the bounds of the monitor.
     /// </summary>
     /// <returns>The bounds of the monitor.</returns>
     internal RECT GetMonitorBounds() {
         return _monitorService.GetMonitorBounds(DeviceId);
+    }
+
+    /// <summary>
+    /// Gets the usable desktop work area of the monitor, falling back to the monitor bounds when unavailable.
+    /// </summary>
+    /// <returns>The work area of the monitor.</returns>
+    internal RECT GetMonitorWorkArea() {
+        if (IsNonEmpty(WorkArea)) {
+            return WorkArea;
+        }
+
+        if (IsNonEmpty(Rect)) {
+            return Rect;
+        }
+
+        return GetMonitorBounds();
+    }
+
+    private static bool IsNonEmpty(RECT rect) {
+        return rect.Right > rect.Left && rect.Bottom > rect.Top;
     }
 
     /// <summary>

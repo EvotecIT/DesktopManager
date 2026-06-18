@@ -127,7 +127,8 @@ public partial class MonitorService {
                         DeviceString = device.DeviceString,
                         StateFlags = device.StateFlags,
                         DeviceKey = device.DeviceKey,
-                        Rect = info.rcMonitor
+                        Rect = info.rcMonitor,
+                        WorkArea = info.rcWork
                     };
                     monitor.LoadEdidInfo();
                     monitors.Add(monitor);

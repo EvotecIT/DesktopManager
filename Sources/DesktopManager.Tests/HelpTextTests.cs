@@ -74,6 +74,8 @@ public class HelpTextTests {
         string help = global::DesktopManager.Cli.HelpText.GetMonitorHelp();
 
         StringAssert.Contains(help, "desktopmanager monitor brightness");
+        StringAssert.Contains(help, "desktopmanager monitor advanced-color");
+        StringAssert.Contains(help, "desktopmanager monitor set-hdr");
         StringAssert.Contains(help, "desktopmanager monitor set-position");
         StringAssert.Contains(help, "desktopmanager monitor set-resolution");
         StringAssert.Contains(help, "desktopmanager monitor set-dpi-scaling");
@@ -104,6 +106,7 @@ public class HelpTextTests {
 
         StringAssert.Contains(help, "desktopmanager window process-info");
         StringAssert.Contains(help, "desktopmanager window owner-process-info");
+        StringAssert.Contains(help, "desktopmanager window place");
         StringAssert.Contains(help, "desktopmanager window keep-alive-list");
         StringAssert.Contains(help, "desktopmanager window keep-alive-start");
         StringAssert.Contains(help, "desktopmanager window keep-alive-stop");

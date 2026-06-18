@@ -197,6 +197,37 @@ public partial class WindowManager
         }
 
         /// <summary>
+        /// Sets an exact window rectangle without treating negative coordinates as sentinel values.
+        /// </summary>
+        /// <param name="windowInfo">The window information.</param>
+        /// <param name="left">The exact left position.</param>
+        /// <param name="top">The exact top position.</param>
+        /// <param name="width">The exact window width.</param>
+        /// <param name="height">The exact window height.</param>
+        public void SetWindowRectangle(WindowInfo windowInfo, int left, int top, int width, int height) {
+            ValidateWindowInfo(windowInfo);
+
+            if (width <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(width), "Window width must be greater than zero.");
+            }
+
+            if (height <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(height), "Window height must be greater than zero.");
+            }
+
+            if (!MonitorNativeMethods.SetWindowPos(
+                windowInfo.Handle,
+                IntPtr.Zero,
+                left,
+                top,
+                width,
+                height,
+                MonitorNativeMethods.SWP_NOZORDER)) {
+                throw new InvalidOperationException("Failed to set window rectangle");
+            }
+        }
+
+        /// <summary>
         /// Snaps a window to a predefined region of its monitor.
         /// </summary>
         /// <param name="window">The window to snap.</param>
@@ -346,6 +377,7 @@ public partial class WindowManager
         /// <param name="windowInfo">The window information.</param>
         public void RestoreWindow(WindowInfo windowInfo) {
             ValidateWindowInfo(windowInfo);
+            MonitorNativeMethods.ShowWindow(windowInfo.Handle, MonitorNativeMethods.SW_RESTORE);
             MonitorNativeMethods.SendMessage(
                 windowInfo.Handle,
                 (uint)WindowMessage.WM_SYSCOMMAND,

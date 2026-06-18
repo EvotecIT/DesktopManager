@@ -18,6 +18,7 @@ public class PowerShellCoreCmdletSurfaceTests {
     [DataRow("CmdletGetDesktopWallpaper", "Index", "DeviceId", "DeviceName", "ConnectedOnly", "PrimaryOnly")]
     [DataRow("CmdletSetDesktopResolution", "Index", "DeviceId", "DeviceName", "PrimaryOnly", "Width", "Height", "Orientation")]
     [DataRow("CmdletSetTaskbarPosition", "Index", "DeviceId", "DeviceName", "PrimaryOnly", "All", "Position", "Hide", "Show")]
+    [DataRow("CmdletSetDesktopWindowPlacement", "Name", "Placement", "MonitorTarget", "MonitorIndex", "Left", "Top", "Width", "Height", "NoVerify", "PassThru")]
     [DataRow("CmdletSetDesktopWallpaper", "Index", "DeviceId", "DeviceName", "ConnectedOnly", "PrimaryOnly", "All", "AllUsers", "ExcludeDefaultUserProfile", "WallpaperPosition", "WallpaperPath", "Url", "ImageData")]
     [DataRow("CmdletGetLogonWallpaper")]
     [DataRow("CmdletSetLogonWallpaper", "ImagePath")]

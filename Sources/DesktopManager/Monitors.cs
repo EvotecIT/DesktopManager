@@ -449,6 +449,24 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Gets the Advanced Color and HDR state of a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <returns>The Advanced Color and HDR state.</returns>
+    public MonitorAdvancedColorInfo GetMonitorAdvancedColor(string deviceId) {
+        return _monitorService.GetMonitorAdvancedColor(deviceId);
+    }
+
+    /// <summary>
+    /// Enables or disables HDR for a monitor by its device ID.
+    /// </summary>
+    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="enabled">Whether HDR should be enabled.</param>
+    public void SetMonitorHdr(string deviceId, bool enabled) {
+        _monitorService.SetMonitorHdr(deviceId, enabled);
+    }
+
+    /// <summary>
     /// Gets a list of all display devices.
     /// </summary>
     /// <returns>A list of all display devices.</returns>

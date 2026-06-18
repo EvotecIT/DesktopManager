@@ -15,6 +15,7 @@ internal static class WindowCommands {
             "exists" => Exists(arguments),
             "active-matches" => ActiveMatches(arguments),
             "move" => Move(arguments),
+            "place" => Place(arguments),
             "click" => Click(arguments),
             "drag" => Drag(arguments),
             "scroll" => Scroll(arguments),
@@ -187,6 +188,20 @@ internal static class WindowCommands {
             arguments.GetIntOption("width"),
             arguments.GetIntOption("height"),
             arguments.GetBoolFlag("activate"),
+            CreateArtifactOptions(arguments));
+        return WriteWindowMutationResult(arguments, result);
+    }
+
+    private static int Place(CommandLineArguments arguments) {
+        WindowChangeResult result = DesktopOperations.PlaceWindow(
+            CreateCriteria(arguments, includeEmptyDefault: true),
+            ParsePlacement(arguments.GetRequiredOption("placement")),
+            ParseMonitorTarget(arguments.GetOption("monitor-target")),
+            arguments.GetIntOption("monitor"),
+            arguments.GetIntOption("x"),
+            arguments.GetIntOption("y"),
+            arguments.GetIntOption("width"),
+            arguments.GetIntOption("height"),
             CreateArtifactOptions(arguments));
         return WriteWindowMutationResult(arguments, result);
     }
@@ -741,5 +756,31 @@ internal static class WindowCommands {
         }
 
         return value.Value ? "True" : "False";
+    }
+
+    private static WindowPlacementKind ParsePlacement(string value) {
+        return value.ToLowerInvariant() switch {
+            "restore" => WindowPlacementKind.Restore,
+            "maximize" => WindowPlacementKind.Maximize,
+            "left-half" or "lefthalf" => WindowPlacementKind.LeftHalf,
+            "right-half" or "righthalf" => WindowPlacementKind.RightHalf,
+            "exact-rectangle" or "exactrectangle" or "exact" => WindowPlacementKind.ExactRectangle,
+            _ => throw new CommandLineException($"Unsupported placement '{value}'.")
+        };
+    }
+
+    private static WindowMonitorTargetKind ParseMonitorTarget(string? value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return WindowMonitorTargetKind.Current;
+        }
+
+        return value.ToLowerInvariant() switch {
+            "current" => WindowMonitorTargetKind.Current,
+            "top-left" or "topleft" => WindowMonitorTargetKind.TopLeft,
+            "top-right" or "topright" => WindowMonitorTargetKind.TopRight,
+            "bottom-left" or "bottomleft" => WindowMonitorTargetKind.BottomLeft,
+            "bottom-right" or "bottomright" => WindowMonitorTargetKind.BottomRight,
+            _ => throw new CommandLineException($"Unsupported monitor target '{value}'.")
+        };
     }
 }
