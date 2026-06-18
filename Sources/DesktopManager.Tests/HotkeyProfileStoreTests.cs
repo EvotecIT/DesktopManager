@@ -219,6 +219,34 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
+    /// Modifierless gestures should be rejected because the low-level backend would consume normal typing keys.
+    /// </summary>
+    [TestMethod]
+    public void Validate_ModifierlessHotkey_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].Hotkey = "A";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("at least one Ctrl, Alt, Shift, or Win modifier", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// NoRepeat is not a real modifier and cannot make a typing key safe to capture globally.
+    /// </summary>
+    [TestMethod]
+    public void Validate_NoRepeatOnlyHotkey_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].Hotkey = "NoRepeat+A";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("at least one Ctrl, Alt, Shift, or Win modifier", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
     /// Modifier-only gestures should be rejected because they do not provide a real trigger key.
     /// </summary>
     [TestMethod]

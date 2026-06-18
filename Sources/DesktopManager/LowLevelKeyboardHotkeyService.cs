@@ -236,7 +236,7 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
         IntPtr foregroundHandle = MonitorNativeMethods.GetForegroundWindow();
         lock (_syncRoot) {
             foreach (LowLevelKeyboardHotkeyRegistration registration in _registrations.Values) {
-                if (!registration.Matches(key, IsTrackedKeyDown)) {
+                if (!CanCaptureRegistration(registration, key, IsTrackedKeyDown, foregroundHandle)) {
                     continue;
                 }
 
@@ -328,6 +328,15 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
         }
 
         return false;
+    }
+
+    internal static bool CanCaptureRegistration(
+        LowLevelKeyboardHotkeyRegistration registration,
+        VirtualKey key,
+        Func<VirtualKey, bool> isKeyDown,
+        IntPtr foregroundHandle) {
+        return registration.Matches(key, isKeyDown) &&
+            ForegroundProcessMatches(foregroundHandle, registration.Options.ExclusiveForegroundProcessNames);
     }
 
     /// <inheritdoc />

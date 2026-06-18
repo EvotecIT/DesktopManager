@@ -81,4 +81,43 @@ public class LowLevelKeyboardHotkeyRegistrationTests {
 
         Assert.IsFalse(registration.Matches(VirtualKey.VK_RSHIFT, down.Contains));
     }
+
+    [TestMethod]
+    /// <summary>Does not capture filtered registrations outside their foreground process scope.</summary>
+    public void CanCaptureRegistration_ReturnsFalse_WhenForegroundProcessFilterDoesNotMatch() {
+        var registration = new LowLevelKeyboardHotkeyRegistration(
+            1,
+            HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift,
+            VirtualKey.VK_6,
+            _ => { },
+            new LowLevelKeyboardHotkeyOptions {
+                ExclusiveForegroundProcessNames = new[] { "RemoteDesktopManager" }
+            });
+
+        var down = new HashSet<VirtualKey> {
+            VirtualKey.VK_LCONTROL,
+            VirtualKey.VK_LMENU,
+            VirtualKey.VK_RSHIFT
+        };
+
+        Assert.IsFalse(LowLevelKeyboardHotkeyService.CanCaptureRegistration(registration, VirtualKey.VK_6, down.Contains, IntPtr.Zero));
+    }
+
+    [TestMethod]
+    /// <summary>Captures unfiltered registrations when the chord itself matches.</summary>
+    public void CanCaptureRegistration_ReturnsTrue_WhenNoForegroundProcessFilterIsConfigured() {
+        var registration = new LowLevelKeyboardHotkeyRegistration(
+            1,
+            HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift,
+            VirtualKey.VK_6,
+            _ => { });
+
+        var down = new HashSet<VirtualKey> {
+            VirtualKey.VK_LCONTROL,
+            VirtualKey.VK_LMENU,
+            VirtualKey.VK_RSHIFT
+        };
+
+        Assert.IsTrue(LowLevelKeyboardHotkeyService.CanCaptureRegistration(registration, VirtualKey.VK_6, down.Contains, IntPtr.Zero));
+    }
 }

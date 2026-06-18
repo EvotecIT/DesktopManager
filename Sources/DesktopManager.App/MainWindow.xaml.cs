@@ -94,7 +94,10 @@ public sealed partial class MainWindow : Window {
             return;
         }
 
-        function.WindowAction.MonitorIndex = (MonitorIndexComboBox.SelectedItem as MonitorOption)?.Index;
+        if (MonitorIndexComboBox.SelectedItem is MonitorOption selectedMonitor) {
+            function.WindowAction.MonitorIndex = selectedMonitor.Index;
+        }
+
         function.WindowAction.VerifyAfterAction = SelectedVerifySwitch.IsOn;
         SaveProfile();
         LoadProfileIntoView();
@@ -262,6 +265,13 @@ public sealed partial class MainWindow : Window {
 
     private void SelectMonitorOption(int? monitorIndex) {
         MonitorOption? option = _monitorOptions.FirstOrDefault(item => item.Index == monitorIndex);
+        if (option == null && monitorIndex.HasValue) {
+            option = new MonitorOption(monitorIndex.Value, $"{monitorIndex.Value}: unavailable (saved)");
+            _monitorOptions.Add(option);
+            MonitorIndexComboBox.ItemsSource = null;
+            MonitorIndexComboBox.ItemsSource = _monitorOptions;
+        }
+
         MonitorIndexComboBox.SelectedItem = option ?? _monitorOptions[0];
     }
 

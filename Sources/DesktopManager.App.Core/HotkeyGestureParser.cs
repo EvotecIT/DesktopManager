@@ -56,6 +56,15 @@ public static class HotkeyGestureParser {
             }
         }
 
+        const DesktopHotkeyModifiers realModifiers = DesktopHotkeyModifiers.Control |
+            DesktopHotkeyModifiers.Alt |
+            DesktopHotkeyModifiers.Shift |
+            DesktopHotkeyModifiers.Win;
+        if ((modifiers & realModifiers) == 0) {
+            error = $"Hotkey '{gesture}' must include at least one Ctrl, Alt, Shift, or Win modifier.";
+            return false;
+        }
+
         string keyToken = NormalizeKey(parts[parts.Length - 1]);
         if (!Enum.TryParse(keyToken, ignoreCase: true, out key)) {
             error = $"Unknown hotkey key '{parts[parts.Length - 1]}'.";
