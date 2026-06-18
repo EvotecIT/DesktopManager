@@ -176,16 +176,38 @@ public sealed class WindowPlacementService {
             throw new InvalidOperationException("No connected monitors were found.");
         }
 
-        IReadOnlyList<IReadOnlyList<Monitor>> rows = GroupMonitorRows(monitors);
-        IReadOnlyList<Monitor> topRow = rows[0];
-        IReadOnlyList<Monitor> bottomRow = rows[rows.Count - 1];
-
         return request.MonitorTarget switch {
-            WindowMonitorTargetKind.TopLeft => topRow.First(),
-            WindowMonitorTargetKind.TopRight => topRow.Last(),
-            WindowMonitorTargetKind.BottomLeft => bottomRow.First(),
-            WindowMonitorTargetKind.BottomRight => bottomRow.Last(),
+            WindowMonitorTargetKind.TopLeft or
+                WindowMonitorTargetKind.TopRight or
+                WindowMonitorTargetKind.BottomLeft or
+                WindowMonitorTargetKind.BottomRight => ResolveCornerMonitor(monitors, request.MonitorTarget),
             _ => ResolveCurrentMonitor(window)
+        };
+    }
+
+    internal static Monitor ResolveCornerMonitor(IReadOnlyList<Monitor> monitors, WindowMonitorTargetKind target) {
+        if (monitors.Count == 0) {
+            throw new InvalidOperationException("No connected monitors were found.");
+        }
+
+        return target switch {
+            WindowMonitorTargetKind.TopLeft => monitors
+                .OrderBy(monitor => monitor.PositionTop)
+                .ThenBy(monitor => monitor.PositionLeft)
+                .First(),
+            WindowMonitorTargetKind.TopRight => monitors
+                .OrderBy(monitor => monitor.PositionTop)
+                .ThenByDescending(monitor => monitor.PositionRight)
+                .First(),
+            WindowMonitorTargetKind.BottomLeft => monitors
+                .OrderByDescending(monitor => monitor.PositionBottom)
+                .ThenBy(monitor => monitor.PositionLeft)
+                .First(),
+            WindowMonitorTargetKind.BottomRight => monitors
+                .OrderByDescending(monitor => monitor.PositionBottom)
+                .ThenByDescending(monitor => monitor.PositionRight)
+                .First(),
+            _ => throw new ArgumentOutOfRangeException(nameof(target), target, "Unsupported corner monitor target.")
         };
     }
 
@@ -294,7 +316,7 @@ public sealed class WindowPlacementService {
         return WaitForWindow(handle, current => IsExpectedPlacement(current, request, monitor), request);
     }
 
-    private bool IsExpectedPlacement(WindowInfo window, WindowPlacementRequest request, Monitor? monitor) {
+    internal static bool IsExpectedPlacement(WindowInfo window, WindowPlacementRequest request, Monitor? monitor) {
         if (request.Placement == WindowPlacementKind.ExactRectangle) {
             return IsNear(window.Left, request.ExactLeft!.Value, request.GeometryTolerancePixels) &&
                 IsNear(window.Top, request.ExactTop!.Value, request.GeometryTolerancePixels) &&
@@ -308,7 +330,7 @@ public sealed class WindowPlacementService {
         }
 
         if (request.Placement == WindowPlacementKind.Restore) {
-            return window.State != WindowState.Minimize;
+            return window.State == WindowState.Normal;
         }
 
         if (monitor == null) {
@@ -350,7 +372,7 @@ public sealed class WindowPlacementService {
 
         return WaitForWindow(
             handle,
-            current => current.State != WindowState.Minimize &&
+            current => current.State == WindowState.Normal &&
                 current.Width > 200 &&
                 current.Height > 100,
             waitRequest);

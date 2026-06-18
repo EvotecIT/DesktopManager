@@ -25,6 +25,45 @@ public class WindowPlacementServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Corner monitor targets should not merge stacked monitors through a tall spanning neighbor.
+    /// </summary>
+    public void ResolveCornerMonitor_SpanningMonitor_SelectsGeometricCorner() {
+        Monitor leftTall = CreateMonitor(1, 0, 0, 1920, 2160);
+        Monitor topRight = CreateMonitor(2, 1920, 0, 3840, 1080);
+        Monitor bottomRight = CreateMonitor(3, 1920, 1080, 3840, 2160);
+
+        Monitor resolvedTopRight = WindowPlacementService.ResolveCornerMonitor(
+            new[] { leftTall, topRight, bottomRight },
+            WindowMonitorTargetKind.TopRight);
+        Monitor resolvedBottomRight = WindowPlacementService.ResolveCornerMonitor(
+            new[] { leftTall, topRight, bottomRight },
+            WindowMonitorTargetKind.BottomRight);
+
+        Assert.AreEqual(2, resolvedTopRight.Index);
+        Assert.AreEqual(3, resolvedBottomRight.Index);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Restore verification should require a normal restored window state.
+    /// </summary>
+    public void IsExpectedPlacement_RestoreRequiresNormalState() {
+        WindowPlacementRequest request = new() {
+            Placement = WindowPlacementKind.Restore
+        };
+        WindowInfo maximized = new() {
+            State = WindowState.Maximize
+        };
+        WindowInfo restored = new() {
+            State = WindowState.Normal
+        };
+
+        Assert.IsFalse(WindowPlacementService.IsExpectedPlacement(maximized, request, monitor: null));
+        Assert.IsTrue(WindowPlacementService.IsExpectedPlacement(restored, request, monitor: null));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Semantic window placements should use the monitor work area so taskbars are not covered.
     /// </summary>
     public void GetPlacementBounds_WorkAreaAvailable_UsesWorkArea() {
