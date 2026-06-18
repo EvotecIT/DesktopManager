@@ -140,7 +140,7 @@ public sealed class WindowPlacementService {
         AddSnapshot(snapshots, $"attempt-{attempt}-after-restore", RefreshWindow(window.Handle));
 
         WindowInfo restored = RefreshWindow(window.Handle);
-        _windowManager.SetWindowPosition(
+        _windowManager.SetWindowRectangle(
             restored,
             request.ExactLeft!.Value,
             request.ExactTop!.Value,

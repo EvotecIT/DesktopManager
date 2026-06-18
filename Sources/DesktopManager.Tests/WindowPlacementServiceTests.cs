@@ -177,6 +177,50 @@ public class WindowPlacementServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Exact rectangle placements must allow -1 coordinates for monitors left of or above the primary display.
+    /// </summary>
+    public void Apply_ExactRectangleWithMinusOneCoordinate_MovesToRequestedCoordinate() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+        TestHelper.RequireOwnedWindowMutationTests();
+
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create("DesktopManager Exact Negative Coordinate Harness");
+
+        var manager = new WindowManager();
+        WindowPosition original = manager.GetWindowPosition(harness.Window);
+        const int left = -1;
+        int top = original.Top + 23;
+        const int width = 420;
+        const int height = 260;
+
+        try {
+            var service = new WindowPlacementService();
+            WindowPlacementResult result = service.Apply(new WindowPlacementRequest {
+                TargetWindowHandle = harness.Window.Handle,
+                Placement = WindowPlacementKind.ExactRectangle,
+                ExactLeft = left,
+                ExactTop = top,
+                ExactWidth = width,
+                ExactHeight = height,
+                VerifyAfterAction = true,
+                GeometryTolerancePixels = 12,
+                VerificationTimeoutMilliseconds = 1000,
+                VerificationIntervalMilliseconds = 25
+            });
+
+            Assert.IsTrue(result.Verified);
+            Assert.IsTrue(Math.Abs(result.Window.Left - left) <= 12);
+            Assert.IsTrue(Math.Abs(result.Window.Top - top) <= 12);
+            Assert.IsTrue(Math.Abs(result.Window.Width - width) <= 12);
+            Assert.IsTrue(Math.Abs(result.Window.Height - height) <= 12);
+        } finally {
+            manager.SetWindowRectangle(harness.Window, original.Left, original.Top, original.Right - original.Left, original.Bottom - original.Top);
+        }
+    }
+
+    [TestMethod]
+    /// <summary>
     /// DesktopAutomationService exposes the same reusable placement engine.
     /// </summary>
     public void ApplyWindowPlacement_AutomationService_UsesPlacementEngine() {
