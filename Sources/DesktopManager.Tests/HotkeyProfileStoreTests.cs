@@ -147,6 +147,41 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
+    /// A failed profile replacement should leave the last readable profile intact.
+    /// </summary>
+    [TestMethod]
+    public void Save_WhenReplaceFails_PreservesExistingProfile() {
+        string directory = CreateTemporaryDirectory();
+        string path = Path.Combine(directory, "profile.json");
+
+        try {
+            HotkeyProfile original = HotkeyProfileDefaults.CreateDefaultProfile();
+            original.ProfileName = "Original";
+            HotkeyProfileStore.Save(path, original);
+
+            using (FileStream lockedProfile = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read)) {
+                HotkeyProfile changed = HotkeyProfileDefaults.CreateDefaultProfile();
+                changed.ProfileName = "Changed";
+
+                Exception? saveException = null;
+                try {
+                    HotkeyProfileStore.Save(path, changed);
+                } catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) {
+                    saveException = ex;
+                }
+
+                Assert.IsNotNull(saveException);
+            }
+
+            HotkeyProfile loaded = HotkeyProfileStore.LoadOrCreate(path);
+            Assert.AreEqual("Original", loaded.ProfileName);
+            Assert.IsTrue(HotkeyProfileValidator.Validate(loaded).IsValid);
+        } finally {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Duplicate enabled hotkeys should be rejected before registration is attempted.
     /// </summary>
     [TestMethod]

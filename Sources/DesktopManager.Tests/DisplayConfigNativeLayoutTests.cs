@@ -35,9 +35,9 @@ public class DisplayConfigNativeLayoutTests {
 
     [TestMethod]
     /// <summary>
-    /// Legacy Advanced Color packets should not report WCG-only panels as HDR.
+    /// Legacy Advanced Color packets should keep HDR state independent from wide-color enforcement.
     /// </summary>
-    public void CreateLegacyAdvancedColorInfo_WideColorNotEnforced_DoesNotReportHdr() {
+    public void CreateLegacyAdvancedColorInfo_WideColorNotEnforced_KeepsLegacyHdrState() {
         Monitor monitor = new(new MonitorService(new StubDesktopManager())) {
             Index = 1,
             DeviceId = "DISPLAY1",
@@ -54,6 +54,31 @@ public class DisplayConfigNativeLayoutTests {
         Assert.IsTrue(result.AdvancedColorSupported);
         Assert.IsTrue(result.AdvancedColorEnabled);
         Assert.IsFalse(result.WideColorEnforced);
+        Assert.IsTrue(result.HdrSupported);
+        Assert.IsTrue(result.HdrEnabled);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Legacy Advanced Color packets should not expose WCG-only Advanced Color as HDR-toggleable.
+    /// </summary>
+    public void CreateLegacyAdvancedColorInfo_WideColorEnforced_DoesNotReportHdr() {
+        Monitor monitor = new(new MonitorService(new StubDesktopManager())) {
+            Index = 1,
+            DeviceId = "DISPLAY1",
+            DeviceName = "\\\\.\\DISPLAY1"
+        };
+        DisplayConfigGetAdvancedColorInfo packet = new() {
+            Value = 0x7,
+            ColorEncoding = DisplayConfigColorEncoding.Rgb,
+            BitsPerColorChannel = 10
+        };
+
+        MonitorAdvancedColorInfo result = MonitorService.CreateLegacyAdvancedColorInfo(monitor, packet);
+
+        Assert.IsTrue(result.AdvancedColorSupported);
+        Assert.IsTrue(result.AdvancedColorEnabled);
+        Assert.IsTrue(result.WideColorEnforced);
         Assert.IsFalse(result.HdrSupported);
         Assert.IsFalse(result.HdrEnabled);
     }
