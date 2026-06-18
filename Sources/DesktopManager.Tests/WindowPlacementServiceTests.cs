@@ -64,6 +64,22 @@ public class WindowPlacementServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Exact rectangle placements should reject non-positive sizes before mutating a window.
+    /// </summary>
+    public void Apply_ExactRectangleWithZeroWidth_Throws() {
+        var service = new WindowPlacementService();
+
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => service.Apply(new WindowPlacementRequest {
+            Placement = WindowPlacementKind.ExactRectangle,
+            ExactLeft = 0,
+            ExactTop = 0,
+            ExactWidth = 0,
+            ExactHeight = 100
+        }));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Child/session-surface handles are normalized to the root window before placement.
     /// </summary>
     public void Apply_ChildHandleExactRectangle_MovesRootWindow() {

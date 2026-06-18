@@ -72,6 +72,10 @@ public static class HotkeyProfileValidator {
     }
 
     private static void ValidateWindowAction(WindowHotkeyActionDefinition action, string prefix, HotkeyProfileValidationResult result) {
+        if (!IsKnownWindowTarget(action.Target)) {
+            result.Errors.Add($"{prefix} has invalid window target '{action.Target}'.");
+        }
+
         if (!IsKnownMonitorTarget(action.Monitor)) {
             result.Errors.Add($"{prefix} has invalid monitor target '{action.Monitor}'.");
         }
@@ -92,6 +96,10 @@ public static class HotkeyProfileValidator {
 
     private static bool IsKnownActionType(string actionType) {
         return string.Equals(actionType, HotkeyActionKinds.ManageWindow, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsKnownWindowTarget(string target) {
+        return string.Equals(target, WindowTargets.ActiveWindow, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsKnownMonitorTarget(string monitor) {

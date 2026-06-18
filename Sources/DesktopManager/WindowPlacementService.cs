@@ -87,6 +87,11 @@ public sealed class WindowPlacementService {
             throw new ArgumentException("Exact rectangle placement requires left, top, width, and height.", nameof(request));
         }
 
+        if (request.Placement == WindowPlacementKind.ExactRectangle &&
+            (request.ExactWidth.GetValueOrDefault() <= 0 || request.ExactHeight.GetValueOrDefault() <= 0)) {
+            throw new ArgumentOutOfRangeException(nameof(request), "Exact rectangle width and height must be greater than zero.");
+        }
+
         if (request.VerificationIntervalMilliseconds <= 0) {
             throw new ArgumentOutOfRangeException(nameof(request), "Verification interval must be greater than zero.");
         }

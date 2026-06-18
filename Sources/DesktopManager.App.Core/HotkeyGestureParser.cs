@@ -62,6 +62,11 @@ public static class HotkeyGestureParser {
             return false;
         }
 
+        if (IsModifierKey(key)) {
+            error = $"Hotkey '{gesture}' must include a non-modifier trigger key.";
+            return false;
+        }
+
         return true;
     }
 
@@ -119,5 +124,19 @@ public static class HotkeyGestureParser {
         }
 
         return "VK_" + trimmed.ToUpperInvariant();
+    }
+
+    private static bool IsModifierKey(DesktopVirtualKey key) {
+        return key == DesktopVirtualKey.VK_CONTROL ||
+            key == DesktopVirtualKey.VK_LCONTROL ||
+            key == DesktopVirtualKey.VK_RCONTROL ||
+            key == DesktopVirtualKey.VK_MENU ||
+            key == DesktopVirtualKey.VK_LMENU ||
+            key == DesktopVirtualKey.VK_RMENU ||
+            key == DesktopVirtualKey.VK_SHIFT ||
+            key == DesktopVirtualKey.VK_LSHIFT ||
+            key == DesktopVirtualKey.VK_RSHIFT ||
+            key == DesktopVirtualKey.VK_LWIN ||
+            key == DesktopVirtualKey.VK_RWIN;
     }
 }

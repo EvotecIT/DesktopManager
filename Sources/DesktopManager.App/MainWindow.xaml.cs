@@ -165,10 +165,21 @@ public sealed partial class MainWindow : Window {
             return;
         }
 
-        TestActionButton.IsEnabled = true;
-        SaveActionButton.IsEnabled = true;
         SelectedNameText.Text = function.Name;
         SelectedHotkeyText.Text = function.Hotkey;
+        if (function.WindowAction == null) {
+            SelectedTargetText.Text = "Invalid window action";
+            SelectedMonitorText.Text = string.Empty;
+            SelectedPlacementText.Text = string.Empty;
+            SelectedVerifySwitch.IsOn = false;
+            MonitorIndexComboBox.SelectedIndex = 0;
+            TestActionButton.IsEnabled = false;
+            SaveActionButton.IsEnabled = false;
+            return;
+        }
+
+        TestActionButton.IsEnabled = true;
+        SaveActionButton.IsEnabled = true;
         SelectedTargetText.Text = function.WindowAction.Target;
         SelectedMonitorText.Text = FormatMonitorText(function.WindowAction);
         SelectedPlacementText.Text = function.WindowAction.Placement;

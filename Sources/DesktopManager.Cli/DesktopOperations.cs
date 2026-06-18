@@ -860,11 +860,18 @@ internal static partial class DesktopOperations {
             var automation = new DesktopAutomationService();
             connectedOnly = ResolveActiveDisplayConnectedOnly(connectedOnly, index, deviceId, deviceName);
             IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+            var results = new List<MonitorAdvancedColorInfo>();
             foreach (Monitor monitor in monitors) {
-                automation.SetMonitorHdr(monitor.DeviceId, enabled);
+                MonitorAdvancedColorInfo advancedColor = automation.GetMonitorAdvancedColor(monitor.DeviceId);
+                if (advancedColor.HdrSupported) {
+                    automation.SetMonitorHdr(monitor.DeviceId, enabled);
+                    advancedColor = automation.GetMonitorAdvancedColor(monitor.DeviceId);
+                }
+
+                results.Add(advancedColor);
             }
 
-            return monitors.Select(monitor => MapAdvancedColor(automation.GetMonitorAdvancedColor(monitor.DeviceId))).ToArray();
+            return results.Select(MapAdvancedColor).ToArray();
         });
     }
 

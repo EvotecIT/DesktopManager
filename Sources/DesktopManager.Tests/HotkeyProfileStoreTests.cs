@@ -219,6 +219,20 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
+    /// Modifier-only gestures should be rejected because they do not provide a real trigger key.
+    /// </summary>
+    [TestMethod]
+    public void Validate_ModifierOnlyHotkey_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].Hotkey = "Ctrl+Alt+Shift";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("non-modifier trigger key", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
     /// Unknown hotkey backends should be rejected before runtime registration chooses a fallback backend.
     /// </summary>
     [TestMethod]
@@ -244,6 +258,20 @@ public class HotkeyProfileStoreTests {
 
         Assert.IsFalse(result.IsValid);
         Assert.IsTrue(result.Errors.Any(error => error.Contains("invalid action type", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Unsupported window targets should be rejected before runtime execution.
+    /// </summary>
+    [TestMethod]
+    public void Validate_UnknownWindowTarget_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].WindowAction.Target = "ForegroundWindw";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("invalid window target", StringComparison.OrdinalIgnoreCase)));
     }
 
     /// <summary>
