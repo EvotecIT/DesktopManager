@@ -22,7 +22,7 @@ internal sealed class WindowHotkeyActionExecutor {
                 diagnostic.AddSnapshot(snapshot);
             }
 
-            string diagnosticPath = HotkeyDiagnosticsWriter.Write(diagnostic);
+            string diagnosticPath = TryWriteDiagnostic(diagnostic);
             HotkeyExecutionResult result = new(
                 function.Name,
                 placement.Window.Title,
@@ -36,7 +36,7 @@ internal sealed class WindowHotkeyActionExecutor {
 
             if (!placement.Verified) {
                 diagnostic.Error = $"Final geometry was not confirmed for {FormatHandle(placement.Window.Handle)}.";
-                HotkeyDiagnosticsWriter.Write(diagnostic);
+                TryWriteDiagnostic(diagnostic);
                 throw new InvalidOperationException($"Window action was executed but final geometry was not confirmed for {FormatHandle(placement.Window.Handle)}.");
             }
 
@@ -48,11 +48,12 @@ internal sealed class WindowHotkeyActionExecutor {
         }
     }
 
-    private static void TryWriteDiagnostic(HotkeyExecutionDiagnostic diagnostic) {
+    private static string TryWriteDiagnostic(HotkeyExecutionDiagnostic diagnostic) {
         try {
-            HotkeyDiagnosticsWriter.Write(diagnostic);
+            return HotkeyDiagnosticsWriter.Write(diagnostic);
         } catch {
             // Diagnostics must never hide the original hotkey failure.
+            return string.Empty;
         }
     }
 

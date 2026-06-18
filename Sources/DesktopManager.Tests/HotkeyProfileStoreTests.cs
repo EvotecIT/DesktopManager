@@ -205,6 +205,66 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
+    /// Empty hotkey gesture tokens should be rejected instead of ignored.
+    /// </summary>
+    [TestMethod]
+    public void Validate_EmptyHotkeyToken_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].Hotkey = "Ctrl++A";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("empty token", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Unknown hotkey backends should be rejected before runtime registration chooses a fallback backend.
+    /// </summary>
+    [TestMethod]
+    public void Validate_UnknownHotkeyBackend_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.HotkeyBackend = "LowLevelKeyboardHok";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("invalid hotkey backend", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Unsupported action types should be rejected before their hotkeys are registered.
+    /// </summary>
+    [TestMethod]
+    public void Validate_UnknownActionType_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].ActionType = "ManageWindw";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("invalid action type", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Exact rectangle actions should contain all required geometry before registration.
+    /// </summary>
+    [TestMethod]
+    public void Validate_IncompleteExactRectangle_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].WindowAction.Placement = WindowPlacements.ExactRectangle;
+        profile.Functions[0].WindowAction.ExactLeft = 10;
+        profile.Functions[0].WindowAction.ExactTop = 10;
+        profile.Functions[0].WindowAction.ExactWidth = 640;
+        profile.Functions[0].WindowAction.ExactHeight = null;
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("incomplete exact rectangle", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
     /// Null function lists from hand-edited JSON should produce validation errors instead of host crashes.
     /// </summary>
     [TestMethod]
@@ -267,6 +327,21 @@ public class HotkeyProfileStoreTests {
         Assert.AreEqual(WindowMonitorTargetKind.TopLeft, request.MonitorTarget);
         Assert.AreEqual(4, request.MonitorIndex);
         Assert.IsFalse(request.HasExactRectangle);
+    }
+
+    /// <summary>
+    /// Placement request creation should accept the same placement casing as profile validation.
+    /// </summary>
+    [TestMethod]
+    public void CreatePlacementRequest_LowercasePlacement_Parses() {
+        WindowHotkeyActionDefinition action = new() {
+            Monitor = MonitorTargets.Current,
+            Placement = "maximize"
+        };
+
+        WindowPlacementRequest request = WindowHotkeyPlacementRequestFactory.Create(action, IntPtr.Zero);
+
+        Assert.AreEqual(WindowPlacementKind.Maximize, request.Placement);
     }
 
     /// <summary>

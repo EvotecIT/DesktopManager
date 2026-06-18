@@ -25,9 +25,14 @@ public static class HotkeyGestureParser {
             return false;
         }
 
-        string[] parts = gesture.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        string[] parts = gesture.Split('+').Select(part => part.Trim()).ToArray();
         if (parts.Length == 0) {
             error = $"Hotkey '{gesture}' is not valid.";
+            return false;
+        }
+
+        if (parts.Any(string.IsNullOrWhiteSpace)) {
+            error = $"Hotkey '{gesture}' contains an empty token.";
             return false;
         }
 

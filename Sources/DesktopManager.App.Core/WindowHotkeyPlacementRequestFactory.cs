@@ -54,13 +54,26 @@ public static class WindowHotkeyPlacementRequestFactory {
     }
 
     private static global::DesktopManager.WindowPlacementKind ParsePlacement(WindowHotkeyActionDefinition action) {
-        return action.Placement switch {
-            WindowPlacements.Restore => global::DesktopManager.WindowPlacementKind.Restore,
-            WindowPlacements.LeftHalf => global::DesktopManager.WindowPlacementKind.LeftHalf,
-            WindowPlacements.RightHalf => global::DesktopManager.WindowPlacementKind.RightHalf,
-            WindowPlacements.Maximize => global::DesktopManager.WindowPlacementKind.Maximize,
-            WindowPlacements.ExactRectangle => global::DesktopManager.WindowPlacementKind.ExactRectangle,
-            _ => throw new InvalidOperationException($"Unsupported window placement '{action.Placement}'.")
-        };
+        if (string.Equals(action.Placement, WindowPlacements.Restore, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowPlacementKind.Restore;
+        }
+
+        if (string.Equals(action.Placement, WindowPlacements.LeftHalf, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowPlacementKind.LeftHalf;
+        }
+
+        if (string.Equals(action.Placement, WindowPlacements.RightHalf, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowPlacementKind.RightHalf;
+        }
+
+        if (string.Equals(action.Placement, WindowPlacements.Maximize, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowPlacementKind.Maximize;
+        }
+
+        if (string.Equals(action.Placement, WindowPlacements.ExactRectangle, StringComparison.OrdinalIgnoreCase)) {
+            return global::DesktopManager.WindowPlacementKind.ExactRectangle;
+        }
+
+        throw new InvalidOperationException($"Unsupported window placement '{action.Placement}'.");
     }
 }

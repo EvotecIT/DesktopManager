@@ -24,6 +24,10 @@ public static class HotkeyProfileValidator {
             return result;
         }
 
+        if (!IsKnownHotkeyBackend(profile.HotkeyBackend)) {
+            result.Errors.Add($"Profile has invalid hotkey backend '{profile.HotkeyBackend}'.");
+        }
+
         HashSet<string> enabledHotkeys = new(StringComparer.OrdinalIgnoreCase);
         for (int index = 0; index < profile.Functions.Count; index++) {
             HotkeyFunctionDefinition? function = profile.Functions[index];
@@ -43,6 +47,8 @@ public static class HotkeyProfileValidator {
 
             if (string.IsNullOrWhiteSpace(function.ActionType)) {
                 result.Errors.Add($"{prefix} is missing an action type.");
+            } else if (!IsKnownActionType(function.ActionType)) {
+                result.Errors.Add($"{prefix} has invalid action type '{function.ActionType}'.");
             }
 
             if (function.WindowAction == null) {
@@ -72,7 +78,20 @@ public static class HotkeyProfileValidator {
 
         if (!IsKnownPlacement(action.Placement)) {
             result.Errors.Add($"{prefix} has invalid placement '{action.Placement}'.");
+        } else if (string.Equals(action.Placement, WindowPlacements.ExactRectangle, StringComparison.OrdinalIgnoreCase) &&
+            !HasCompleteExactRectangle(action)) {
+            result.Errors.Add($"{prefix} has incomplete exact rectangle geometry.");
         }
+    }
+
+    private static bool IsKnownHotkeyBackend(string backend) {
+        return string.Equals(backend, HotkeyBackendKinds.RegisterHotKey, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(backend, HotkeyBackendKinds.LowLevelKeyboardHook, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(backend, HotkeyBackendKinds.NativeHotkeyHost, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsKnownActionType(string actionType) {
+        return string.Equals(actionType, HotkeyActionKinds.ManageWindow, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsKnownMonitorTarget(string monitor) {
@@ -89,5 +108,12 @@ public static class HotkeyProfileValidator {
             string.Equals(placement, WindowPlacements.RightHalf, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(placement, WindowPlacements.Maximize, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(placement, WindowPlacements.ExactRectangle, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool HasCompleteExactRectangle(WindowHotkeyActionDefinition action) {
+        return action.ExactLeft.HasValue &&
+            action.ExactTop.HasValue &&
+            action.ExactWidth.GetValueOrDefault() > 0 &&
+            action.ExactHeight.GetValueOrDefault() > 0;
     }
 }
