@@ -212,6 +212,14 @@ public sealed class WindowPlacementService {
             second.PositionTop < first.PositionBottom;
     }
 
+    internal static RECT GetPlacementBounds(Monitor monitor) {
+        if (monitor == null) {
+            throw new ArgumentNullException(nameof(monitor));
+        }
+
+        return monitor.GetMonitorWorkArea();
+    }
+
     private Monitor ResolveCurrentMonitor(WindowInfo window) {
         List<Monitor> monitors = _monitors.GetMonitors(connectedOnly: true, refresh: true);
         Monitor? monitor = monitors.FirstOrDefault(candidate => candidate.Index == window.MonitorIndex) ??
@@ -240,12 +248,13 @@ public sealed class WindowPlacementService {
 
             if (monitor != null) {
                 WindowInfo restoredWindow = RefreshWindow(window.Handle);
+                RECT placementBounds = GetPlacementBounds(monitor);
                 _windowManager.SetWindowPosition(
                     restoredWindow,
-                    monitor.PositionLeft,
-                    monitor.PositionTop,
-                    monitor.PositionRight - monitor.PositionLeft,
-                    monitor.PositionBottom - monitor.PositionTop);
+                    placementBounds.Left,
+                    placementBounds.Top,
+                    placementBounds.Right - placementBounds.Left,
+                    placementBounds.Bottom - placementBounds.Top);
                 AddSnapshot(snapshots, $"attempt-{attempt}-after-move", RefreshWindow(window.Handle));
             }
 
@@ -256,9 +265,10 @@ public sealed class WindowPlacementService {
         }
 
         Monitor targetMonitor = monitor ?? ResolveCurrentMonitor(window);
-        int width = targetMonitor.PositionRight - targetMonitor.PositionLeft;
-        int height = targetMonitor.PositionBottom - targetMonitor.PositionTop;
-        int left = targetMonitor.PositionLeft;
+        RECT targetBounds = GetPlacementBounds(targetMonitor);
+        int width = targetBounds.Right - targetBounds.Left;
+        int height = targetBounds.Bottom - targetBounds.Top;
+        int left = targetBounds.Left;
 
         if (placement == WindowPlacementKind.RightHalf) {
             left += width / 2;
@@ -271,7 +281,7 @@ public sealed class WindowPlacementService {
         AddSnapshot(snapshots, $"attempt-{attempt}-after-restore", RefreshWindow(window.Handle));
 
         WindowInfo restored = RefreshWindow(window.Handle);
-        _windowManager.SetWindowPosition(restored, left, targetMonitor.PositionTop, width / 2, height);
+        _windowManager.SetWindowPosition(restored, left, targetBounds.Top, width / 2, height);
         AddSnapshot(snapshots, $"attempt-{attempt}-after-move", RefreshWindow(window.Handle));
     }
 
@@ -300,17 +310,18 @@ public sealed class WindowPlacementService {
             return true;
         }
 
-        int width = monitor.PositionRight - monitor.PositionLeft;
-        int expectedLeft = monitor.PositionLeft;
+        RECT expectedBounds = GetPlacementBounds(monitor);
+        int width = expectedBounds.Right - expectedBounds.Left;
+        int expectedLeft = expectedBounds.Left;
         if (request.Placement == WindowPlacementKind.RightHalf) {
             expectedLeft += width / 2;
         }
 
         return window.MonitorIndex == monitor.Index &&
             IsNear(window.Left, expectedLeft, request.GeometryTolerancePixels) &&
-            IsNear(window.Top, monitor.PositionTop, request.GeometryTolerancePixels) &&
+            IsNear(window.Top, expectedBounds.Top, request.GeometryTolerancePixels) &&
             IsNear(window.Width, width / 2, request.GeometryTolerancePixels) &&
-            IsNear(window.Height, monitor.PositionBottom - monitor.PositionTop, request.GeometryTolerancePixels);
+            IsNear(window.Height, expectedBounds.Bottom - expectedBounds.Top, request.GeometryTolerancePixels);
     }
 
     private bool WaitForWindow(IntPtr handle, Func<WindowInfo, bool> predicate, WindowPlacementRequest request) {

@@ -25,6 +25,45 @@ public class WindowPlacementServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Semantic window placements should use the monitor work area so taskbars are not covered.
+    /// </summary>
+    public void GetPlacementBounds_WorkAreaAvailable_UsesWorkArea() {
+        Monitor monitor = CreateMonitor(
+            1,
+            left: 0,
+            top: 0,
+            right: 1920,
+            bottom: 1080,
+            workLeft: 0,
+            workTop: 0,
+            workRight: 1920,
+            workBottom: 1040);
+
+        RECT bounds = WindowPlacementService.GetPlacementBounds(monitor);
+
+        Assert.AreEqual(0, bounds.Left);
+        Assert.AreEqual(0, bounds.Top);
+        Assert.AreEqual(1920, bounds.Right);
+        Assert.AreEqual(1040, bounds.Bottom);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Monitors without work-area metadata fall back to the full monitor bounds.
+    /// </summary>
+    public void GetPlacementBounds_WorkAreaMissing_UsesMonitorBounds() {
+        Monitor monitor = CreateMonitor(1, 0, 0, 1920, 1080);
+
+        RECT bounds = WindowPlacementService.GetPlacementBounds(monitor);
+
+        Assert.AreEqual(0, bounds.Left);
+        Assert.AreEqual(0, bounds.Top);
+        Assert.AreEqual(1920, bounds.Right);
+        Assert.AreEqual(1080, bounds.Bottom);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Child/session-surface handles are normalized to the root window before placement.
     /// </summary>
     public void Apply_ChildHandleExactRectangle_MovesRootWindow() {
@@ -111,13 +150,28 @@ public class WindowPlacementServiceTests {
         }
     }
 
-    private static Monitor CreateMonitor(int index, int left, int top, int right, int bottom) {
+    private static Monitor CreateMonitor(
+        int index,
+        int left,
+        int top,
+        int right,
+        int bottom,
+        int? workLeft = null,
+        int? workTop = null,
+        int? workRight = null,
+        int? workBottom = null) {
         string deviceId = $"DISPLAY{index}";
         RECT rect = new() {
             Left = left,
             Top = top,
             Right = right,
             Bottom = bottom
+        };
+        RECT workArea = new() {
+            Left = workLeft ?? 0,
+            Top = workTop ?? 0,
+            Right = workRight ?? 0,
+            Bottom = workBottom ?? 0
         };
 
         return new Monitor(new MonitorService(new StubDesktopManager(new Dictionary<string, RECT> {
@@ -127,7 +181,8 @@ public class WindowPlacementServiceTests {
             DeviceId = deviceId,
             DeviceName = $"\\\\.\\DISPLAY{index}",
             StateFlags = DisplayDeviceStateFlags.AttachedToDesktop,
-            Rect = rect
+            Rect = rect,
+            WorkArea = workArea
         };
     }
 }

@@ -10,9 +10,15 @@ public partial class MonitorService {
         public DisplayDeviceStateFlags AdapterStateFlags { get; set; }
         public string AdapterDeviceKey { get; set; } = string.Empty;
         public RECT? AdapterBounds { get; set; }
+        public RECT? AdapterWorkArea { get; set; }
         public string MonitorDeviceId { get; set; } = string.Empty;
         public string MonitorDeviceString { get; set; } = string.Empty;
         public string MonitorDeviceKey { get; set; } = string.Empty;
+    }
+
+    internal sealed class DisplayAdapterArea {
+        public RECT Bounds { get; set; }
+        public RECT WorkArea { get; set; }
     }
 
     internal static DisplayPathSnapshot? ResolveDisplayPathForMonitor(
@@ -47,7 +53,7 @@ public partial class MonitorService {
 
     private static List<DisplayPathSnapshot> EnumerateDisplayPaths() {
         List<DisplayPathSnapshot> displayPaths = new List<DisplayPathSnapshot>();
-        Dictionary<string, RECT> adapterBounds = EnumerateAdapterBounds();
+        Dictionary<string, DisplayAdapterArea> adapterAreas = EnumerateAdapterAreas();
 
         uint adapterIndex = 0;
         while (true) {
@@ -59,9 +65,12 @@ public partial class MonitorService {
             }
 
             RECT? bounds = null;
+            RECT? workArea = null;
+            DisplayAdapterArea? adapterArea = null;
             if (!string.IsNullOrWhiteSpace(adapter.DeviceName) &&
-                adapterBounds.TryGetValue(adapter.DeviceName, out RECT adapterRect)) {
-                bounds = adapterRect;
+                adapterAreas.TryGetValue(adapter.DeviceName, out adapterArea)) {
+                bounds = adapterArea.Bounds;
+                workArea = adapterArea.WorkArea;
             }
 
             uint monitorIndex = 0;
@@ -81,6 +90,7 @@ public partial class MonitorService {
                     AdapterStateFlags = adapter.StateFlags,
                     AdapterDeviceKey = adapter.DeviceKey ?? string.Empty,
                     AdapterBounds = bounds,
+                    AdapterWorkArea = workArea,
                     MonitorDeviceId = monitor.DeviceID ?? string.Empty,
                     MonitorDeviceString = monitor.DeviceString ?? string.Empty,
                     MonitorDeviceKey = monitor.DeviceKey ?? string.Empty
@@ -94,7 +104,8 @@ public partial class MonitorService {
                     AdapterDeviceString = adapter.DeviceString ?? string.Empty,
                     AdapterStateFlags = adapter.StateFlags,
                     AdapterDeviceKey = adapter.DeviceKey ?? string.Empty,
-                    AdapterBounds = bounds
+                    AdapterBounds = bounds,
+                    AdapterWorkArea = workArea
                 });
             }
 
@@ -104,23 +115,26 @@ public partial class MonitorService {
         return displayPaths;
     }
 
-    private static Dictionary<string, RECT> EnumerateAdapterBounds() {
-        Dictionary<string, RECT> boundsByAdapter = new Dictionary<string, RECT>(StringComparer.OrdinalIgnoreCase);
+    private static Dictionary<string, DisplayAdapterArea> EnumerateAdapterAreas() {
+        Dictionary<string, DisplayAdapterArea> areasByAdapter = new Dictionary<string, DisplayAdapterArea>(StringComparer.OrdinalIgnoreCase);
 
         MonitorNativeMethods.MonitorEnumProc proc = (IntPtr hMonitor, IntPtr hdc, ref RECT rect, IntPtr lparam) => {
             MONITORINFOEX info = new MONITORINFOEX();
             info.cbSize = Marshal.SizeOf<MONITORINFOEX>();
             if (MonitorNativeMethods.GetMonitorInfo(hMonitor, ref info) &&
                 !string.IsNullOrWhiteSpace(info.szDevice) &&
-                !boundsByAdapter.ContainsKey(info.szDevice)) {
-                boundsByAdapter.Add(info.szDevice, info.rcMonitor);
+                !areasByAdapter.ContainsKey(info.szDevice)) {
+                areasByAdapter.Add(info.szDevice, new DisplayAdapterArea {
+                    Bounds = info.rcMonitor,
+                    WorkArea = info.rcWork
+                });
             }
 
             return true;
         };
 
         MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
-        return boundsByAdapter;
+        return areasByAdapter;
     }
 
     private static void ApplyDisplayPathMetadata(Monitor monitor, DisplayPathSnapshot displayPath) {
@@ -132,6 +146,9 @@ public partial class MonitorService {
         monitor.DeviceKey = !string.IsNullOrWhiteSpace(displayPath.MonitorDeviceKey)
             ? displayPath.MonitorDeviceKey
             : displayPath.AdapterDeviceKey;
+        if (displayPath.AdapterWorkArea.HasValue) {
+            monitor.WorkArea = displayPath.AdapterWorkArea.Value;
+        }
     }
 
     private static bool MonitorDeviceIdsMatch(string candidate, string deviceId) {
