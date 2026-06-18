@@ -57,5 +57,22 @@ public class DisplayConfigNativeLayoutTests {
         Assert.IsFalse(result.HdrSupported);
         Assert.IsFalse(result.HdrEnabled);
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Fallback monitor enumeration should use the source display name before child monitor names.
+    /// </summary>
+    public void GetDisplayConfigSourceNameCandidates_FallbackMonitor_PrefersSourceDisplayName() {
+        Monitor monitor = new(new MonitorService(new StubDesktopManager())) {
+            DeviceId = "\\\\.\\DISPLAY1",
+            DeviceName = "\\\\.\\DISPLAY1\\Monitor0"
+        };
+
+        IReadOnlyList<string> candidates = MonitorService.GetDisplayConfigSourceNameCandidates(monitor);
+
+        Assert.AreEqual(2, candidates.Count);
+        Assert.AreEqual("\\\\.\\DISPLAY1", candidates[0]);
+        Assert.AreEqual("\\\\.\\DISPLAY1\\Monitor0", candidates[1]);
+    }
 }
 #endif

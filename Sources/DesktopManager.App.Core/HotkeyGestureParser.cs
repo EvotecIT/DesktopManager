@@ -67,6 +67,11 @@ public static class HotkeyGestureParser {
             return false;
         }
 
+        if (!IsSupportedKeyboardTriggerKey(key)) {
+            error = $"Hotkey '{gesture}' must use a keyboard trigger key.";
+            return false;
+        }
+
         return true;
     }
 
@@ -138,5 +143,29 @@ public static class HotkeyGestureParser {
             key == DesktopVirtualKey.VK_RSHIFT ||
             key == DesktopVirtualKey.VK_LWIN ||
             key == DesktopVirtualKey.VK_RWIN;
+    }
+
+    private static bool IsSupportedKeyboardTriggerKey(DesktopVirtualKey key) {
+        return key == DesktopVirtualKey.VK_CANCEL ||
+            key == DesktopVirtualKey.VK_BACK ||
+            key == DesktopVirtualKey.VK_TAB ||
+            key == DesktopVirtualKey.VK_RETURN ||
+            key == DesktopVirtualKey.VK_PAUSE ||
+            key == DesktopVirtualKey.VK_CAPITAL ||
+            key == DesktopVirtualKey.VK_ESCAPE ||
+            (key >= DesktopVirtualKey.VK_SPACE && key <= DesktopVirtualKey.VK_DOWN) ||
+            key == DesktopVirtualKey.VK_INSERT ||
+            key == DesktopVirtualKey.VK_DELETE ||
+            (key >= DesktopVirtualKey.VK_0 && key <= DesktopVirtualKey.VK_9) ||
+            (key >= DesktopVirtualKey.VK_A && key <= DesktopVirtualKey.VK_Z) ||
+            (key >= DesktopVirtualKey.VK_NUMPAD0 && key <= DesktopVirtualKey.VK_DIVIDE) ||
+            (key >= DesktopVirtualKey.VK_F1 && key <= DesktopVirtualKey.VK_F24) ||
+            key == DesktopVirtualKey.VK_NUMLOCK ||
+            key == DesktopVirtualKey.VK_SCROLL ||
+            (key >= DesktopVirtualKey.VK_BROWSER_BACK && key <= DesktopVirtualKey.VK_LAUNCH_APP2) ||
+            (key >= DesktopVirtualKey.VK_OEM_1 && key <= DesktopVirtualKey.VK_OEM_3) ||
+            (key >= DesktopVirtualKey.VK_OEM_4 && key <= DesktopVirtualKey.VK_OEM_8) ||
+            key == DesktopVirtualKey.VK_OEM_102 ||
+            key == DesktopVirtualKey.VK_OEM_CLEAR;
     }
 }

@@ -233,6 +233,20 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
+    /// Non-key virtual keys should be rejected before registration reports an impossible shortcut.
+    /// </summary>
+    [TestMethod]
+    public void Validate_MouseVirtualKeyHotkey_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        profile.Functions[0].Hotkey = "Ctrl+Alt+VK_LBUTTON";
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("keyboard trigger key", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
     /// Unknown hotkey backends should be rejected before runtime registration chooses a fallback backend.
     /// </summary>
     [TestMethod]

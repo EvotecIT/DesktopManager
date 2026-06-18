@@ -69,19 +69,38 @@ public partial class MonitorService {
     }
 
     private static DisplayConfigPathInfo ResolveDisplayConfigPathForMonitor(Monitor monitor) {
-        if (string.IsNullOrWhiteSpace(monitor.DeviceName)) {
-            throw new InvalidOperationException($"Monitor '{monitor.DeviceId}' does not have a display device name.");
+        IReadOnlyList<string> sourceNameCandidates = GetDisplayConfigSourceNameCandidates(monitor);
+        if (sourceNameCandidates.Count == 0) {
+            throw new InvalidOperationException($"Monitor '{monitor.DeviceId}' does not have a display source name.");
         }
 
         IReadOnlyList<DisplayConfigPathInfo> paths = QueryActiveDisplayConfigPaths();
         foreach (DisplayConfigPathInfo path in paths) {
             if (TryGetSourceDeviceName(path, out string sourceDeviceName) &&
-                string.Equals(sourceDeviceName, monitor.DeviceName, StringComparison.OrdinalIgnoreCase)) {
+                sourceNameCandidates.Contains(sourceDeviceName, StringComparer.OrdinalIgnoreCase)) {
                 return path;
             }
         }
 
-        throw new InvalidOperationException($"Unable to resolve active DisplayConfig path for monitor '{monitor.DeviceName}'.");
+        throw new InvalidOperationException($"Unable to resolve active DisplayConfig path for monitor '{string.Join("' or '", sourceNameCandidates)}'.");
+    }
+
+    internal static IReadOnlyList<string> GetDisplayConfigSourceNameCandidates(Monitor monitor) {
+        var candidates = new List<string>();
+        AddDisplayConfigSourceNameCandidate(candidates, monitor.DeviceId);
+        AddDisplayConfigSourceNameCandidate(candidates, monitor.DeviceName);
+        return candidates;
+    }
+
+    private static void AddDisplayConfigSourceNameCandidate(List<string> candidates, string value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return;
+        }
+
+        string candidate = value.Trim();
+        if (!candidates.Contains(candidate, StringComparer.OrdinalIgnoreCase)) {
+            candidates.Add(candidate);
+        }
     }
 
     private static IReadOnlyList<DisplayConfigPathInfo> QueryActiveDisplayConfigPaths() {

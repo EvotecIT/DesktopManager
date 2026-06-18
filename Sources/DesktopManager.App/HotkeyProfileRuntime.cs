@@ -66,7 +66,18 @@ internal sealed class HotkeyProfileRuntime : IDisposable {
 
     public void Stop() {
         foreach (HotkeyRegistrationHandle registration in _registrations) {
-            registration.Unregister();
+            try {
+                registration.Unregister();
+            } catch (Exception ex) {
+                HotkeyDiagnosticsWriter.WriteRuntimeEvent(
+                    "unregistration-failed",
+                    message: ex.Message,
+                    details: new {
+                        registration.RegistrationId,
+                        registration.Backend
+                    });
+                OnStatusChanged($"{registration.Backend} hotkey {registration.RegistrationId}: unregister failed: {ex.Message}");
+            }
         }
 
         _registrations.Clear();
