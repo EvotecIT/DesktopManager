@@ -52,9 +52,9 @@ public sealed class WindowPlacementService {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             window = RefreshWindow(resolvedHandle);
             AddSnapshot(snapshots, $"attempt-{attempt}-before", window);
-            Monitor? targetMonitor = request.Placement == WindowPlacementKind.ExactRectangle
-                ? null
-                : ResolveTargetMonitor(request, window);
+            Monitor? targetMonitor = RequiresTargetMonitor(request.Placement)
+                ? ResolveTargetMonitor(request, window)
+                : null;
 
             if (request.Placement == WindowPlacementKind.ExactRectangle) {
                 ApplyExactRectangle(window, request, snapshots, attempt);
@@ -99,6 +99,11 @@ public sealed class WindowPlacementService {
         if (request.VerificationTimeoutMilliseconds < 0) {
             throw new ArgumentOutOfRangeException(nameof(request), "Verification timeout cannot be negative.");
         }
+    }
+
+    internal static bool RequiresTargetMonitor(WindowPlacementKind placement) {
+        return placement != WindowPlacementKind.ExactRectangle &&
+            placement != WindowPlacementKind.Restore;
     }
 
     private WindowInfo ResolveTargetWindow(IntPtr targetWindowHandle) {

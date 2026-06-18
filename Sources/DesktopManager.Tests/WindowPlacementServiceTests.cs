@@ -64,6 +64,18 @@ public class WindowPlacementServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Restore and exact rectangle placements do not need target monitor resolution.
+    /// </summary>
+    public void RequiresTargetMonitor_RestoreAndExactRectangle_ReturnsFalse() {
+        Assert.IsFalse(WindowPlacementService.RequiresTargetMonitor(WindowPlacementKind.Restore));
+        Assert.IsFalse(WindowPlacementService.RequiresTargetMonitor(WindowPlacementKind.ExactRectangle));
+        Assert.IsTrue(WindowPlacementService.RequiresTargetMonitor(WindowPlacementKind.Maximize));
+        Assert.IsTrue(WindowPlacementService.RequiresTargetMonitor(WindowPlacementKind.LeftHalf));
+        Assert.IsTrue(WindowPlacementService.RequiresTargetMonitor(WindowPlacementKind.RightHalf));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Semantic window placements should use the monitor work area so taskbars are not covered.
     /// </summary>
     public void GetPlacementBounds_WorkAreaAvailable_UsesWorkArea() {

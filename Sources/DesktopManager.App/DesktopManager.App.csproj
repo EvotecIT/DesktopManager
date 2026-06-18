@@ -31,14 +31,14 @@
 
   <Target Name="CopyHotkeyHostDependencies" AfterTargets="Build">
     <ItemGroup>
-      <HotkeyHostFiles Include="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\bin\$(Configuration)\$(DesktopManagerNet10WindowsTfm)\win-x64\native\**\*.*" />
+      <HotkeyHostFiles Include="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\bin\$(Configuration)\$(DesktopManagerNet10WindowsTfm)\win-x64\publish\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(HotkeyHostFiles)" DestinationFiles="@(HotkeyHostFiles->'$(OutDir)DesktopManager.HotkeyHost\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="CopyHotkeyHostDependenciesToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <HotkeyHostPublishFiles Include="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\bin\$(Configuration)\$(DesktopManagerNet10WindowsTfm)\win-x64\native\**\*.*" />
+      <HotkeyHostPublishFiles Include="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\bin\$(Configuration)\$(DesktopManagerNet10WindowsTfm)\win-x64\publish\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(HotkeyHostPublishFiles)" DestinationFiles="@(HotkeyHostPublishFiles->'$(PublishDir)DesktopManager.HotkeyHost\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>

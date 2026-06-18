@@ -71,6 +71,73 @@ public class McpCatalogTests {
     }
 
     [TestMethod]
+    public void McpCatalog_GetTools_IncludesPlacementAndHdrTools() {
+        object[] tools = DesktopManager.Cli.McpCatalog.GetTools();
+        string json = JsonSerializer.Serialize(tools);
+
+        StringAssert.Contains(json, "\"name\":\"place_window\"");
+        StringAssert.Contains(json, "\"name\":\"get_monitor_advanced_color\"");
+        StringAssert.Contains(json, "\"name\":\"set_monitor_hdr\"");
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.IsKnownTool("place_window"));
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.IsKnownTool("get_monitor_advanced_color"));
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.IsKnownTool("set_monitor_hdr"));
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.IsMutatingTool("place_window"));
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.IsMutatingTool("set_monitor_hdr"));
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.AffectsLiveDesktop("place_window"));
+    }
+
+    [TestMethod]
+    public void McpCatalog_GetTools_PlaceWindow_ExposesPlacementArguments() {
+        JsonElement tool = GetTool("place_window");
+
+        JsonElement properties = tool.GetProperty("inputSchema").GetProperty("properties");
+        Assert.IsTrue(properties.TryGetProperty("placement", out _));
+        Assert.IsTrue(properties.TryGetProperty("monitorTarget", out _));
+        Assert.IsTrue(properties.TryGetProperty("monitor", out _));
+        Assert.IsTrue(properties.TryGetProperty("x", out _));
+        Assert.IsTrue(properties.TryGetProperty("y", out _));
+        Assert.IsTrue(properties.TryGetProperty("width", out _));
+        Assert.IsTrue(properties.TryGetProperty("height", out _));
+        Assert.IsTrue(properties.TryGetProperty("verifyAfter", out _));
+    }
+
+    [TestMethod]
+    public void McpCatalog_GetTools_SetMonitorHdr_ExposesEnabledArgument() {
+        JsonElement tool = GetTool("set_monitor_hdr");
+
+        JsonElement properties = tool.GetProperty("inputSchema").GetProperty("properties");
+        Assert.IsTrue(properties.TryGetProperty("enabled", out _));
+        Assert.IsTrue(properties.TryGetProperty("connectedOnly", out _));
+        Assert.IsTrue(properties.TryGetProperty("index", out _));
+    }
+
+    [TestMethod]
+    public void McpCatalog_TryCallTool_PlaceWindowMissingPlacement_ReturnsRequiredPropertyError() {
+        JsonElement arguments = CreateArguments(new {
+            processName = "DesktopManager.TestApp"
+        });
+
+        bool success = DesktopManager.Cli.McpCatalog.TryCallTool("place_window", arguments, out object result, out string? error);
+
+        Assert.IsFalse(success);
+        Assert.IsNotNull(result);
+        Assert.AreEqual("Property 'placement' is required.", error);
+    }
+
+    [TestMethod]
+    public void McpCatalog_TryCallTool_SetMonitorHdrMissingEnabled_ReturnsRequiredPropertyError() {
+        JsonElement arguments = CreateArguments(new {
+            connectedOnly = true
+        });
+
+        bool success = DesktopManager.Cli.McpCatalog.TryCallTool("set_monitor_hdr", arguments, out object result, out string? error);
+
+        Assert.IsFalse(success);
+        Assert.IsNotNull(result);
+        Assert.AreEqual("Property 'enabled' is required.", error);
+    }
+
+    [TestMethod]
     public void McpCatalog_GetTools_IncludesSaveVisualBaseline() {
         object[] tools = DesktopManager.Cli.McpCatalog.GetTools();
 
@@ -401,6 +468,49 @@ public class McpCatalogTests {
         Assert.IsTrue(success);
         CollectionAssert.AreEqual(new[] { "DesktopManager.WinUiHarness" }, processPatterns);
         Assert.IsNull(error);
+    }
+
+    [TestMethod]
+    public void McpCatalog_TryGetMutatingProcessScope_PlaceWindow_RequiresExplicitProcessName() {
+        JsonElement arguments = CreateArguments(new {
+            windowTitle = "Harness",
+            placement = "maximize"
+        });
+
+        bool success = DesktopManager.Cli.McpCatalog.TryGetMutatingProcessScope(
+            "place_window",
+            arguments,
+            out string[] processPatterns,
+            out string? error);
+
+        Assert.IsFalse(success);
+        Assert.AreEqual(0, processPatterns.Length);
+        Assert.AreEqual("Process-scoped MCP safety filters require an explicit 'processName' selector for this tool.", error);
+    }
+
+    [TestMethod]
+    public void McpCatalog_TryGetMutatingProcessScope_PlaceWindow_UsesExplicitProcessName() {
+        JsonElement arguments = CreateArguments(new {
+            processName = "DesktopManager.TestApp",
+            placement = "maximize"
+        });
+
+        bool success = DesktopManager.Cli.McpCatalog.TryGetMutatingProcessScope(
+            "place_window",
+            arguments,
+            out string[] processPatterns,
+            out string? error);
+
+        Assert.IsTrue(success);
+        CollectionAssert.AreEqual(new[] { "DesktopManager.TestApp" }, processPatterns);
+        Assert.IsNull(error);
+    }
+
+    private static JsonElement GetTool(string name) {
+        return DesktopManager.Cli.McpCatalog
+            .GetTools()
+            .Select(entry => JsonDocument.Parse(JsonSerializer.Serialize(entry)).RootElement.Clone())
+            .Single(element => string.Equals(element.GetProperty("name").GetString(), name, StringComparison.Ordinal));
     }
 
     private static JsonElement CreateArguments(object value) {
