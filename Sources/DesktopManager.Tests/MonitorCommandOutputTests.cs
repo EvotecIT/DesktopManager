@@ -19,6 +19,7 @@ public class MonitorCommandOutputTests {
                 Index = 1,
                 IsPrimary = true,
                 IsConnected = true,
+                TopologyName = "Top Left",
                 Left = 0,
                 Top = 0,
                 Right = 1920,
@@ -30,6 +31,7 @@ public class MonitorCommandOutputTests {
                 Index = 2,
                 IsPrimary = false,
                 IsConnected = false,
+                TopologyName = "Top Right",
                 Left = 1920,
                 Top = 0,
                 Right = 3840,
@@ -48,9 +50,11 @@ public class MonitorCommandOutputTests {
         StringAssert.Contains(output, "Idx");
         StringAssert.Contains(output, "Primary");
         StringAssert.Contains(output, "Connected");
+        StringAssert.Contains(output, "Topology");
         StringAssert.Contains(output, "Bounds");
         StringAssert.Contains(output, "DeviceName");
         StringAssert.Contains(output, "Device");
+        StringAssert.Contains(output, "Top Left");
         StringAssert.Contains(output, "1");
         StringAssert.Contains(output, "Yes");
         StringAssert.Contains(output, "0,0,1920,1080");

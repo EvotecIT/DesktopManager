@@ -18,6 +18,9 @@ public sealed class HotkeyProfile {
     /// <summary>Whether closing the window should keep the hotkey host running in the notification area.</summary>
     public bool MinimizeToTray { get; set; } = true;
 
+    /// <summary>Whether saved layout rules should be applied automatically when the app starts.</summary>
+    public bool ApplyRulesOnStartup { get; set; }
+
     /// <summary>Hotkey registration backend.</summary>
     public string HotkeyBackend { get; set; } = HotkeyBackendKinds.LowLevelKeyboardHook;
 
@@ -29,6 +32,9 @@ public sealed class HotkeyProfile {
 
     /// <summary>Configured functions in registration order.</summary>
     public List<HotkeyFunctionDefinition> Functions { get; set; } = new();
+
+    /// <summary>Saved DisplayFusion-style layout profiles and window placement rules.</summary>
+    public List<WindowLayoutProfileDefinition> Layouts { get; set; } = new();
 }
 
 /// <summary>

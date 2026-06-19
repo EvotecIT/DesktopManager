@@ -152,6 +152,10 @@ public class Monitor {
     /// </summary>
     /// <returns>The position of the monitor.</returns>
     public MonitorPosition GetMonitorPosition() {
+        if (string.IsNullOrWhiteSpace(DeviceId)) {
+            return new MonitorPosition(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom);
+        }
+
         return _monitorService.GetMonitorPosition(DeviceId);
     }
 

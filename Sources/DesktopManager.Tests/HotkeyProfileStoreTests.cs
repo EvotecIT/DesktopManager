@@ -131,6 +131,7 @@ public class HotkeyProfileStoreTests {
         try {
             HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
             profile.ProfileName = "Laptop";
+            profile.ApplyRulesOnStartup = true;
             profile.Functions[0].Enabled = false;
             profile.Functions[0].Hotkey = "Ctrl+Alt+Shift+F13";
 
@@ -138,8 +139,36 @@ public class HotkeyProfileStoreTests {
             HotkeyProfile loaded = HotkeyProfileStore.LoadOrCreate(path);
 
             Assert.AreEqual("Laptop", loaded.ProfileName);
+            Assert.IsTrue(loaded.ApplyRulesOnStartup);
             Assert.IsFalse(loaded.Functions[0].Enabled);
             Assert.AreEqual("Ctrl+Alt+Shift+F13", loaded.Functions[0].Hotkey);
+            Assert.IsTrue(HotkeyProfileValidator.Validate(loaded).IsValid);
+        } finally {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Saved layout profiles and rules should round-trip with the hotkey profile document.
+    /// </summary>
+    [TestMethod]
+    public void SaveAndLoad_RoundTripsLayoutRules() {
+        string directory = CreateTemporaryDirectory();
+        string path = Path.Combine(directory, "profile.json");
+
+        try {
+            HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+            profile.Layouts.Add(CreateLayoutRuleProfile());
+
+            HotkeyProfileStore.Save(path, profile);
+            HotkeyProfile loaded = HotkeyProfileStore.LoadOrCreate(path);
+
+            Assert.AreEqual(1, loaded.Layouts.Count);
+            Assert.AreEqual("Work layout", loaded.Layouts[0].Name);
+            Assert.AreEqual("device-id:DISPLAY1", loaded.Layouts[0].MonitorStableKeys[0]);
+            Assert.AreEqual("PowerShell console", loaded.Layouts[0].Rules[0].Name);
+            Assert.AreEqual("pwsh*", loaded.Layouts[0].Rules[0].Match.ProcessNamePattern);
+            Assert.AreEqual(WindowPlacements.RightHalf, loaded.Layouts[0].Rules[0].Action.Placement);
             Assert.IsTrue(HotkeyProfileValidator.Validate(loaded).IsValid);
         } finally {
             Directory.Delete(directory, recursive: true);
@@ -398,6 +427,64 @@ public class HotkeyProfileStoreTests {
     }
 
     /// <summary>
+    /// Layout rules should reuse the same action validation as hotkeys.
+    /// </summary>
+    [TestMethod]
+    public void Validate_LayoutRuleInvalidPlacement_ReturnsError() {
+        HotkeyProfile profile = HotkeyProfileDefaults.CreateDefaultProfile();
+        WindowLayoutProfileDefinition layout = CreateLayoutRuleProfile();
+        layout.Rules[0].Action.Placement = "RigthHalf";
+        profile.Layouts.Add(layout);
+
+        HotkeyProfileValidationResult result = HotkeyProfileValidator.Validate(profile);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Any(error => error.Contains("invalid placement", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Matching layout rules should create placement requests for the shared placement engine.
+    /// </summary>
+    [TestMethod]
+    public void WindowRuleEvaluator_MatchingRule_CreatesPlacementRequest() {
+        WindowLayoutProfileDefinition layout = CreateLayoutRuleProfile();
+        WindowRuleObservation window = new() {
+            Handle = new IntPtr(0x1234),
+            Title = "Administrator: PowerShell",
+            ProcessName = "pwsh",
+            ProcessPath = @"C:\Program Files\PowerShell\7\pwsh.exe"
+        };
+
+        WindowRuleEvaluation evaluation = WindowRuleEvaluator.Evaluate(new[] { layout }, window);
+
+        Assert.IsTrue(evaluation.Matched);
+        Assert.AreEqual("PowerShell console", evaluation.Rule!.Name);
+        Assert.IsNotNull(evaluation.Request);
+        Assert.AreEqual(new IntPtr(0x1234), evaluation.Request!.TargetWindowHandle);
+        Assert.AreEqual(WindowPlacementKind.RightHalf, evaluation.Request.Placement);
+        Assert.AreEqual(WindowMonitorTargetKind.TopRight, evaluation.Request.MonitorTarget);
+        Assert.AreEqual(0, evaluation.Request.MonitorIndex);
+    }
+
+    /// <summary>
+    /// Nonmatching windows should not produce placement requests.
+    /// </summary>
+    [TestMethod]
+    public void WindowRuleEvaluator_NonmatchingRule_ReturnsNoMatch() {
+        WindowLayoutProfileDefinition layout = CreateLayoutRuleProfile();
+        WindowRuleObservation window = new() {
+            Title = "Notepad",
+            ProcessName = "notepad",
+            ProcessPath = @"C:\Windows\notepad.exe"
+        };
+
+        WindowRuleEvaluation evaluation = WindowRuleEvaluator.Evaluate(new[] { layout }, window);
+
+        Assert.IsFalse(evaluation.Matched);
+        Assert.IsNull(evaluation.Request);
+    }
+
+    /// <summary>
     /// Unknown monitor targets should be rejected before a hotkey can move to the current monitor by accident.
     /// </summary>
     [TestMethod]
@@ -469,6 +556,34 @@ public class HotkeyProfileStoreTests {
         string directory = Path.Combine(Path.GetTempPath(), "DesktopManager.App.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         return directory;
+    }
+
+    private static WindowLayoutProfileDefinition CreateLayoutRuleProfile() {
+        return new WindowLayoutProfileDefinition {
+            Id = "work",
+            Name = "Work layout",
+            MonitorStableKeys = {
+                "device-id:DISPLAY1"
+            },
+            Rules = {
+                new WindowRuleDefinition {
+                    Id = "powershell-console",
+                    Name = "PowerShell console",
+                    Match = new WindowRuleMatchDefinition {
+                        TitlePattern = "*PowerShell*",
+                        ProcessNamePattern = "pwsh*",
+                        ProcessPathPattern = "*PowerShell*"
+                    },
+                    Action = new WindowHotkeyActionDefinition {
+                        Target = WindowTargets.ActiveWindow,
+                        Monitor = MonitorTargets.TopRight,
+                        MonitorIndex = 0,
+                        Placement = WindowPlacements.RightHalf,
+                        VerifyAfterAction = true
+                    }
+                }
+            }
+        };
     }
 
     private static void AssertExactRectangle(HotkeyProfile profile, string id, int left, int top, int width, int height) {

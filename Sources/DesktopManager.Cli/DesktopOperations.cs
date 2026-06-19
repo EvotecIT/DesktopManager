@@ -745,22 +745,40 @@ internal static partial class DesktopOperations {
     }
 
     public static IReadOnlyList<MonitorResult> ListMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
-        return ExecuteCore(() => new DesktopAutomationService().GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName)
-            .Select(monitor => new MonitorResult {
-                Index = monitor.Index,
-                DeviceName = monitor.DeviceName,
-                DeviceString = monitor.DeviceString,
-                DeviceId = monitor.DeviceId,
-                IsConnected = monitor.IsConnected,
-                IsPrimary = monitor.IsPrimary,
-                Left = monitor.PositionLeft,
-                Top = monitor.PositionTop,
-                Right = monitor.PositionRight,
-                Bottom = monitor.PositionBottom,
-                Manufacturer = monitor.Manufacturer,
-                SerialNumber = monitor.SerialNumber
-            })
-            .ToArray());
+        return ExecuteCore(() => {
+            IReadOnlyList<Monitor> monitors = new DesktopAutomationService()
+                .GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
+            Dictionary<int, MonitorTopologyItem> topologyItems = MonitorTopologySnapshot.FromMonitors(monitors)
+                .Items
+                .ToDictionary(item => item.Monitor.Index);
+
+            return monitors
+                .Select(monitor => {
+                    MonitorIdentity identity = MonitorIdentity.FromMonitor(monitor);
+                    topologyItems.TryGetValue(monitor.Index, out MonitorTopologyItem? topologyItem);
+
+                    return new MonitorResult {
+                        Index = monitor.Index,
+                        DeviceName = monitor.DeviceName,
+                        DeviceString = monitor.DeviceString,
+                        DeviceId = monitor.DeviceId,
+                        IsConnected = monitor.IsConnected,
+                        IsPrimary = monitor.IsPrimary,
+                        Left = monitor.PositionLeft,
+                        Top = monitor.PositionTop,
+                        Right = monitor.PositionRight,
+                        Bottom = monitor.PositionBottom,
+                        StableKey = identity.StableKey,
+                        IdentitySource = identity.Source,
+                        TopologyName = topologyItem?.TopologyName ?? string.Empty,
+                        TopologyRow = topologyItem?.Row,
+                        TopologyColumn = topologyItem?.Column,
+                        Manufacturer = monitor.Manufacturer,
+                        SerialNumber = monitor.SerialNumber
+                    };
+                })
+                .ToArray();
+        });
     }
 
     public static IReadOnlyList<MonitorBrightnessResult> GetMonitorBrightness(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {

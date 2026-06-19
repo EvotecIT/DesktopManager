@@ -42,6 +42,9 @@
                     Grid.Column="1"
                     Orientation="Horizontal"
                     Spacing="18">
+                    <Button
+                        Content="Apply Rules"
+                        Click="ApplyRulesButton_Click" />
                     <ToggleSwitch
                         x:Name="EnabledSwitch"
                         Header="Hotkeys"
@@ -62,6 +65,12 @@
                         OffContent="Off"
                         OnContent="On"
                         Toggled="MinimizeToTraySwitch_Toggled" />
+                    <ToggleSwitch
+                        x:Name="ApplyRulesOnStartupSwitch"
+                        Header="Rules"
+                        OffContent="Manual"
+                        OnContent="Auto"
+                        Toggled="ApplyRulesOnStartupSwitch_Toggled" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -93,6 +102,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel>
@@ -107,6 +117,11 @@
 
                         <Button
                             Grid.Column="1"
+                            Content="New Action"
+                            Click="NewActionButton_Click" />
+
+                        <Button
+                            Grid.Column="2"
                             Content="Reload"
                             Click="ReloadButton_Click" />
                     </Grid>
@@ -276,6 +291,8 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock
@@ -291,10 +308,22 @@
                                 Click="TestActionButton_Click" />
 
                             <Button
-                                x:Name="SaveActionButton"
+                                x:Name="DiagnoseHotkeyButton"
                                 Grid.Column="2"
+                                Content="Diagnose"
+                                Click="DiagnoseHotkeyButton_Click" />
+
+                            <Button
+                                x:Name="SaveActionButton"
+                                Grid.Column="3"
                                 Content="Save"
                                 Click="SaveActionButton_Click" />
+
+                            <Button
+                                x:Name="DeleteActionButton"
+                                Grid.Column="4"
+                                Content="Delete"
+                                Click="DeleteActionButton_Click" />
                         </Grid>
 
                         <InfoBar
@@ -303,11 +332,29 @@
                             Severity="Warning"
                             Title="Profile warning" />
 
-                        <TextBlock
+                        <TextBox
                             x:Name="SelectedNameText"
-                            FontWeight="SemiBold"
+                            Header="Name"
                             Text="No function selected"
                             TextWrapping="Wrap" />
+
+                        <ToggleSwitch
+                            x:Name="SelectedActionEnabledSwitch"
+                            Header="Action"
+                            OffContent="Disabled"
+                            OnContent="Enabled" />
+
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                x:Name="DiagnosticSummaryText"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="No diagnostic selected"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                x:Name="DiagnosticDetailsText"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
 
                         <Grid ColumnSpacing="12" RowSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -323,14 +370,16 @@
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Text="Hotkey" />
-                                <TextBlock x:Name="SelectedHotkeyText" />
+                                <TextBox x:Name="SelectedHotkeyBox" />
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Spacing="4">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Text="Placement" />
-                                <TextBlock x:Name="SelectedPlacementText" />
+                                <ComboBox
+                                    x:Name="SelectedPlacementComboBox"
+                                    HorizontalAlignment="Stretch" />
                             </StackPanel>
 
                             <StackPanel Grid.Row="1" Spacing="4">
@@ -358,6 +407,94 @@
                             Header="Verify after action"
                             OffContent="Off"
                             OnContent="On" />
+
+                        <Grid ColumnSpacing="12" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                x:Name="RuleTitlePatternBox"
+                                Header="Rule title pattern"
+                                PlaceholderText="*" />
+
+                            <TextBox
+                                x:Name="RuleProcessPatternBox"
+                                Grid.Column="1"
+                                Header="Rule process pattern"
+                                PlaceholderText="pwsh*" />
+
+                            <Button
+                                x:Name="AddRuleButton"
+                                Grid.Column="2"
+                                VerticalAlignment="Bottom"
+                                Content="Add Rule"
+                                Click="AddRuleButton_Click" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="10" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="96" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Text="Layout Rules" />
+
+                            <Button
+                                x:Name="ToggleRuleButton"
+                                Grid.Column="1"
+                                Content="Enable/Disable"
+                                Click="ToggleRuleButton_Click" />
+
+                            <Button
+                                x:Name="DeleteRuleButton"
+                                Grid.Column="2"
+                                Content="Delete Rule"
+                                Click="DeleteRuleButton_Click" />
+
+                            <ListView
+                                x:Name="RulesList"
+                                Grid.Row="1"
+                                Grid.ColumnSpan="3"
+                                SelectionMode="Single">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="local:WindowRuleOption">
+                                        <Grid Padding="4" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <CheckBox
+                                                IsChecked="{Binding IsEnabled}"
+                                                IsHitTestVisible="False" />
+
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock
+                                                    FontWeight="SemiBold"
+                                                    Text="{Binding DisplayName}"
+                                                    TextTrimming="CharacterEllipsis" />
+                                                <TextBlock
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                    Text="{Binding Details}"
+                                                    TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Grid>
                     </StackPanel>
 
                     <Grid Grid.Row="1" RowSpacing="8">

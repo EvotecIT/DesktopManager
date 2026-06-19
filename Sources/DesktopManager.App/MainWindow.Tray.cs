@@ -14,10 +14,14 @@ public sealed partial class MainWindow {
     private const int TrayIconId = 1;
     private const int OpenMenuCommand = 1001;
     private const int ExitMenuCommand = 1002;
+    private const int ApplyRulesMenuCommand = 1003;
+    private const int ToggleHotkeysMenuCommand = 1004;
+    private const int ReloadProfileMenuCommand = 1005;
     private const uint NIF_MESSAGE = 0x00000001;
     private const uint NIF_ICON = 0x00000002;
     private const uint NIF_TIP = 0x00000004;
     private const uint NIM_ADD = 0x00000000;
+    private const uint NIM_MODIFY = 0x00000001;
     private const uint NIM_DELETE = 0x00000002;
     private const uint MF_STRING = 0x00000000;
     private const uint TPM_RETURNCMD = 0x0100;
@@ -83,6 +87,8 @@ public sealed partial class MainWindow {
         _trayIconAdded = Shell_NotifyIcon(NIM_ADD, ref data);
         if (!_trayIconAdded) {
             AddLog("Tray icon unavailable; close-to-tray disabled until the icon can be added.");
+        } else {
+            UpdateTrayTooltip();
         }
     }
 
@@ -91,11 +97,20 @@ public sealed partial class MainWindow {
         IntPtr menu = CreatePopupMenu();
         try {
             AppendMenu(menu, MF_STRING, OpenMenuCommand, "Open");
+            AppendMenu(menu, MF_STRING, ToggleHotkeysMenuCommand, _profile.Enabled ? "Disable Hotkeys" : "Enable Hotkeys");
+            AppendMenu(menu, MF_STRING, ApplyRulesMenuCommand, "Apply Rules");
+            AppendMenu(menu, MF_STRING, ReloadProfileMenuCommand, "Reload Profile");
             AppendMenu(menu, MF_STRING, ExitMenuCommand, "Exit");
             SetForegroundWindow(_windowHandle);
             int command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, point.X, point.Y, 0, _windowHandle, IntPtr.Zero);
             if (command == OpenMenuCommand) {
                 ShowFromTray();
+            } else if (command == ToggleHotkeysMenuCommand) {
+                ToggleHotkeysFromTray();
+            } else if (command == ApplyRulesMenuCommand) {
+                ApplyLayoutRules(addDetailsToLog: true);
+            } else if (command == ReloadProfileMenuCommand) {
+                ReloadProfileFromTray();
             } else if (command == ExitMenuCommand) {
                 ExitFromTray();
             }
@@ -105,6 +120,10 @@ public sealed partial class MainWindow {
     }
 
     private NOTIFYICONDATA CreateNotifyIconData() {
+        return CreateNotifyIconData("DesktopManager");
+    }
+
+    private NOTIFYICONDATA CreateNotifyIconData(string tooltip) {
         return new NOTIFYICONDATA {
             cbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
             hWnd = _windowHandle,
@@ -112,8 +131,17 @@ public sealed partial class MainWindow {
             uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
             uCallbackMessage = TrayCallbackMessage,
             hIcon = LoadIcon(IntPtr.Zero, new IntPtr(32512)),
-            szTip = "DesktopManager"
+            szTip = tooltip.Length <= 127 ? tooltip : tooltip.Substring(0, 127)
         };
+    }
+
+    private void UpdateTrayTooltip(string tooltip) {
+        if (!_trayIconAdded) {
+            return;
+        }
+
+        NOTIFYICONDATA data = CreateNotifyIconData(tooltip);
+        Shell_NotifyIcon(NIM_MODIFY, ref data);
     }
 
     private void DisposeTray() {

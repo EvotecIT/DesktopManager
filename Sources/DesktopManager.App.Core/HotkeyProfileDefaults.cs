@@ -57,6 +57,7 @@ public static class HotkeyProfileDefaults {
         }
 
         profile.LowLevelHookExclusiveProcessNames ??= CreateDefaultExclusiveProcessNames();
+        profile.Layouts ??= new List<WindowLayoutProfileDefinition>();
     }
 
     private static HotkeyFunctionDefinition CreateMonitorMove(string id, string name, string hotkey, string monitor, int monitorIndex) {

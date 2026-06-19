@@ -83,8 +83,8 @@ public class LowLevelKeyboardHotkeyRegistrationTests {
     }
 
     [TestMethod]
-    /// <summary>Does not capture filtered registrations outside their foreground process scope.</summary>
-    public void CanCaptureRegistration_ReturnsFalse_WhenForegroundProcessFilterDoesNotMatch() {
+    /// <summary>Captures matching hotkeys globally even when legacy foreground process metadata is configured.</summary>
+    public void CanCaptureRegistration_ReturnsTrue_WhenForegroundProcessMetadataIsConfigured() {
         var registration = new LowLevelKeyboardHotkeyRegistration(
             1,
             HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift,
@@ -100,7 +100,7 @@ public class LowLevelKeyboardHotkeyRegistrationTests {
             VirtualKey.VK_RSHIFT
         };
 
-        Assert.IsFalse(LowLevelKeyboardHotkeyService.CanCaptureRegistration(registration, VirtualKey.VK_6, down.Contains, IntPtr.Zero));
+        Assert.IsTrue(LowLevelKeyboardHotkeyService.CanCaptureRegistration(registration, VirtualKey.VK_6, down.Contains, IntPtr.Zero));
     }
 
     [TestMethod]
