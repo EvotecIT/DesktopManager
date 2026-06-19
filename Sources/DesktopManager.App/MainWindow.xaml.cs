@@ -15,7 +15,8 @@ public sealed partial class MainWindow : Window {
     private readonly ObservableCollection<MonitorAdvancedColorOption> _advancedColorOptions = new();
     private readonly List<MonitorOption> _monitorOptions = new();
     private readonly global::DesktopManager.Monitors _monitors = new();
-    private HotkeyProfile _profile;
+    private HotkeyProfile _profile = HotkeyProfileDefaults.CreateDefaultProfile();
+    private string? _profileLoadError;
     private bool _loadingProfile = true;
 
     /// <summary>
@@ -33,19 +34,23 @@ public sealed partial class MainWindow : Window {
         InitializeTray();
         RefreshMonitorOptions();
         RefreshAdvancedColorStatus();
-        _profile = HotkeyProfileStore.LoadOrCreate(_profilePath);
+        LoadProfileRecoverably();
         LoadProfileIntoView();
         StartRuntime();
     }
 
     private void ReloadButton_Click(object sender, RoutedEventArgs e) {
-        _profile = HotkeyProfileStore.LoadOrCreate(_profilePath);
+        LoadProfileRecoverably();
         LoadProfileIntoView();
         StartRuntime();
     }
 
     private void EnabledSwitch_Toggled(object sender, RoutedEventArgs e) {
         if (_loadingProfile) {
+            return;
+        }
+
+        if (TryBlockRecoveryProfileEdit()) {
             return;
         }
 
@@ -59,6 +64,10 @@ public sealed partial class MainWindow : Window {
             return;
         }
 
+        if (TryBlockRecoveryProfileEdit()) {
+            return;
+        }
+
         _profile.StartWithWindows = StartWithWindowsSwitch.IsOn;
         StartupRegistrationService.SetEnabled(_profile.StartWithWindows);
         SaveProfile();
@@ -67,6 +76,10 @@ public sealed partial class MainWindow : Window {
 
     private void MinimizeToTraySwitch_Toggled(object sender, RoutedEventArgs e) {
         if (_loadingProfile) {
+            return;
+        }
+
+        if (TryBlockRecoveryProfileEdit()) {
             return;
         }
 
@@ -89,6 +102,10 @@ public sealed partial class MainWindow : Window {
     }
 
     private void SaveActionButton_Click(object sender, RoutedEventArgs e) {
+        if (TryBlockRecoveryProfileEdit()) {
+            return;
+        }
+
         if (FunctionsList.SelectedItem is not HotkeyFunctionDefinition function) {
             AddLog("No function selected.");
             return;
@@ -134,12 +151,23 @@ public sealed partial class MainWindow : Window {
             _loadingProfile = false;
         }
 
-        ValidationInfo.IsOpen = !validation.IsValid;
-        ValidationInfo.Message = validation.IsValid ? string.Empty : string.Join(" ", validation.Errors);
+        List<string> validationMessages = validation.Errors.ToList();
+        if (!string.IsNullOrWhiteSpace(_profileLoadError)) {
+            validationMessages.Insert(0, _profileLoadError);
+        }
+
+        ValidationInfo.IsOpen = validationMessages.Count > 0;
+        ValidationInfo.Message = string.Join(" ", validationMessages);
     }
 
     private void StartRuntime() {
         HotkeyProfileValidationResult validation = HotkeyProfileValidator.Validate(_profile);
+        if (!string.IsNullOrWhiteSpace(_profileLoadError)) {
+            RuntimeStatusText.Text = "Runtime not started: profile could not be loaded.";
+            _runtime.Stop();
+            return;
+        }
+
         if (!validation.IsValid) {
             RuntimeStatusText.Text = "Runtime not started: profile has validation errors.";
             _runtime.Stop();
@@ -152,6 +180,30 @@ public sealed partial class MainWindow : Window {
         } catch (Exception ex) {
             RuntimeStatusText.Text = $"Runtime failed: {ex.Message}";
         }
+    }
+
+    private void LoadProfileRecoverably() {
+        try {
+            _profile = HotkeyProfileStore.LoadOrCreate(_profilePath);
+            _profileLoadError = null;
+        } catch (Exception ex) {
+            _profile = HotkeyProfileDefaults.CreateDefaultProfile();
+            _profile.Enabled = false;
+            _profile.ProfileName = "Recovery";
+            _profileLoadError = $"Could not load hotkey profile. Fix or replace '{_profilePath}', then reload. {ex.Message}";
+            AddLog(_profileLoadError);
+        }
+    }
+
+    private bool TryBlockRecoveryProfileEdit() {
+        if (string.IsNullOrWhiteSpace(_profileLoadError)) {
+            return false;
+        }
+
+        AddLog("Profile changes are disabled until the profile file reloads successfully.");
+        LoadProfileIntoView();
+        StartRuntime();
+        return true;
     }
 
     private void ShowSelectedFunction(HotkeyFunctionDefinition? function) {

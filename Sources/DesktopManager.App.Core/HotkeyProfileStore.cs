@@ -74,7 +74,25 @@ public static class HotkeyProfileStore {
             Directory.CreateDirectory(directory);
         }
 
-        using FileStream stream = File.Create(path);
-        JsonSerializer.Serialize(stream, profile, JsonContext.HotkeyProfile);
+        string tempPath = Path.Combine(
+            directory ?? Path.GetTempPath(),
+            $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+
+        try {
+            using (FileStream stream = new(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None)) {
+                JsonSerializer.Serialize(stream, profile, JsonContext.HotkeyProfile);
+                stream.Flush(flushToDisk: true);
+            }
+
+            if (File.Exists(path)) {
+                File.Replace(tempPath, path, null);
+            } else {
+                File.Move(tempPath, path);
+            }
+        } finally {
+            if (File.Exists(tempPath)) {
+                File.Delete(tempPath);
+            }
+        }
     }
 }

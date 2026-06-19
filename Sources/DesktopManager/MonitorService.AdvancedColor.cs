@@ -202,12 +202,17 @@ public partial class MonitorService {
         result.AdvancedColorSupported = info.AdvancedColorSupported;
         result.AdvancedColorEnabled = info.AdvancedColorEnabled;
         result.WideColorEnforced = info.WideColorEnforced;
-        result.HdrSupported = info.AdvancedColorSupported && info.WideColorEnforced;
-        result.HdrEnabled = info.AdvancedColorEnabled && info.WideColorEnforced;
+        result.HdrSupported = IsLegacyHdrAdvancedColorState(info.AdvancedColorSupported, info.WideColorEnforced);
+        result.HdrEnabled = IsLegacyHdrAdvancedColorState(info.AdvancedColorEnabled, info.WideColorEnforced);
         result.AdvancedColorLimitedByPolicy = info.AdvancedColorForceDisabled;
         result.ColorEncoding = info.ColorEncoding.ToString();
         result.BitsPerColorChannel = info.BitsPerColorChannel;
         return result;
+    }
+
+    private static bool IsLegacyHdrAdvancedColorState(bool advancedColorState, bool wideColorEnforced) {
+        // Legacy packets do not split HDR from SDR/WCG Advanced Color. Wide-color enforcement identifies the WCG-only path.
+        return advancedColorState && !wideColorEnforced;
     }
 
     private static bool TryGetSdrWhiteLevel(DisplayConfigPathInfo path, out uint sdrWhiteLevel) {
