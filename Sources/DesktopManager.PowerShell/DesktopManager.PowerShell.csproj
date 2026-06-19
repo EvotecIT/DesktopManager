@@ -47,7 +47,7 @@
     <ItemGroup Condition="'$(TargetFramework)' != '$(DesktopManagerNet10WindowsTfm)'">
         <!-- This is needed for XmlDoc2CmdletDoc to generate a PowerShell documentation. DLL itself
         will be removed/hidden -->
-        <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.6.0">
+        <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.7.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
