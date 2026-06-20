@@ -70,7 +70,7 @@ public class WindowPositionTests {
 
         var manager = new WindowManager();
         var dummy = new WindowInfo { Handle = IntPtr.Zero };
-        Assert.ThrowsException<InvalidOperationException>(() => manager.GetWindowPosition(dummy));
+        Assert.ThrowsExactly<InvalidOperationException>(() => manager.GetWindowPosition(dummy));
     }
 
     [TestMethod]

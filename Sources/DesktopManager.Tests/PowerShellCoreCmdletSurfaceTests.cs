@@ -6,7 +6,7 @@ namespace DesktopManager.Tests;
 /// Tests for PowerShell cmdlets that expose shared DesktopManager core helpers.
 /// </summary>
 public class PowerShellCoreCmdletSurfaceTests {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("CmdletGetDesktopClipboardText", "RetryCount", "RetryDelayMilliseconds")]
     [DataRow("CmdletSetDesktopClipboardText", "Text", "RetryCount", "RetryDelayMilliseconds", "PassThru")]
     [DataRow("CmdletGetDesktopBackgroundColor")]

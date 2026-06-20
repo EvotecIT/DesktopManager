@@ -98,7 +98,7 @@ public class KeyboardInputServiceTests {
         Assert.IsTrue(upperStroke.ShiftRequired);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow('[', (ushort)0x1A, false)]
     [DataRow('{', (ushort)0x1A, true)]
     [DataRow(']', (ushort)0x1B, false)]

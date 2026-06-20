@@ -47,7 +47,7 @@ public class WindowVisibilityTests {
 
         var manager = new WindowManager();
         var dummy = new WindowInfo { Handle = IntPtr.Zero };
-        Assert.ThrowsException<InvalidOperationException>(() => manager.ShowWindow(dummy, true));
+        Assert.ThrowsExactly<InvalidOperationException>(() => manager.ShowWindow(dummy, true));
     }
 
     [TestMethod]

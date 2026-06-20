@@ -16,7 +16,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_ObserveWindowText_NullOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.ObserveWindowText(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.ObserveWindowText(null!));
     }
 
     [TestMethod]
@@ -26,7 +26,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_ObserveWindowText_InvalidMaxLength_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.ObserveWindowText(
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ObserveWindowText(
             new WindowQueryOptions { TitlePattern = "__never__" },
             observationOptions: new DesktopTextObservationOptions {
                 MaxObservedTextLength = 0
@@ -40,7 +40,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_GetWindow_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetWindow(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetWindow(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -50,7 +50,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_GetControl_ZeroWindowHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetControl(IntPtr.Zero, new IntPtr(1)));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetControl(IntPtr.Zero, new IntPtr(1)));
     }
 
     [TestMethod]
@@ -60,7 +60,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_GetControl_ZeroControlHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetControl(new IntPtr(1), IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetControl(new IntPtr(1), IntPtr.Zero));
     }
 
     [TestMethod]
@@ -70,7 +70,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_GetFocusedControlObservation_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetFocusedControlObservation(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetFocusedControlObservation(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -94,7 +94,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_ObserveWindowText_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.ObserveWindowText(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.ObserveWindowText(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -118,7 +118,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_WaitForWindowToClose_NullOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.WaitForWindowToClose(null!, 1000, 100));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.WaitForWindowToClose(null!, 1000, 100));
     }
 
     [TestMethod]
@@ -128,7 +128,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_WaitForWindowToLoseFocus_ZeroInterval_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.WaitForWindowToLoseFocus(new WindowQueryOptions {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.WaitForWindowToLoseFocus(new WindowQueryOptions {
             TitlePattern = "__never__"
         }, 1000, 0));
     }
@@ -140,7 +140,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_WaitForObservedText_EmptyExpectedText_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.WaitForObservedText(new WindowQueryOptions {
+        Assert.ThrowsExactly<ArgumentException>(() => automation.WaitForObservedText(new WindowQueryOptions {
             TitlePattern = "__never__"
         }, string.Empty, 1000, 10));
     }
@@ -152,7 +152,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_WaitForObservedText_ZeroInterval_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.WaitForObservedText(new WindowQueryOptions {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.WaitForObservedText(new WindowQueryOptions {
             TitlePattern = "__never__"
         }, "sample", 1000, 0));
     }
@@ -164,7 +164,7 @@ public class DesktopAutomationObservationTests {
     public void DesktopAutomationService_WaitForObservedText_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.WaitForObservedText(IntPtr.Zero, "sample", 1000, 10));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.WaitForObservedText(IntPtr.Zero, "sample", 1000, 10));
     }
 
     [TestMethod]

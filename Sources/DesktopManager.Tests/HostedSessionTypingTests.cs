@@ -110,7 +110,7 @@ public class HostedSessionTypingTests {
         };
 
         focusThread.Start();
-        InvalidOperationException exception = Assert.ThrowsException<InvalidOperationException>(() => automation.TypeWindowText(
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() => automation.TypeWindowText(
             session.CreateWindowQuery(),
             longText,
             paste: false,

@@ -130,7 +130,7 @@ public class DesktopAutomationProcessWorkflowTests {
     public void LaunchAndWaitForWindow_ZeroTimeout_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.LaunchAndWaitForWindow(new DesktopProcessLaunchAndWaitOptions {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.LaunchAndWaitForWindow(new DesktopProcessLaunchAndWaitOptions {
             FilePath = "notepad.exe",
             TimeoutMilliseconds = 0
         }));
@@ -143,7 +143,7 @@ public class DesktopAutomationProcessWorkflowTests {
     public void LaunchAndWaitForWindow_ZeroInterval_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.LaunchAndWaitForWindow(new DesktopProcessLaunchAndWaitOptions {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.LaunchAndWaitForWindow(new DesktopProcessLaunchAndWaitOptions {
             FilePath = "notepad.exe",
             IntervalMilliseconds = 0
         }));

@@ -49,6 +49,5 @@ public class MonitorWatcherTests {
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
-        Assert.IsTrue(true);
     }
 }

@@ -104,7 +104,7 @@ public class WindowLayoutTests {
         var path = System.IO.Path.GetTempFileName();
         System.IO.File.WriteAllText(path, "{ invalid }");
 
-        Assert.ThrowsException<InvalidOperationException>(() => manager.LoadLayout(path));
+        Assert.ThrowsExactly<InvalidOperationException>(() => manager.LoadLayout(path));
 
         System.IO.File.Delete(path);
     }
@@ -128,7 +128,7 @@ public class WindowLayoutTests {
         var json = "{\"Windows\":[{\"Title\":\"Test\"}]}";
         System.IO.File.WriteAllText(path, json);
 
-        Assert.ThrowsException<System.IO.InvalidDataException>(() => manager.LoadLayout(path, validate: true));
+        Assert.ThrowsExactly<System.IO.InvalidDataException>(() => manager.LoadLayout(path, validate: true));
 
         System.IO.File.Delete(path);
     }

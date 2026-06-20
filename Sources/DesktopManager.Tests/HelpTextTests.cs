@@ -6,7 +6,7 @@ namespace DesktopManager.Tests;
 /// Tests for CLI help topic routing and advertised help commands.
 /// </summary>
 public class HelpTextTests {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("desktop", "Desktop commands:")]
     [DataRow("window", "Window commands:")]
     [DataRow("control", "Control commands:")]

@@ -36,8 +36,6 @@ public class WindowKeepAliveTests {
         } finally {
             keepAlive.Dispose();
         }
-
-        Assert.IsTrue(true);
     }
 
     [TestMethod]

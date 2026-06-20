@@ -45,6 +45,6 @@ public class WindowManagerWaitTests {
         }
 
         var manager = new WindowManager();
-        Assert.ThrowsException<TimeoutException>(() => manager.WaitWindow("__nonexistent__" + Guid.NewGuid(), 200));
+        Assert.ThrowsExactly<TimeoutException>(() => manager.WaitWindow("__nonexistent__" + Guid.NewGuid(), 200));
     }
 }

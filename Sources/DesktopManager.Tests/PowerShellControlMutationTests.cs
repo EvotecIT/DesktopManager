@@ -89,7 +89,7 @@ public class PowerShellControlMutationTests {
         Assert.AreEqual(1, record.VerificationNotes.Count);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("CmdletInvokeDesktopControlClick")]
     [DataRow("CmdletSendDesktopControlKey")]
     [DataRow("CmdletSetDesktopControlCheck")]
@@ -110,7 +110,7 @@ public class PowerShellControlMutationTests {
         Assert.IsNotNull(passThruProperty);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("CmdletGetDesktopControlState", "Control")]
     [DataRow("CmdletSetDesktopControlFocus", "Control", "EnsureForeground", "PassThru")]
     [DataRow("CmdletSetDesktopControlEnabled", "Control", "Enabled", "PassThru")]

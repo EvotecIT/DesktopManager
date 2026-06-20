@@ -10,13 +10,13 @@ public class PrivilegeCheckerTests {
     [TestMethod]
     public void EnsureElevated_ThrowsWhenNotElevated() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.ThrowsException<PlatformNotSupportedException>(() => PrivilegeChecker.EnsureElevated());
+            Assert.ThrowsExactly<PlatformNotSupportedException>(() => PrivilegeChecker.EnsureElevated());
         } else {
             if (PrivilegeChecker.IsElevated) {
                 Assert.Inconclusive("Test requires non-elevated context");
             }
 
-            Assert.ThrowsException<InvalidOperationException>(() => PrivilegeChecker.EnsureElevated());
+            Assert.ThrowsExactly<InvalidOperationException>(() => PrivilegeChecker.EnsureElevated());
         }
     }
 }

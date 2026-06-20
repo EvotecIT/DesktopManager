@@ -58,7 +58,7 @@ public class CliApplicationTests {
         StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("window")]
     [DataRow("control")]
     [DataRow("desktop")]
@@ -84,7 +84,7 @@ public class CliApplicationTests {
         StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("window")]
     [DataRow("control")]
     [DataRow("desktop")]

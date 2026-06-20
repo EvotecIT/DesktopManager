@@ -26,7 +26,7 @@ public class ScreenshotServiceTests {
     /// Test for CaptureRegion_InvalidDimensions_Throws.
     /// </summary>
     public void CaptureRegion_InvalidDimensions_Throws() {
-        Assert.ThrowsException<ArgumentException>(() => ScreenshotService.CaptureRegion(0, 0, 0, 0));
+        Assert.ThrowsExactly<ArgumentException>(() => ScreenshotService.CaptureRegion(0, 0, 0, 0));
     }
 
     [TestMethod]
@@ -48,7 +48,7 @@ public class ScreenshotServiceTests {
             MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CXVIRTUALSCREEN),
             MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CYVIRTUALSCREEN));
 #endif
-        Assert.ThrowsException<ArgumentOutOfRangeException>(
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(
             () => ScreenshotService.CaptureRegion(bounds.Right + 1, bounds.Bottom + 1, 10, 10));
     }
 
@@ -78,7 +78,7 @@ public class ScreenshotServiceTests {
             Assert.Inconclusive("Test requires Windows");
         }
 
-        Assert.ThrowsException<ArgumentException>(() => ScreenshotService.CaptureMonitor(index: 999));
+        Assert.ThrowsExactly<ArgumentException>(() => ScreenshotService.CaptureMonitor(index: 999));
     }
 
     [TestMethod]
