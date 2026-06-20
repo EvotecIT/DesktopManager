@@ -48,7 +48,7 @@ public class ErrorHandlingTests {
         var service = new MonitorService(new FakeDesktopManager());
         string invalidPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "missing.jpg");
 
-        Assert.ThrowsException<InvalidOperationException>(() => service.StartWallpaperSlideshow(new[] { invalidPath }));
+        Assert.ThrowsExactly<InvalidOperationException>(() => service.StartWallpaperSlideshow(new[] { invalidPath }));
     }
 
     [TestMethod]
@@ -60,10 +60,10 @@ public class ErrorHandlingTests {
         var method = typeof(MonitorService).GetMethod("SetSystemWallpaper", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.IsNotNull(method);
 
-        var ex1 = Assert.ThrowsException<TargetInvocationException>(() => method!.Invoke(service, new object?[] { null }));
+        var ex1 = Assert.ThrowsExactly<TargetInvocationException>(() => method!.Invoke(service, new object?[] { null }));
         Assert.IsInstanceOfType(ex1.InnerException, typeof(ArgumentNullException));
 
-        var ex2 = Assert.ThrowsException<TargetInvocationException>(() => method!.Invoke(service, new object?[] { string.Empty }));
+        var ex2 = Assert.ThrowsExactly<TargetInvocationException>(() => method!.Invoke(service, new object?[] { string.Empty }));
         Assert.IsInstanceOfType(ex2.InnerException, typeof(ArgumentNullException));
     }
 }

@@ -38,7 +38,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures invalid handles are rejected.
     /// </summary>
     public void DesktopHandleParser_ParseInvalidValue_ThrowsArgumentException() {
-        Assert.ThrowsException<ArgumentException>(() => DesktopHandleParser.Parse("not-a-handle"));
+        Assert.ThrowsExactly<ArgumentException>(() => DesktopHandleParser.Parse("not-a-handle"));
     }
 
     [TestMethod]
@@ -58,7 +58,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetClipboardText_NullText_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.SetClipboardText(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.SetClipboardText(null!));
     }
 
     [TestMethod]
@@ -69,7 +69,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetLogonWallpaper_NullPath_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetLogonWallpaper(null!));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetLogonWallpaper(null!));
     }
 
     [TestMethod]
@@ -79,7 +79,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_StartDesktopSlideshow_NullImagePaths_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.StartDesktopSlideshow(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.StartDesktopSlideshow(null!));
     }
 
     [TestMethod]
@@ -89,7 +89,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetMonitorWallpaper_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetMonitorWallpaper(null!));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetMonitorWallpaper(null!));
     }
 
     [TestMethod]
@@ -99,7 +99,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorWallpaper_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorWallpaper(null!, "wallpaper.jpg"));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorWallpaper(null!, "wallpaper.jpg"));
     }
 
     [TestMethod]
@@ -109,7 +109,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorWallpaperStream_NullStream_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.SetMonitorWallpaper("DISPLAY1", (Stream)null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.SetMonitorWallpaper("DISPLAY1", (Stream)null!));
     }
 
     [TestMethod]
@@ -119,7 +119,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorWallpaperFromUrl_NullUrl_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorWallpaperFromUrl("DISPLAY1", null!));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorWallpaperFromUrl("DISPLAY1", null!));
     }
 
     [TestMethod]
@@ -129,7 +129,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetDesktopWallpaperForAllUsers_NullPath_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetDesktopWallpaperForAllUsers(null!, DesktopWallpaperPosition.Fill));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetDesktopWallpaperForAllUsers(null!, DesktopWallpaperPosition.Fill));
     }
 
     [TestMethod]
@@ -139,7 +139,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetMonitorBrightness_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetMonitorBrightness(null!));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetMonitorBrightness(null!));
     }
 
     [TestMethod]
@@ -149,7 +149,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorBrightness_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorBrightness(null!, 50));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorBrightness(null!, 50));
     }
 
     [TestMethod]
@@ -159,7 +159,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetMonitorPosition_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetMonitorPosition(null!));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetMonitorPosition(null!));
     }
 
     [TestMethod]
@@ -169,7 +169,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorPosition_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorPosition(null!, new MonitorPosition(0, 0, 100, 100)));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorPosition(null!, new MonitorPosition(0, 0, 100, 100)));
     }
 
     [TestMethod]
@@ -179,7 +179,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorPosition_NullPosition_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.SetMonitorPosition("DISPLAY1", null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.SetMonitorPosition("DISPLAY1", null!));
     }
 
     [TestMethod]
@@ -189,7 +189,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorResolution_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorResolution(null!, 1920, 1080));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorResolution(null!, 1920, 1080));
     }
 
     [TestMethod]
@@ -199,7 +199,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorOrientation_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorOrientation(null!, DisplayOrientation.Default));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorOrientation(null!, DisplayOrientation.Default));
     }
 
     [TestMethod]
@@ -209,7 +209,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetMonitorDpiScaling_NullDeviceId_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetMonitorDpiScaling(null!, 150));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorDpiScaling(null!, 150));
     }
 
     [TestMethod]
@@ -219,7 +219,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetTaskbarPosition_NegativeMonitorIndex_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.SetTaskbarPosition(-1, TaskbarPosition.Bottom));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.SetTaskbarPosition(-1, TaskbarPosition.Bottom));
     }
 
     [TestMethod]
@@ -229,7 +229,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetTaskbarVisibility_NegativeMonitorIndex_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.SetTaskbarVisibility(-1, visible: true));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.SetTaskbarVisibility(-1, visible: true));
     }
 
     [TestMethod]
@@ -239,7 +239,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ActivateWindow_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.ActivateWindow(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.ActivateWindow(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -249,7 +249,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetWindowTopMost_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowTopMost(IntPtr.Zero, true));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetWindowTopMost(IntPtr.Zero, true));
     }
 
     [TestMethod]
@@ -259,7 +259,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetWindowVisibility_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowVisibility(IntPtr.Zero, true));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetWindowVisibility(IntPtr.Zero, true));
     }
 
     [TestMethod]
@@ -269,7 +269,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetWindowTransparency_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowTransparency(IntPtr.Zero, 128));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetWindowTransparency(IntPtr.Zero, 128));
     }
 
     [TestMethod]
@@ -279,7 +279,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetWindowStyle_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetWindowStyle(IntPtr.Zero, (long)WindowStyleFlags.SysMenu, enable: true));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetWindowStyle(IntPtr.Zero, (long)WindowStyleFlags.SysMenu, enable: true));
     }
 
     [TestMethod]
@@ -289,7 +289,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_TypeWindowText_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.TypeWindowText(IntPtr.Zero, "sample", paste: false, delayMilliseconds: 0, foregroundInput: false, physicalKeys: false, hostedSession: false, script: false, scriptChunkLength: 120, scriptLineDelayMilliseconds: 0));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.TypeWindowText(IntPtr.Zero, "sample", paste: false, delayMilliseconds: 0, foregroundInput: false, physicalKeys: false, hostedSession: false, script: false, scriptChunkLength: 120, scriptLineDelayMilliseconds: 0));
     }
 
     [TestMethod]
@@ -299,7 +299,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_TypeWindowTextWithOptions_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.TypeWindowText(IntPtr.Zero, "sample", new WindowInputOptions()));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.TypeWindowText(IntPtr.Zero, "sample", new WindowInputOptions()));
     }
 
     [TestMethod]
@@ -309,7 +309,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_PasteWindowText_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.PasteWindowText(IntPtr.Zero, "sample"));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.PasteWindowText(IntPtr.Zero, "sample"));
     }
 
     [TestMethod]
@@ -319,7 +319,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SendWindowKeys_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SendWindowKeys(IntPtr.Zero, [VirtualKey.VK_RETURN], activate: true));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SendWindowKeys(IntPtr.Zero, [VirtualKey.VK_RETURN], activate: true));
     }
 
     [TestMethod]
@@ -329,7 +329,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetWindowProcessInfo_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetWindowProcessInfo(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetWindowProcessInfo(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -339,7 +339,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetOwnerWindowProcessInfo_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetOwnerWindowProcessInfo(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetOwnerWindowProcessInfo(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -349,7 +349,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_StartWindowKeepAlive_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.StartWindowKeepAlive(IntPtr.Zero, TimeSpan.FromSeconds(1)));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.StartWindowKeepAlive(IntPtr.Zero, TimeSpan.FromSeconds(1)));
     }
 
     [TestMethod]
@@ -359,7 +359,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_StopWindowKeepAlive_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.StopWindowKeepAlive(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.StopWindowKeepAlive(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -381,7 +381,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_CaptureMonitor_ImpossibleDeviceName_ThrowsInvalidOperationException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<InvalidOperationException>(() => automation.CaptureMonitor(deviceName: "__DesktopManager_NoSuchMonitor__"));
+        Assert.ThrowsExactly<InvalidOperationException>(() => automation.CaptureMonitor(deviceName: "__DesktopManager_NoSuchMonitor__"));
     }
 
     [TestMethod]
@@ -391,7 +391,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetWindowGeometry_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetWindowGeometry(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetWindowGeometry(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -401,7 +401,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_CaptureWindow_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.CaptureWindow(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.CaptureWindow(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -411,7 +411,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_CaptureControl_ZeroWindowHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.CaptureControl(IntPtr.Zero, new IntPtr(1)));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.CaptureControl(IntPtr.Zero, new IntPtr(1)));
     }
 
     [TestMethod]
@@ -421,7 +421,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_CaptureWindowClientArea_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.CaptureWindowClientArea(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.CaptureWindowClientArea(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -431,7 +431,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_WaitForFocusedControlObservation_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.WaitForFocusedControlObservation(IntPtr.Zero, 1000, 100));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.WaitForFocusedControlObservation(IntPtr.Zero, 1000, 100));
     }
 
     [TestMethod]
@@ -441,7 +441,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetControlCheckState_ZeroWindowHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetControlCheckState(IntPtr.Zero, new IntPtr(1)));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetControlCheckState(IntPtr.Zero, new IntPtr(1)));
     }
 
     [TestMethod]
@@ -451,7 +451,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetControlCheckState_ZeroWindowHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SetControlCheckState(IntPtr.Zero, new IntPtr(1), check: true));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SetControlCheckState(IntPtr.Zero, new IntPtr(1), check: true));
     }
 
     [TestMethod]
@@ -461,7 +461,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_TerminateWindowProcess_ZeroHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.TerminateWindowProcess(IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.TerminateWindowProcess(IntPtr.Zero));
     }
 
     [TestMethod]
@@ -475,7 +475,7 @@ public class DesktopAutomationCoreTests {
             ProcessId = 123
         };
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.TerminateWindowProcess(window, waitForExitMilliseconds: -1));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.TerminateWindowProcess(window, waitForExitMilliseconds: -1));
     }
 
     [TestMethod]
@@ -483,7 +483,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures launch-and-wait binding planner rejects null launch metadata.
     /// </summary>
     public void DesktopAutomationService_CreateLaunchWaitBindingPlan_NullLaunch_ThrowsArgumentNullException() {
-        Assert.ThrowsException<ArgumentNullException>(() => DesktopAutomationService.CreateLaunchWaitBindingPlan(
+        Assert.ThrowsExactly<ArgumentNullException>(() => DesktopAutomationService.CreateLaunchWaitBindingPlan(
             null!,
             launchWindowTitlePattern: null,
             launchWindowClassNamePattern: null,
@@ -555,7 +555,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures reserved Windows device names are rejected for saved state.
     /// </summary>
     public void DesktopStateStore_GetTargetPath_ReservedDeviceName_ThrowsArgumentException() {
-        Assert.ThrowsException<ArgumentException>(() => DesktopStateStore.GetTargetPath("CON"));
+        Assert.ThrowsExactly<ArgumentException>(() => DesktopStateStore.GetTargetPath("CON"));
     }
 
     [TestMethod]
@@ -643,7 +643,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ControlExists_NullWindowOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.ControlExists(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.ControlExists(null!));
     }
 
     [TestMethod]
@@ -653,7 +653,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetControls_NullWindowOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.GetControls(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.GetControls(null!));
     }
 
     [TestMethod]
@@ -663,7 +663,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_WaitForControls_NullWindowOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.WaitForControls(null!, null, 1000, 100));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.WaitForControls(null!, null, 1000, 100));
     }
 
     [TestMethod]
@@ -673,7 +673,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_WaitForControls_NegativeTimeout_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.WaitForControls(new WindowQueryOptions { TitlePattern = "*" }, null, -1, 100));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.WaitForControls(new WindowQueryOptions { TitlePattern = "*" }, null, -1, 100));
     }
 
     [TestMethod]
@@ -683,7 +683,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_WaitForControls_ZeroInterval_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.WaitForControls(new WindowQueryOptions { TitlePattern = "*" }, null, 1000, 0));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.WaitForControls(new WindowQueryOptions { TitlePattern = "*" }, null, 1000, 0));
     }
 
     [TestMethod]
@@ -693,7 +693,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetControlDiagnostics_NullWindowOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.GetControlDiagnostics(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.GetControlDiagnostics(null!));
     }
 
     [TestMethod]
@@ -703,7 +703,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetControlDiagnostics_NegativeSampleLimit_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.GetControlDiagnostics(new WindowQueryOptions { TitlePattern = "*" }, sampleLimit: -1));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.GetControlDiagnostics(new WindowQueryOptions { TitlePattern = "*" }, sampleLimit: -1));
     }
 
     [TestMethod]
@@ -713,7 +713,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ClickWindowPoint_NegativeX_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.ClickWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, -1, 0, MouseButton.Left, activate: false));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ClickWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, -1, 0, MouseButton.Left, activate: false));
     }
 
     [TestMethod]
@@ -723,7 +723,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ClickWindowPoint_NegativeY_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.ClickWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, 0, -1, MouseButton.Left, activate: false));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ClickWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, 0, -1, MouseButton.Left, activate: false));
     }
 
     [TestMethod]
@@ -733,7 +733,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_DragWindowPoints_NegativeStepDelay_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.DragWindowPoints(new WindowQueryOptions { TitlePattern = "*" }, 0, 0, 1, 1, MouseButton.Left, -1, activate: false, clientArea: false));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.DragWindowPoints(new WindowQueryOptions { TitlePattern = "*" }, 0, 0, 1, 1, MouseButton.Left, -1, activate: false, clientArea: false));
     }
 
     [TestMethod]
@@ -743,7 +743,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ClickWindowPoint_InvalidRatio_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.ClickWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, null, null, 1.5, 0.5, MouseButton.Left, activate: false, clientArea: false));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ClickWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, null, null, 1.5, 0.5, MouseButton.Left, activate: false, clientArea: false));
     }
 
     [TestMethod]
@@ -753,7 +753,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_GetWindowGeometry_NullOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.GetWindowGeometry(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.GetWindowGeometry(null!));
     }
 
     [TestMethod]
@@ -763,7 +763,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_LaunchProcess_NegativeWindowWait_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.LaunchProcess(new DesktopProcessStartOptions {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.LaunchProcess(new DesktopProcessStartOptions {
             FilePath = "notepad.exe",
             WaitForWindowMilliseconds = -1
         }));
@@ -776,7 +776,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_LaunchProcess_ZeroWindowInterval_ThrowsArgumentOutOfRangeException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.LaunchProcess(new DesktopProcessStartOptions {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.LaunchProcess(new DesktopProcessStartOptions {
             FilePath = "notepad.exe",
             WaitForWindowIntervalMilliseconds = 0
         }));
@@ -831,7 +831,7 @@ public class DesktopAutomationCoreTests {
         string targetName = "DesktopAutomationCoreTests-" + Guid.NewGuid().ToString("N");
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SaveWindowTarget(targetName, new DesktopWindowTargetDefinition {
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SaveWindowTarget(targetName, new DesktopWindowTargetDefinition {
             YRatio = 0.5
         }));
     }
@@ -844,7 +844,7 @@ public class DesktopAutomationCoreTests {
         string targetName = "DesktopAutomationCoreTests-" + Guid.NewGuid().ToString("N");
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => automation.SaveWindowTarget(targetName, new DesktopWindowTargetDefinition {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.SaveWindowTarget(targetName, new DesktopWindowTargetDefinition {
             XRatio = 0.5,
             YRatio = 0.5,
             Width = 0,
@@ -860,7 +860,7 @@ public class DesktopAutomationCoreTests {
         string targetName = "DesktopAutomationCoreTests-Control-" + Guid.NewGuid().ToString("N");
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.SaveControlTarget(targetName, new DesktopControlTargetDefinition()));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.SaveControlTarget(targetName, new DesktopControlTargetDefinition()));
     }
 
     [TestMethod]
@@ -870,7 +870,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ControlTargetExists_NullWindowOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.ControlTargetExists(null!, "sample"));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.ControlTargetExists(null!, "sample"));
     }
 
     [TestMethod]
@@ -880,7 +880,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_WaitForControlTarget_NullWindowOptions_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.WaitForControlTarget(null!, "sample", 1000, 100));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.WaitForControlTarget(null!, "sample", 1000, 100));
     }
 
     [TestMethod]
@@ -890,7 +890,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ClickControl_NullControl_ThrowsArgumentNullException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentNullException>(() => automation.ClickControl(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => automation.ClickControl(null!));
     }
 
     [TestMethod]
@@ -900,7 +900,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_ClickControl_MissingParentWindow_ThrowsInvalidOperationException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<InvalidOperationException>(() => automation.ClickControl(new WindowControlInfo {
+        Assert.ThrowsExactly<InvalidOperationException>(() => automation.ClickControl(new WindowControlInfo {
             Handle = new IntPtr(1)
         }));
     }
@@ -912,7 +912,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SetControlText_MissingParentWindow_ThrowsInvalidOperationException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<InvalidOperationException>(() => automation.SetControlText(new WindowControlInfo {
+        Assert.ThrowsExactly<InvalidOperationException>(() => automation.SetControlText(new WindowControlInfo {
             Handle = new IntPtr(1)
         }, "hello"));
     }
@@ -924,7 +924,7 @@ public class DesktopAutomationCoreTests {
     public void DesktopAutomationService_SendControlKeys_MissingParentWindow_ThrowsInvalidOperationException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<InvalidOperationException>(() => automation.SendControlKeys(new WindowControlInfo {
+        Assert.ThrowsExactly<InvalidOperationException>(() => automation.SendControlKeys(new WindowControlInfo {
             Handle = new IntPtr(1)
         }, new[] { VirtualKey.VK_A }));
     }
@@ -1060,7 +1060,7 @@ public class DesktopAutomationCoreTests {
     public void WindowControlService_SetText_InvalidHandle_ThrowsArgumentException() {
         var control = new WindowControlInfo();
 
-        Assert.ThrowsException<ArgumentException>(() => WindowControlService.SetText(control, "hello"));
+        Assert.ThrowsExactly<ArgumentException>(() => WindowControlService.SetText(control, "hello"));
     }
 
     [TestMethod]
@@ -1070,7 +1070,7 @@ public class DesktopAutomationCoreTests {
     public void WindowControlService_SendKeys_InvalidHandle_ThrowsArgumentException() {
         var control = new WindowControlInfo();
 
-        Assert.ThrowsException<ArgumentException>(() => WindowControlService.SendKeys(control, VirtualKey.VK_A));
+        Assert.ThrowsExactly<ArgumentException>(() => WindowControlService.SendKeys(control, VirtualKey.VK_A));
     }
 
     [TestMethod]
@@ -1082,7 +1082,7 @@ public class DesktopAutomationCoreTests {
             Handle = new IntPtr(1)
         };
 
-        Assert.ThrowsException<ArgumentException>(() => WindowControlService.SendKeys(control, Array.Empty<VirtualKey>()));
+        Assert.ThrowsExactly<ArgumentException>(() => WindowControlService.SendKeys(control, Array.Empty<VirtualKey>()));
     }
 
     [TestMethod]
@@ -1090,7 +1090,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures foreground key sending requires at least one key.
     /// </summary>
     public void KeyboardInputService_SendToForeground_NoKeys_ThrowsArgumentException() {
-        Assert.ThrowsException<ArgumentException>(() => KeyboardInputService.SendToForeground(Array.Empty<VirtualKey>()));
+        Assert.ThrowsExactly<ArgumentException>(() => KeyboardInputService.SendToForeground(Array.Empty<VirtualKey>()));
     }
 
     [TestMethod]
@@ -1098,7 +1098,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures foreground text sending rejects null text.
     /// </summary>
     public void KeyboardInputService_SendTextToForeground_NullText_ThrowsArgumentNullException() {
-        Assert.ThrowsException<ArgumentNullException>(() => KeyboardInputService.SendTextToForeground(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => KeyboardInputService.SendTextToForeground(null!));
     }
 
     [TestMethod]
@@ -1106,7 +1106,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures foreground text sending rejects negative delays.
     /// </summary>
     public void KeyboardInputService_SendTextToForeground_NegativeDelay_ThrowsArgumentOutOfRangeException() {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => KeyboardInputService.SendTextToForeground("test", -1));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => KeyboardInputService.SendTextToForeground("test", -1));
     }
 
     [TestMethod]
@@ -1138,7 +1138,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures strict foreground typing fails when the target window does not own the foreground.
     /// </summary>
     public void WindowInputService_ResolveTextDeliveryMode_RequireForegroundWithoutForeground_ThrowsInvalidOperationException() {
-        InvalidOperationException exception = Assert.ThrowsException<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
             UseSendInput = true,
             RequireForegroundWindowForTyping = true
         }, targetOwnsForeground: false));
@@ -1151,7 +1151,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures strict foreground typing rejects message-only routing.
     /// </summary>
     public void WindowInputService_ResolveTextDeliveryMode_RequireForegroundWithMessageOnly_ThrowsInvalidOperationException() {
-        Assert.ThrowsException<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
+        Assert.ThrowsExactly<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
             UseSendInput = false,
             RequireForegroundWindowForTyping = true
         }, targetOwnsForeground: true));
@@ -1162,7 +1162,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures physical-key typing requires the target window to own the foreground.
     /// </summary>
     public void WindowInputService_ResolveTextDeliveryMode_PhysicalKeysWithoutForeground_ThrowsInvalidOperationException() {
-        Assert.ThrowsException<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
+        Assert.ThrowsExactly<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
             UseSendInput = true,
             UsePhysicalKeyboardLayout = true
         }, targetOwnsForeground: false));
@@ -1186,7 +1186,7 @@ public class DesktopAutomationCoreTests {
     /// Ensures hosted-session scan code typing requires the target window to own the foreground.
     /// </summary>
     public void WindowInputService_ResolveTextDeliveryMode_HostedSessionWithoutForeground_ThrowsInvalidOperationException() {
-        InvalidOperationException exception = Assert.ThrowsException<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() => WindowInputService.ResolveTextDeliveryMode(new WindowInputOptions {
             UseSendInput = true,
             UseHostedSessionScanCodes = true
         }, targetOwnsForeground: false));

@@ -123,7 +123,7 @@ public class MonitorServiceTests {
     public void SetWallpaper_StreamNull_Throws() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
-        Assert.ThrowsException<ArgumentNullException>(() => service.SetWallpaper("id", (Stream)null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => service.SetWallpaper("id", (Stream)null!));
     }
 
     [TestMethod]
@@ -136,7 +136,7 @@ public class MonitorServiceTests {
         string temp = Path.GetTempFileName();
         File.WriteAllBytes(temp, new byte[] {1});
         try {
-            Assert.ThrowsException<NotSupportedException>(() => service.SetWallpaperFromUrl("m", new Uri(temp).AbsoluteUri));
+            Assert.ThrowsExactly<NotSupportedException>(() => service.SetWallpaperFromUrl("m", new Uri(temp).AbsoluteUri));
         } finally {
             File.Delete(temp);
         }
@@ -262,7 +262,7 @@ public class MonitorServiceTests {
     public void StartWallpaperSlideshow_ThrowsOnNull() {
         var fake = new FakeDesktopManager();
         var service = new MonitorService(fake);
-        Assert.ThrowsException<ArgumentNullException>(() => service.StartWallpaperSlideshow(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => service.StartWallpaperSlideshow(null!));
     }
 
     [TestMethod]

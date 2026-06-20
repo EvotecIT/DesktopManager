@@ -16,7 +16,7 @@ public class DesktopAutomationControlStateTests {
     public void DesktopAutomationService_GetControlState_ZeroControlHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.GetControlState(new IntPtr(1), IntPtr.Zero));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.GetControlState(new IntPtr(1), IntPtr.Zero));
     }
 
     [TestMethod]
@@ -26,7 +26,7 @@ public class DesktopAutomationControlStateTests {
     public void DesktopAutomationService_FocusControl_ZeroWindowHandle_ThrowsArgumentException() {
         var automation = new DesktopAutomationService();
 
-        Assert.ThrowsException<ArgumentException>(() => automation.FocusControl(IntPtr.Zero, new IntPtr(1)));
+        Assert.ThrowsExactly<ArgumentException>(() => automation.FocusControl(IntPtr.Zero, new IntPtr(1)));
     }
 
     [TestMethod]

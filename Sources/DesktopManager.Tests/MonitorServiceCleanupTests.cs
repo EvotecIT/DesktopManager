@@ -169,7 +169,7 @@ public class MonitorServiceCleanupTests {
             var fake = new FakeDesktopManager();
             var service = new MonitorService(fake);
             using var stream = new ThrowingStream();
-            Assert.ThrowsException<IOException>(() => service.SetWallpaper("mon", stream));
+            Assert.ThrowsExactly<IOException>(() => service.SetWallpaper("mon", stream));
             Assert.AreEqual(0, Directory.GetFiles(dir).Length);
         } finally {
             Environment.SetEnvironmentVariable("TEMP", oldTemp);
@@ -196,7 +196,7 @@ public class MonitorServiceCleanupTests {
             var fake = new FakeDesktopManager();
             var service = new MonitorService(fake);
             using var stream = new ThrowingStream();
-            Assert.ThrowsException<IOException>(() => service.SetWallpaper(stream));
+            Assert.ThrowsExactly<IOException>(() => service.SetWallpaper(stream));
             Assert.AreEqual(0, Directory.GetFiles(dir).Length);
         } finally {
             Environment.SetEnvironmentVariable("TEMP", oldTemp);

@@ -78,11 +78,11 @@ public class CommandLineArgumentsTests {
             "--ratio", "not-a-number"
         });
 
-        Assert.ThrowsException<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetRequiredOption("missing"));
-        Assert.ThrowsException<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetRequiredCommandPart(5, "action"));
-        Assert.ThrowsException<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetIntOption("count"));
-        Assert.ThrowsException<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetRequiredIntOption("missing-int"));
-        Assert.ThrowsException<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetDoubleOption("ratio"));
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetRequiredOption("missing"));
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetRequiredCommandPart(5, "action"));
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetIntOption("count"));
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetRequiredIntOption("missing-int"));
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() => arguments.GetDoubleOption("ratio"));
     }
 
     [TestMethod]
@@ -90,7 +90,7 @@ public class CommandLineArgumentsTests {
     /// Ensures malformed option names are rejected during parsing.
     /// </summary>
     public void Parse_ThrowsForEmptyOptionName() {
-        Assert.ThrowsException<global::DesktopManager.Cli.CommandLineException>(() =>
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() =>
             global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "--" }));
     }
 }

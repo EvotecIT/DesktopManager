@@ -35,7 +35,6 @@ public class LogonWallpaperTests {
         } finally {
             File.Delete(temp);
         }
-        Assert.IsTrue(true);
     }
 
     [TestMethod]
@@ -61,7 +60,7 @@ public class LogonWallpaperTests {
         string temp = Path.GetTempFileName();
         File.WriteAllBytes(temp, new byte[] { 1 });
         try {
-            Assert.ThrowsException<InvalidOperationException>(() => service.SetLogonWallpaper(temp));
+            Assert.ThrowsExactly<InvalidOperationException>(() => service.SetLogonWallpaper(temp));
         } finally {
             File.Delete(temp);
         }
@@ -77,7 +76,7 @@ public class LogonWallpaperTests {
         }
 
         var service = new MonitorService(new FakeDesktopManager());
-        Assert.ThrowsException<PlatformNotSupportedException>(() => service.SetLogonWallpaper("path"));
+        Assert.ThrowsExactly<PlatformNotSupportedException>(() => service.SetLogonWallpaper("path"));
     }
 
     [TestMethod]
@@ -90,11 +89,6 @@ public class LogonWallpaperTests {
         }
 
         var service = new MonitorService(new FakeDesktopManager());
-        try {
-            service.GetLogonWallpaper();
-            Assert.Fail("Expected exception not thrown");
-        } catch (Exception) {
-            Assert.IsTrue(true);
-        }
+        Assert.AreEqual(string.Empty, service.GetLogonWallpaper());
     }
 }

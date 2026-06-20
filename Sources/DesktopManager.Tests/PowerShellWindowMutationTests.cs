@@ -89,7 +89,7 @@ public class PowerShellWindowMutationTests {
         Assert.AreEqual(1, record.VerificationNotes.Count);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("CmdletInvokeDesktopWindowClick")]
     [DataRow("CmdletInvokeDesktopWindowDrag")]
     [DataRow("CmdletInvokeDesktopWindowScroll")]

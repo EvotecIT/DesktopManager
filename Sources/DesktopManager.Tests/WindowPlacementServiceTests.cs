@@ -120,7 +120,7 @@ public class WindowPlacementServiceTests {
     public void Apply_ExactRectangleWithZeroWidth_Throws() {
         var service = new WindowPlacementService();
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => service.Apply(new WindowPlacementRequest {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => service.Apply(new WindowPlacementRequest {
             Placement = WindowPlacementKind.ExactRectangle,
             ExactLeft = 0,
             ExactTop = 0,

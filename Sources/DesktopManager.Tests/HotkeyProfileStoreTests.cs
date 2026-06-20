@@ -459,7 +459,7 @@ public class HotkeyProfileStoreTests {
             Placement = WindowPlacements.Maximize
         };
 
-        InvalidOperationException exception = Assert.ThrowsException<InvalidOperationException>(
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(
             () => WindowHotkeyPlacementRequestFactory.Create(action, IntPtr.Zero));
 
         StringAssert.Contains(exception.Message, "Unsupported monitor target");

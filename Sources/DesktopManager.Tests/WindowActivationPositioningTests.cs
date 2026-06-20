@@ -51,6 +51,6 @@ public class WindowActivationPositioningTests {
 
         var manager = new WindowManager();
         var dummy = new WindowInfo { Handle = IntPtr.Zero };
-        Assert.ThrowsException<InvalidOperationException>(() => manager.ActivateWindow(dummy));
+        Assert.ThrowsExactly<InvalidOperationException>(() => manager.ActivateWindow(dummy));
     }
 }

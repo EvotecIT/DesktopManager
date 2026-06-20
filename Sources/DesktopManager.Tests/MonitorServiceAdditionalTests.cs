@@ -14,7 +14,7 @@ public class MonitorServiceAdditionalTests {
     /// </summary>
     public void GetMonitorPosition_ThrowsWhenMonitorMissing() {
         var service = new MonitorService(new FakeDesktopManager());
-        Assert.ThrowsException<ArgumentException>(() => service.GetMonitorPosition("missing"));
+        Assert.ThrowsExactly<ArgumentException>(() => service.GetMonitorPosition("missing"));
     }
 
     [TestMethod]
@@ -40,7 +40,7 @@ public class MonitorServiceAdditionalTests {
         }
 
         var service = new MonitorService(new FakeDesktopManager());
-        Assert.ThrowsException<InvalidOperationException>(() => service.GetMonitorBrightness("missing"));
+        Assert.ThrowsExactly<InvalidOperationException>(() => service.GetMonitorBrightness("missing"));
     }
 
     [TestMethod]
@@ -53,7 +53,7 @@ public class MonitorServiceAdditionalTests {
         }
 
         var service = new MonitorService(new FakeDesktopManager());
-        Assert.ThrowsException<InvalidOperationException>(() => service.SetMonitorBrightness("missing", 50));
+        Assert.ThrowsExactly<InvalidOperationException>(() => service.SetMonitorBrightness("missing", 50));
     }
 }
 
