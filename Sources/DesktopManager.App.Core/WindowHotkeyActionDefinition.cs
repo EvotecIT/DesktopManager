@@ -13,6 +13,9 @@ public sealed class WindowHotkeyActionDefinition {
     /// <summary>DesktopManager monitor index when a profile is bound to a known workstation layout.</summary>
     public int? MonitorIndex { get; set; }
 
+    /// <summary>Stable monitor identity captured when the profile was edited on a known workstation layout.</summary>
+    public string? MonitorStableKey { get; set; }
+
     /// <summary>Placement to apply after the monitor target is resolved.</summary>
     public string Placement { get; set; } = WindowPlacements.Maximize;
 

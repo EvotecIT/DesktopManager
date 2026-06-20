@@ -134,6 +134,7 @@ public class HotkeyProfileStoreTests {
             profile.ApplyRulesOnStartup = true;
             profile.Functions[0].Enabled = false;
             profile.Functions[0].Hotkey = "Ctrl+Alt+Shift+F13";
+            profile.Functions[0].WindowAction.MonitorStableKey = "device-id:DISPLAY1";
 
             HotkeyProfileStore.Save(path, profile);
             HotkeyProfile loaded = HotkeyProfileStore.LoadOrCreate(path);
@@ -142,6 +143,7 @@ public class HotkeyProfileStoreTests {
             Assert.IsTrue(loaded.ApplyRulesOnStartup);
             Assert.IsFalse(loaded.Functions[0].Enabled);
             Assert.AreEqual("Ctrl+Alt+Shift+F13", loaded.Functions[0].Hotkey);
+            Assert.AreEqual("device-id:DISPLAY1", loaded.Functions[0].WindowAction.MonitorStableKey);
             Assert.IsTrue(HotkeyProfileValidator.Validate(loaded).IsValid);
         } finally {
             Directory.Delete(directory, recursive: true);

@@ -74,6 +74,7 @@ public static class HotkeyProfileEditor {
             Target = action.Target,
             Monitor = action.Monitor,
             MonitorIndex = action.MonitorIndex,
+            MonitorStableKey = action.MonitorStableKey,
             Placement = action.Placement,
             ExactLeft = action.ExactLeft,
             ExactTop = action.ExactTop,

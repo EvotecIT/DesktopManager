@@ -7,7 +7,10 @@ internal sealed class WindowRuleOption {
         LayoutId = layout.Id;
         RuleId = rule.Id;
         DisplayName = $"{layout.Name}: {rule.Name}";
-        Details = $"{(rule.Enabled ? "Enabled" : "Disabled")} | {rule.Match.TitlePattern} | {rule.Match.ProcessNamePattern} | {rule.Action.Placement}";
+        string titlePattern = rule.Match?.TitlePattern ?? "<missing title match>";
+        string processPattern = rule.Match?.ProcessNamePattern ?? "<missing process match>";
+        string placement = rule.Action?.Placement ?? "<missing action>";
+        Details = $"{(rule.Enabled ? "Enabled" : "Disabled")} | {titlePattern} | {processPattern} | {placement}";
         IsEnabled = rule.Enabled;
     }
 

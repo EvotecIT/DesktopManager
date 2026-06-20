@@ -746,9 +746,11 @@ internal static partial class DesktopOperations {
 
     public static IReadOnlyList<MonitorResult> ListMonitors(bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
         return ExecuteCore(() => {
-            IReadOnlyList<Monitor> monitors = new DesktopAutomationService()
+            var automation = new DesktopAutomationService();
+            IReadOnlyList<Monitor> monitors = automation
                 .GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
-            Dictionary<int, MonitorTopologyItem> topologyItems = MonitorTopologySnapshot.FromMonitors(monitors)
+            IReadOnlyList<Monitor> topologyMonitors = automation.GetMonitors(connectedOnly: true);
+            Dictionary<int, MonitorTopologyItem> topologyItems = MonitorTopologySnapshot.FromMonitors(topologyMonitors)
                 .Items
                 .ToDictionary(item => item.Monitor.Index);
 

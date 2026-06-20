@@ -20,8 +20,7 @@ public sealed partial class MainWindow : Window {
         WindowPlacements.Restore,
         WindowPlacements.LeftHalf,
         WindowPlacements.RightHalf,
-        WindowPlacements.Maximize,
-        WindowPlacements.ExactRectangle
+        WindowPlacements.Maximize
     };
     private readonly global::DesktopManager.Monitors _monitors = new();
     private HotkeyProfile _profile = HotkeyProfileDefaults.CreateDefaultProfile();
@@ -211,6 +210,7 @@ public sealed partial class MainWindow : Window {
         SaveProfile();
         LoadProfileIntoView();
         FunctionsList.SelectedItem = function;
+        StartRuntime();
         AddLog($"Added rule '{rule.Name}' to {layout.Name}.");
     }
 
@@ -256,6 +256,7 @@ public sealed partial class MainWindow : Window {
         function.Name = SelectedNameText.Text.Trim();
         if (MonitorIndexComboBox.SelectedItem is MonitorOption selectedMonitor) {
             function.WindowAction.MonitorIndex = selectedMonitor.Index;
+            function.WindowAction.MonitorStableKey = selectedMonitor.StableKey;
         }
 
         function.Enabled = SelectedActionEnabledSwitch.IsOn;
@@ -405,7 +406,7 @@ public sealed partial class MainWindow : Window {
             TestActionButton.IsEnabled = false;
             DiagnoseHotkeyButton.IsEnabled = false;
             SaveActionButton.IsEnabled = false;
-            DeleteActionButton.IsEnabled = false;
+            DeleteActionButton.IsEnabled = true;
             AddRuleButton.IsEnabled = false;
             RuleTitlePatternBox.Text = string.Empty;
             RuleProcessPatternBox.Text = string.Empty;
@@ -426,9 +427,13 @@ public sealed partial class MainWindow : Window {
         SelectedTargetText.Text = function.WindowAction.Target;
         SelectedMonitorText.Text = FormatMonitorText(function.WindowAction);
         SelectedPlacementComboBox.IsEnabled = true;
-        SelectedPlacementComboBox.SelectedItem = function.WindowAction.Placement;
+        IReadOnlyList<string> placementOptions = GetPlacementOptions(function.WindowAction);
+        SelectedPlacementComboBox.ItemsSource = placementOptions;
+        SelectedPlacementComboBox.SelectedItem = placementOptions.Contains(function.WindowAction.Placement)
+            ? function.WindowAction.Placement
+            : WindowPlacements.Maximize;
         SelectedVerifySwitch.IsOn = function.WindowAction.VerifyAfterAction;
-        SelectMonitorOption(function.WindowAction.MonitorIndex);
+        SelectMonitorOption(function.WindowAction);
         ShowHotkeyDiagnostic(function, addLog: false);
     }
 
@@ -464,6 +469,10 @@ public sealed partial class MainWindow : Window {
     }
 
     private void ToggleHotkeysFromTray() {
+        if (TryBlockRecoveryProfileEdit()) {
+            return;
+        }
+
         _profile.Enabled = !_profile.Enabled;
         _loadingProfile = true;
         try {
@@ -604,10 +613,13 @@ public sealed partial class MainWindow : Window {
         }
     }
 
-    private void SelectMonitorOption(int? monitorIndex) {
-        MonitorOption? option = _monitorOptions.FirstOrDefault(item => item.Index == monitorIndex);
-        if (option == null && monitorIndex.HasValue) {
-            option = new MonitorOption(monitorIndex.Value, $"{monitorIndex.Value}: unavailable saved monitor");
+    private void SelectMonitorOption(WindowHotkeyActionDefinition action) {
+        MonitorOption? option = !string.IsNullOrWhiteSpace(action.MonitorStableKey)
+            ? _monitorOptions.FirstOrDefault(item => string.Equals(item.StableKey, action.MonitorStableKey, StringComparison.OrdinalIgnoreCase))
+            : null;
+        option ??= _monitorOptions.FirstOrDefault(item => item.Index == action.MonitorIndex);
+        if (option == null && action.MonitorIndex.HasValue) {
+            option = new MonitorOption(action.MonitorIndex.Value, $"{action.MonitorIndex.Value}: unavailable saved monitor", action.MonitorStableKey);
             _monitorOptions.Add(option);
             MonitorIndexComboBox.ItemsSource = null;
             MonitorIndexComboBox.ItemsSource = _monitorOptions;
@@ -672,8 +684,27 @@ public sealed partial class MainWindow : Window {
     }
 
     private static string FormatMonitorText(WindowHotkeyActionDefinition action) {
-        return action.MonitorIndex.HasValue
+        string monitor = action.MonitorIndex.HasValue
             ? $"{action.Monitor} (index {action.MonitorIndex.Value})"
             : action.Monitor;
+
+        return string.IsNullOrWhiteSpace(action.MonitorStableKey)
+            ? monitor
+            : $"{monitor} [{action.MonitorStableKey}]";
+    }
+
+    private IReadOnlyList<string> GetPlacementOptions(WindowHotkeyActionDefinition action) {
+        if (HasCompleteExactRectangle(action)) {
+            return _placementOptions.Concat(new[] { WindowPlacements.ExactRectangle }).ToArray();
+        }
+
+        return _placementOptions;
+    }
+
+    private static bool HasCompleteExactRectangle(WindowHotkeyActionDefinition action) {
+        return action.ExactLeft.HasValue &&
+            action.ExactTop.HasValue &&
+            action.ExactWidth.HasValue &&
+            action.ExactHeight.HasValue;
     }
 }

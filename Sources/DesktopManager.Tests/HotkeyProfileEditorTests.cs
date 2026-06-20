@@ -40,6 +40,7 @@ public class HotkeyProfileEditorTests {
             WindowAction = new WindowHotkeyActionDefinition {
                 Monitor = MonitorTargets.TopLeft,
                 MonitorIndex = 1,
+                MonitorStableKey = "device-id:DISPLAY1",
                 Placement = WindowPlacements.LeftHalf
             }
         };
@@ -55,6 +56,7 @@ public class HotkeyProfileEditorTests {
         Assert.AreEqual("*", rule.Match.ProcessNamePattern);
         Assert.AreEqual(WindowPlacements.LeftHalf, rule.Action.Placement);
         Assert.AreEqual(1, rule.Action.MonitorIndex);
+        Assert.AreEqual("device-id:DISPLAY1", rule.Action.MonitorStableKey);
         Assert.AreNotSame(function.WindowAction, rule.Action);
     }
 
