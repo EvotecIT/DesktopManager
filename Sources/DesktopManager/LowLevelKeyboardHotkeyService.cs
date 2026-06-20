@@ -335,8 +335,7 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
         VirtualKey key,
         Func<VirtualKey, bool> isKeyDown,
         IntPtr foregroundHandle) {
-        return registration.Matches(key, isKeyDown) &&
-            ForegroundProcessMatches(foregroundHandle, registration.Options.ExclusiveForegroundProcessNames);
+        return registration.Matches(key, isKeyDown);
     }
 
     /// <inheritdoc />

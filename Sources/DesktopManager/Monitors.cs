@@ -73,6 +73,15 @@ public class Monitors {
     }
 
     /// <summary>
+    /// Gets the current connected monitor topology using stable identities and visual row/column ordering.
+    /// </summary>
+    /// <param name="refresh">When true, forces a fresh monitor snapshot before building topology.</param>
+    /// <returns>The current connected monitor topology.</returns>
+    public MonitorTopologySnapshot GetMonitorTopology(bool refresh = false) {
+        return MonitorTopologySnapshot.FromMonitors(GetMonitors(connectedOnly: true, refresh: refresh));
+    }
+
+    /// <summary>
     /// Sets the wallpaper for a specific monitor by its ID.
     /// </summary>
     /// <param name="monitorId">The ID of the monitor.</param>

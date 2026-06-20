@@ -284,13 +284,14 @@ internal static class MonitorCommands {
                 monitor.Index.ToString(),
                 monitor.IsPrimary ? "Yes" : "No",
                 monitor.IsConnected ? "Yes" : "No",
+                monitor.TopologyName,
                 $"{monitor.Left},{monitor.Top},{monitor.Right},{monitor.Bottom}",
                 monitor.DeviceName,
                 monitor.DeviceString
             })
             .ToArray();
 
-        OutputFormatter.WriteTable(writer, new[] { "Idx", "Primary", "Connected", "Bounds", "DeviceName", "Device" }, rows);
+        OutputFormatter.WriteTable(writer, new[] { "Idx", "Primary", "Connected", "Topology", "Bounds", "DeviceName", "Device" }, rows);
         return 0;
     }
 

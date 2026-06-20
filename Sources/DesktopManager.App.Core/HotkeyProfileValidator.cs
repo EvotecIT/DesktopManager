@@ -68,7 +68,76 @@ public static class HotkeyProfileValidator {
             }
         }
 
+        ValidateLayouts(profile.Layouts, result);
         return result;
+    }
+
+    private static void ValidateLayouts(List<WindowLayoutProfileDefinition>? layouts, HotkeyProfileValidationResult result) {
+        if (layouts == null) {
+            result.Errors.Add("Profile layouts list is required.");
+            return;
+        }
+
+        HashSet<string> layoutIds = new(StringComparer.OrdinalIgnoreCase);
+        for (int layoutIndex = 0; layoutIndex < layouts.Count; layoutIndex++) {
+            WindowLayoutProfileDefinition? layout = layouts[layoutIndex];
+            string layoutPrefix = $"Layout {layoutIndex + 1}";
+            if (layout == null) {
+                result.Errors.Add($"{layoutPrefix} is empty.");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(layout.Id)) {
+                result.Errors.Add($"{layoutPrefix} is missing an id.");
+            } else if (!layoutIds.Add(layout.Id)) {
+                result.Errors.Add($"{layoutPrefix} uses duplicate id '{layout.Id}'.");
+            }
+
+            if (string.IsNullOrWhiteSpace(layout.Name)) {
+                result.Errors.Add($"{layoutPrefix} is missing a name.");
+            }
+
+            if (layout.Rules == null) {
+                result.Errors.Add($"{layoutPrefix} rules list is required.");
+                continue;
+            }
+
+            HashSet<string> ruleIds = new(StringComparer.OrdinalIgnoreCase);
+            for (int ruleIndex = 0; ruleIndex < layout.Rules.Count; ruleIndex++) {
+                ValidateRule(layout.Rules[ruleIndex], $"{layoutPrefix} rule {ruleIndex + 1}", ruleIds, result);
+            }
+        }
+    }
+
+    private static void ValidateRule(
+        WindowRuleDefinition? rule,
+        string prefix,
+        HashSet<string> ruleIds,
+        HotkeyProfileValidationResult result) {
+        if (rule == null) {
+            result.Errors.Add($"{prefix} is empty.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(rule.Id)) {
+            result.Errors.Add($"{prefix} is missing an id.");
+        } else if (!ruleIds.Add(rule.Id)) {
+            result.Errors.Add($"{prefix} uses duplicate id '{rule.Id}'.");
+        }
+
+        if (string.IsNullOrWhiteSpace(rule.Name)) {
+            result.Errors.Add($"{prefix} is missing a name.");
+        }
+
+        if (rule.Match == null) {
+            result.Errors.Add($"{prefix} is missing match criteria.");
+        }
+
+        if (rule.Action == null) {
+            result.Errors.Add($"{prefix} is missing an action.");
+        } else {
+            ValidateWindowAction(rule.Action, prefix, result);
+        }
     }
 
     private static void ValidateWindowAction(WindowHotkeyActionDefinition action, string prefix, HotkeyProfileValidationResult result) {

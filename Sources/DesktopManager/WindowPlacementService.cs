@@ -217,31 +217,7 @@ public sealed class WindowPlacementService {
     }
 
     internal static IReadOnlyList<IReadOnlyList<Monitor>> GroupMonitorRows(IReadOnlyList<Monitor> monitors) {
-        if (monitors.Count == 0) {
-            return Array.Empty<IReadOnlyList<Monitor>>();
-        }
-
-        var rows = new List<List<Monitor>>();
-        foreach (Monitor monitor in monitors.OrderBy(monitor => monitor.PositionTop).ThenBy(monitor => monitor.PositionLeft)) {
-            List<Monitor>? row = rows.FirstOrDefault(candidateRow => candidateRow.Any(existing => VerticallyOverlaps(existing, monitor)));
-            if (row == null) {
-                row = new List<Monitor>();
-                rows.Add(row);
-            }
-
-            row.Add(monitor);
-        }
-
-        return rows
-            .Select(row => (IReadOnlyList<Monitor>)row.OrderBy(monitor => monitor.PositionLeft).ToArray())
-            .OrderBy(row => row.Min(monitor => monitor.PositionTop))
-            .ThenBy(row => row.Min(monitor => monitor.PositionLeft))
-            .ToArray();
-    }
-
-    private static bool VerticallyOverlaps(Monitor first, Monitor second) {
-        return first.PositionTop < second.PositionBottom &&
-            second.PositionTop < first.PositionBottom;
+        return MonitorTopologySnapshot.GroupRows(monitors);
     }
 
     internal static RECT GetPlacementBounds(Monitor monitor) {

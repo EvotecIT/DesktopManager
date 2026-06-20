@@ -19,7 +19,7 @@ public static class WindowHotkeyPlacementRequestFactory {
         return new global::DesktopManager.WindowPlacementRequest {
             TargetWindowHandle = targetWindowHandle,
             MonitorTarget = ParseMonitorTarget(action.Monitor),
-            MonitorIndex = exactPlacement ? null : action.MonitorIndex,
+            MonitorIndex = exactPlacement ? null : ResolveMonitorIndex(action),
             Placement = ParsePlacement(action),
             ExactLeft = exactPlacement ? action.ExactLeft : null,
             ExactTop = exactPlacement ? action.ExactTop : null,
@@ -51,6 +51,21 @@ public static class WindowHotkeyPlacementRequestFactory {
         }
 
         throw new InvalidOperationException($"Unsupported monitor target '{monitor}'.");
+    }
+
+    private static int? ResolveMonitorIndex(WindowHotkeyActionDefinition action) {
+        if (string.IsNullOrWhiteSpace(action.MonitorStableKey)) {
+            return action.MonitorIndex;
+        }
+
+        try {
+            global::DesktopManager.MonitorTopologySnapshot topology = new global::DesktopManager.Monitors().GetMonitorTopology(refresh: true);
+            global::DesktopManager.MonitorTopologyItem? item = topology.Items.FirstOrDefault(item =>
+                string.Equals(item.Identity.StableKey, action.MonitorStableKey, StringComparison.OrdinalIgnoreCase));
+            return item?.Monitor.Index ?? action.MonitorIndex;
+        } catch {
+            return action.MonitorIndex;
+        }
     }
 
     private static global::DesktopManager.WindowPlacementKind ParsePlacement(WindowHotkeyActionDefinition action) {

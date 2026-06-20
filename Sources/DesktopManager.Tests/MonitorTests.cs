@@ -44,4 +44,27 @@ public class MonitorTests {
         Assert.AreEqual("x", fake.GetWallpaperIds[0]);
         Assert.AreEqual("wall", result);
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Position reads for partially identified monitors should use the cached rectangle instead of requiring a device id.
+    /// </summary>
+    public void GetMonitorPosition_EmptyDeviceId_ReturnsCachedRectangle() {
+        var service = new MonitorService(new FakeDesktopManager());
+        var monitor = new Monitor(service) {
+            Rect = new RECT {
+                Left = -100,
+                Top = 20,
+                Right = 1180,
+                Bottom = 740
+            }
+        };
+
+        MonitorPosition position = monitor.GetMonitorPosition();
+
+        Assert.AreEqual(-100, position.Left);
+        Assert.AreEqual(20, position.Top);
+        Assert.AreEqual(1180, position.Right);
+        Assert.AreEqual(740, position.Bottom);
+    }
 }

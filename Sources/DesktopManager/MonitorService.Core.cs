@@ -78,11 +78,12 @@ public partial class MonitorService {
 
             var count = Execute(() => _desktopManager.GetMonitorDevicePathCount(), nameof(IDesktopManager.GetMonitorDevicePathCount));
             for (uint i = 0; i < count; i++) {
+                string deviceId = Execute(() => _desktopManager.GetMonitorDevicePathAt(i), nameof(IDesktopManager.GetMonitorDevicePathAt)) ?? string.Empty;
                 var monitor = new Monitor(this) {
                     Index = (int)i,
-                    DeviceId = Execute(() => _desktopManager.GetMonitorDevicePathAt(i), nameof(IDesktopManager.GetMonitorDevicePathAt))
+                    DeviceId = deviceId
                 };
-                if (monitor.DeviceId != "") {
+                if (!string.IsNullOrWhiteSpace(monitor.DeviceId)) {
                     monitor.WallpaperPosition = Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
                     monitor.Wallpaper = Execute(() => _desktopManager.GetWallpaper(monitor.DeviceId), nameof(IDesktopManager.GetWallpaper));
                     monitor.Rect = Execute(() => _desktopManager.GetMonitorBounds(monitor.DeviceId), nameof(IDesktopManager.GetMonitorBounds));

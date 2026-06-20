@@ -267,6 +267,11 @@ internal sealed class MonitorResult {
     public int Top { get; set; }
     public int Right { get; set; }
     public int Bottom { get; set; }
+    public string StableKey { get; set; } = string.Empty;
+    public string IdentitySource { get; set; } = string.Empty;
+    public string TopologyName { get; set; } = string.Empty;
+    public int? TopologyRow { get; set; }
+    public int? TopologyColumn { get; set; }
     public string? Manufacturer { get; set; }
     public string? SerialNumber { get; set; }
 }
