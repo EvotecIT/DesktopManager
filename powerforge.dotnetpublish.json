@@ -20,6 +20,34 @@
       "ExcludeSymbolsFromSingleFile": "true"
     }
   },
+  "Profiles": [
+    {
+      "Name": "daily-app",
+      "Targets": [
+        "DesktopManager.App"
+      ],
+      "Runtimes": [
+        "win-x64"
+      ],
+      "Frameworks": [
+        "net10.0-windows10.0.19041.0"
+      ],
+      "Style": "PortableCompat"
+    },
+    {
+      "Name": "desktopmanager-app-msi",
+      "Targets": [
+        "DesktopManager.App"
+      ],
+      "Runtimes": [
+        "win-x64"
+      ],
+      "Frameworks": [
+        "net10.0-windows10.0.19041.0"
+      ],
+      "Style": "PortableCompat"
+    }
+  ],
   "Targets": [
     {
       "Name": "DesktopManager.Cli.net8",
@@ -57,6 +85,148 @@
         "RenameTo": "desktopmanager.exe",
         "Zip": true,
         "ZipNameTemplate": "desktopmanager-{rid}-{framework}-{style}.zip"
+      }
+    },
+    {
+      "Name": "DesktopManager.App",
+      "Kind": "Cli",
+      "ProjectPath": "Sources/DesktopManager.App/DesktopManager.App.csproj",
+      "Publish": {
+        "Style": "PortableCompat",
+        "Framework": "net10.0-windows10.0.19041.0",
+        "OutputPath": "Artefacts/PowerForge/DesktopManager.App/{rid}/{framework}/{style}",
+        "UseStaging": true,
+        "ClearOutput": true,
+        "Slim": true,
+        "KeepSymbols": false,
+        "KeepDocs": false,
+        "PruneReferences": true,
+        "Zip": true,
+        "ZipNameTemplate": "DesktopManager.App-{rid}-{framework}-{style}.zip",
+        "ReadyToRun": false,
+        "MsBuildProperties": {
+          "SelfContained": "true",
+          "WindowsPackageType": "None",
+          "WindowsAppSDKSelfContained": "true",
+          "PublishSingleFile": "false",
+          "PublishAot": "false",
+          "IncludeNativeLibrariesForSelfExtract": "false"
+        },
+        "Sign": {
+          "Enabled": true,
+          "ToolPath": "signtool.exe",
+          "OnMissingTool": "Warn",
+          "OnSignFailure": "Warn",
+          "TimeoutSeconds": 60,
+          "TimestampUrl": "http://timestamp.digicert.com",
+          "Description": "DesktopManager"
+        }
+      }
+    }
+  ],
+  "Installers": [
+    {
+      "Id": "DesktopManager.App.MSI",
+      "PrepareFromTarget": "DesktopManager.App",
+      "Runtimes": [
+        "win-x64"
+      ],
+      "Frameworks": [
+        "net10.0-windows10.0.19041.0"
+      ],
+      "Styles": [
+        "PortableCompat"
+      ],
+      "StagingPath": "Artefacts/PowerForge/Msi/DesktopManager.App/{rid}/{framework}/{style}/Staging",
+      "ManifestPath": "Artefacts/PowerForge/Msi/DesktopManager.App/{rid}/{framework}/{style}/prepare.json",
+      "OutputPath": "Artefacts/PowerForge/Msi/DesktopManager.App/{rid}/{framework}/{style}/output",
+      "OutputName": "DesktopManager",
+      "Harvest": "Auto",
+      "HarvestPath": "Artefacts/PowerForge/Msi/DesktopManager.App/{rid}/{framework}/{style}/HarvestedPayload.wxs",
+      "HarvestDirectoryRefId": "INSTALLFOLDER",
+      "HarvestComponentGroupId": "ProductFiles",
+      "HarvestExcludePatterns": [
+        "Microsoft.UI.Xaml.Phone.dll"
+      ],
+      "MsBuildProperties": {
+        "SuppressIces": "ICE03"
+      },
+      "Authoring": {
+        "Product": {
+          "Name": "DesktopManager",
+          "Manufacturer": "Evotec",
+          "Version": "1.0.0",
+          "UpgradeCode": "{0e164c4b-6f92-42e1-b2cb-229bd40cc7b0}",
+          "Scope": "PerMachine",
+          "DowngradeErrorMessage": "A newer version of DesktopManager is already installed."
+        },
+        "CompanyFolderName": "Evotec",
+        "InstallDirectoryName": "DesktopManager",
+        "PayloadComponentGroupId": "ProductFiles",
+        "Directories": [
+          {
+            "StandardDirectoryId": "ProgramMenuFolder",
+            "Segments": [
+              {
+                "Id": "ApplicationProgramsFolder",
+                "Name": "DesktopManager"
+              }
+            ]
+          }
+        ],
+        "Dialogs": [
+          {
+            "Id": "DailyUseDlg",
+            "Title": "Daily use setup",
+            "Description": "DesktopManager installs as a tray app with a Start Menu shortcut. After first launch, enable Start with Windows in the app to start minimized to tray."
+          }
+        ],
+        "LicenseAgreement": {
+          "Path": "Build/Installer/DesktopManager-License.rtf"
+        },
+        "Components": [
+          {
+            "Type": "Shortcut",
+            "Id": "StartMenuShortcutComponent",
+            "DirectoryRefId": "ApplicationProgramsFolder",
+            "Guid": "*",
+            "ShortcutId": "StartMenuShortcut",
+            "Name": "DesktopManager",
+            "Target": "[INSTALLFOLDER]DesktopManager.App.exe",
+            "RegistryKey": "Software\\Evotec\\DesktopManager"
+          },
+          {
+            "Type": "RegistryValue",
+            "Id": "InstallPathRegistry",
+            "DirectoryRefId": "INSTALLFOLDER",
+            "Guid": "*",
+            "Root": "HKLM",
+            "Key": "Software\\Evotec\\DesktopManager",
+            "Name": "InstallPath",
+            "Value": "[INSTALLFOLDER]",
+            "ValueType": "string"
+          }
+        ]
+      },
+      "Versioning": {
+        "Enabled": true,
+        "Major": 1,
+        "Minor": 0,
+        "FloorDateUtc": "2026-01-01",
+        "Monotonic": true,
+        "ApplyToPublish": true,
+        "StatePath": "Artefacts/PowerForge/Msi/DesktopManager.App/version.state.json",
+        "PropertyName": "ProductVersion",
+        "PatchCap": 65535
+      },
+      "Sign": {
+        "Enabled": true,
+        "ToolPath": "signtool.exe",
+        "OnMissingTool": "Warn",
+        "OnSignFailure": "Warn",
+        "TimeoutSeconds": 60,
+        "TimestampUrl": "http://timestamp.digicert.com",
+        "Description": "DesktopManager"
       }
     }
   ],

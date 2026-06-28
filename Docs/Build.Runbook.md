@@ -1,6 +1,6 @@
 # DesktopManager Build Runbook
 
-DesktopManager now uses one repo entrypoint for package, module, and CLI outputs:
+DesktopManager uses one repo entrypoint for package, module, CLI, app, and installer outputs:
 
 ```powershell
 .\Build\Build-Project.ps1
@@ -9,13 +9,17 @@ DesktopManager now uses one repo entrypoint for package, module, and CLI outputs
 ## Build Surfaces
 
 - `Build/Build-Project.ps1`
-  Orchestrates repository package build, PowerShell module build, and CLI publish.
+  Orchestrates repository package build, PowerShell module build, CLI publish, app publish, and installer publish.
+- `Build/Build-DesktopManagerApp.ps1`
+  Publishes the daily-use WinUI tray app without building installers.
+- `Build/Build-DesktopManagerApp-MSI.ps1`
+  Publishes the WinUI tray app and builds the generated MSI installer.
 - `Build/project.build.json`
   Controls `Invoke-ProjectBuild` for the `DesktopManager` NuGet package and GitHub/NuGet release settings.
 - `Build/Build-Module.ps1`
   Builds the PowerShell module artefacts using `Invoke-ModuleBuild`.
 - `powerforge.dotnetpublish.json`
-  Controls `Invoke-DotNetPublish` for the `desktopmanager.exe` publish output.
+  Controls `Invoke-DotNetPublish` for `desktopmanager.exe`, `DesktopManager.App.exe`, the app zip, and the generated MSI.
 
 ## Common Commands
 
@@ -43,10 +47,40 @@ Build module only:
 .\Build\Build-Module.ps1 -SkipInstall
 ```
 
-Build CLI output only:
+Build CLI and app outputs only:
 
 ```powershell
 .\Build\Build-Project.ps1 -Build:$false -BuildModule:$false
+```
+
+Build the daily tray app portable output only:
+
+```powershell
+.\Build\Build-DesktopManagerApp.ps1
+```
+
+Plan the app MSI without compiling:
+
+```powershell
+.\Build\Build-DesktopManagerApp-MSI.ps1 -Plan
+```
+
+Build the app MSI:
+
+```powershell
+.\Build\Build-DesktopManagerApp-MSI.ps1
+```
+
+Install it interactively:
+
+```powershell
+msiexec.exe /i .\Artefacts\PowerForge\Msi\DesktopManager.App\win-x64\net10.0-windows10.0.19041.0\PortableCompat\output\DesktopManager.msi
+```
+
+Use silent install only when automation intentionally asks for it:
+
+```powershell
+msiexec.exe /i .\Artefacts\PowerForge\Msi\DesktopManager.App\win-x64\net10.0-windows10.0.19041.0\PortableCompat\output\DesktopManager.msi /qn
 ```
 
 Publish the NuGet package using the repo config:
@@ -64,7 +98,7 @@ Publish the GitHub release asset using the repo config:
 Publish a specific CLI runtime:
 
 ```powershell
-.\Build\Build-Project.ps1 -Build:$false -BuildModule:$false -Runtimes win-x64
+.\Build\Build-Project.ps1 -Build:$false -BuildModule:$false -Target DesktopManager.Cli.net10 -Runtimes win-x64 -SkipInstallers
 ```
 
 ## Output Locations
@@ -76,12 +110,21 @@ Publish a specific CLI runtime:
   `Artefacts/Packed`
 - CLI publish output and manifests:
   `Artefacts/PowerForge/DesktopManager`
+- Daily app publish output and zip:
+  `Artefacts/PowerForge/DesktopManager.App`
+- Daily app MSI staging, generated WiX authoring, and installer output:
+  `Artefacts/PowerForge/Msi/DesktopManager.App`
 
 ## Notes
 
 - `Build-Project.ps1` is the only package and release entrypoint in this repo.
 - `Build-Project.ps1 -Plan` skips the module build execution because the module path does not expose the same standalone plan surface here.
 - The CLI publish targets package `Sources/DesktopManager.Cli/DesktopManager.Cli.csproj` as `desktopmanager.exe` for both `net8.0-windows` and `net10.0-windows`.
+- The daily app publish target packages `Sources/DesktopManager.App/DesktopManager.App.csproj` as an unpackaged, self-contained WinUI app under `DesktopManager.App`.
+- The WinUI app is not forced into NativeAOT. The nested `DesktopManager.HotkeyHost` remains NativeAOT, while the app uses a self-contained publish profile that avoids WinAppSDK single-file and NativeAOT limitations.
+- The generated MSI uses PowerForge/WiX installer UI, creates a Start Menu shortcut, and records the install path under `HKLM\Software\Evotec\DesktopManager`.
+- DesktopManager autostart stays a per-user app setting. The app writes the current user's Run key with `--minimized`, so Windows sign-in starts the tray runtime without opening the main window.
+- The MSI output, manifest, and checksums are the intended inputs for later winget release work. Microsoft Store/MSIX packaging should stay in PowerForge config when that lane is added.
 - The CLI includes the MCP server entrypoint exposed by:
 
 ```powershell

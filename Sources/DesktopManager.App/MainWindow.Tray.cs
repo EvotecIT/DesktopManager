@@ -46,6 +46,14 @@ public sealed partial class MainWindow {
         HideToTray();
     }
 
+    internal void HideToTrayAfterLaunch() {
+        if (!_profile.MinimizeToTray || !_trayIconAdded) {
+            return;
+        }
+
+        HideToTray();
+    }
+
     private void HideToTray() {
         ShowWindow(_windowHandle, SW_HIDE);
         AddLog("Window hidden to tray.");

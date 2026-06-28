@@ -5,25 +5,32 @@ namespace DesktopManager.App;
 internal static class StartupRegistrationService {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string ValueName = "DesktopManager";
+    private const string MinimizedArgument = "--minimized";
 
     public static bool IsEnabled() {
         using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: false);
-        return key?.GetValue(ValueName) is string value &&
-            string.Equals(value, GetCommand(), StringComparison.OrdinalIgnoreCase);
+        if (key?.GetValue(ValueName) is not string value) {
+            return false;
+        }
+
+        return string.Equals(value, GetCommand(startMinimized: true), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, GetCommand(startMinimized: false), StringComparison.OrdinalIgnoreCase);
     }
 
     public static void SetEnabled(bool enabled) {
         using RegistryKey key = Registry.CurrentUser.CreateSubKey(RunKeyPath);
         if (enabled) {
-            key.SetValue(ValueName, GetCommand(), RegistryValueKind.String);
+            key.SetValue(ValueName, GetCommand(startMinimized: true), RegistryValueKind.String);
             return;
         }
 
         key.DeleteValue(ValueName, throwOnMissingValue: false);
     }
 
-    private static string GetCommand() {
+    private static string GetCommand(bool startMinimized) {
         string executable = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
-        return $"\"{executable}\"";
+        return startMinimized
+            ? $"\"{executable}\" {MinimizedArgument}"
+            : $"\"{executable}\"";
     }
 }

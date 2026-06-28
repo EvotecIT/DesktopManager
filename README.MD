@@ -59,6 +59,7 @@ Additional operator-focused docs for the newer CLI and MCP surfaces:
 
 - [Docs/DesktopManager.Cli.md](Docs/DesktopManager.Cli.md)
 - [Docs/DesktopManager.Mcp.md](Docs/DesktopManager.Mcp.md)
+- [Docs/DesktopManager.App.Design.md](Docs/DesktopManager.App.Design.md)
 - [Docs/DesktopManager.Architecture.md](Docs/DesktopManager.Architecture.md)
 - [Docs/DesktopManager.AutomationBasics.md](Docs/DesktopManager.AutomationBasics.md)
 - [Docs/DesktopManager.Plugin.md](Docs/DesktopManager.Plugin.md)
@@ -73,6 +74,7 @@ Additional operator-focused docs for the newer CLI and MCP surfaces:
 | PowerShell module | Scripts, operators, admin workflows, repeatable task automation | `Install-Module DesktopManager` |
 | CLI executable | Manual use, shell automation, JSON output, and MCP hosting | `desktopmanager.exe` |
 | MCP server | Agent-driven automation over stdio with an inspect-first safety model | `desktopmanager mcp serve` |
+| Windows tray app | Daily hotkeys, monitor bindings, HDR controls, tray runtime, and per-user startup | `DesktopManager.App.exe` |
 
 ## How It Fits Together
 
@@ -84,6 +86,7 @@ flowchart LR
     C["PowerShell module"] --> B
     D["desktopmanager.exe CLI"] --> B
     E["MCP server"] --> D
+    J["DesktopManager.App tray app"] --> B
     B --> F["Windows desktop APIs"]
     F --> G["Monitors / wallpapers / brightness"]
     F --> H["Windows / controls / input"]
@@ -105,6 +108,7 @@ The practical way to think about this:
 | ---- | ---------------------- |
 | Add DesktopManager features to your own code | Reference the `DesktopManager` NuGet package |
 | Run manual desktop operations from a terminal | `desktopmanager.exe` |
+| Run DesktopManager every day from the tray | `DesktopManager.App.exe` or the DesktopManager MSI |
 | Use it from PowerShell scripts | `DesktopManager` PowerShell module |
 | Connect an agent/tooling layer | `desktopmanager mcp serve` |
 | Understand the overall wiring | [Docs/DesktopManager.Architecture.md](Docs/DesktopManager.Architecture.md) |
@@ -118,10 +122,12 @@ flowchart LR
     B -->|"PowerShell"| D["Cmdlets"]
     B -->|"CLI"| E["desktopmanager.exe"]
     B -->|"MCP"| F["desktopmanager mcp serve"]
+    B -->|"Tray app"| J["DesktopManager.App.exe"]
 
     D --> C
     E --> G["DesktopOperations"]
     F --> G
+    J --> C
     G --> C
     C --> H["Win32, UI Automation, monitor, screenshot, and input services"]
 ```
@@ -258,6 +264,16 @@ For using in PowerShell you can install it from PowerShell Gallery
 
 ```powershell
 Install-Module DesktopManager -Force -Verbose
+```
+
+For the daily Windows tray app, use the DesktopManager MSI release artifact when available. The installer creates a Start Menu shortcut, and the app's Startup toggle registers the current user for minimized tray startup.
+
+From source, the app and MSI are built through PowerForge:
+
+```powershell
+.\Build\Build-DesktopManagerApp.ps1
+.\Build\Build-DesktopManagerApp-MSI.ps1
+msiexec.exe /i .\Artefacts\PowerForge\Msi\DesktopManager.App\win-x64\net10.0-windows10.0.19041.0\PortableCompat\output\DesktopManager.msi
 ```
 
 ### Verified mutation examples

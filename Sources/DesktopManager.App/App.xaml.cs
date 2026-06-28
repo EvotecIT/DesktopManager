@@ -27,7 +27,23 @@ public sealed partial class App : Application {
             return;
         }
 
+        bool startMinimized = ShouldStartMinimized(args.Arguments);
         _window = new MainWindow();
         _window.Activate();
+        if (startMinimized && _window is MainWindow mainWindow) {
+            mainWindow.HideToTrayAfterLaunch();
+        }
+    }
+
+    private static bool ShouldStartMinimized(string? arguments) {
+        if (string.IsNullOrWhiteSpace(arguments)) {
+            return false;
+        }
+
+        string[] parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Any(argument =>
+            string.Equals(argument, "--minimized", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(argument, "--minimized-to-tray", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(argument, "/minimized", StringComparison.OrdinalIgnoreCase));
     }
 }
