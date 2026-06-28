@@ -59,7 +59,6 @@ Additional operator-focused docs for the newer CLI and MCP surfaces:
 
 - [Docs/DesktopManager.Cli.md](Docs/DesktopManager.Cli.md)
 - [Docs/DesktopManager.Mcp.md](Docs/DesktopManager.Mcp.md)
-- [Docs/DesktopManager.App.Design.md](Docs/DesktopManager.App.Design.md)
 - [Docs/DesktopManager.Architecture.md](Docs/DesktopManager.Architecture.md)
 - [Docs/DesktopManager.AutomationBasics.md](Docs/DesktopManager.AutomationBasics.md)
 - [Docs/DesktopManager.Plugin.md](Docs/DesktopManager.Plugin.md)

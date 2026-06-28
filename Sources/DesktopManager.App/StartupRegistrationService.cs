@@ -8,13 +8,21 @@ internal static class StartupRegistrationService {
     private const string MinimizedArgument = "--minimized";
 
     public static bool IsEnabled() {
-        using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: false);
+        using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
         if (key?.GetValue(ValueName) is not string value) {
             return false;
         }
 
-        return string.Equals(value, GetCommand(startMinimized: true), StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, GetCommand(startMinimized: false), StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(value, GetCommand(startMinimized: true), StringComparison.OrdinalIgnoreCase)) {
+            return true;
+        }
+
+        if (string.Equals(value, GetCommand(startMinimized: false), StringComparison.OrdinalIgnoreCase)) {
+            key.SetValue(ValueName, GetCommand(startMinimized: true), RegistryValueKind.String);
+            return true;
+        }
+
+        return false;
     }
 
     public static void SetEnabled(bool enabled) {

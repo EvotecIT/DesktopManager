@@ -25,8 +25,13 @@
     <ProjectReference Include="..\DesktopManager.App.Core\DesktopManager.App.Core.csproj" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <DesktopManagerHotkeyHostTargets Condition="'$(NoRestore)' == 'true' Or '$(Restore)' == 'false'">Publish</DesktopManagerHotkeyHostTargets>
+    <DesktopManagerHotkeyHostTargets Condition="'$(DesktopManagerHotkeyHostTargets)' == ''">Restore;Publish</DesktopManagerHotkeyHostTargets>
+  </PropertyGroup>
+
   <Target Name="PublishHotkeyHost" BeforeTargets="Build;Publish">
-    <MSBuild Projects="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\DesktopManager.HotkeyHost.csproj" Targets="Restore;Publish" Properties="Configuration=$(Configuration);TargetFramework=$(DesktopManagerNet10WindowsTfm);RuntimeIdentifier=win-x64" />
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\DesktopManager.HotkeyHost\DesktopManager.HotkeyHost.csproj" Targets="$(DesktopManagerHotkeyHostTargets)" Properties="Configuration=$(Configuration);TargetFramework=$(DesktopManagerNet10WindowsTfm);RuntimeIdentifier=win-x64" />
   </Target>
 
   <Target Name="CopyHotkeyHostDependencies" AfterTargets="Build">
