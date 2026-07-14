@@ -123,7 +123,7 @@ public partial class MonitorService {
                     var monitor = new Monitor(this) {
                         Index = index,
                         DeviceId = info.szDevice,
-                        DeviceName = device.DeviceName,
+                        DeviceName = ResolveDisplaySourceName(info.szDevice, device.DeviceName),
                         DeviceString = device.DeviceString,
                         StateFlags = device.StateFlags,
                         DeviceKey = device.DeviceKey,
