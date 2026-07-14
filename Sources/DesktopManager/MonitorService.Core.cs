@@ -14,7 +14,6 @@ namespace DesktopManager;
 /// </summary>
 public partial class MonitorService {
     private const int ENUM_CURRENT_SETTINGS = -1;
-    private const int DM_LOGPIXELS = 0x00020000;
     private readonly IDesktopManager _desktopManager;
     private bool _desktopWallpaperEnableAttempted;
 
@@ -63,7 +62,7 @@ public partial class MonitorService {
         try {
             Execute(() => _desktopManager.Enable(true), nameof(IDesktopManager.Enable));
         } catch (DesktopManagerException ex) {
-            Console.WriteLine($"DesktopManager enable failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"DesktopManager enable failed: {ex.Message}");
         }
     }
 
@@ -139,7 +138,7 @@ public partial class MonitorService {
             return true;
         };
         if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero)) {
-            Console.WriteLine("EnumDisplayMonitors failed");
+            DesktopManagerDiagnostics.Report("EnumDisplayMonitors failed");
         }
         
         return monitors;

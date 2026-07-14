@@ -84,6 +84,11 @@ internal sealed class McpSafetyPolicy {
             return McpToolSafetyDecision.Allow();
         }
 
+        if (HasProcessFilters && McpCatalog.AffectsGlobalDesktop(name)) {
+            return McpToolSafetyDecision.Deny(
+                $"The requested mutation '{name}' affects global desktop state and cannot be constrained by MCP process allow/deny filters. Restart without process filters to permit global desktop mutations.");
+        }
+
         if (HasProcessFilters && McpCatalog.AffectsLiveDesktop(name)) {
             if (!McpCatalog.TryGetMutatingProcessScope(name, arguments, out string[] processPatterns, out string? scopeError)) {
                 return McpToolSafetyDecision.Deny(scopeError ?? "This MCP server requires an explicit process-scoped target for the requested mutating tool.");
@@ -142,7 +147,7 @@ internal sealed class McpSafetyPolicy {
             ? "Denied processes: " + string.Join(", ", DeniedProcessPatterns) + "."
             : "No explicit process denylist is active.";
 
-        return allowed + " " + denied + " Live desktop mutations must resolve to an explicit process scope when these filters are active.";
+        return allowed + " " + denied + " Process-scoped desktop mutations must resolve to an explicit process target, and global desktop mutations are blocked while these filters are active.";
     }
 
     private static string[] NormalizePatterns(IReadOnlyList<string>? patterns) {

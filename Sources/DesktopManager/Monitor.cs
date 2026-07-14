@@ -137,14 +137,12 @@ public class Monitor {
     }
 
     /// <summary>
-    /// Sets the position of the monitor.
+    /// Sets the top-left position of the monitor without changing its resolution.
     /// </summary>
     /// <param name="left">The left position.</param>
     /// <param name="top">The top position.</param>
-    /// <param name="right">The right position.</param>
-    /// <param name="bottom">The bottom position.</param>
-    public void SetMonitorPosition(int left, int top, int right, int bottom) {
-        _monitorService.SetMonitorPosition(DeviceId, left, top, right, bottom);
+    public void SetMonitorPosition(int left, int top) {
+        _monitorService.SetMonitorPosition(DeviceId, left, top);
     }
 
     /// <summary>
@@ -220,7 +218,7 @@ public class Monitor {
                 SerialNumber = ParseSerialNumberFromEdid(edid);
             }
         } catch (Exception ex) {
-            Console.WriteLine($"LoadEdidInfo failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"LoadEdidInfo failed: {ex.Message}");
         }
     }
 

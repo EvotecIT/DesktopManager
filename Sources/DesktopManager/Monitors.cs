@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
@@ -8,15 +9,27 @@ namespace DesktopManager;
 /// Provides methods to manage and interact with monitors, including getting monitor information and setting wallpapers.
 /// </summary>
 public class Monitors {
-    private readonly MonitorService _monitorService;
+    private readonly Lazy<MonitorService> _lazyMonitorService;
     private List<Monitor>? _cachedMonitors;
+    private MonitorService _monitorService => _lazyMonitorService.Value;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Monitors"/> class.
     /// </summary>
-    public Monitors() {
-        IDesktopManager desktopManager = (IDesktopManager)new DesktopManagerWrapper(); // Explicit cast
-        _monitorService = new MonitorService(desktopManager);
+    public Monitors()
+        : this(() => (IDesktopManager)new DesktopManagerWrapper()) {
+    }
+
+    internal Monitors(Func<IDesktopManager> desktopManagerFactory) {
+        if (desktopManagerFactory == null) {
+            throw new ArgumentNullException(nameof(desktopManagerFactory));
+        }
+
+        _lazyMonitorService = new Lazy<MonitorService>(() => {
+            IDesktopManager desktopManager = desktopManagerFactory()
+                ?? throw new InvalidOperationException("The desktop wallpaper COM service could not be created.");
+            return new MonitorService(desktopManager);
+        });
     }
 
     /// <summary>
@@ -319,15 +332,13 @@ public class Monitors {
     }
 
     /// <summary>
-    /// Sets the position of a monitor by its device ID.
+    /// Sets the top-left position of a monitor by its device ID without changing its resolution.
     /// </summary>
     /// <param name="deviceId">The device ID of the monitor.</param>
     /// <param name="left">The left position.</param>
     /// <param name="top">The top position.</param>
-    /// <param name="right">The right position.</param>
-    /// <param name="bottom">The bottom position.</param>
-    public void SetMonitorPosition(string deviceId, int left, int top, int right, int bottom) {
-        _monitorService.SetMonitorPosition(deviceId, left, top, right, bottom);
+    public void SetMonitorPosition(string deviceId, int left, int top) {
+        _monitorService.SetMonitorPosition(deviceId, left, top);
     }
 
     /// <summary>
@@ -368,25 +379,6 @@ public class Monitors {
     public void SetMonitorOrientation(int index, DisplayOrientation orientation) {
         var deviceId = _monitorService.GetMonitorDevicePathAt((uint)index);
         _monitorService.SetMonitorOrientation(deviceId, orientation);
-    }
-
-    /// <summary>
-    /// Sets the DPI scaling of a monitor by its device ID.
-    /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
-    /// <param name="scalingPercent">The DPI scaling percentage.</param>
-    public void SetMonitorDpiScaling(string deviceId, int scalingPercent) {
-        _monitorService.SetMonitorDpiScaling(deviceId, scalingPercent);
-    }
-
-    /// <summary>
-    /// Sets the DPI scaling of a monitor by its index.
-    /// </summary>
-    /// <param name="index">The index of the monitor.</param>
-    /// <param name="scalingPercent">The DPI scaling percentage.</param>
-    public void SetMonitorDpiScaling(int index, int scalingPercent) {
-        var deviceId = _monitorService.GetMonitorDevicePathAt((uint)index);
-        _monitorService.SetMonitorDpiScaling(deviceId, scalingPercent);
     }
 
     /// <summary>

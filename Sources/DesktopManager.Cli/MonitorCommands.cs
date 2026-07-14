@@ -16,7 +16,6 @@ internal static class MonitorCommands {
             "set-hdr" => SetHdr(arguments),
             "set-position" => SetPosition(arguments),
             "set-resolution" => SetResolution(arguments),
-            "set-dpi-scaling" => SetDpiScaling(arguments),
             "set-taskbar" => SetTaskbar(arguments),
             _ => throw new CommandLineException($"Unknown monitor command '{action}'.")
         };
@@ -130,8 +129,6 @@ internal static class MonitorCommands {
         IReadOnlyList<MonitorResult> results = DesktopOperations.SetMonitorPosition(
             arguments.GetRequiredIntOption("left"),
             arguments.GetRequiredIntOption("top"),
-            arguments.GetRequiredIntOption("right"),
-            arguments.GetRequiredIntOption("bottom"),
             connectedOnly: GetConnectedOnly(arguments),
             primaryOnly: GetPrimaryOnly(arguments),
             index: arguments.GetIntOption("index"),
@@ -151,23 +148,6 @@ internal static class MonitorCommands {
             arguments.GetRequiredIntOption("width"),
             arguments.GetRequiredIntOption("height"),
             DesktopValueParser.ParseOptionalDisplayOrientation(arguments.GetOption("orientation"), "Option '--orientation'"),
-            connectedOnly: GetConnectedOnly(arguments),
-            primaryOnly: GetPrimaryOnly(arguments),
-            index: arguments.GetIntOption("index"),
-            deviceId: arguments.GetOption("device-id"),
-            deviceName: arguments.GetOption("device-name"));
-
-        if (arguments.GetBoolFlag("json")) {
-            OutputFormatter.WriteJson(results);
-            return 0;
-        }
-
-        return WriteMonitorResults(results, Console.Out);
-    }
-
-    private static int SetDpiScaling(CommandLineArguments arguments) {
-        IReadOnlyList<MonitorResult> results = DesktopOperations.SetMonitorDpiScaling(
-            arguments.GetRequiredIntOption("scaling-percent"),
             connectedOnly: GetConnectedOnly(arguments),
             primaryOnly: GetPrimaryOnly(arguments),
             index: arguments.GetIntOption("index"),

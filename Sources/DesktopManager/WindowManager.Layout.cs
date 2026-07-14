@@ -81,7 +81,7 @@ public partial class WindowManager
             if (!string.IsNullOrEmpty(directory)) {
                 System.IO.Directory.CreateDirectory(directory);
             }
-            System.IO.File.WriteAllText(fullPath, json);
+            AtomicFileWriter.WriteAllText(fullPath, json);
         }
 
         /// <summary>

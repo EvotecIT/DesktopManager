@@ -134,40 +134,9 @@ public static class WallpaperHistory
         }
     }
 
-    private static void WriteHistoryCore(string historyFilePath, IEnumerable<string> paths)
-    {
-        string? dir = Path.GetDirectoryName(historyFilePath);
-        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-        {
-            Directory.CreateDirectory(dir);
-        }
-
+    private static void WriteHistoryCore(string historyFilePath, IEnumerable<string> paths) {
         string json = JsonSerializer.Serialize(paths);
-        string tempPath = historyFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            using (FileStream stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            using (StreamWriter writer = new StreamWriter(stream))
-            {
-                writer.Write(json);
-            }
-
-            if (File.Exists(historyFilePath))
-            {
-                File.Replace(tempPath, historyFilePath, null);
-            }
-            else
-            {
-                File.Move(tempPath, historyFilePath);
-            }
-        }
-        finally
-        {
-            if (File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
-        }
+        AtomicFileWriter.WriteAllText(historyFilePath, json);
     }
 
     private static T ExecuteWithHistoryFileLock<T>(Func<string, T> action)

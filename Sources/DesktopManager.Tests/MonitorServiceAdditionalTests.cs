@@ -10,6 +10,36 @@ namespace DesktopManager.Tests;
 public class MonitorServiceAdditionalTests {
     [TestMethod]
     /// <summary>
+    /// Ensures constructing monitor helpers does not activate the desktop-wallpaper COM service until it is needed.
+    /// </summary>
+    public void Monitors_Constructor_DefersDesktopManagerActivation() {
+        int activationCount = 0;
+        var monitors = new Monitors(() => {
+            activationCount++;
+            throw new InvalidOperationException("activation-probe");
+        });
+
+        Assert.AreEqual(0, activationCount);
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() => monitors.GetMonitors());
+        Assert.AreEqual("activation-probe", exception.Message);
+        Assert.AreEqual(1, activationCount);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures position changes cannot silently reinterpret right and bottom as a resolution request.
+    /// </summary>
+    public void ValidatePositionDimensions_ChangedResolution_ThrowsArgumentException() {
+        var current = new MonitorPosition(0, 0, 1920, 1080);
+        var requested = new MonitorPosition(1920, 0, 4480, 1440);
+
+        ArgumentException exception = Assert.ThrowsExactly<ArgumentException>(() => MonitorService.ValidatePositionDimensions(current, requested));
+
+        StringAssert.Contains(exception.Message, "SetMonitorResolution");
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Test for GetMonitorPosition_ThrowsWhenMonitorMissing.
     /// </summary>
     public void GetMonitorPosition_ThrowsWhenMonitorMissing() {

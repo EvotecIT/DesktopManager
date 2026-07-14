@@ -1,6 +1,6 @@
 # DesktopManager - C# Library and PowerShell Module
 
-DesktopManager is available as NuGet from the Nuget Gallery.
+DesktopManager is a Windows desktop automation toolkit available as a .NET library, PowerShell module, CLI, MCP server, and tray app.
 
 [![nuget downloads](https://img.shields.io/nuget/dt/DesktopManager?label=nuget%20downloads)](https://www.nuget.org/packages/DesktopManager)
 [![nuget version](https://img.shields.io/nuget/v/DesktopManager)](https://www.nuget.org/packages/DesktopManager)
@@ -28,11 +28,15 @@ If you would like to contact me you can do so via Twitter or LinkedIn.
 
 ## What it's all about
 
-<img height="256" align=right src="https://raw.githubusercontent.com/EvotecIT/DesktopManager/refs/heads/master/Assets/Images/DesktopManager.jpg">
+<img height="256" align="right" src="Assets/Images/DesktopManager.jpg">
 
-**DesktopManager** is a C# library and PowerShell module that allows to play with desktop settings. It allows to get information about monitors, display devices, wallpapers and set wallpapers. There are 2 ways to use:
-- **C# Library** - use it in your projects
-- **PowerShell Module** - use it in your scripts
+DesktopManager provides one shared Windows automation core through five surfaces:
+
+- **C# library** for .NET applications and services
+- **PowerShell module** for scripts and operator workflows
+- **CLI executable** for terminal and JSON automation
+- **MCP server** for inspect-first agent automation
+- **Windows tray app** for daily hotkeys and monitor actions
 
 It has following features:
 - Get information about monitors
@@ -47,7 +51,7 @@ It has following features:
 - Manage monitor brightness
 - Start/Stop/Advance wallpaper slideshows
 - Track wallpaper history
-- Adjust monitor resolution, orientation and DPI scaling
+- Adjust monitor resolution and orientation
 - Move monitors around the virtual desktop
 - Save and restore window layouts
 - Snap or move windows between monitors
@@ -152,9 +156,8 @@ The important part is that CLI, MCP, and PowerShell are meant to stay aligned by
 | Set-DesktopBackgroundColor | Change desktop background color |
 | Get-DesktopBrightness | Read monitor brightness level |
 | Set-DesktopBrightness | Set monitor brightness level |
-| Set-DesktopPosition | Configure monitor coordinates |
+| Set-DesktopPosition | Move a monitor by its top-left coordinates without changing resolution |
 | Set-DesktopResolution | Change monitor resolution or orientation |
-| Set-DesktopDpiScaling | Adjust DPI scaling percentage |
 | Set-DefaultAudioDevice | Set the default audio playback device |
 | Get-LogonWallpaper | Get the lock screen wallpaper path |
 | Set-LogonWallpaper | Set the lock screen wallpaper |
@@ -217,7 +220,6 @@ The table below shows the most relevant API methods behind each PowerShell cmdle
 | Set-DesktopBrightness | `Monitors.SetMonitorBrightness` |
 | Set-DesktopPosition | `Monitor.SetMonitorPosition` or `Monitors.SetMonitorPosition` |
 | Set-DesktopResolution | `Monitors.SetMonitorResolution`, `Monitors.SetMonitorOrientation` |
-| Set-DesktopDpiScaling | `Monitors.SetMonitorDpiScaling` |
 | Set-DefaultAudioDevice | `AudioService.SetDefaultAudioDevice` |
 | Get-LogonWallpaper | `Monitors.GetLogonWallpaper` |
 | Set-LogonWallpaper | `Monitors.SetLogonWallpaper` |
@@ -367,78 +369,29 @@ When the hosted-session or experimental live harnesses skip because focus or dis
 
 #### Example in C#
 
-Full exaple can be found in `DesktopManager.Example` project, as helper methods are requried to display data properly.
+The `DesktopManager.Example` project contains additional examples. Its default mode is read-only; mutation demos require the explicit `--run-mutations` option.
 
 ```csharp
-Monitors monitor = new Monitors();
-var getMonitors = monitor.GetMonitors();
-
-Helpers.AddLine("Number of monitors", getMonitors.Count);
-Helpers.ShowPropertiesTable("GetMonitors() ", getMonitors);
-
-var getMonitorsConnected = monitor.GetMonitorsConnected();
-Helpers.AddLine("Number of monitors (connected):", getMonitorsConnected.Count);
-Helpers.ShowPropertiesTable("GetMonitorsConnected() ", getMonitorsConnected);
-
-var listDisplayDevices = monitor.DisplayDevicesAll();
-Console.WriteLine("Count DisplayDevicesAll: " + listDisplayDevices.Count);
-Helpers.ShowPropertiesTable("DisplayDevicesAll()", listDisplayDevices);
-
-Console.WriteLine("======");
-
-var getDisplayDevices = monitor.DisplayDevicesConnected();
-Console.WriteLine("Count DisplayDevicesConnected: " + getDisplayDevices.Count);
-Helpers.ShowPropertiesTable("DisplayDevicesConnected()", getDisplayDevices);
-
-Console.WriteLine("======");
-
-Console.WriteLine("Wallpaper Position (only first monitor): " + monitor.GetWallpaperPosition());
-
-foreach (var device in monitor.GetMonitorsConnected()) {
-    Console.WriteLine("3==================================");
-    Console.WriteLine("MonitorID: " + device.DeviceId);
-    Console.WriteLine("Wallpaper Path: " + device.GetWallpaper());
-    var rect1 = device.GetMonitorPosition();
-    Console.WriteLine("RECT1: {0} {1} {2} {3}", rect1.Left, rect1.Top, rect1.Right, rect1.Bottom);
-
-    // Get and display monitor position
-    var position = monitor.GetMonitorPosition(device.DeviceId);
-    Helpers.ShowPropertiesTable($"Position before move {device.DeviceId}", position);
-
-    var position1 = device.GetMonitorPosition();
-    Helpers.ShowPropertiesTable($"Position before move {device.DeviceId}", position1);
-
+var monitors = new Monitors();
+foreach (var monitor in monitors.GetMonitors(connectedOnly: true)) {
+    MonitorPosition bounds = monitor.GetMonitorPosition();
+    Console.WriteLine($"{monitor.Index}: {monitor.DeviceName} at {bounds.Left},{bounds.Top} " +
+        $"({bounds.Right - bounds.Left}x{bounds.Bottom - bounds.Top})");
 }
 
-// Set monitor position
-monitor.SetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}", -3840, 500, 0, 2160);
-
-// Get and display monitor position
-var testPosition = monitor.GetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}");
-Helpers.ShowPropertiesTable("Position after move", testPosition);
-
-Thread.Sleep(5000);
-
-// Set monitor position
-monitor.SetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}", -3840, 0, 0, 2160);
-
-// Get and display monitor position
-testPosition = monitor.GetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}");
-Helpers.ShowPropertiesTable("Position after move", testPosition);
-
-monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
+// Moving a monitor changes only its top-left coordinate. Change resolution separately.
+// monitors.SetMonitorPosition(selected.DeviceId, left: -1920, top: 0);
 ```
 
 #### Example in C# - Getting/Setting Window Position
 
 ```csharp
 var manager = new WindowManager();
-manager.GetWindows
-manager.SetWindowPosition
-manager.CloseWindow
-manager.MinimizeWindow
-manager.MaximizeWindow
-manager.RestoreWindow
+WindowInfo? window = manager.GetWindows(processName: "notepad").FirstOrDefault();
+if (window != null) {
+    manager.SetWindowPosition(window, left: 100, top: 100, width: 1000, height: 700);
+    manager.ActivateWindow(window);
+}
 ```
 
 ### Platform notes
@@ -455,8 +408,8 @@ Get-DesktopMonitor | Format-Table
 
 Get-DesktopWallpaper -Index 0
 
-Set-DesktopWallpaper -Index 1 -WallpaperPath "C:\Support\GitHub\ImagePlayground\Sources\ImagePlayground.Examples\bin\Debug\net7.0\Images\KulekWSluchawkach.jpg" -Position Fit
-Set-DesktopWallpaper -Index 0 -WallpaperPath "C:\Users\przemyslaw.klys\Downloads\IMG_4820.jpg"
+Set-DesktopWallpaper -Index 1 -WallpaperPath "C:\Wallpapers\Landscape.jpg" -Position Fit
+Set-DesktopWallpaper -Index 0 -WallpaperPath "C:\Wallpapers\Portrait.jpg"
 Set-DesktopBackgroundColor -Color 0x0000FF
 Get-DesktopBackgroundColor
 ```
@@ -494,8 +447,9 @@ $Desktop5 | Format-Table
 $Desktop2 = Get-DesktopMonitor -ConnectedOnly
 $Desktop2 | Format-Table
 
-Set-DesktopPosition -Index 0 -Left -3840 -Top 0 -Right 0 -Bottom 1660 -WhatIf
-Set-DesktopPosition -Index 1 -Left 0 -Top 0 -Right 3840 -Bottom 2160 -WhatIf
+Set-DesktopPosition -Index 0 -Left -3840 -Top 0 -WhatIf
+Set-DesktopPosition -Index 1 -Left 0 -Top 0 -WhatIf
+```
 
 
 ### Example in PowerShell - Getting/Setting Window Position

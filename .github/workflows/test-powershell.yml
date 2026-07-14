@@ -17,7 +17,6 @@ permissions:
   contents: read
 
 env:
-  DOTNET_VERSION: '8.x'
   BUILD_CONFIGURATION: 'Debug'
 
 jobs:
@@ -28,7 +27,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
@@ -51,7 +50,7 @@ jobs:
         env:
           RefreshPSD1Only: 'true'
         run: |
-          .\Build\Build-Module.ps1
+          .\Build\Build-Module.ps1 -SkipInstall -NoInteractive
 
       - name: Commit refreshed PSD1
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
@@ -82,7 +81,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
@@ -94,9 +93,11 @@ jobs:
           path: .
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Install PowerShell modules
         shell: powershell
@@ -127,7 +128,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
@@ -139,9 +140,11 @@ jobs:
           path: .
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Install PowerShell modules
         shell: pwsh

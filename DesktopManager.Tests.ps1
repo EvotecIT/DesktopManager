@@ -1,4 +1,7 @@
 ﻿$ModuleName = (Get-ChildItem $PSScriptRoot\*.psd1).BaseName
+if (-not (Get-Variable -Name IsWindows -Scope Global -ErrorAction SilentlyContinue)) {
+    $global:IsWindows = $env:OS -eq 'Windows_NT'
+}
 $PrimaryModule = Get-ChildItem -Path $PSScriptRoot -Filter '*.psd1' -Recurse -ErrorAction SilentlyContinue -Depth 1
 if (-not $PrimaryModule) {
     throw "Path $PSScriptRoot doesn't contain PSD1 files. Failing tests."

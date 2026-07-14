@@ -109,6 +109,38 @@ public class UiAutomationControlServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures UI Automation operations reuse one STA worker instead of creating a thread per call.
+    /// </summary>
+    public void UiAutomationStaDispatcher_RepeatedCalls_UseSameStaThread() {
+        using var dispatcher = new UiAutomationStaDispatcher();
+
+        int firstThreadId = dispatcher.Invoke(_ => Thread.CurrentThread.ManagedThreadId);
+        int secondThreadId = dispatcher.Invoke(_ => Thread.CurrentThread.ManagedThreadId);
+        ApartmentState apartmentState = dispatcher.Invoke(_ => Thread.CurrentThread.GetApartmentState());
+
+        Assert.AreEqual(firstThreadId, secondThreadId);
+        Assert.AreEqual(ApartmentState.STA, apartmentState);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures stale window handles cannot grow the preferred-root cache without a bound.
+    /// </summary>
+    public void RememberPreferredSearchRootHandle_ManyWindows_BoundsCache() {
+        int entryCount = UiAutomationControlService.PreferredSearchRootsMaximumCount + 32;
+        for (int index = 1; index <= entryCount; index++) {
+            UiAutomationControlService.RememberPreferredSearchRootHandle(
+                new IntPtr(100000 + index),
+                new IntPtr(200000 + index));
+        }
+
+        Assert.IsTrue(
+            UiAutomationControlService.PreferredSearchRootCacheCount <= UiAutomationControlService.PreferredSearchRootsMaximumCount,
+            $"Preferred-root cache grew to {UiAutomationControlService.PreferredSearchRootCacheCount} entries.");
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures repeated action cache keys are stable for identical control signatures.
     /// </summary>
     public void GetActionMatchCacheKey_IdenticalControlSignature_ReturnsSameKey() {

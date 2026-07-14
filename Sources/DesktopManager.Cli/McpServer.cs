@@ -8,7 +8,11 @@ namespace DesktopManager.Cli;
 
 internal sealed class McpServer {
     private const string ProtocolVersion = "2025-06-18";
-    private static readonly byte[] HeaderSeparator = Encoding.ASCII.GetBytes("\r\n\r\n");
+    private const int MaxMessageBytes = 16 * 1024 * 1024;
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private static readonly JsonSerializerOptions McpJsonOptions = new(JsonUtilities.SerializerOptions) {
+        WriteIndented = false
+    };
     private readonly McpSafetyPolicy _safetyPolicy;
 
     public McpServer(McpSafetyPolicy? safetyPolicy = null) {
@@ -20,31 +24,74 @@ internal sealed class McpServer {
         using Stream output = Console.OpenStandardOutput();
 
         while (true) {
-            string? payload = ReadMessage(input);
+            string? payload;
+            try {
+                payload = ReadMessage(input);
+            } catch (Exception ex) when (ex is InvalidDataException || ex is EndOfStreamException) {
+                WriteError(output, null, -32700, ex.Message);
+                return 1;
+            }
+
             if (payload == null) {
                 return 0;
             }
 
-            using JsonDocument document = JsonDocument.Parse(payload);
-            JsonElement root = document.RootElement;
-            if (root.ValueKind == JsonValueKind.Array) {
-                foreach (JsonElement item in root.EnumerateArray()) {
-                    ProcessMessage(item, output);
+            JsonDocument document;
+            try {
+                document = JsonDocument.Parse(payload);
+            } catch (JsonException ex) {
+                WriteError(output, null, -32700, "Invalid JSON payload: " + ex.Message);
+                continue;
+            }
+
+            using (document) {
+                JsonElement root = document.RootElement;
+                if (root.ValueKind == JsonValueKind.Array) {
+                    WriteError(output, null, -32600, "MCP protocol 2025-06-18 does not support JSON-RPC batches.");
+                } else {
+                    ProcessMessageSafely(root, output);
                 }
-            } else {
-                ProcessMessage(root, output);
+            }
+        }
+    }
+
+    private void ProcessMessageSafely(JsonElement message, Stream output) {
+        JsonElement? id = TryGetRequestId(message);
+        try {
+            ProcessMessage(message, output);
+        } catch (Exception ex) {
+            if (id.HasValue) {
+                WriteError(output, id, -32603, "MCP request failed: " + ex.Message);
             }
         }
     }
 
     private void ProcessMessage(JsonElement message, Stream output) {
-        if (!message.TryGetProperty("method", out JsonElement methodElement)) {
+        JsonElement? requestId = TryGetRequestId(message);
+        if (message.ValueKind != JsonValueKind.Object) {
+            WriteError(output, requestId, -32600, "Each JSON-RPC request must be an object.");
+            return;
+        }
+
+        if (!message.TryGetProperty("jsonrpc", out JsonElement versionElement) ||
+            versionElement.ValueKind != JsonValueKind.String ||
+            !string.Equals(versionElement.GetString(), "2.0", StringComparison.Ordinal)) {
+            WriteError(output, requestId, -32600, "JSON-RPC version must be '2.0'.");
+            return;
+        }
+
+        if (!message.TryGetProperty("method", out JsonElement methodElement) || methodElement.ValueKind != JsonValueKind.String) {
+            WriteError(output, requestId, -32600, "JSON-RPC requests require a string method name.");
             return;
         }
 
         string? method = methodElement.GetString();
         bool hasId = message.TryGetProperty("id", out JsonElement idElement);
         JsonElement parameters = message.TryGetProperty("params", out JsonElement paramsElement) ? paramsElement : default;
+
+        if (!hasId && !string.Equals(method, "notifications/initialized", StringComparison.Ordinal)) {
+            return;
+        }
 
         switch (method) {
             case "initialize":
@@ -106,6 +153,11 @@ internal sealed class McpServer {
     }
 
     private void HandleToolCall(Stream output, JsonElement id, JsonElement parameters) {
+        if (parameters.ValueKind != JsonValueKind.Object) {
+            WriteError(output, id, -32602, "Tool calls require an object params value.");
+            return;
+        }
+
         if (!parameters.TryGetProperty("name", out JsonElement nameElement)) {
             WriteError(output, id, -32602, "Tool calls require a tool name.");
             return;
@@ -165,6 +217,11 @@ internal sealed class McpServer {
     }
 
     private void HandleResourceRead(Stream output, JsonElement id, JsonElement parameters) {
+        if (parameters.ValueKind != JsonValueKind.Object) {
+            WriteError(output, id, -32602, "Resource reads require an object params value.");
+            return;
+        }
+
         if (!parameters.TryGetProperty("uri", out JsonElement uriElement)) {
             WriteError(output, id, -32602, "Resource reads require a uri.");
             return;
@@ -188,6 +245,11 @@ internal sealed class McpServer {
     }
 
     private void HandlePromptGet(Stream output, JsonElement id, JsonElement parameters) {
+        if (parameters.ValueKind != JsonValueKind.Object) {
+            WriteError(output, id, -32602, "Prompt requests require an object params value.");
+            return;
+        }
+
         if (!parameters.TryGetProperty("name", out JsonElement nameElement)) {
             WriteError(output, id, -32602, "Prompt requests require a name.");
             return;
@@ -202,89 +264,69 @@ internal sealed class McpServer {
     }
 
     private static string? ReadMessage(Stream input) {
-        var headerBuffer = new List<byte>();
+        var payload = new List<byte>();
         while (true) {
             int value = input.ReadByte();
             if (value == -1) {
-                return headerBuffer.Count == 0 ? null : throw new EndOfStreamException("Unexpected end of stream while reading MCP headers.");
+                return payload.Count == 0 ? null : throw new EndOfStreamException("Unexpected end of stream before the MCP newline delimiter.");
             }
 
-            headerBuffer.Add((byte)value);
-            if (EndsWith(headerBuffer, HeaderSeparator)) {
+            if (value == '\n') {
                 break;
             }
-        }
 
-        string headers = Encoding.ASCII.GetString(headerBuffer.ToArray());
-        int contentLength = 0;
-        foreach (string line in headers.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)) {
-            if (!line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase)) {
-                continue;
-            }
-
-            string valueText = line.Substring("Content-Length:".Length).Trim();
-            if (!int.TryParse(valueText, out contentLength) || contentLength < 0) {
-                throw new InvalidDataException("Invalid Content-Length header.");
+            payload.Add((byte)value);
+            if (payload.Count > MaxMessageBytes) {
+                throw new InvalidDataException($"MCP message exceeds the {MaxMessageBytes}-byte limit.");
             }
         }
 
-        if (contentLength == 0) {
-            throw new InvalidDataException("Missing Content-Length header.");
+        if (payload.Count > 0 && payload[payload.Count - 1] == '\r') {
+            payload.RemoveAt(payload.Count - 1);
         }
 
-        byte[] payload = new byte[contentLength];
-        int offset = 0;
-        while (offset < payload.Length) {
-            int read = input.Read(payload, offset, payload.Length - offset);
-            if (read <= 0) {
-                throw new EndOfStreamException("Unexpected end of stream while reading an MCP message body.");
-            }
-
-            offset += read;
+        try {
+            return StrictUtf8.GetString(payload.ToArray());
+        } catch (DecoderFallbackException ex) {
+            throw new InvalidDataException("MCP messages must contain valid UTF-8.", ex);
         }
-
-        return Encoding.UTF8.GetString(payload);
     }
 
     private static void WriteSuccess(Stream output, JsonElement id, object result) {
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(new {
             jsonrpc = "2.0",
-            id = JsonSerializer.Deserialize<object>(id.GetRawText(), JsonUtilities.SerializerOptions),
+            id = JsonSerializer.Deserialize<object>(id.GetRawText(), McpJsonOptions),
             result
-        }, JsonUtilities.SerializerOptions);
+        }, McpJsonOptions);
         WriteMessage(output, payload);
     }
 
-    private static void WriteError(Stream output, JsonElement id, int code, string message) {
+    private static void WriteError(Stream output, JsonElement? id, int code, string message) {
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(new {
             jsonrpc = "2.0",
-            id = JsonSerializer.Deserialize<object>(id.GetRawText(), JsonUtilities.SerializerOptions),
+            id = id.HasValue
+                ? JsonSerializer.Deserialize<object>(id.Value.GetRawText(), McpJsonOptions)
+                : null,
             error = new {
                 code,
                 message
             }
-        }, JsonUtilities.SerializerOptions);
+        }, McpJsonOptions);
         WriteMessage(output, payload);
     }
 
     private static void WriteMessage(Stream output, byte[] payload) {
-        byte[] header = Encoding.ASCII.GetBytes($"Content-Length: {payload.Length}\r\n\r\n");
-        output.Write(header, 0, header.Length);
         output.Write(payload, 0, payload.Length);
+        output.WriteByte((byte)'\n');
         output.Flush();
     }
 
-    private static bool EndsWith(List<byte> source, byte[] suffix) {
-        if (source.Count < suffix.Length) {
-            return false;
+    private static JsonElement? TryGetRequestId(JsonElement message) {
+        if (message.ValueKind == JsonValueKind.Object && message.TryGetProperty("id", out JsonElement id)) {
+            return id;
         }
 
-        for (int index = 0; index < suffix.Length; index++) {
-            if (source[source.Count - suffix.Length + index] != suffix[index]) {
-                return false;
-            }
-        }
-
-        return true;
+        return null;
     }
+
 }

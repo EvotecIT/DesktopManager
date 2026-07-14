@@ -204,16 +204,6 @@ public class DesktopAutomationCoreTests {
 
     [TestMethod]
     /// <summary>
-    /// Ensures monitor DPI scaling updates reject a missing device identifier.
-    /// </summary>
-    public void DesktopAutomationService_SetMonitorDpiScaling_NullDeviceId_ThrowsArgumentException() {
-        var automation = new DesktopAutomationService();
-
-        Assert.ThrowsExactly<ArgumentException>(() => automation.SetMonitorDpiScaling(null!, 150));
-    }
-
-    [TestMethod]
-    /// <summary>
     /// Ensures taskbar position updates reject negative monitor indexes.
     /// </summary>
     public void DesktopAutomationService_SetTaskbarPosition_NegativeMonitorIndex_ThrowsArgumentOutOfRangeException() {
@@ -560,12 +550,56 @@ public class DesktopAutomationCoreTests {
 
     [TestMethod]
     /// <summary>
-    /// Ensures trailing spaces and dots are normalized away from saved state names.
+    /// Ensures reserved Windows device names remain blocked when an extension is supplied.
     /// </summary>
-    public void DesktopStateStore_GetTargetPath_TrailingDotsAndSpaces_AreTrimmed() {
-        string path = DesktopStateStore.GetTargetPath("editor-center. ");
+    public void DesktopStateStore_GetTargetPath_ReservedDeviceNameWithExtension_ThrowsArgumentException() {
+        Assert.ThrowsExactly<ArgumentException>(() => DesktopStateStore.GetTargetPath("CON.txt"));
+    }
 
-        Assert.AreEqual("editor-center.json", Path.GetFileName(path), true);
+    [TestMethod]
+    /// <summary>
+    /// Ensures invalid characters are rejected instead of being removed into a colliding state name.
+    /// </summary>
+    public void DesktopStateStore_GetTargetPath_InvalidCharacter_ThrowsArgumentException() {
+        Assert.ThrowsExactly<ArgumentException>(() => DesktopStateStore.GetTargetPath("editor:center"));
+        Assert.ThrowsExactly<ArgumentException>(() => DesktopStateStore.GetTargetPath("editor/center"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures trailing spaces and periods are rejected instead of silently changing the state name.
+    /// </summary>
+    public void DesktopStateStore_GetTargetPath_TrailingDotsAndSpaces_ThrowsArgumentException() {
+        Assert.ThrowsExactly<ArgumentException>(() => DesktopStateStore.GetTargetPath("editor-center. "));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures storage categories cannot escape the DesktopManager state root.
+    /// </summary>
+    public void DesktopStateStore_ListNames_PathTraversalCategory_ThrowsArgumentException() {
+        Assert.ThrowsExactly<ArgumentException>(() => DesktopStateStore.ListNames("../targets"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures atomic text writes replace an existing file and clean temporary files.
+    /// </summary>
+    public void AtomicFileWriter_WriteAllText_ReplacesExistingFileWithoutTemporaryFiles() {
+        string testRoot = Path.Combine(Path.GetTempPath(), "DesktopManager.Tests", Guid.NewGuid().ToString("N"));
+        string path = Path.Combine(testRoot, "state.json");
+
+        try {
+            AtomicFileWriter.WriteAllText(path, "first");
+            AtomicFileWriter.WriteAllText(path, "second");
+
+            Assert.AreEqual("second", File.ReadAllText(path));
+            Assert.AreEqual(0, Directory.GetFiles(testRoot, "*.tmp").Length);
+        } finally {
+            if (Directory.Exists(testRoot)) {
+                Directory.Delete(testRoot, recursive: true);
+            }
+        }
     }
 
     [TestMethod]

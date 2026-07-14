@@ -90,7 +90,7 @@ public sealed class MonitorWatcher : IDisposable {
         try {
             current = StateProvider();
         } catch (Exception ex) {
-            Console.WriteLine($"GetCurrentStates failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"GetCurrentStates failed: {ex.Message}");
             return;
         }
         bool orientationChanged = false;

@@ -26,8 +26,8 @@ public sealed class DesktopAutomationService {
     /// Initializes a new instance of the <see cref="DesktopAutomationService"/> class.
     /// </summary>
     public DesktopAutomationService() {
-        _windowManager = new WindowManager();
         _monitors = new Monitors();
+        _windowManager = new WindowManager(_monitors);
     }
 
     /// <summary>
@@ -334,6 +334,20 @@ public sealed class DesktopAutomationService {
     }
 
     /// <summary>
+    /// Sets the top-left position for a monitor without changing its resolution.
+    /// </summary>
+    /// <param name="deviceId">Monitor device identifier.</param>
+    /// <param name="left">Target left coordinate.</param>
+    /// <param name="top">Target top coordinate.</param>
+    public void SetMonitorPosition(string deviceId, int left, int top) {
+        if (string.IsNullOrWhiteSpace(deviceId)) {
+            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
+        }
+
+        _monitors.SetMonitorPosition(deviceId, left, top);
+    }
+
+    /// <summary>
     /// Sets the resolution for a monitor.
     /// </summary>
     /// <param name="deviceId">Monitor device identifier.</param>
@@ -358,19 +372,6 @@ public sealed class DesktopAutomationService {
         }
 
         _monitors.SetMonitorOrientation(deviceId, orientation);
-    }
-
-    /// <summary>
-    /// Sets the DPI scaling for a monitor.
-    /// </summary>
-    /// <param name="deviceId">Monitor device identifier.</param>
-    /// <param name="scalingPercent">Target scaling percentage.</param>
-    public void SetMonitorDpiScaling(string deviceId, int scalingPercent) {
-        if (string.IsNullOrWhiteSpace(deviceId)) {
-            throw new ArgumentException("A monitor device identifier is required.", nameof(deviceId));
-        }
-
-        _monitors.SetMonitorDpiScaling(deviceId, scalingPercent);
     }
 
     /// <summary>
@@ -1770,7 +1771,7 @@ public sealed class DesktopAutomationService {
         ValidateWindowTargetDefinition(definition);
 
         string path = DesktopStateStore.GetTargetPath(name);
-        File.WriteAllText(path, JsonSerializer.Serialize(definition, TargetSerializerOptions));
+        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(definition, TargetSerializerOptions));
         return definition;
     }
 
@@ -1810,7 +1811,7 @@ public sealed class DesktopAutomationService {
         ValidateControlTargetDefinition(definition);
 
         string path = DesktopStateStore.GetControlTargetPath(name);
-        File.WriteAllText(path, JsonSerializer.Serialize(definition, TargetSerializerOptions));
+        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(definition, TargetSerializerOptions));
         return definition;
     }
 
@@ -1853,7 +1854,7 @@ public sealed class DesktopAutomationService {
 
         string metadataPath = DesktopStateStore.GetVisualBaselinePath(name);
         string imagePath = DesktopStateStore.GetVisualBaselineImagePath(name);
-        capture.Bitmap.Save(imagePath, System.Drawing.Imaging.ImageFormat.Png);
+        AtomicFileWriter.Write(imagePath, stream => capture.Bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png));
 
         var definition = new DesktopVisualBaselineDefinition {
             Description = description,
@@ -1864,7 +1865,7 @@ public sealed class DesktopAutomationService {
             CreatedUtc = DateTime.UtcNow.ToString("O")
         };
 
-        File.WriteAllText(metadataPath, JsonSerializer.Serialize(definition, TargetSerializerOptions));
+        AtomicFileWriter.WriteAllText(metadataPath, JsonSerializer.Serialize(definition, TargetSerializerOptions));
         return definition;
     }
 

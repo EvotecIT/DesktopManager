@@ -440,9 +440,8 @@ Monitor commands:
   desktopmanager monitor set-wallpaper [--wallpaper-path <path> | --url <value>] [--position <center|tile|stretch|fit|fill|span>] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-brightness --brightness <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-hdr --enable|--disable [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
-  desktopmanager monitor set-position --left <value> --top <value> --right <value> --bottom <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
+  desktopmanager monitor set-position --left <value> --top <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-resolution --width <value> --height <value> [--orientation <default|degrees90|degrees180|degrees270>] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
-  desktopmanager monitor set-dpi-scaling --scaling-percent <value> [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
   desktopmanager monitor set-taskbar [--position <left|top|right|bottom>] [--show|--hide] [--connected] [--primary] [--index <value>] [--device-id <value>] [--device-name <value>] [--json]
 
 Examples:
@@ -455,9 +454,8 @@ Examples:
   desktopmanager monitor set-wallpaper --primary --wallpaper-path C:\Wallpapers\Aurora.jpg --position fill
   desktopmanager monitor set-brightness --primary --brightness 65
   desktopmanager monitor set-hdr --primary --enable
-  desktopmanager monitor set-position --device-name \\.\DISPLAY2 --left 1920 --top 0 --right 3840 --bottom 1440
+  desktopmanager monitor set-position --device-name \\.\DISPLAY2 --left 1920 --top 0
   desktopmanager monitor set-resolution --primary --width 2560 --height 1440 --orientation default
-  desktopmanager monitor set-dpi-scaling --primary --scaling-percent 150
   desktopmanager monitor set-taskbar --primary --position bottom --show
 """;
     }

@@ -1,3 +1,7 @@
+BeforeAll {
+    . "$PSScriptRoot/TestBootstrap.ps1"
+}
+
 describe 'Save-DesktopWindowLayout and Restore-DesktopWindowLayout' {
     it 'supports WhatIf for saving' -Skip:(-not $IsWindows) {
         { Save-DesktopWindowLayout -Path "$env:TEMP/layout.json" -WhatIf } | Should -Not -Throw

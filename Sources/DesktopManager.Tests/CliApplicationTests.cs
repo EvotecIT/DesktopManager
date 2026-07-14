@@ -268,14 +268,14 @@ public class CliApplicationTests {
 
     [TestMethod]
     /// <summary>
-    /// Ensures monitor set-position reports missing required bounds through the CLI entrypoint.
+    /// Ensures monitor set-position reports a missing top coordinate through the CLI entrypoint.
     /// </summary>
-    public void Run_MonitorSetPositionWithoutRight_WritesMissingRequiredOptionError() {
-        (int exitCode, string standardOutput, string standardError) = RunCli("monitor", "set-position", "--left", "0", "--top", "0", "--bottom", "1080");
+    public void Run_MonitorSetPositionWithoutTop_WritesMissingRequiredOptionError() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("monitor", "set-position", "--left", "0");
 
         Assert.AreEqual(1, exitCode);
         Assert.AreEqual(string.Empty, standardOutput);
-        StringAssert.Contains(standardError, "Error: Missing required option '--right'.");
+        StringAssert.Contains(standardError, "Error: Missing required option '--top'.");
         StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
     }
 

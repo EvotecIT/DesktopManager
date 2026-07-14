@@ -1,6 +1,6 @@
 Describe 'Set-DesktopWallpaper parameter validation' {
     BeforeAll {
-        Import-Module "$PSScriptRoot/..\DesktopManager.psd1" -Force
+        . "$PSScriptRoot/TestBootstrap.ps1"
     }
 
     It 'Throws when using Index with DeviceId' {
@@ -13,4 +13,3 @@ Describe 'Set-DesktopWallpaper parameter validation' {
             Should -Throw -ErrorId 'AmbiguousParameterSet,DesktopManager.PowerShell.CmdletSetDesktopWallpaper'
     }
 }
-

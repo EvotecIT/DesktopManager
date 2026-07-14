@@ -155,6 +155,49 @@ public class McpSafetyPolicyTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures saving a visual baseline cannot write persistent state through a read-only MCP server.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_SaveVisualBaselineInReadOnlyMode_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "save_visual_baseline",
+            CreateArguments(new {
+                name = "editor",
+                processName = "notepad"
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures process filters cannot imply that global monitor mutations are process-scoped.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_GlobalMutationWithProcessFilters_DeniesRequest() {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: true,
+            allowForegroundInput: false,
+            dryRun: false,
+            allowedProcessPatterns: new[] { "notepad" });
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            "set_monitor_brightness",
+            CreateArguments(new {
+                brightness = 60,
+                primaryOnly = true
+            }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "global desktop state");
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures monitor brightness mutations are blocked when the server is read-only.
     /// </summary>
     public void McpSafetyPolicy_EvaluateToolCall_SetMonitorBrightnessInReadOnlyMode_DeniesRequest() {

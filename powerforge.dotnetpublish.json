@@ -20,6 +20,18 @@
       "ExcludeSymbolsFromSingleFile": "true"
     }
   },
+  "SigningProfiles": {
+    "evotec-code-signing": {
+      "Enabled": true,
+      "ToolPath": "signtool.exe",
+      "OnMissingTool": "Fail",
+      "OnSignFailure": "Fail",
+      "TimeoutSeconds": 60,
+      "Thumbprint": "483292C9E317AA13B07BB7A96AE9D1A5ED9E7703",
+      "TimestampUrl": "http://timestamp.digicert.com",
+      "Description": "DesktopManager"
+    }
+  },
   "Profiles": [
     {
       "Name": "daily-app",
@@ -112,15 +124,7 @@
           "PublishAot": "false",
           "IncludeNativeLibrariesForSelfExtract": "false"
         },
-        "Sign": {
-          "Enabled": true,
-          "ToolPath": "signtool.exe",
-          "OnMissingTool": "Warn",
-          "OnSignFailure": "Warn",
-          "TimeoutSeconds": 60,
-          "TimestampUrl": "http://timestamp.digicert.com",
-          "Description": "DesktopManager"
-        }
+        "SignProfile": "evotec-code-signing"
       }
     }
   ],
@@ -219,15 +223,7 @@
         "PropertyName": "ProductVersion",
         "PatchCap": 65535
       },
-      "Sign": {
-        "Enabled": true,
-        "ToolPath": "signtool.exe",
-        "OnMissingTool": "Warn",
-        "OnSignFailure": "Warn",
-        "TimeoutSeconds": 60,
-        "TimestampUrl": "http://timestamp.digicert.com",
-        "Description": "DesktopManager"
-      }
+      "SignProfile": "evotec-code-signing"
     }
   ],
   "Outputs": {

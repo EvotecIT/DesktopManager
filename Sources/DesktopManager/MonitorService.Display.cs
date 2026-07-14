@@ -150,7 +150,7 @@ public partial class MonitorService {
                 };
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetWallpaperPositionFallback failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"GetWallpaperPositionFallback failed: {ex.Message}");
         }
         return DesktopWallpaperPosition.Center;
     }
@@ -188,7 +188,7 @@ public partial class MonitorService {
                 SetSystemWallpaper(GetSystemWallpaper());
             }
         } catch (Exception ex) {
-            Console.WriteLine($"SetWallpaperPositionFallback failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"SetWallpaperPositionFallback failed: {ex.Message}");
         }
     }
 
@@ -208,7 +208,7 @@ public partial class MonitorService {
                 }
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetBackgroundColorFallback failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"GetBackgroundColorFallback failed: {ex.Message}");
         }
         return 0;
     }
@@ -223,7 +223,7 @@ public partial class MonitorService {
                 key.SetValue("Background", $"{r} {g} {b}");
             }
         } catch (Exception ex) {
-            Console.WriteLine($"SetBackgroundColorFallback failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"SetBackgroundColorFallback failed: {ex.Message}");
         }
     }
 
@@ -255,62 +255,74 @@ public partial class MonitorService {
         if (string.IsNullOrWhiteSpace(deviceId)) {
             throw new ArgumentNullException(nameof(deviceId));
         }
-        SetMonitorPosition(deviceId, position.Left, position.Top, position.Right, position.Bottom);
+        if (position == null) {
+            throw new ArgumentNullException(nameof(position));
+        }
+
+        MonitorPosition current = GetMonitorPosition(deviceId);
+        ValidatePositionDimensions(current, position);
+        SetMonitorPosition(deviceId, position.Left, position.Top);
     }
 
     /// <summary>
-    /// Sets the position of a monitor.
+    /// Sets the top-left position of a monitor without changing its resolution.
     /// </summary>
     /// <param name="deviceId">The device ID of the monitor.</param>
     /// <param name="left">The left position.</param>
     /// <param name="top">The top position.</param>
-    /// <param name="right">The right position.</param>
-    /// <param name="bottom">The bottom position.</param>
     /// <exception cref="InvalidOperationException">Thrown when unable to set monitor position.</exception>
-    /// <exception cref="ArgumentException">Thrown when the corresponding display device is not found.</exception>
-    public void SetMonitorPosition(string deviceId, int left, int top, int right, int bottom) {
+    /// <exception cref="ArgumentException">Thrown when the monitor or its display source cannot be resolved.</exception>
+    public void SetMonitorPosition(string deviceId, int left, int top) {
         if (string.IsNullOrWhiteSpace(deviceId)) {
             throw new ArgumentNullException(nameof(deviceId));
         }
-        var monitorRect = GetMonitorBounds(deviceId);
-
-        // Enumerate through all display devices and match by RECT
-        int deviceNum = 0;
-
-        while (true) {
-            DISPLAY_DEVICE d = new DISPLAY_DEVICE();
-            d.cb = Marshal.SizeOf(d);
-            if (!MonitorNativeMethods.EnumDisplayDevices(null, (uint)deviceNum, ref d, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
-                break;
-            }
-            if ((d.StateFlags & DisplayDeviceStateFlags.AttachedToDesktop) != 0) {
-                DEVMODE devMode = new DEVMODE();
-                devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
-                if (MonitorNativeMethods.EnumDisplaySettings(d.DeviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
-                    // Compare RECTs
-                    if (monitorRect.Left == devMode.dmPositionX &&
-                        monitorRect.Top == devMode.dmPositionY &&
-                        (monitorRect.Right - monitorRect.Left) == devMode.dmPelsWidth &&
-                        (monitorRect.Bottom - monitorRect.Top) == devMode.dmPelsHeight) {
-                        // Found a match, now set the position
-                        devMode.dmFields = 0x00000020; // DM_POSITION
-                        devMode.dmPositionX = left;
-                        devMode.dmPositionY = top;
-
-                        // Apply the changes directly
-                        DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(d.DeviceName, ref devMode, IntPtr.Zero, 0, IntPtr.Zero);
-                        if (result != DisplayChangeConfirmation.Successful) {
-                            throw new InvalidOperationException($"Unable to set monitor position. Error: {result}");
-                        }
-                        return;
-                    }
-                }
-            }
-
-            deviceNum++;
+        Monitor? monitor = GetMonitors().FirstOrDefault(candidate => string.Equals(candidate.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase));
+        if (monitor == null || string.IsNullOrWhiteSpace(monitor.DeviceName)) {
+            throw new ArgumentException($"Monitor with device ID '{deviceId}' does not have a resolvable display source.", nameof(deviceId));
         }
 
-        throw new ArgumentException($"Corresponding display device not found for monitor ID '{deviceId}'.");
+        DEVMODE devMode = new DEVMODE {
+            dmSize = (short)Marshal.SizeOf(typeof(DEVMODE))
+        };
+        if (!MonitorNativeMethods.EnumDisplaySettings(monitor.DeviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
+            throw new InvalidOperationException($"Unable to get display settings for '{monitor.DeviceName}'.");
+        }
+
+        devMode.dmFields = 0x00000020; // DM_POSITION
+        devMode.dmPositionX = left;
+        devMode.dmPositionY = top;
+
+        DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(
+            monitor.DeviceName,
+            ref devMode,
+            IntPtr.Zero,
+            ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY,
+            IntPtr.Zero);
+        if (result != DisplayChangeConfirmation.Successful && result != DisplayChangeConfirmation.Restart) {
+            throw new InvalidOperationException($"Unable to set monitor position. Error: {result}");
+        }
+    }
+
+    internal static void ValidatePositionDimensions(MonitorPosition current, MonitorPosition requested) {
+        if (current == null) {
+            throw new ArgumentNullException(nameof(current));
+        }
+        if (requested == null) {
+            throw new ArgumentNullException(nameof(requested));
+        }
+
+        int currentWidth = current.Right - current.Left;
+        int currentHeight = current.Bottom - current.Top;
+        int requestedWidth = requested.Right - requested.Left;
+        int requestedHeight = requested.Bottom - requested.Top;
+        if (requestedWidth <= 0 || requestedHeight <= 0) {
+            throw new ArgumentException("Monitor bounds must have positive width and height.", nameof(requested));
+        }
+        if (requestedWidth != currentWidth || requestedHeight != currentHeight) {
+            throw new ArgumentException(
+                "SetMonitorPosition cannot change monitor dimensions. Preserve the current width and height, or call SetMonitorResolution separately.",
+                nameof(requested));
+        }
     }
 
     /// <summary>
@@ -386,39 +398,6 @@ public partial class MonitorService {
         }
     }
 
-    /// <summary>
-    /// Sets the DPI scaling of a monitor.
-    /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
-    /// <param name="scalingPercent">The DPI scaling percentage.</param>
-    public void SetMonitorDpiScaling(string deviceId, int scalingPercent) {
-        if (scalingPercent <= 0) {
-            throw new ArgumentOutOfRangeException(nameof(scalingPercent));
-        }
-        var monitor = GetMonitors().FirstOrDefault(m => string.Equals(m.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase));
-        if (monitor == null || string.IsNullOrWhiteSpace(monitor.DeviceName)) {
-            throw new ArgumentException($"Monitor with device ID '{deviceId}' not found", nameof(deviceId));
-        }
-        var deviceName = monitor.DeviceName;
-
-        DEVMODE devMode = new DEVMODE();
-        devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
-        if (!MonitorNativeMethods.EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
-            throw new InvalidOperationException("Unable to get display settings");
-        }
-
-        // Ensure process is DPI aware
-        try { MonitorNativeMethods.SetProcessDpiAwareness(ProcessDpiAwareness.Process_Per_Monitor_DPI_Aware); } catch { }
-
-        devMode.dmFields = DM_LOGPIXELS;
-        devMode.dmLogPixels = (short)(96 * scalingPercent / 100);
-
-        DisplayChangeConfirmation result = MonitorNativeMethods.ChangeDisplaySettingsEx(deviceName, ref devMode, IntPtr.Zero, ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY, IntPtr.Zero);
-        if (result != DisplayChangeConfirmation.Successful && result != DisplayChangeConfirmation.Restart) {
-            throw new InvalidOperationException($"Unable to set DPI scaling. Error: {result}");
-        }
-    }
-
     private PHYSICAL_MONITOR[] GetPhysicalMonitors(string deviceId) {
         IntPtr found = IntPtr.Zero;
         MonitorNativeMethods.MonitorEnumProc proc = (IntPtr h, IntPtr hdc, ref RECT r, IntPtr data) => {
@@ -431,7 +410,7 @@ public partial class MonitorService {
             return true;
         };
         if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero)) {
-            Console.WriteLine("EnumDisplayMonitors failed");
+            DesktopManagerDiagnostics.Report("EnumDisplayMonitors failed");
             return Array.Empty<PHYSICAL_MONITOR>();
         }
         if (found == IntPtr.Zero) {
@@ -469,7 +448,7 @@ public partial class MonitorService {
             throw new InvalidOperationException("GetMonitorBrightness failed");
         } finally {
             if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
-                Console.WriteLine("DestroyPhysicalMonitors failed");
+                DesktopManagerDiagnostics.Report("DestroyPhysicalMonitors failed");
             }
             foreach (var m in monitors) {
                 _monitorHandles.Remove(m);
@@ -493,7 +472,7 @@ public partial class MonitorService {
             }
         } finally {
             if (!MonitorNativeMethods.DestroyPhysicalMonitors((uint)monitors.Length, monitors)) {
-                Console.WriteLine("DestroyPhysicalMonitors failed");
+                DesktopManagerDiagnostics.Report("DestroyPhysicalMonitors failed");
             }
             foreach (var m in monitors) {
                 _monitorHandles.Remove(m);
@@ -748,4 +727,3 @@ public partial class MonitorService {
         return devices;
     }
 }
-

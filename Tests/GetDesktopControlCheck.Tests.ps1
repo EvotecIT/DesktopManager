@@ -1,5 +1,5 @@
 BeforeAll {
-    Import-Module "$PSScriptRoot/..\DesktopManager.psd1" -Force
+    . "$PSScriptRoot/TestBootstrap.ps1"
 }
 
 describe 'Get-DesktopControlCheck' {

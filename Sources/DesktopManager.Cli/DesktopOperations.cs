@@ -977,13 +977,12 @@ internal static partial class DesktopOperations {
         });
     }
 
-    public static IReadOnlyList<MonitorResult> SetMonitorPosition(int left, int top, int right, int bottom, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
+    public static IReadOnlyList<MonitorResult> SetMonitorPosition(int left, int top, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
         return ExecuteCore(() => {
             var automation = new DesktopAutomationService();
             IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName, refresh: true);
-            MonitorPosition position = new(left, top, right, bottom);
             foreach (Monitor monitor in monitors) {
-                automation.SetMonitorPosition(monitor.DeviceId, position);
+                automation.SetMonitorPosition(monitor.DeviceId, left, top);
             }
 
             return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);
@@ -999,18 +998,6 @@ internal static partial class DesktopOperations {
                 if (orientation.HasValue) {
                     automation.SetMonitorOrientation(monitor.DeviceId, orientation.Value);
                 }
-            }
-
-            return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);
-        });
-    }
-
-    public static IReadOnlyList<MonitorResult> SetMonitorDpiScaling(int scalingPercent, bool? connectedOnly = null, bool? primaryOnly = null, int? index = null, string? deviceId = null, string? deviceName = null) {
-        return ExecuteCore(() => {
-            var automation = new DesktopAutomationService();
-            IReadOnlyList<Monitor> monitors = automation.GetMonitors(connectedOnly: connectedOnly, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName, refresh: true);
-            foreach (Monitor monitor in monitors) {
-                automation.SetMonitorDpiScaling(monitor.DeviceId, scalingPercent);
             }
 
             return ListMonitors(connectedOnly, primaryOnly, index, deviceId, deviceName);

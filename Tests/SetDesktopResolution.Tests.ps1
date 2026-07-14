@@ -1,3 +1,7 @@
+BeforeAll {
+    . "$PSScriptRoot/TestBootstrap.ps1"
+}
+
 describe 'Set-DesktopResolution' {
     it 'supports WhatIf mode' -Skip:(-not $IsWindows) {
         { Set-DesktopResolution -Width 800 -Height 600 -WhatIf } | Should -Not -Throw
@@ -7,4 +11,3 @@ describe 'Set-DesktopResolution' {
         { Set-DesktopResolution -Width 800 -Height 600 -Orientation Default -WhatIf } | Should -Not -Throw
     }
 }
-

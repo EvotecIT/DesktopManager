@@ -78,7 +78,6 @@ public class HelpTextTests {
         StringAssert.Contains(help, "desktopmanager monitor set-hdr");
         StringAssert.Contains(help, "desktopmanager monitor set-position");
         StringAssert.Contains(help, "desktopmanager monitor set-resolution");
-        StringAssert.Contains(help, "desktopmanager monitor set-dpi-scaling");
         StringAssert.Contains(help, "desktopmanager monitor set-taskbar");
     }
 

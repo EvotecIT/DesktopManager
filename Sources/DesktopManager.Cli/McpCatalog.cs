@@ -6,164 +6,9 @@ using System.Text.Json;
 namespace DesktopManager.Cli;
 
 internal static class McpCatalog {
-    private static readonly HashSet<string> KnownToolNames = new(StringComparer.Ordinal) {
-        "get_active_window",
-        "get_mouse_state",
-        "get_clipboard_text",
-        "get_elevation_status",
-        "get_desktop_background_color",
-        "set_desktop_background_color",
-        "get_desktop_wallpaper_position",
-        "set_desktop_wallpaper_position",
-        "start_desktop_slideshow",
-        "stop_desktop_slideshow",
-        "advance_desktop_slideshow",
-        "list_windows",
-        "get_window_geometry",
-        "get_window_process_info",
-        "get_owner_window_process_info",
-        "window_exists",
-        "active_window_matches",
-        "wait_for_window",
-        "wait_for_window_close",
-        "wait_for_window_to_lose_focus",
-        "wait_for_window_visual_change",
-        "observe_window_text",
-        "wait_for_observed_text",
-        "get_focused_control",
-        "wait_for_focused_control",
-        "get_control_state",
-        "list_window_controls",
-        "diagnose_window_controls",
-        "control_exists",
-        "assert_control_value",
-        "wait_for_control",
-        "click_control",
-        "focus_control",
-        "set_control_enabled",
-        "set_control_check_state",
-        "set_matching_control_check_state",
-        "set_control_selected_value",
-        "set_matching_control_selected_value",
-        "set_control_visibility",
-        "set_control_text",
-        "send_control_keys",
-        "move_window",
-        "place_window",
-        "click_window_point",
-        "drag_window_points",
-        "scroll_window_point",
-        "type_window_text",
-        "send_window_keys",
-        "focus_window",
-        "list_window_keep_alive",
-        "start_window_keep_alive",
-        "stop_window_keep_alive",
-        "minimize_windows",
-        "maximize_windows",
-        "restore_windows",
-        "close_windows",
-        "set_window_topmost",
-        "set_window_visibility",
-        "set_window_transparency",
-        "snap_window",
-        "list_monitors",
-        "get_monitor_brightness",
-        "get_monitor_advanced_color",
-        "get_monitor_wallpaper",
-        "set_monitor_wallpaper",
-        "set_monitor_brightness",
-        "set_monitor_hdr",
-        "set_monitor_position",
-        "set_monitor_resolution",
-        "set_monitor_dpi_scaling",
-        "set_taskbar_position",
-        "screenshot_desktop",
-        "screenshot_window",
-        "launch_process",
-        "launch_and_wait_for_window",
-        "set_clipboard_text",
-        "list_named_targets",
-        "get_named_target",
-        "save_window_target",
-        "resolve_window_target",
-        "list_named_visual_baselines",
-        "get_named_visual_baseline",
-        "save_visual_baseline",
-        "assert_visual_baseline",
-        "resolve_visual_baseline",
-        "read_window_text",
-        "resolve_window_text",
-        "list_named_control_targets",
-        "get_named_control_target",
-        "save_control_target",
-        "resolve_control_target",
-        "list_named_layouts",
-        "save_current_layout",
-        "apply_named_layout",
-        "assert_window_layout",
-        "list_named_snapshots",
-        "save_current_snapshot",
-        "restore_saved_snapshot",
-        "prepare_for_coding",
-        "prepare_for_screen_sharing",
-        "clean_up_distractions"
-    };
-
-    private static readonly HashSet<string> MutatingToolNames = new(StringComparer.Ordinal) {
-        "set_clipboard_text",
-        "set_desktop_background_color",
-        "set_desktop_wallpaper_position",
-        "start_desktop_slideshow",
-        "stop_desktop_slideshow",
-        "advance_desktop_slideshow",
-        "click_control",
-        "focus_control",
-        "set_control_enabled",
-        "set_control_check_state",
-        "set_matching_control_check_state",
-        "set_control_selected_value",
-        "set_matching_control_selected_value",
-        "set_control_visibility",
-        "set_control_text",
-        "send_control_keys",
-        "move_window",
-        "place_window",
-        "click_window_point",
-        "drag_window_points",
-        "scroll_window_point",
-        "type_window_text",
-        "send_window_keys",
-        "focus_window",
-        "start_window_keep_alive",
-        "stop_window_keep_alive",
-        "minimize_windows",
-        "maximize_windows",
-        "restore_windows",
-        "close_windows",
-        "set_window_topmost",
-        "set_window_visibility",
-        "set_window_transparency",
-        "snap_window",
-        "set_monitor_brightness",
-        "set_monitor_hdr",
-        "set_monitor_wallpaper",
-        "set_monitor_position",
-        "set_monitor_resolution",
-        "set_monitor_dpi_scaling",
-        "set_taskbar_position",
-        "launch_process",
-        "launch_and_wait_for_window",
-        "save_window_target",
-        "save_control_target",
-        "save_current_layout",
-        "apply_named_layout",
-        "save_current_snapshot",
-        "restore_saved_snapshot",
-        "prepare_for_coding",
-        "prepare_for_screen_sharing",
-        "clean_up_distractions"
-    };
+    private static readonly Lazy<McpToolDefinition[]> ToolDefinitions = new(CreateTools);
+    private static readonly Lazy<IReadOnlyDictionary<string, McpToolDefinition>> ToolDefinitionsByName = new(() =>
+        ToolDefinitions.Value.ToDictionary(tool => tool.Name, StringComparer.Ordinal));
 
     private static readonly HashSet<string> LiveDesktopMutationToolNames = new(StringComparer.Ordinal) {
         "click_control",
@@ -194,6 +39,7 @@ internal static class McpCatalog {
         "set_window_visibility",
         "set_window_transparency",
         "snap_window",
+        "save_visual_baseline",
         "launch_process",
         "launch_and_wait_for_window",
         "apply_named_layout",
@@ -203,21 +49,40 @@ internal static class McpCatalog {
         "clean_up_distractions"
     };
 
+    private static readonly HashSet<string> GlobalDesktopMutationToolNames = new(StringComparer.Ordinal) {
+        "set_clipboard_text",
+        "set_desktop_background_color",
+        "set_desktop_wallpaper_position",
+        "start_desktop_slideshow",
+        "stop_desktop_slideshow",
+        "advance_desktop_slideshow",
+        "set_monitor_wallpaper",
+        "set_monitor_brightness",
+        "set_monitor_hdr",
+        "set_monitor_position",
+        "set_monitor_resolution",
+        "set_taskbar_position"
+    };
+
     private static readonly HashSet<string> ForegroundInputFallbackToolNames = new(StringComparer.Ordinal) {
         "set_control_text",
         "send_control_keys"
     };
 
     public static bool IsKnownTool(string name) {
-        return KnownToolNames.Contains(name);
+        return ToolDefinitionsByName.Value.ContainsKey(name);
     }
 
     public static bool IsMutatingTool(string name) {
-        return MutatingToolNames.Contains(name);
+        return ToolDefinitionsByName.Value.TryGetValue(name, out McpToolDefinition? tool) && !tool.Annotations.ReadOnlyHint;
     }
 
     public static bool AffectsLiveDesktop(string name) {
         return LiveDesktopMutationToolNames.Contains(name);
+    }
+
+    public static bool AffectsGlobalDesktop(string name) {
+        return GlobalDesktopMutationToolNames.Contains(name);
     }
 
     public static bool RequestsForegroundInputFallback(string name, JsonElement arguments) {
@@ -335,7 +200,11 @@ internal static class McpCatalog {
     }
 
     public static object[] GetTools() {
-        return new object[] {
+        return ToolDefinitions.Value;
+    }
+
+    private static McpToolDefinition[] CreateTools() {
+        return new McpToolDefinition[] {
             CreateTool("get_active_window", "Get Active Window", "Return information about the currently focused window.", CreateObjectSchema(), readOnly: true),
             CreateTool("get_mouse_state", "Get Mouse State", "Return the current desktop mouse position, button state, and cursor visibility.", CreateObjectSchema(), readOnly: true),
             CreateTool("get_clipboard_text", "Get Clipboard Text", "Return the current Unicode clipboard text when available.", CreateObjectSchema(
@@ -1090,7 +959,7 @@ internal static class McpCatalog {
                     ["wallpaperPath"] = CreateStringSchema("Wallpaper file path."),
                     ["url"] = CreateStringSchema("Wallpaper URL."),
                     ["position"] = CreateStringSchema("Optional wallpaper position: center, tile, stretch, fit, fill, or span.")
-                })), readOnly: false, destructive: false, idempotent: true),
+                })), readOnly: false, destructive: false, idempotent: true, openWorld: true),
             CreateTool("set_monitor_brightness", "Set Monitor Brightness", "Set brightness for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["brightness"] = CreateIntegerSchema("Brightness level to apply from 0 to 100.")
@@ -1099,23 +968,17 @@ internal static class McpCatalog {
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["enabled"] = CreateBooleanSchema("True to enable HDR; false to disable it.")
                 }), new[] { "enabled" }), readOnly: false, destructive: false, idempotent: true),
-            CreateTool("set_monitor_position", "Set Monitor Position", "Set monitor bounds for one or more matching monitors.", CreateObjectSchema(
+            CreateTool("set_monitor_position", "Set Monitor Position", "Set the top-left coordinate for one or more matching monitors without changing resolution.", CreateObjectSchema(
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["left"] = CreateIntegerSchema("Monitor left coordinate."),
-                    ["top"] = CreateIntegerSchema("Monitor top coordinate."),
-                    ["right"] = CreateIntegerSchema("Monitor right coordinate."),
-                    ["bottom"] = CreateIntegerSchema("Monitor bottom coordinate.")
-                }), new[] { "left", "top", "right", "bottom" }), readOnly: false, destructive: false, idempotent: true),
+                    ["top"] = CreateIntegerSchema("Monitor top coordinate.")
+                }), new[] { "left", "top" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("set_monitor_resolution", "Set Monitor Resolution", "Set monitor resolution and optional orientation for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["width"] = CreateIntegerSchema("Monitor width in pixels."),
                     ["height"] = CreateIntegerSchema("Monitor height in pixels."),
                     ["orientation"] = CreateStringSchema("Optional display orientation: default, degrees90, degrees180, or degrees270.")
                 }), new[] { "width", "height" }), readOnly: false, destructive: false, idempotent: true),
-            CreateTool("set_monitor_dpi_scaling", "Set Monitor Dpi Scaling", "Set monitor DPI scaling for one or more matching monitors.", CreateObjectSchema(
-                CreateMonitorMutationProperties(new Dictionary<string, object> {
-                    ["scalingPercent"] = CreateIntegerSchema("Scaling percentage to apply, such as 100, 125, or 150.")
-                }), new[] { "scalingPercent" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("set_taskbar_position", "Set Taskbar Position", "Set taskbar edge and optional visibility for one or more matching monitors.", CreateObjectSchema(
                 CreateMonitorMutationProperties(new Dictionary<string, object> {
                     ["position"] = CreateStringSchema("Optional taskbar edge: left, top, right, or bottom."),
@@ -1642,8 +1505,6 @@ internal static class McpCatalog {
                 "set_monitor_position" => DesktopOperations.SetMonitorPosition(
                     ReadInt(arguments, "left") ?? throw new CommandLineException("Property 'left' is required."),
                     ReadInt(arguments, "top") ?? throw new CommandLineException("Property 'top' is required."),
-                    ReadInt(arguments, "right") ?? throw new CommandLineException("Property 'right' is required."),
-                    ReadInt(arguments, "bottom") ?? throw new CommandLineException("Property 'bottom' is required."),
                     ReadNullableBool(arguments, "connectedOnly"),
                     ReadNullableBool(arguments, "primaryOnly"),
                     ReadInt(arguments, "index"),
@@ -1653,13 +1514,6 @@ internal static class McpCatalog {
                     ReadInt(arguments, "width") ?? throw new CommandLineException("Property 'width' is required."),
                     ReadInt(arguments, "height") ?? throw new CommandLineException("Property 'height' is required."),
                     ReadDisplayOrientation(arguments, "orientation"),
-                    ReadNullableBool(arguments, "connectedOnly"),
-                    ReadNullableBool(arguments, "primaryOnly"),
-                    ReadInt(arguments, "index"),
-                    ReadOptionalString(arguments, "deviceId"),
-                    ReadOptionalString(arguments, "deviceName")),
-                "set_monitor_dpi_scaling" => DesktopOperations.SetMonitorDpiScaling(
-                    ReadInt(arguments, "scalingPercent") ?? throw new CommandLineException("Property 'scalingPercent' is required."),
                     ReadNullableBool(arguments, "connectedOnly"),
                     ReadNullableBool(arguments, "primaryOnly"),
                     ReadInt(arguments, "index"),
@@ -2263,18 +2117,18 @@ internal static class McpCatalog {
             ReadMutationArtifactOptions(arguments));
     }
 
-    private static object CreateTool(string name, string title, string description, object inputSchema, bool readOnly, bool destructive = false, bool idempotent = false) {
-        return new {
-            name,
-            title,
-            description,
-            inputSchema,
-            annotations = new {
-                title,
-                readOnlyHint = readOnly,
-                destructiveHint = destructive,
-                idempotentHint = idempotent,
-                openWorldHint = false
+    private static McpToolDefinition CreateTool(string name, string title, string description, object inputSchema, bool readOnly, bool destructive = false, bool idempotent = false, bool openWorld = false) {
+        return new McpToolDefinition {
+            Name = name,
+            Title = title,
+            Description = description,
+            InputSchema = inputSchema,
+            Annotations = new McpToolAnnotations {
+                Title = title,
+                ReadOnlyHint = readOnly,
+                DestructiveHint = destructive,
+                IdempotentHint = idempotent,
+                OpenWorldHint = openWorld
             }
         };
     }

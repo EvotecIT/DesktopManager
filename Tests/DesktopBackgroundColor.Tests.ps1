@@ -1,6 +1,6 @@
 Describe 'Desktop background color cmdlets' {
     BeforeAll {
-        Import-Module "$PSScriptRoot/..\DesktopManager.psd1" -Force
+        . "$PSScriptRoot/TestBootstrap.ps1"
     }
 
     It 'Supports WhatIf for Set-DesktopBackgroundColor' {

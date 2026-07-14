@@ -42,7 +42,7 @@ public partial class MonitorService {
             try {
                 ApplyWallpaperToProfile(profile, wallpaperPath, style, tile);
             } catch (Exception ex) {
-                Console.WriteLine($"SetWallpaperForAllUsers failed for {profile.Sid}: {ex.Message}");
+                DesktopManagerDiagnostics.Report($"SetWallpaperForAllUsers failed for {profile.Sid}: {ex.Message}");
             }
         }
 

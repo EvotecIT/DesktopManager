@@ -12,13 +12,23 @@ namespace DesktopManager;
 /// Provides methods to manage windows, including getting window information and controlling window states.
 /// </summary>
 public partial class WindowManager {
-        private readonly Monitors _monitors;
+        private readonly Lazy<Monitors> _lazyMonitors;
+        private Monitors _monitors => _lazyMonitors.Value;
 
         /// <summary>
         /// Initializes a new instance of the WindowManager class.
         /// </summary>
         public WindowManager() {
-            _monitors = new Monitors();
+            _lazyMonitors = new Lazy<Monitors>(() => new Monitors());
+            SnapOptions = new WindowSnapOptions();
+        }
+
+        internal WindowManager(Monitors monitors) {
+            if (monitors == null) {
+                throw new ArgumentNullException(nameof(monitors));
+            }
+
+            _lazyMonitors = new Lazy<Monitors>(() => monitors);
             SnapOptions = new WindowSnapOptions();
         }
 

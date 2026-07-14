@@ -29,4 +29,4 @@ Invoke-DesktopScreenshot -Path (Join-Path $outputPath 'Region.png') -Left 100 -T
 
 ## Source
 
-- [GetDesktopScreenshot.ps1](https://github.com/EvotecIT/DesktopManager/blob/master/Examples/GetDesktopScreenshot.ps1)
+- [GetDesktopScreenshot.ps1](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Examples/GetDesktopScreenshot.ps1)

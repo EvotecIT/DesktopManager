@@ -16,7 +16,11 @@ public sealed class WindowPlacementService {
     /// Initializes a new instance of the <see cref="WindowPlacementService"/> class.
     /// </summary>
     public WindowPlacementService()
-        : this(new WindowManager(), new Monitors()) {
+        : this(new Monitors()) {
+    }
+
+    private WindowPlacementService(Monitors monitors)
+        : this(new WindowManager(monitors), monitors) {
     }
 
     /// <summary>

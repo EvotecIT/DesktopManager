@@ -7,14 +7,14 @@
 /// <code>
 /// <para>Set the position for a specific monitor by index</para>
 /// 
-/// Set-DesktopPosition -Index 1 -Left 0 -Top 0 -Right 1920 -Bottom 1080
+/// Set-DesktopPosition -Index 1 -Left 0 -Top 0
 /// </code>
 /// </example>
 /// <example>
 /// <code>
 /// <para>Set the position for the primary monitor only</para>
 /// 
-/// Set-DesktopPosition -PrimaryOnly -Left 0 -Top 0 -Right 1920 -Bottom 1080
+/// Set-DesktopPosition -PrimaryOnly -Left 0 -Top 0
 /// </code>
 /// </example>
 [Cmdlet(VerbsCommon.Set, "DesktopPosition", DefaultParameterSetName = "Index", SupportsShouldProcess = true)]
@@ -57,18 +57,6 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
     public int Top { get; set; }
 
     /// <summary>
-    /// <para type="description">The right position of the monitor.</para>
-    /// </summary>
-    [Parameter(Mandatory = true, Position = 6)]
-    public int Right { get; set; }
-
-    /// <summary>
-    /// <para type="description">The bottom position of the monitor.</para>
-    /// </summary>
-    [Parameter(Mandatory = true, Position = 7)]
-    public int Bottom { get; set; }
-
-    /// <summary>
     /// Error action preference, as set by the user
     /// </summary>
     private ActionPreference ErrorAction;
@@ -91,13 +79,11 @@ public sealed class CmdletSetDesktopPosition : PSCmdlet {
         var getMonitors = automation.GetMonitors(connectedOnly: null, primaryOnly: primaryOnly, index: index, deviceId: deviceId, deviceName: deviceName);
         foreach (var monitor in getMonitors) {
             var currentPosition = automation.GetMonitorPosition(monitor.DeviceId);
-            var newPosition = new MonitorPosition(Left, Top, Right, Bottom);
             if (ShouldProcess(
                     $"Monitor {monitor.DeviceName}",
-                    $"Change position from Left: {currentPosition.Left}, Top: {currentPosition.Top}, Right: {currentPosition.Right}, Bottom: {currentPosition.Bottom} " +
-                    $"to Left: {newPosition.Left}, Top: {newPosition.Top}, Right: {newPosition.Right}, Bottom: {newPosition.Bottom}")) {
+                    $"Change position from Left: {currentPosition.Left}, Top: {currentPosition.Top} to Left: {Left}, Top: {Top}")) {
                 try {
-                    automation.SetMonitorPosition(monitor.DeviceId, newPosition);
+                    automation.SetMonitorPosition(monitor.DeviceId, Left, Top);
                 } catch (Exception ex) {
                     if (ErrorAction == ActionPreference.Stop) { throw; }
                     WriteWarning($"Error setting monitor position: {ex.Message}");

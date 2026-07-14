@@ -31,4 +31,4 @@ $primary | Format-List *
 
 ## Source
 
-- [GetDesktopMonitors.ps1](https://github.com/EvotecIT/DesktopManager/blob/master/Examples/GetDesktopMonitors.ps1)
+- [GetDesktopMonitors.ps1](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Examples/GetDesktopMonitors.ps1)

@@ -13,6 +13,22 @@ namespace DesktopManager.Tests;
 public class McpServerTests {
     [TestMethod]
     /// <summary>
+    /// Ensures the advertised 2025-06-18 transport uses newline-delimited messages and rejects removed JSON-RPC batching without terminating the server.
+    /// </summary>
+    public void McpServer_Protocol20250618_RejectsBatchAndContinuesServingRequests() {
+        using var client = McpTestClient.Start();
+        using JsonDocument response = client.SendRaw("[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}]");
+
+        JsonElement error = response.RootElement.GetProperty("error");
+        Assert.AreEqual(-32600, error.GetProperty("code").GetInt32());
+        StringAssert.Contains(error.GetProperty("message").GetString() ?? string.Empty, "does not support JSON-RPC batches");
+
+        JsonElement ping = client.SendRequest(2, "ping");
+        Assert.AreEqual(JsonValueKind.Object, ping.ValueKind);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures the MCP transport advertises the expected tools, prompts, and resources.
     /// </summary>
     public void McpServer_InitializeAndListCatalog_ReturnsExpectedSurface() {
@@ -96,7 +112,6 @@ public class McpServerTests {
         Assert.IsTrue(toolNames.Contains("set_monitor_brightness"));
         Assert.IsTrue(toolNames.Contains("set_monitor_position"));
         Assert.IsTrue(toolNames.Contains("set_monitor_resolution"));
-        Assert.IsTrue(toolNames.Contains("set_monitor_dpi_scaling"));
         Assert.IsTrue(toolNames.Contains("set_taskbar_position"));
         Assert.IsTrue(toolNames.Contains("send_window_keys"));
         Assert.IsTrue(toolNames.Contains("list_window_keep_alive"));
@@ -163,9 +178,9 @@ public class McpServerTests {
         AssertToolHasProperty(toolsByName["set_monitor_wallpaper"], "url");
         AssertToolHasProperty(toolsByName["set_monitor_brightness"], "brightness");
         AssertToolHasProperty(toolsByName["set_monitor_position"], "left");
-        AssertToolHasProperty(toolsByName["set_monitor_position"], "right");
+        Assert.IsFalse(toolsByName["set_monitor_position"].GetProperty("inputSchema").GetProperty("properties").TryGetProperty("right", out _));
+        Assert.IsFalse(toolsByName["set_monitor_position"].GetProperty("inputSchema").GetProperty("properties").TryGetProperty("bottom", out _));
         AssertToolHasProperty(toolsByName["set_monitor_resolution"], "orientation");
-        AssertToolHasProperty(toolsByName["set_monitor_dpi_scaling"], "scalingPercent");
         AssertToolHasProperty(toolsByName["set_taskbar_position"], "position");
         AssertToolHasProperty(toolsByName["set_taskbar_position"], "visible");
         AssertToolHasProperty(toolsByName["observe_window_text"], "expectedText");
@@ -499,6 +514,13 @@ public class McpServerTests {
             ["intervalMs"] = 50
         });
         StringAssert.Contains(toolError.GetProperty("message").GetString() ?? string.Empty, "cannot find the file");
+
+        JsonElement paramsError = client.SendRequestExpectError(5, "tools/call");
+        Assert.AreEqual(-32602, paramsError.GetProperty("code").GetInt32());
+        StringAssert.Contains(paramsError.GetProperty("message").GetString() ?? string.Empty, "object params");
+
+        JsonElement pingResult = client.SendRequest(6, "ping");
+        Assert.AreEqual(JsonValueKind.Object, pingResult.ValueKind);
     }
 
     [TestMethod]
@@ -650,6 +672,7 @@ public class McpServerTests {
         StringAssert.Contains(toolError.GetProperty("message").GetString() ?? string.Empty, "explicit 'processName' selector");
     }
 
+    [TestMethod]
     /// <summary>
     /// Ensures denied-process filters block launch requests before the executable is started.
     /// </summary>

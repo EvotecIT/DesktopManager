@@ -8,6 +8,7 @@ namespace DesktopManager.Example {
         /// </summary>
         /// <param name="args">The command-line arguments.</param>
         static void Main(string[] args) {
+            bool runMutations = args.Any(argument => string.Equals(argument, "--run-mutations", StringComparison.OrdinalIgnoreCase));
             Monitors monitor = new Monitors();
 
             // Get all monitors
@@ -53,24 +54,12 @@ namespace DesktopManager.Example {
                 Helpers.ShowPropertiesTable($"Position before move {device.DeviceId}", position1);
             }
 
-            // Set monitor position
-            monitor.SetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}", -3840, 500, 0, 2160);
+            if (!runMutations) {
+                Console.WriteLine("Inspection complete. Pass --run-mutations to run the interactive window, input, and display mutation demos.");
+                return;
+            }
 
-            // Get and display monitor position
-            var testPosition = monitor.GetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}");
-            Helpers.ShowPropertiesTable("Position after move", testPosition);
-
-            Thread.Sleep(5000);
-
-            // Set monitor position
-            monitor.SetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}", -3840, 0, 0, 2160);
-
-            // Get and display monitor position
-            testPosition = monitor.GetMonitorPosition(@"\\?\DISPLAY#GSM5BBF#5&22b00b5d&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}");
-            Helpers.ShowPropertiesTable("Position after move", testPosition);
-
-            // Set wallpaper for the first monitor
-            monitor.SetWallpaper(1, @"C:\Users\przemyslaw.klys\Downloads\CleanupMonster2.jpg");
+            Console.WriteLine("Running explicitly requested mutation demos. These examples can move windows, send input, and change display settings.");
 
             // Demonstrate window management features
             WindowExamples.Run();
@@ -95,4 +84,3 @@ namespace DesktopManager.Example {
         }
     }
 }
-
