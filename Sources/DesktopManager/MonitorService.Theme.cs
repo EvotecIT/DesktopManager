@@ -21,7 +21,7 @@ public partial class MonitorService {
                 }
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetSystemTheme failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"GetSystemTheme failed: {ex.Message}");
         }
         return SystemTheme.Light;
     }
@@ -40,7 +40,7 @@ public partial class MonitorService {
             }
             RefreshTheme();
         } catch (Exception ex) {
-            Console.WriteLine($"SetSystemTheme failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"SetSystemTheme failed: {ex.Message}");
         }
     }
 
@@ -48,7 +48,7 @@ public partial class MonitorService {
         try {
             MonitorNativeMethods.SendMessage(MonitorNativeMethods.HWND_BROADCAST, MonitorNativeMethods.WM_SETTINGCHANGE, 0, 0);
         } catch (Exception ex) {
-            Console.WriteLine($"RefreshTheme failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"RefreshTheme failed: {ex.Message}");
         }
     }
 }

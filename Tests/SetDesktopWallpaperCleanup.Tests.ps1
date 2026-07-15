@@ -1,6 +1,6 @@
 describe 'Set-DesktopWallpaper cleanup' {
     BeforeAll {
-        Import-Module "$PSScriptRoot/..\DesktopManager.psd1" -Force
+        . "$PSScriptRoot/TestBootstrap.ps1"
     }
 
     it 'removes temporary file when using ImageData' -Skip:(-not $IsWindows) {

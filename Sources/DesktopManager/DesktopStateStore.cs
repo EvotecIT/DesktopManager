@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -133,7 +132,7 @@ public static class DesktopStateStore {
     /// <returns>The full output path.</returns>
     public static string ResolveCapturePath(string prefix, string? outputPath) {
         string path = string.IsNullOrWhiteSpace(outputPath)
-            ? Path.Combine(GetCapturesDirectory(), $"{prefix}-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}.png")
+            ? Path.Combine(GetCapturesDirectory(), $"{ValidateName(prefix)}-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}.png")
             : outputPath!;
 
         string extension = Path.GetExtension(path);
@@ -157,10 +156,10 @@ public static class DesktopStateStore {
             throw new ArgumentException("A name is required.", nameof(name));
         }
 
-        string sanitized = SanitizeName(name);
+        string validated = ValidateName(name);
         string directory = GetCategoryDirectory(category);
         Directory.CreateDirectory(directory);
-        return Path.Combine(directory, sanitized + ".json");
+        return Path.Combine(directory, validated + ".json");
     }
 
     private static string GetNamedImagePath(string category, string name) {
@@ -168,38 +167,45 @@ public static class DesktopStateStore {
             throw new ArgumentException("A name is required.", nameof(name));
         }
 
-        string sanitized = SanitizeName(name);
+        string validated = ValidateName(name);
         string directory = GetCategoryDirectory(category);
         Directory.CreateDirectory(directory);
-        return Path.Combine(directory, sanitized + ".png");
+        return Path.Combine(directory, validated + ".png");
     }
 
     private static string GetCategoryDirectory(string category) {
         string root = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "DesktopManager");
-        return Path.Combine(root, category);
+        return Path.Combine(root, ValidateName(category));
     }
 
-    private static string SanitizeName(string name) {
-        char[] invalid = Path.GetInvalidFileNameChars();
-        var buffer = new List<char>(name.Length);
-        foreach (char character in name.Trim()) {
-            if (Array.IndexOf(invalid, character) >= 0) {
-                continue;
+    internal static string ValidateName(string name) {
+        if (string.IsNullOrWhiteSpace(name)) {
+            throw new ArgumentException("A name is required.", nameof(name));
+        }
+
+        if (!string.Equals(name, name.Trim(), StringComparison.Ordinal) || name.EndsWith(".", StringComparison.Ordinal)) {
+            throw new ArgumentException("Names cannot start or end with whitespace or end with a period.", nameof(name));
+        }
+
+        if (name == "." || name == "..") {
+            throw new ArgumentException("Relative path segments are not valid names.", nameof(name));
+        }
+
+        const string invalidCharacters = "<>:\"/\\|?*";
+        foreach (char character in name) {
+            if (character < 32 || invalidCharacters.IndexOf(character) >= 0) {
+                throw new ArgumentException($"The name '{name}' contains an invalid file-name character.", nameof(name));
             }
-
-            buffer.Add(character);
         }
 
-        string sanitized = new string(buffer.ToArray()).TrimEnd(' ', '.');
-        if (string.IsNullOrWhiteSpace(sanitized)) {
-            throw new ArgumentException($"The name '{name}' does not produce a valid file name.", nameof(name));
-        }
-        if (ReservedDeviceNames.Contains(sanitized)) {
-            throw new ArgumentException($"The name '{name}' resolves to a reserved Windows file name.", nameof(name));
+        int extensionSeparator = name.IndexOf('.');
+        string deviceStem = extensionSeparator < 0 ? name : name.Substring(0, extensionSeparator);
+        if (ReservedDeviceNames.Contains(deviceStem)) {
+            throw new ArgumentException($"The name '{name}' uses a reserved Windows device name.", nameof(name));
         }
 
-        return sanitized;
+        return name;
     }
 }

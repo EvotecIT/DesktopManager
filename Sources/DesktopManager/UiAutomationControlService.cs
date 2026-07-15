@@ -13,6 +13,10 @@ internal sealed class UiAutomationControlService {
     private const int ForegroundTextVerificationMilliseconds = 1000;
     private const int ForegroundTextVerificationIntervalMilliseconds = 50;
     private const int ForegroundInputSettleMilliseconds = 75;
+    internal const int PreferredSearchRootsMaximumCount = 256;
+    private const int EnumeratedControlsCacheMaximumCount = 512;
+    private const int ActionMatchCacheMaximumCount = 512;
+    private static readonly Lazy<UiAutomationStaDispatcher> StaDispatcher = new(() => new UiAutomationStaDispatcher());
     private static readonly ConcurrentDictionary<IntPtr, IntPtr> PreferredSearchRoots = new();
     private static readonly ConcurrentDictionary<string, CachedControlCollection> EnumeratedControlsCache = new();
     private static readonly ConcurrentDictionary<string, CachedActionMatch> ActionMatchCache = new();
@@ -49,26 +53,7 @@ internal sealed class UiAutomationControlService {
             return new List<WindowControlInfo>();
         }
 
-        if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA) {
-            return EnumerateControlsCore(windowHandle, fallbackRootHandles);
-        }
-
-        List<WindowControlInfo> controls = new List<WindowControlInfo>();
-        Exception? workerException = null;
-        var thread = new Thread(() => {
-            try {
-                controls = new UiAutomationControlService().EnumerateControlsCore(windowHandle, fallbackRootHandles);
-            } catch (Exception ex) {
-                workerException = ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        if (workerException != null) {
-            throw workerException;
-        }
-        return controls;
+        return RunInSta(service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles));
     }
 
     internal static IReadOnlyList<IntPtr> GetFallbackRootHandles(IntPtr windowHandle, IEnumerable<WindowControlInfo>? win32Controls) {
@@ -122,6 +107,7 @@ internal sealed class UiAutomationControlService {
         }
 
         PreferredSearchRoots[windowHandle] = rootHandle;
+        TrimPreferredSearchRoots();
     }
 
     internal static void ForgetPreferredSearchRootHandle(IntPtr windowHandle, IntPtr rootHandle) {
@@ -291,23 +277,7 @@ internal sealed class UiAutomationControlService {
             return operation(this);
         }
 
-        T result = default!;
-        Exception? workerException = null;
-        var thread = new Thread(() => {
-            try {
-                result = operation(new UiAutomationControlService());
-            } catch (Exception ex) {
-                workerException = ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        if (workerException != null) {
-            throw workerException;
-        }
-
-        return result;
+        return StaDispatcher.Value.Invoke(operation);
     }
 
     private List<WindowControlInfo> EnumerateControlsCore(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles) {
@@ -929,6 +899,7 @@ internal sealed class UiAutomationControlService {
             ExpiresAtUtc = DateTime.UtcNow.AddMilliseconds(EnumeratedControlsCacheMilliseconds),
             Controls = CloneControls(controls).ToArray()
         };
+        TrimExpiringCache(EnumeratedControlsCache, EnumeratedControlsCacheMaximumCount, cached => cached.ExpiresAtUtc);
     }
 
     private static string GetEnumeratedControlsCacheKey(IntPtr rootHandle, bool includeRoot) {
@@ -1059,6 +1030,41 @@ internal sealed class UiAutomationControlService {
             RootHandle = rootHandle,
             Control = CloneControl(control)
         };
+        TrimExpiringCache(ActionMatchCache, ActionMatchCacheMaximumCount, cached => cached.ExpiresAtUtc);
+    }
+
+    internal static int PreferredSearchRootCacheCount => PreferredSearchRoots.Count;
+
+    private static void TrimPreferredSearchRoots() {
+        int removeCount = PreferredSearchRoots.Count - PreferredSearchRootsMaximumCount;
+        if (removeCount <= 0) {
+            return;
+        }
+
+        foreach (IntPtr key in PreferredSearchRoots.Keys.Take(removeCount)) {
+            PreferredSearchRoots.TryRemove(key, out _);
+        }
+    }
+
+    private static void TrimExpiringCache<T>(ConcurrentDictionary<string, T> cache, int maximumCount, Func<T, DateTime> getExpiry) {
+        DateTime now = DateTime.UtcNow;
+        foreach (KeyValuePair<string, T> entry in cache) {
+            if (getExpiry(entry.Value) < now) {
+                cache.TryRemove(entry.Key, out _);
+            }
+        }
+
+        int removeCount = cache.Count - maximumCount;
+        if (removeCount <= 0) {
+            return;
+        }
+
+        foreach (string key in cache
+            .OrderBy(entry => getExpiry(entry.Value))
+            .Take(removeCount)
+            .Select(entry => entry.Key)) {
+            cache.TryRemove(key, out _);
+        }
     }
 
     private static WindowControlInfo CloneControl(WindowControlInfo control) {

@@ -11,22 +11,22 @@ Sets the position of the desktop for one or more monitors.
 ## SYNTAX
 ### Index (Default)
 ```powershell
-Set-DesktopPosition [[-Index] <int>] [-Left] <int> [-Top] <int> [-Right] <int> [-Bottom] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopPosition [[-Index] <int>] [-Left] <int> [-Top] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceID
 ```powershell
-Set-DesktopPosition [[-DeviceId] <string>] [-Left] <int> [-Top] <int> [-Right] <int> [-Bottom] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopPosition [[-DeviceId] <string>] [-Left] <int> [-Top] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceName
 ```powershell
-Set-DesktopPosition [[-DeviceName] <string>] [-Left] <int> [-Top] <int> [-Right] <int> [-Bottom] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopPosition [[-DeviceName] <string>] [-Left] <int> [-Top] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### PrimaryOnly
 ```powershell
-Set-DesktopPosition [-PrimaryOnly] [-Left] <int> [-Top] <int> [-Right] <int> [-Bottom] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopPosition [-PrimaryOnly] [-Left] <int> [-Top] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -40,7 +40,7 @@ Sets the position of the desktop for one or more monitors. You can specify the m
 ```powershell
 Set the position for a specific monitor by index
 
-            Set-DesktopPosition -Index 1 -Left 0 -Top 0 -Right 1920 -Bottom 1080
+            Set-DesktopPosition -Index 1 -Left 0 -Top 0
 ```
 
 
@@ -48,27 +48,11 @@ Set the position for a specific monitor by index
 ```powershell
 Set the position for the primary monitor only
 
-            Set-DesktopPosition -PrimaryOnly -Left 0 -Top 0 -Right 1920 -Bottom 1080
+            Set-DesktopPosition -PrimaryOnly -Left 0 -Top 0
 ```
 
 
 ## PARAMETERS
-
-### -Bottom
-The bottom position of the monitor.
-
-```yaml
-Type: Int32
-Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
-Aliases: None
-Possible values:
-
-Required: True
-Position: 7
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
 
 ### -DeviceId
 The device ID of the monitor to set the position for.
@@ -145,22 +129,6 @@ Possible values:
 
 Required: False
 Position: 3
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: True
-```
-
-### -Right
-The right position of the monitor.
-
-```yaml
-Type: Int32
-Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
-Aliases: None
-Possible values:
-
-Required: True
-Position: 6
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

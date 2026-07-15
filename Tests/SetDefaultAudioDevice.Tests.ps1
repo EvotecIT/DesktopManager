@@ -1,3 +1,7 @@
+BeforeAll {
+    . "$PSScriptRoot/TestBootstrap.ps1"
+}
+
 describe 'Default audio device cmdlet' {
     it 'exports Set-DefaultAudioDevice' {
         Get-Command Set-DefaultAudioDevice | Should -Not -BeNullOrEmpty

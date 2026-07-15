@@ -8,7 +8,8 @@ using System.Text.Json;
 namespace DesktopManager.Tests;
 
 internal sealed class McpTestClient : IDisposable {
-    private static readonly byte[] HeaderSeparator = Encoding.ASCII.GetBytes("\r\n\r\n");
+    private const int MaxMessageBytes = 16 * 1024 * 1024;
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly Process _process;
 
     private McpTestClient(Process process) {
@@ -61,6 +62,14 @@ internal sealed class McpTestClient : IDisposable {
         }
     }
 
+    public JsonDocument SendRaw(string json) {
+        byte[] payload = StrictUtf8.GetBytes(json);
+        _process.StandardInput.BaseStream.Write(payload, 0, payload.Length);
+        _process.StandardInput.BaseStream.WriteByte((byte)'\n');
+        _process.StandardInput.BaseStream.Flush();
+        return ReadResponse(_process.StandardOutput.BaseStream);
+    }
+
     public JsonElement CallTool(int id, string name, object arguments) {
         JsonElement result = CallToolResponse(id, name, arguments);
         if (result.TryGetProperty("isError", out JsonElement isErrorElement) && isErrorElement.GetBoolean()) {
@@ -94,10 +103,9 @@ internal sealed class McpTestClient : IDisposable {
             };
 
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(request);
-        byte[] header = Encoding.ASCII.GetBytes($"Content-Length: {payload.Length}\r\n\r\n");
 
-        _process.StandardInput.BaseStream.Write(header, 0, header.Length);
         _process.StandardInput.BaseStream.Write(payload, 0, payload.Length);
+        _process.StandardInput.BaseStream.WriteByte((byte)'\n');
         _process.StandardInput.BaseStream.Flush();
 
         return ReadResponse(_process.StandardOutput.BaseStream);
@@ -133,62 +141,28 @@ internal sealed class McpTestClient : IDisposable {
     }
 
     private static JsonDocument ReadResponse(Stream stream) {
-        var headerBuffer = new List<byte>();
+        var payload = new List<byte>();
         while (true) {
             int value = stream.ReadByte();
             if (value == -1) {
-                throw new EndOfStreamException("Unexpected end of stream while reading MCP headers.");
+                throw new EndOfStreamException("Unexpected end of stream before the MCP newline delimiter.");
             }
 
-            headerBuffer.Add((byte)value);
-            if (EndsWith(headerBuffer, HeaderSeparator)) {
+            if (value == '\n') {
                 break;
             }
-        }
 
-        string headers = Encoding.ASCII.GetString(headerBuffer.ToArray());
-        int contentLength = 0;
-        foreach (string line in headers.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)) {
-            if (!line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase)) {
-                continue;
-            }
-
-            string valueText = line.Substring("Content-Length:".Length).Trim();
-            if (!int.TryParse(valueText, out contentLength) || contentLength < 0) {
-                throw new InvalidDataException("Invalid Content-Length header.");
+            payload.Add((byte)value);
+            if (payload.Count > MaxMessageBytes) {
+                throw new InvalidDataException($"MCP response exceeds the {MaxMessageBytes}-byte limit.");
             }
         }
 
-        if (contentLength <= 0) {
-            throw new InvalidDataException("Missing Content-Length header.");
+        if (payload.Count > 0 && payload[payload.Count - 1] == '\r') {
+            payload.RemoveAt(payload.Count - 1);
         }
 
-        byte[] payload = new byte[contentLength];
-        int offset = 0;
-        while (offset < payload.Length) {
-            int read = stream.Read(payload, offset, payload.Length - offset);
-            if (read <= 0) {
-                throw new EndOfStreamException("Unexpected end of stream while reading an MCP message body.");
-            }
-
-            offset += read;
-        }
-
-        return JsonDocument.Parse(payload);
-    }
-
-    private static bool EndsWith(List<byte> source, byte[] suffix) {
-        if (source.Count < suffix.Length) {
-            return false;
-        }
-
-        for (int index = 0; index < suffix.Length; index++) {
-            if (source[source.Count - suffix.Length + index] != suffix[index]) {
-                return false;
-            }
-        }
-
-        return true;
+        return JsonDocument.Parse(StrictUtf8.GetString(payload.ToArray()));
     }
 
     private static string FindCliExecutablePath() {

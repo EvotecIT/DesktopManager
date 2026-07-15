@@ -2,7 +2,7 @@
 Module Name: DesktopManager
 Module Guid: 56f85fa6-c622-4204-8e97-3d99e3e06e75
 Download Help Link: https://github.com/EvotecIT/DesktopManager
-Help Version: 4.0.0
+Help Version: 4.1.0
 Locale: en-US
 ---
 # DesktopManager Module
@@ -160,9 +160,6 @@ Sets text on a specific window control.
 ### [Set-DesktopControlVisibility](Set-DesktopControlVisibility.md)
 Shows or hides a desktop control.
 
-### [Set-DesktopDpiScaling](Set-DesktopDpiScaling.md)
-Sets DPI scaling for one or more desktop monitors.
-
 ### [Set-DesktopPosition](Set-DesktopPosition.md)
 Sets the position of the desktop for one or more monitors.
 
@@ -180,6 +177,9 @@ Updates wallpaper history file.
 
 ### [Set-DesktopWindow](Set-DesktopWindow.md)
 Sets the position, size and state of a desktop window.
+
+### [Set-DesktopWindowPlacement](Set-DesktopWindowPlacement.md)
+Applies a reliable reusable placement operation to matching desktop windows.
 
 ### [Set-DesktopWindowSnap](Set-DesktopWindowSnap.md)
 Snaps a desktop window to a predefined position.

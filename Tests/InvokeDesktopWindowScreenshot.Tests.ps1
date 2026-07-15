@@ -3,6 +3,10 @@ if ($env:RUN_UI_TESTS -eq 'true' -or $env:DESKTOPMANAGER_RUN_UI_TESTS -eq 'true'
     $RunInteractive = $true
 }
 
+BeforeAll {
+    . "$PSScriptRoot/TestBootstrap.ps1"
+}
+
 describe 'Invoke-DesktopWindowScreenshot' -Tag 'Interactive' {
     it 'captures screenshot of window' -Skip:(-not $IsWindows -or -not $RunInteractive) {
         $proc = Start-Process notepad -PassThru -WindowStyle Minimized

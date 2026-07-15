@@ -344,16 +344,17 @@ public static class ScreenshotService {
             return true;
         }
 
-        int horizontalStep = Math.Max(1, bitmap.Width / 64);
-        int verticalStep = Math.Max(1, bitmap.Height / 64);
+        BitmapPixelBuffer pixels = BitmapPixelBuffer.Create(bitmap);
+        int horizontalStep = Math.Max(1, pixels.Width / 64);
+        int verticalStep = Math.Max(1, pixels.Height / 64);
         int sampleCount = 0;
         int darkSampleCount = 0;
         long totalLuminance = 0;
 
-        for (int y = 0; y < bitmap.Height; y += verticalStep) {
-            for (int x = 0; x < bitmap.Width; x += horizontalStep) {
-                Color pixel = bitmap.GetPixel(x, y);
-                int luminance = (pixel.R * 299 + pixel.G * 587 + pixel.B * 114) / 1000;
+        for (int y = 0; y < pixels.Height; y += verticalStep) {
+            for (int x = 0; x < pixels.Width; x += horizontalStep) {
+                pixels.GetRgb(x, y, out int red, out int green, out int blue);
+                int luminance = (red * 299 + green * 587 + blue * 114) / 1000;
                 totalLuminance += luminance;
                 if (luminance <= 12) {
                     darkSampleCount++;
@@ -416,22 +417,24 @@ public static class ScreenshotService {
             };
         }
 
-        int sampleColumns = Math.Min(maxSampleColumns, baseline.Width);
-        int sampleRows = Math.Min(maxSampleRows, baseline.Height);
+        BitmapPixelBuffer baselinePixels = BitmapPixelBuffer.Create(baseline);
+        BitmapPixelBuffer currentPixels = BitmapPixelBuffer.Create(current);
+        int sampleColumns = Math.Min(maxSampleColumns, baselinePixels.Width);
+        int sampleRows = Math.Min(maxSampleRows, baselinePixels.Height);
         int sampleCount = 0;
         int changedSampleCount = 0;
         long totalDifference = 0;
 
         for (int row = 0; row < sampleRows; row++) {
-            int y = ResolveSampleCoordinate(row, sampleRows, baseline.Height);
+            int y = ResolveSampleCoordinate(row, sampleRows, baselinePixels.Height);
             for (int column = 0; column < sampleColumns; column++) {
-                int x = ResolveSampleCoordinate(column, sampleColumns, baseline.Width);
-                Color beforePixel = baseline.GetPixel(x, y);
-                Color afterPixel = current.GetPixel(x, y);
+                int x = ResolveSampleCoordinate(column, sampleColumns, baselinePixels.Width);
+                baselinePixels.GetRgb(x, y, out int beforeRed, out int beforeGreen, out int beforeBlue);
+                currentPixels.GetRgb(x, y, out int afterRed, out int afterGreen, out int afterBlue);
                 int difference = (
-                    Math.Abs(beforePixel.R - afterPixel.R)
-                    + Math.Abs(beforePixel.G - afterPixel.G)
-                    + Math.Abs(beforePixel.B - afterPixel.B)) / 3;
+                    Math.Abs(beforeRed - afterRed)
+                    + Math.Abs(beforeGreen - afterGreen)
+                    + Math.Abs(beforeBlue - afterBlue)) / 3;
                 totalDifference += difference;
                 if (difference >= differenceThreshold) {
                     changedSampleCount++;
@@ -506,17 +509,19 @@ public static class ScreenshotService {
             };
         }
 
-        int maxX = searchSpace.Width - template.Width;
-        int maxY = searchSpace.Height - template.Height;
-        int sampleColumns = Math.Min(maxSampleColumns, template.Width);
-        int sampleRows = Math.Min(maxSampleRows, template.Height);
+        BitmapPixelBuffer templatePixels = BitmapPixelBuffer.Create(template);
+        BitmapPixelBuffer searchPixels = BitmapPixelBuffer.Create(searchSpace);
+        int maxX = searchPixels.Width - templatePixels.Width;
+        int maxY = searchPixels.Height - templatePixels.Height;
+        int sampleColumns = Math.Min(maxSampleColumns, templatePixels.Width);
+        int sampleRows = Math.Min(maxSampleRows, templatePixels.Height);
         DesktopVisualBitmapMatch? bestMatch = null;
         int coarseEvaluatedCount = 0;
 
         foreach (int y in EnumerateCandidateOffsets(maxY, scanStep)) {
             foreach (int x in EnumerateCandidateOffsets(maxX, scanStep)) {
                 coarseEvaluatedCount++;
-                DesktopVisualDifferenceMetrics metrics = CompareTemplateAtOffset(template, searchSpace, x, y, differenceThreshold, sampleColumns, sampleRows);
+                DesktopVisualDifferenceMetrics metrics = CompareTemplateAtOffset(templatePixels, searchPixels, x, y, differenceThreshold, sampleColumns, sampleRows);
                 if (bestMatch == null || IsBetterMatch(metrics, bestMatch.Metrics)) {
                     bestMatch = new DesktopVisualBitmapMatch {
                         RelativeX = x,
@@ -527,6 +532,11 @@ public static class ScreenshotService {
                         EvaluatedPositionCount = coarseEvaluatedCount,
                         Metrics = metrics
                     };
+                }
+
+                if (metrics.AverageDifference == 0 && metrics.ChangedSampleCount == 0) {
+                    bestMatch!.EvaluatedPositionCount = coarseEvaluatedCount;
+                    return bestMatch;
                 }
             }
         }
@@ -544,7 +554,7 @@ public static class ScreenshotService {
         for (int y = refineStartY; y <= refineEndY; y++) {
             for (int x = refineStartX; x <= refineEndX; x++) {
                 refinedCount++;
-                DesktopVisualDifferenceMetrics metrics = CompareTemplateAtOffset(template, searchSpace, x, y, differenceThreshold, sampleColumns, sampleRows);
+                DesktopVisualDifferenceMetrics metrics = CompareTemplateAtOffset(templatePixels, searchPixels, x, y, differenceThreshold, sampleColumns, sampleRows);
                 if (IsBetterMatch(metrics, bestMatch.Metrics)) {
                     bestMatch = new DesktopVisualBitmapMatch {
                         RelativeX = x,
@@ -580,7 +590,7 @@ public static class ScreenshotService {
         }
     }
 
-    private static DesktopVisualDifferenceMetrics CompareTemplateAtOffset(Bitmap template, Bitmap searchSpace, int offsetX, int offsetY, int differenceThreshold, int sampleColumns, int sampleRows) {
+    private static DesktopVisualDifferenceMetrics CompareTemplateAtOffset(BitmapPixelBuffer template, BitmapPixelBuffer searchSpace, int offsetX, int offsetY, int differenceThreshold, int sampleColumns, int sampleRows) {
         int sampleCount = 0;
         int changedSampleCount = 0;
         long totalDifference = 0;
@@ -589,12 +599,12 @@ public static class ScreenshotService {
             int y = ResolveSampleCoordinate(row, sampleRows, template.Height);
             for (int column = 0; column < sampleColumns; column++) {
                 int x = ResolveSampleCoordinate(column, sampleColumns, template.Width);
-                Color templatePixel = template.GetPixel(x, y);
-                Color searchPixel = searchSpace.GetPixel(offsetX + x, offsetY + y);
+                template.GetRgb(x, y, out int templateRed, out int templateGreen, out int templateBlue);
+                searchSpace.GetRgb(offsetX + x, offsetY + y, out int searchRed, out int searchGreen, out int searchBlue);
                 int difference = (
-                    Math.Abs(templatePixel.R - searchPixel.R)
-                    + Math.Abs(templatePixel.G - searchPixel.G)
-                    + Math.Abs(templatePixel.B - searchPixel.B)) / 3;
+                    Math.Abs(templateRed - searchRed)
+                    + Math.Abs(templateGreen - searchGreen)
+                    + Math.Abs(templateBlue - searchBlue)) / 3;
                 totalDifference += difference;
                 if (difference >= differenceThreshold) {
                     changedSampleCount++;

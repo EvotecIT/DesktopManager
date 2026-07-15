@@ -108,7 +108,7 @@ public partial class MonitorService {
             using RegistryKey? key = Registry.LocalMachine.CreateSubKey(RegistryPath);
             key?.SetValue(RegistryValue, imagePath, RegistryValueKind.String);
         } catch (Exception ex) {
-            Console.WriteLine($"SetLogonWallpaperFallback failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"SetLogonWallpaperFallback failed: {ex.Message}");
         }
     }
 
@@ -178,7 +178,7 @@ public partial class MonitorService {
                 return value;
             }
         } catch (Exception ex) {
-            Console.WriteLine($"GetLogonWallpaperFallback failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"GetLogonWallpaperFallback failed: {ex.Message}");
         }
         return string.Empty;
     }

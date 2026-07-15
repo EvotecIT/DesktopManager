@@ -123,6 +123,7 @@ Publish a specific CLI runtime:
 - The daily app publish target packages `Sources/DesktopManager.App/DesktopManager.App.csproj` as an unpackaged, self-contained WinUI app under `DesktopManager.App`.
 - The WinUI app is not forced into NativeAOT. The nested `DesktopManager.HotkeyHost` remains NativeAOT, while the app uses a self-contained publish profile that avoids WinAppSDK single-file and NativeAOT limitations.
 - The generated MSI uses PowerForge/WiX installer UI, creates a Start Menu shortcut, and records the install path under `HKLM\Software\Evotec\DesktopManager`.
+- Local app and MSI builds keep signing warning-only so developers can produce test artefacts without the Evotec certificate or `signtool.exe`. Those unsigned outputs are not release-ready; public release artefacts must be signed and verified with the configured certificate.
 - DesktopManager autostart stays a per-user app setting. The app writes the current user's Run key with `--minimized`, so Windows sign-in starts the tray runtime without opening the main window.
 - The MSI output, manifest, and checksums are the intended inputs for later winget release work. Microsoft Store/MSIX packaging should stay in PowerForge config when that lane is added.
 - The CLI includes the MCP server entrypoint exposed by:

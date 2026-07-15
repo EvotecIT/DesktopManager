@@ -11,6 +11,8 @@ For agent-driven desktop automation, prefer MCP first and use CLI as fallback.
 
 The MCP server now starts in read-only inspection mode by default. Use `desktopmanager mcp serve --allow-mutations` when you intentionally want mutating tools, add `--allow-process <pattern>` or `--deny-process <pattern>` when the session should be constrained to specific apps, add `--allow-foreground-input` only for sessions that may need focused foreground fallback on zero-handle UIA text or key actions, and use `--dry-run` when you want mutation previews without changing the desktop.
 
+The stdio transport follows MCP revision `2025-06-18`: each UTF-8 JSON-RPC message is written on one line. JSON-RPC batches are not accepted by this protocol revision.
+
 ## Current MCP Tools
 
 - `get_active_window`
@@ -279,7 +281,7 @@ That keeps screenshot-assisted targeting in the shared core instead of forcing t
 - Shared zero-handle UIA text fallback now prefers focused paste-with-verification before raw typed characters, which should improve reliability for modern edit fields without changing the explicit opt-in safety boundary.
 - Mutating MCP tools can now return best-effort before/after screenshot artifacts plus safety/timing metadata, which makes it easier to verify what actually happened without building custom wrappers around each action.
 - The MCP server now enforces its safety posture instead of documenting it only: default read-only inspection, explicit mutation opt-in through `--allow-mutations`, explicit risky foreground-input opt-in through `--allow-foreground-input`, and side-effect-free mutation previews through `--dry-run`.
-- MCP process filters now let you constrain live desktop mutations to allowed or denied process patterns, and they intentionally block broader layout/workflow mutations when the target app set cannot be scoped safely.
+- MCP process filters constrain live mutations to allowed or denied process patterns. Global desktop mutations such as monitor, wallpaper, slideshow, taskbar, background-color, and clipboard changes are blocked while process filters are active because those operations cannot be made process-local.
 - Higher-level workflow tools now exist for coding prep, screen-sharing prep, and distraction cleanup, so agents do not have to reassemble those routines from prompts alone.
 - Saved control targets still pay the underlying UIA discovery cost on modern apps, so target-based `wait` is reusable and safer, but not necessarily cheap.
 - Preferred-root reuse is process-local. It helps a long-running MCP server more than separate one-shot CLI invocations.

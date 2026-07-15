@@ -1,3 +1,7 @@
+BeforeAll {
+    . "$PSScriptRoot/TestBootstrap.ps1"
+}
+
 describe 'Brightness cmdlets' {
     it 'exports Get-DesktopBrightness' {
         Get-Command Get-DesktopBrightness | Should -Not -BeNullOrEmpty
@@ -9,4 +13,3 @@ describe 'Brightness cmdlets' {
         { Set-DesktopBrightness -Index 0 -Brightness 50 -WhatIf } | Should -Not -Throw
     }
 }
-

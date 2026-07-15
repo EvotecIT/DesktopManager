@@ -1,9 +1,9 @@
 BeforeAll {
-    Import-Module "$PSScriptRoot/..\DesktopManager.psd1" -Force
+    . "$PSScriptRoot/TestBootstrap.ps1"
 }
 
 describe 'Set-DesktopWindowVisibility' {
     it 'supports WhatIf mode' -Skip:(-not $IsWindows) {
-        { Set-DesktopWindowVisibility -Name '*' -Show -WhatIf } | Should -Not -Throw
+        { Set-DesktopWindowVisibility -Name '__DesktopManager_WhatIf_NoMatch__' -Show -WhatIf } | Should -Not -Throw
     }
 }

@@ -35,9 +35,9 @@ public static class PersonalizationStateStore {
             throw new ArgumentException("A name is required.", nameof(name));
         }
 
-        string sanitized = SanitizeName(name);
+        string validated = DesktopStateStore.ValidateName(name);
         string directory = GetSnapshotsDirectory();
-        return Path.Combine(directory, sanitized + ".json");
+        return Path.Combine(directory, validated + ".json");
     }
 
     /// <summary>
@@ -52,7 +52,7 @@ public static class PersonalizationStateStore {
 
         string path = GetSnapshotPath(name);
         string json = JsonSerializer.Serialize(snapshot, SerializerOptions);
-        File.WriteAllText(path, json);
+        AtomicFileWriter.WriteAllText(path, json);
     }
 
     /// <summary>
@@ -75,22 +75,4 @@ public static class PersonalizationStateStore {
         return snapshot;
     }
 
-    private static string SanitizeName(string name) {
-        char[] invalid = Path.GetInvalidFileNameChars();
-        var buffer = new System.Collections.Generic.List<char>(name.Length);
-        foreach (char character in name.Trim()) {
-            if (Array.IndexOf(invalid, character) >= 0) {
-                continue;
-            }
-
-            buffer.Add(character);
-        }
-
-        string sanitized = new string(buffer.ToArray()).TrimEnd(' ', '.');
-        if (string.IsNullOrWhiteSpace(sanitized)) {
-            throw new ArgumentException($"The name '{name}' does not produce a valid file name.", nameof(name));
-        }
-
-        return sanitized;
-    }
 }

@@ -29,7 +29,7 @@ public partial class MonitorService {
         try {
             File.Delete(path);
         } catch (Exception ex) {
-            Console.WriteLine($"DeleteTempFile failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"DeleteTempFile failed: {ex.Message}");
         }
     }
 }

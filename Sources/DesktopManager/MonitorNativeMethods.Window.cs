@@ -765,8 +765,9 @@ public static partial class MonitorNativeMethods
     /// <param name="wParam">First message parameter.</param>
     /// <param name="lParam">Second message parameter.</param>
     /// <returns>True if successful.</returns>
-    [DllImport("user32.dll")]
-    public static extern bool PostMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
     /// <summary>
     /// Clipboard format for Unicode text.

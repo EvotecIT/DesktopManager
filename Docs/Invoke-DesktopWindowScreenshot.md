@@ -27,7 +27,7 @@ Captures a screenshot of a window or control.
 ### EXAMPLE 1
 ```powershell
 $wnd = Get-DesktopWindow -Name "*Notepad*" | Select-Object -First 1
-            Invoke-DesktopWindowScreenshot -Window $wnd -Path "window.png"
+Invoke-DesktopWindowScreenshot -Window $wnd -Path "window.png"
 ```
 
 

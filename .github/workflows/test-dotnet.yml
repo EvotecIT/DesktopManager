@@ -17,22 +17,32 @@ permissions:
   contents: read
 
 env:
-  DOTNET_VERSION: '8.x'
   BUILD_CONFIGURATION: 'Release'
-  TEST_FRAMEWORK: 'net8.0-windows10.0.19041.0'
 
 jobs:
   test-windows:
-    name: 'Windows'
+    name: 'Windows / ${{ matrix.label }}'
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: net472
+            framework: net472
+          - label: net8
+            framework: net8.0-windows10.0.19041.0
+          - label: net10
+            framework: net10.0-windows10.0.19041.0
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Restore dependencies
         run: dotnet restore Sources/DesktopManager.sln
@@ -41,23 +51,29 @@ jobs:
         run: dotnet build Sources/DesktopManager.sln --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
       - name: Run tests
-        run: dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework ${{ env.TEST_FRAMEWORK }} --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
+        if: matrix.label != 'net8'
+        run: dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework ${{ matrix.framework }} --no-build --verbosity normal --logger trx
+
+      - name: Run tests with coverage
+        if: matrix.label == 'net8'
+        run: dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework ${{ matrix.framework }} --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-windows
+          name: test-results-windows-${{ matrix.label }}
           path: '**/*.trx'
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && matrix.label == 'net8'
         with:
-          name: coverage-reports-windows
+          name: coverage-reports-windows-net8
           path: '**/coverage.cobertura.xml'
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        if: matrix.label == 'net8'
+        uses: codecov/codecov-action@v5
         with:
           files: '**/coverage.cobertura.xml'

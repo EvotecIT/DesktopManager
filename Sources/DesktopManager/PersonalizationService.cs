@@ -244,7 +244,7 @@ public sealed class PersonalizationService {
         try {
             _monitors.SetLogonWallpaper(imagePath);
         } catch (Exception ex) {
-            Console.WriteLine($"ApplyLockScreenImage fallback: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"ApplyLockScreenImage fallback: {ex.Message}");
         }
     }
 
@@ -540,7 +540,7 @@ public sealed class PersonalizationService {
                 IntPtr.Zero,
                 "ImmersiveColorSet");
         } catch (Exception ex) {
-            Console.WriteLine($"BroadcastSettingChange failed: {ex.Message}");
+            DesktopManagerDiagnostics.Report($"BroadcastSettingChange failed: {ex.Message}");
         }
     }
 }

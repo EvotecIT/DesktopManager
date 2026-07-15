@@ -151,6 +151,12 @@ public partial class MonitorService {
         }
     }
 
+    internal static string ResolveDisplaySourceName(string adapterDeviceName, string monitorDeviceName) {
+        return !string.IsNullOrWhiteSpace(adapterDeviceName)
+            ? adapterDeviceName
+            : monitorDeviceName ?? string.Empty;
+    }
+
     private static bool MonitorDeviceIdsMatch(string candidate, string deviceId) {
         return !string.IsNullOrWhiteSpace(candidate) &&
                !string.IsNullOrWhiteSpace(deviceId) &&

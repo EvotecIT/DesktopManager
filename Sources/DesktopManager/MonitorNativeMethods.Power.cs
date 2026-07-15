@@ -143,17 +143,6 @@ public static partial class MonitorNativeMethods {
     public static extern IntPtr DispatchMessage(ref MSG lpMsg);
 
     /// <summary>
-    /// Posts a message to the message queue of the specified thread.
-    /// </summary>
-    /// <param name="hWnd">Window handle.</param>
-    /// <param name="Msg">Message identifier.</param>
-    /// <param name="wParam">Additional information.</param>
-    /// <param name="lParam">Additional information.</param>
-    /// <returns>Non-zero if successful.</returns>
-    [DllImport("user32.dll")]
-    public static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    /// <summary>
     /// Changes an attribute of the specified window.
     /// </summary>
     /// <param name="hWnd">Window handle.</param>
@@ -169,5 +158,4 @@ public static partial class MonitorNativeMethods {
     /// <summary>Message posted to quit the message loop.</summary>
     public const uint WM_QUIT = 0x0012;
 }
-
 

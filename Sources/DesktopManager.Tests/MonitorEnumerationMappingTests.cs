@@ -77,4 +77,22 @@ public class MonitorEnumerationMappingTests {
         Assert.IsNotNull(resolved);
         Assert.AreEqual(@"\\.\DISPLAY2", resolved.AdapterDeviceName);
     }
+
+    [TestMethod]
+    public void ResolveDisplaySourceName_FallbackEnumerationPrefersAdapterName() {
+        string sourceName = MonitorService.ResolveDisplaySourceName(
+            @"\\.\DISPLAY2",
+            @"\\.\DISPLAY2\Monitor0");
+
+        Assert.AreEqual(@"\\.\DISPLAY2", sourceName);
+    }
+
+    [TestMethod]
+    public void ResolveDisplaySourceName_MissingAdapterUsesMonitorName() {
+        string sourceName = MonitorService.ResolveDisplaySourceName(
+            string.Empty,
+            @"\\.\DISPLAY2\Monitor0");
+
+        Assert.AreEqual(@"\\.\DISPLAY2\Monitor0", sourceName);
+    }
 }

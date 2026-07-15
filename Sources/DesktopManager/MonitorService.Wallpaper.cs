@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
@@ -14,6 +15,8 @@ namespace DesktopManager;
 /// </summary>
 public partial class MonitorService {
     private const int WallpaperCacheTtlSeconds = 1;
+    private const long MaxWallpaperDownloadBytes = 100L * 1024 * 1024;
+    private static readonly HttpClient WallpaperHttpClient = new();
     private static readonly TimeSpan WallpaperCacheTtl = TimeSpan.FromSeconds(WallpaperCacheTtlSeconds);
     private readonly object _wallpaperCacheLock = new();
     private readonly Dictionary<string, WallpaperCacheEntry> _wallpaperCache =
@@ -127,20 +130,24 @@ public partial class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="url">URL pointing to the image.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    public async Task SetWallpaperFromUrlAsync(string monitorId, string url) {
+    public Task SetWallpaperFromUrlAsync(string monitorId, string url) {
+        return SetWallpaperFromUrlAsync(monitorId, url, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Asynchronously sets the wallpaper for a specific monitor using an image from a URL.
+    /// </summary>
+    /// <param name="monitorId">The monitor ID.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <param name="cancellationToken">Token used to cancel the download.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public async Task SetWallpaperFromUrlAsync(string monitorId, string url, CancellationToken cancellationToken) {
         if (string.IsNullOrWhiteSpace(monitorId)) {
             throw new ArgumentNullException(nameof(monitorId));
         }
-        if (string.IsNullOrWhiteSpace(url)) {
-            throw new ArgumentNullException(nameof(url));
-        }
-        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ||
-            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)) {
-            throw new NotSupportedException($"Invalid wallpaper URL '{url}'. Only HTTP and HTTPS schemes are supported.");
-        }
 
-        using HttpClient client = new();
-        using Stream stream = await client.GetStreamAsync(uri);
+        Uri uri = CreateWallpaperUri(url);
+        using MemoryStream stream = await DownloadWallpaperAsync(uri, cancellationToken).ConfigureAwait(false);
         SetWallpaper(monitorId, stream);
         WallpaperHistory.AddEntry(url);
     }
@@ -200,16 +207,27 @@ public partial class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <param name="url">URL pointing to the image.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    public async Task SetWallpaperFromUrlAsync(int index, string url) {
+    public Task SetWallpaperFromUrlAsync(int index, string url) {
+        return SetWallpaperFromUrlAsync(index, url, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Asynchronously sets the wallpaper for a monitor by index using an image from a URL.
+    /// </summary>
+    /// <param name="index">The index of the monitor.</param>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <param name="cancellationToken">Token used to cancel the download.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public async Task SetWallpaperFromUrlAsync(int index, string url, CancellationToken cancellationToken) {
         try {
             var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
             if (string.IsNullOrWhiteSpace(monitorId)) {
                 return;
             }
 
-            await SetWallpaperFromUrlAsync(monitorId, url);
+            await SetWallpaperFromUrlAsync(monitorId, url, cancellationToken).ConfigureAwait(false);
         } catch (DesktopManagerException) {
-            await SetWallpaperFromUrlAsync(url);
+            await SetWallpaperFromUrlAsync(url, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -250,7 +268,63 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="url">URL pointing to the image.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    public async Task SetWallpaperFromUrlAsync(string url) {
+    public Task SetWallpaperFromUrlAsync(string url) {
+        return SetWallpaperFromUrlAsync(url, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Asynchronously sets the wallpaper for all monitors using an image from a URL.
+    /// </summary>
+    /// <param name="url">URL pointing to the image.</param>
+    /// <param name="cancellationToken">Token used to cancel the download.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public async Task SetWallpaperFromUrlAsync(string url, CancellationToken cancellationToken) {
+        Uri uri = CreateWallpaperUri(url);
+        using MemoryStream stream = await DownloadWallpaperAsync(uri, cancellationToken).ConfigureAwait(false);
+        SetWallpaper(stream);
+        WallpaperHistory.AddEntry(url);
+    }
+
+    private static async Task<MemoryStream> DownloadWallpaperAsync(Uri uri, CancellationToken cancellationToken) {
+        using HttpResponseMessage response = await WallpaperHttpClient.GetAsync(
+            uri,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        long? contentLength = response.Content.Headers.ContentLength;
+        if (contentLength > MaxWallpaperDownloadBytes) {
+            throw new InvalidDataException($"Wallpaper download exceeds the {MaxWallpaperDownloadBytes}-byte limit.");
+        }
+
+        int initialCapacity = contentLength.HasValue && contentLength.Value > 0
+            ? checked((int)contentLength.Value)
+            : 0;
+        var downloaded = new MemoryStream(initialCapacity);
+        try {
+            using Stream source = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            byte[] buffer = new byte[81920];
+            while (true) {
+                int read = await source.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                if (read == 0) {
+                    break;
+                }
+                if (downloaded.Length + read > MaxWallpaperDownloadBytes) {
+                    throw new InvalidDataException($"Wallpaper download exceeds the {MaxWallpaperDownloadBytes}-byte limit.");
+                }
+
+                downloaded.Write(buffer, 0, read);
+            }
+
+            downloaded.Position = 0;
+            return downloaded;
+        } catch {
+            downloaded.Dispose();
+            throw;
+        }
+    }
+
+    private static Uri CreateWallpaperUri(string url) {
         if (string.IsNullOrWhiteSpace(url)) {
             throw new ArgumentNullException(nameof(url));
         }
@@ -259,10 +333,7 @@ public partial class MonitorService {
             throw new NotSupportedException($"Invalid wallpaper URL '{url}'. Only HTTP and HTTPS schemes are supported.");
         }
 
-        using HttpClient client = new();
-        using Stream stream = await client.GetStreamAsync(uri);
-        SetWallpaper(stream);
-        WallpaperHistory.AddEntry(url);
+        return uri;
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
 Describe 'DesktopManager basic tests' {
     BeforeAll {
-        Import-Module "$PSScriptRoot/..\DesktopManager.psd1" -Force
+        . "$PSScriptRoot/TestBootstrap.ps1"
     }
 
     It 'Exports Get-DesktopMonitor' {

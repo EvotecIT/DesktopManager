@@ -10,6 +10,32 @@ namespace DesktopManager.Tests;
 public class McpCatalogTests {
     [TestMethod]
     /// <summary>
+    /// Ensures the server-side mutation policy is derived from the same read-only annotations advertised to MCP clients.
+    /// </summary>
+    public void McpCatalog_GetTools_SafetyAnnotationsMatchServerClassification() {
+        foreach (object entry in DesktopManager.Cli.McpCatalog.GetTools()) {
+            using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(entry));
+            JsonElement tool = document.RootElement;
+            string name = tool.GetProperty("name").GetString() ?? string.Empty;
+            bool readOnly = tool.GetProperty("annotations").GetProperty("readOnlyHint").GetBoolean();
+
+            Assert.AreEqual(!readOnly, DesktopManager.Cli.McpCatalog.IsMutatingTool(name), $"Tool '{name}' has inconsistent mutation metadata.");
+        }
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures the wallpaper URL tool advertises its ability to reach an external HTTP resource.
+    /// </summary>
+    public void McpCatalog_GetTools_WallpaperUrlToolIsOpenWorld() {
+        object tool = DesktopManager.Cli.McpCatalog.GetTools()
+            .Single(entry => string.Equals(((DesktopManager.Cli.McpToolDefinition)entry).Name, "set_monitor_wallpaper", StringComparison.Ordinal));
+
+        Assert.IsTrue(((DesktopManager.Cli.McpToolDefinition)tool).Annotations.OpenWorldHint);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures keep-alive stop rejects allSessions when window selectors are also supplied.
     /// </summary>
     public void McpCatalog_TryCallTool_StopWindowKeepAliveAllSessionsWithSelectors_ReturnsError() {

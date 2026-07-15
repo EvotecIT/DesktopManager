@@ -20,6 +20,8 @@ param(
     [switch] $SkipBuild
 )
 
+$ErrorActionPreference = 'Stop'
+
 Import-Module PSPublishModule -Force -ErrorAction Stop
 
 function Invoke-DesktopManagerDotNetPublish {

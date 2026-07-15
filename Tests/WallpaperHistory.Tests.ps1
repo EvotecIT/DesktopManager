@@ -1,3 +1,7 @@
+BeforeAll {
+    . "$PSScriptRoot/TestBootstrap.ps1"
+}
+
 describe 'Wallpaper history cmdlets' {
     it 'exports Get-DesktopWallpaperHistory' {
         Get-Command Get-DesktopWallpaperHistory | Should -Not -BeNullOrEmpty

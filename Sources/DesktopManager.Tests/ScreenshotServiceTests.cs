@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -134,6 +135,19 @@ public class ScreenshotServiceTests {
 
         Assert.IsTrue(ScreenshotService.LooksSuspiciouslyBlack(blackBitmap));
         Assert.IsFalse(ScreenshotService.LooksSuspiciouslyBlack(brightBitmap));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures fast pixel sampling accepts common 24-bit image inputs as well as capture-native 32-bit bitmaps.
+    /// </summary>
+    public void LooksSuspiciouslyBlack_24BitBitmap_ReturnsExpectedResult() {
+        using Bitmap bitmap = new(32, 32, PixelFormat.Format24bppRgb);
+        using (Graphics graphics = Graphics.FromImage(bitmap)) {
+            graphics.Clear(Color.White);
+        }
+
+        Assert.IsFalse(ScreenshotService.LooksSuspiciouslyBlack(bitmap));
     }
 
     [TestMethod]

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 #if NET5_0_OR_GREATER
 using System.Runtime.Versioning;
@@ -30,12 +31,16 @@ public class MonitorWatcherStateFailureTests {
         watcher.StateProvider = () => throw new InvalidOperationException("fail");
 
         using var sw = new System.IO.StringWriter();
-        var original = Console.Out;
-        Console.SetOut(sw);
+        using var listener = new TextWriterTraceListener(sw);
+        Trace.Listeners.Add(listener);
         var method = typeof(MonitorWatcher).GetMethod("OnDisplaySettingsChanged", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.IsNotNull(method);
-        method.Invoke(watcher, new object?[] { null, EventArgs.Empty });
-        Console.SetOut(original);
+        try {
+            method.Invoke(watcher, new object?[] { null, EventArgs.Empty });
+            Trace.Flush();
+        } finally {
+            Trace.Listeners.Remove(listener);
+        }
 
         var after = field.GetValue(watcher);
         Assert.AreSame(before, after);
