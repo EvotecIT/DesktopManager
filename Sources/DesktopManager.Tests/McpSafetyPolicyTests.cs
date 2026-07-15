@@ -175,6 +175,26 @@ public class McpSafetyPolicyTests {
     }
 
     [TestMethod]
+    [DataRow("screenshot_desktop")]
+    [DataRow("screenshot_window")]
+    /// <summary>
+    /// Ensures screenshot tools cannot write PNG artefacts through a read-only MCP server.
+    /// </summary>
+    public void McpSafetyPolicy_EvaluateToolCall_ScreenshotInReadOnlyMode_DeniesRequest(string toolName) {
+        var policy = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: false,
+            allowForegroundInput: false,
+            dryRun: false);
+
+        DesktopManager.Cli.McpToolSafetyDecision decision = policy.EvaluateToolCall(
+            toolName,
+            CreateArguments(new { }));
+
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, decision.Kind);
+        StringAssert.Contains(decision.Message, "read-only mode");
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures process filters cannot imply that global monitor mutations are process-scoped.
     /// </summary>

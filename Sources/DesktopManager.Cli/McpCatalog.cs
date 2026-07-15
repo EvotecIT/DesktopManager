@@ -994,7 +994,7 @@ internal static class McpCatalog {
                     ["width"] = CreateIntegerSchema("Width for region capture."),
                     ["height"] = CreateIntegerSchema("Height for region capture."),
                     ["outputPath"] = CreateStringSchema("Optional PNG output path.")
-                }), readOnly: true),
+                }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("screenshot_window", "Screenshot Window", "Capture a matching window to a PNG file.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),
@@ -1005,7 +1005,7 @@ internal static class McpCatalog {
                     ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
                     ["targetName"] = CreateStringSchema("Optional named target area to capture within the window."),
                     ["outputPath"] = CreateStringSchema("Optional PNG output path.")
-                }), readOnly: true),
+                }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("launch_process", "Launch Process", "Start a desktop application or process.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["filePath"] = CreateStringSchema("Executable path or shell command."),
