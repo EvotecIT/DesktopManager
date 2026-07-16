@@ -7,26 +7,31 @@ namespace DesktopManager;
 /// Observes meaningful changes to the current interactive session without polling idle-time changes.
 /// </summary>
 public sealed class DesktopSessionWatcher : IDisposable {
-    private readonly DesktopSessionService _service;
+    [ThreadStatic]
+    private static DesktopSessionWatcher? _activePollWatcher;
+
+    private readonly Func<DesktopSessionInfo> _getCurrentSession;
     private readonly Timer _timer;
     private readonly object _sync = new();
     private DesktopSessionInfo _current;
+    private int _activePolls;
     private bool _disposed;
+    private bool _disposeCompleted;
 
     /// <summary>Initializes and starts a session watcher.</summary>
     /// <param name="pollInterval">The state refresh interval. The default is two seconds.</param>
     public DesktopSessionWatcher(TimeSpan? pollInterval = null)
-        : this(new DesktopSessionService(), pollInterval) {
+        : this(new DesktopSessionService().GetCurrentSession, pollInterval) {
     }
 
-    internal DesktopSessionWatcher(DesktopSessionService service, TimeSpan? pollInterval = null) {
-        _service = service ?? throw new ArgumentNullException(nameof(service));
+    internal DesktopSessionWatcher(Func<DesktopSessionInfo> getCurrentSession, TimeSpan? pollInterval = null) {
+        _getCurrentSession = getCurrentSession ?? throw new ArgumentNullException(nameof(getCurrentSession));
         TimeSpan interval = pollInterval ?? TimeSpan.FromSeconds(2);
         if (interval <= TimeSpan.Zero) {
             throw new ArgumentOutOfRangeException(nameof(pollInterval));
         }
 
-        _current = _service.GetCurrentSession();
+        _current = _getCurrentSession();
         _timer = new Timer(Poll, null, interval, interval);
     }
 
@@ -44,12 +49,26 @@ public sealed class DesktopSessionWatcher : IDisposable {
 
     /// <inheritdoc/>
     public void Dispose() {
-        if (_disposed) {
-            return;
-        }
+        lock (_sync) {
+            if (!_disposed) {
+                _disposed = true;
+                _timer.Dispose();
+            }
 
-        _timer.Dispose();
-        _disposed = true;
+            if (ReferenceEquals(_activePollWatcher, this)) {
+                return;
+            }
+
+            while (!_disposeCompleted) {
+                if (_activePolls == 0) {
+                    _disposeCompleted = true;
+                    System.Threading.Monitor.PulseAll(_sync);
+                    break;
+                }
+
+                System.Threading.Monitor.Wait(_sync);
+            }
+        }
     }
 
     internal static bool HasMeaningfulChange(DesktopSessionInfo previous, DesktopSessionInfo current) {
@@ -64,22 +83,51 @@ public sealed class DesktopSessionWatcher : IDisposable {
     }
 
     private void Poll(object? state) {
-        DesktopSessionInfo next;
-        try {
-            next = _service.GetCurrentSession();
-        } catch (Exception ex) {
-            DesktopManagerDiagnostics.Report($"Desktop session polling failed: {ex.Message}");
-            return;
-        }
-
-        DesktopSessionInfo previous;
         lock (_sync) {
-            previous = _current;
-            _current = next;
+            if (_disposed) {
+                return;
+            }
+
+            _activePolls++;
         }
 
-        if (HasMeaningfulChange(previous, next)) {
-            Changed?.Invoke(this, new DesktopSessionChangedEventArgs(previous, next));
+        DesktopSessionWatcher? previousActiveWatcher = _activePollWatcher;
+        _activePollWatcher = this;
+        try {
+            DesktopSessionInfo next;
+            try {
+                next = _getCurrentSession();
+            } catch (Exception ex) {
+                DesktopManagerDiagnostics.Report($"Desktop session polling failed: {ex.Message}");
+                return;
+            }
+
+            EventHandler<DesktopSessionChangedEventArgs>? handler = null;
+            DesktopSessionChangedEventArgs? args = null;
+            lock (_sync) {
+                if (_disposed) {
+                    return;
+                }
+
+                DesktopSessionInfo previous = _current;
+                _current = next;
+
+                if (HasMeaningfulChange(previous, next)) {
+                    handler = Changed;
+                    args = new DesktopSessionChangedEventArgs(previous, next);
+                }
+            }
+
+            handler?.Invoke(this, args!);
+        } finally {
+            _activePollWatcher = previousActiveWatcher;
+            lock (_sync) {
+                _activePolls--;
+                if (_disposed && _activePolls == 0) {
+                    _disposeCompleted = true;
+                    System.Threading.Monitor.PulseAll(_sync);
+                }
+            }
         }
     }
 }

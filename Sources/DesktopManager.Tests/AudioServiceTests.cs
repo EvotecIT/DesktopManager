@@ -47,6 +47,20 @@ public class AudioServiceTests {
     }
 
     [TestMethod]
+    /// <summary>
+    /// Verifies an invalid role rejects the entire request before any default endpoint is changed.
+    /// </summary>
+    public void SetDefaultAudioDevice_InvalidRole_DoesNotPartiallyUpdateDefaults() {
+        var fake = new FakePolicyConfig();
+        var service = new AudioService(fake);
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            service.SetDefaultAudioDevice("device1", AudioRole.Console, (AudioRole)42));
+
+        Assert.AreEqual(0, fake.Calls.Count);
+    }
+
+    [TestMethod]
     public void SetEndpointVolume_NonFiniteValue_IsRejectedBeforeEndpointLookup() {
         var service = new AudioService(new FakePolicyConfig());
 

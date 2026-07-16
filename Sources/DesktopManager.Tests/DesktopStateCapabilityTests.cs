@@ -63,6 +63,50 @@ public class DesktopStateCapabilityTests {
     }
 
     [TestMethod]
+    public void DesktopSessionWatcher_DisposeWaitsForAndSuppressesInFlightPoll() {
+        DesktopSessionInfo initial = CreateSession(isLocked: false, TimeSpan.Zero);
+        DesktopSessionInfo changed = CreateSession(isLocked: true, TimeSpan.Zero);
+        using var pollStarted = new ManualResetEventSlim();
+        using var releasePoll = new ManualResetEventSlim();
+        int readCount = 0;
+
+        DesktopSessionInfo ReadSession() {
+            if (Interlocked.Increment(ref readCount) == 1) {
+                return initial;
+            }
+
+            pollStarted.Set();
+            releasePoll.Wait(TimeSpan.FromSeconds(5));
+            return changed;
+        }
+
+        var watcher = new DesktopSessionWatcher(ReadSession, TimeSpan.FromMilliseconds(10));
+        int changedCount = 0;
+        watcher.Changed += (_, _) => Interlocked.Increment(ref changedCount);
+
+        try {
+            Assert.IsTrue(pollStarted.Wait(TimeSpan.FromSeconds(5)), "The timer did not begin polling.");
+            Task disposeTask = Task.Run(watcher.Dispose);
+            try {
+                Assert.IsFalse(
+                    disposeTask.Wait(TimeSpan.FromMilliseconds(100)),
+                    "Dispose returned while a poll could still publish a change.");
+            } finally {
+                releasePoll.Set();
+            }
+
+            Assert.IsTrue(disposeTask.Wait(TimeSpan.FromSeconds(5)), "Dispose did not finish after the poll completed.");
+            Assert.AreEqual(0, Volatile.Read(ref changedCount));
+            Assert.IsFalse(watcher.Current.IsLocked);
+            Thread.Sleep(50);
+            Assert.AreEqual(0, Volatile.Read(ref changedCount), "A change was raised after Dispose returned.");
+        } finally {
+            releasePoll.Set();
+            watcher.Dispose();
+        }
+    }
+
+    [TestMethod]
 #if NET5_0_OR_GREATER
     [SupportedOSPlatform("windows10.0.14393.0")]
 #endif

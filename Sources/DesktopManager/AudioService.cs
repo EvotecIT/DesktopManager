@@ -44,8 +44,9 @@ public class AudioService {
         AudioRole[] selectedRoles = roles == null || roles.Length == 0
             ? new[] { AudioRole.Console, AudioRole.Multimedia, AudioRole.Communications }
             : roles.Distinct().ToArray();
-        foreach (AudioRole role in selectedRoles) {
-            _policy.SetDefaultEndpoint(deviceId, ToNativeRole(role));
+        ERole[] nativeRoles = selectedRoles.Select(ToNativeRole).ToArray();
+        foreach (ERole role in nativeRoles) {
+            _policy.SetDefaultEndpoint(deviceId, role);
         }
     }
 
