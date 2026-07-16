@@ -202,7 +202,23 @@ public sealed class RadioService : IDisposable {
     }
 
     private void HandleStateChanged(Radio sender, object args) {
-        StateChanged?.Invoke(this, new DesktopRadioStateChangedEventArgs(ToInfo(sender)));
+        NotifyStateChanged(new DesktopRadioStateChangedEventArgs(ToInfo(sender)));
+    }
+
+    /// <summary>Notifies each radio-state subscriber independently so one host callback cannot block the others.</summary>
+    internal void NotifyStateChanged(DesktopRadioStateChangedEventArgs args) {
+        EventHandler<DesktopRadioStateChangedEventArgs>? handlers = StateChanged;
+        if (handlers == null) {
+            return;
+        }
+
+        foreach (EventHandler<DesktopRadioStateChangedEventArgs> handler in handlers.GetInvocationList()) {
+            try {
+                handler(this, args);
+            } catch (Exception ex) {
+                DesktopManagerDiagnostics.Report($"Desktop radio notification handler failed: {ex.Message}");
+            }
+        }
     }
 
     private void ThrowIfDisposed() {

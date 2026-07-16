@@ -116,6 +116,28 @@ public class McpDesktopStateContractTests {
     }
 
     [TestMethod]
+    public void McpSafetyPolicy_LegacyTaskbarMutation_RequiresSystemSettingsOptIn() {
+        JsonElement arguments = CreateArguments(new { position = "bottom", primaryOnly = true });
+        var noSystemSettings = new DesktopManager.Cli.McpSafetyPolicy(true, false, false);
+        var allowed = new DesktopManager.Cli.McpSafetyPolicy(
+            allowMutations: true,
+            allowForegroundInput: false,
+            dryRun: false,
+            allowSystemSettings: true);
+
+        DesktopManager.Cli.McpToolSafetyDecision blocked =
+            noSystemSettings.EvaluateToolCall("set_taskbar_position", arguments);
+
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.RequiresSystemSettingsAccess("set_taskbar_position"));
+        Assert.AreEqual(DesktopManager.Cli.McpToolSafetyDecisionKind.Deny, blocked.Kind);
+        Assert.IsNotNull(blocked.Message);
+        Assert.Contains("--allow-system-settings", blocked.Message);
+        Assert.AreEqual(
+            DesktopManager.Cli.McpToolSafetyDecisionKind.Allow,
+            allowed.EvaluateToolCall("set_taskbar_position", arguments).Kind);
+    }
+
+    [TestMethod]
     public void McpSafetyPolicy_ExperimentalAirplaneMutation_RequiresBothSpecializedGates() {
         JsonElement arguments = CreateArguments(new { state = "Enabled" });
         var missingExperimental = new DesktopManager.Cli.McpSafetyPolicy(

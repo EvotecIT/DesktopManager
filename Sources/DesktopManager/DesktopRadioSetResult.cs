@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace DesktopManager;
 
@@ -33,4 +35,21 @@ public sealed class DesktopRadioSetResult {
 
     /// <summary>Gets whether the effective radio state reached the requested state.</summary>
     public bool Applied { get; }
+
+    /// <summary>Builds the shared failure message for results whose requested states were not applied.</summary>
+    /// <param name="results">The supported-radio mutation results to inspect.</param>
+    /// <returns>A failure message, or <c>null</c> when every result was applied.</returns>
+    internal static string? BuildUnappliedMessage(IReadOnlyList<DesktopRadioSetResult> results) {
+        if (results == null) {
+            throw new ArgumentNullException(nameof(results));
+        }
+        DesktopRadioSetResult[] failed = results.Where(item => !item.Applied).ToArray();
+        if (failed.Length == 0) {
+            return null;
+        }
+
+        string details = string.Join(", ", failed.Select(item =>
+            $"{item.Radio.Name}: access {item.AccessStatus}, effective {item.Radio.State}"));
+        return $"Windows did not apply one or more requested radio states. {details}";
+    }
 }

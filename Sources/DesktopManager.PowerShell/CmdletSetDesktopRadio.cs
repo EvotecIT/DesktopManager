@@ -23,6 +23,16 @@ public sealed class CmdletSetDesktopRadio : PSCmdlet {
             return;
         }
         using var service = new RadioService();
-        WriteObject(service.SetRadioStateAsync(Kind, State, Name).GetAwaiter().GetResult(), true);
+        IReadOnlyList<DesktopRadioSetResult> results = service.SetRadioStateAsync(Kind, State, Name).GetAwaiter().GetResult();
+        string failureMessage = DesktopRadioSetResult.BuildUnappliedMessage(results);
+        if (failureMessage != null) {
+            ThrowTerminatingError(new ErrorRecord(
+                new InvalidOperationException(failureMessage),
+                "DesktopRadioStateNotApplied",
+                ErrorCategory.InvalidResult,
+                results));
+        }
+
+        WriteObject(results, true);
     }
 }

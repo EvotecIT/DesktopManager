@@ -200,6 +200,44 @@ public class DesktopStateCapabilityTests {
     }
 
     [TestMethod]
+    public void DesktopRadioSetResult_UnappliedMessage_DescribesRejectedAndEffectiveState() {
+        var applied = new DesktopRadioSetResult(
+            new DesktopRadioInfo("Bluetooth", DesktopRadioKind.Bluetooth, DesktopRadioState.Off),
+            DesktopRadioAccessStatus.Allowed,
+            accepted: true,
+            applied: true);
+        var rejected = new DesktopRadioSetResult(
+            new DesktopRadioInfo("Wi-Fi", DesktopRadioKind.WiFi, DesktopRadioState.On),
+            DesktopRadioAccessStatus.DeniedBySystem,
+            accepted: false,
+            applied: false);
+
+        Assert.IsNull(DesktopRadioSetResult.BuildUnappliedMessage(new[] { applied }));
+        string? message = DesktopRadioSetResult.BuildUnappliedMessage(new[] { applied, rejected });
+        Assert.IsNotNull(message);
+        Assert.Contains("Wi-Fi", message);
+        Assert.Contains(nameof(DesktopRadioAccessStatus.DeniedBySystem), message);
+        Assert.Contains(nameof(DesktopRadioState.On), message);
+    }
+
+    [TestMethod]
+#if NET5_0_OR_GREATER
+    [SupportedOSPlatform("windows10.0.14393.0")]
+#endif
+    public void RadioService_ContainsSubscriberFailureAndNotifiesRemainingSubscribers() {
+        using var service = new RadioService();
+        var changed = new DesktopRadioStateChangedEventArgs(
+            new DesktopRadioInfo("Wi-Fi", DesktopRadioKind.WiFi, DesktopRadioState.On));
+        DesktopRadioInfo? observed = null;
+        service.StateChanged += (_, _) => throw new InvalidOperationException("Subscriber failure.");
+        service.StateChanged += (_, args) => observed = args.Radio;
+
+        service.NotifyStateChanged(changed);
+
+        Assert.AreSame(changed.Radio, observed);
+    }
+
+    [TestMethod]
     public void ExperimentalAirplaneModeService_RejectsUnknownStateBeforeNativeCall() {
         var service = new ExperimentalAirplaneModeService();
 

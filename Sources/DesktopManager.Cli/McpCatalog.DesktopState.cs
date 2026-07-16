@@ -7,6 +7,7 @@ namespace DesktopManager.Cli;
 
 internal static partial class McpCatalog {
     private static readonly HashSet<string> SystemSettingsToolNames = new(StringComparer.Ordinal) {
+        "set_taskbar_position",
         "configure_audio_endpoint", "invoke_system_action", "configure_keep_awake", "apply_personalization", "configure_taskbar",
         "apply_workstation_profile", "set_radio_state", "set_airplane_mode"
     };
@@ -339,14 +340,12 @@ internal static partial class McpCatalog {
     }
 
     internal static IReadOnlyList<DesktopRadioSetResult> RequireAppliedRadioResults(IReadOnlyList<DesktopRadioSetResult> results) {
-        DesktopRadioSetResult[] failed = results.Where(item => !item.Applied).ToArray();
-        if (failed.Length == 0) {
+        string? failureMessage = DesktopRadioSetResult.BuildUnappliedMessage(results);
+        if (failureMessage == null) {
             return results;
         }
 
-        string details = string.Join(", ", failed.Select(item =>
-            $"{item.Radio.Name}: access {item.AccessStatus}, effective {item.Radio.State}"));
-        throw new CommandLineException($"Windows did not apply one or more requested radio states. {details}");
+        throw new CommandLineException(failureMessage);
     }
 
     private static object GetWindowVirtualDesktop(JsonElement arguments) {

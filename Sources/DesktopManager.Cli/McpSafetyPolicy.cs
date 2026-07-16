@@ -112,7 +112,7 @@ internal sealed class McpSafetyPolicy {
             return McpToolSafetyDecision.Allow();
         }
 
-        if (McpCatalog.RequiresSystemSettingsAccess(name) && !AllowSystemSettings) {
+        if (AllowMutations && McpCatalog.RequiresSystemSettingsAccess(name) && !AllowSystemSettings) {
             return McpToolSafetyDecision.Deny(
                 $"The requested mutation '{name}' changes system-wide desktop state. Restart with --allow-system-settings in addition to --allow-mutations.");
         }
