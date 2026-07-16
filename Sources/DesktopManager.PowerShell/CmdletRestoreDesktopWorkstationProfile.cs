@@ -41,7 +41,8 @@ public sealed class CmdletRestoreDesktopWorkstationProfile : PSCmdlet {
         if (!ShouldProcess(Name, "Restore workstation profile")) {
             return;
         }
-        WriteObject(new WorkstationProfileService().ApplyProfile(Name, new WorkstationProfileApplyOptions {
+
+        WorkstationProfileApplyResult result = new WorkstationProfileService().ApplyProfile(Name, new WorkstationProfileApplyOptions {
             RequireAllMonitors = !AllowMissingMonitor,
             ApplyDisplays = !SkipDisplay,
             ApplyAudio = !SkipAudio,
@@ -49,6 +50,34 @@ public sealed class CmdletRestoreDesktopWorkstationProfile : PSCmdlet {
             ApplyMachinePolicies = IncludeMachinePolicies,
             ApplyTaskbars = !SkipTaskbar,
             RollbackOnFailure = !NoRollback
-        }));
+        });
+        if (!result.Succeeded) {
+            ThrowTerminatingError(CreateApplyFailureError(Name, result));
+        }
+
+        WriteObject(result);
+    }
+
+    internal static ErrorRecord CreateApplyFailureError(string name, WorkstationProfileApplyResult result) {
+        var exception = new InvalidOperationException(CreateApplyFailureMessage(name, result));
+        return new ErrorRecord(
+            exception,
+            "WorkstationProfileApplyFailed",
+            ErrorCategory.OperationStopped,
+            name);
+    }
+
+    internal static string CreateApplyFailureMessage(string name, WorkstationProfileApplyResult result) {
+        var details = new List<string> {
+            string.IsNullOrWhiteSpace(result.Error) ? "The operation failed without an error message." : result.Error
+        };
+        if (result.RolledBack) {
+            details.Add("Previous desktop state was restored.");
+        }
+        if (result.Warnings.Count > 0) {
+            details.Add($"Warnings: {string.Join(" ", result.Warnings)}");
+        }
+
+        return $"Workstation profile '{name}' could not be restored. {string.Join(" ", details)}";
     }
 }
