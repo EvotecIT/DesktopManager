@@ -117,7 +117,7 @@ internal sealed class McpServer {
                 return;
             case "tools/list":
                 WriteSuccess(output, idElement, new {
-                    tools = McpCatalog.GetTools()
+                    tools = McpCatalog.GetTools(_safetyPolicy.AllowExperimental)
                 });
                 return;
             case "tools/call":

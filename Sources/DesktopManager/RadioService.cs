@@ -1,0 +1,229 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
+using Windows.Devices.Radios;
+using Windows.Foundation;
+
+namespace DesktopManager;
+
+/// <summary>
+/// Enumerates, controls, and observes individual radios through the supported Windows radio API.
+/// </summary>
+[SupportedOSPlatform("windows10.0.14393.0")]
+public sealed class RadioService : IDisposable {
+    private static readonly TimeSpan StateVerificationTimeout = TimeSpan.FromSeconds(5);
+    private readonly List<Radio> _observedRadios = new();
+    private bool _disposed;
+
+    /// <summary>Raised when an observed Windows radio changes state.</summary>
+    public event EventHandler<DesktopRadioStateChangedEventArgs>? StateChanged;
+
+    /// <summary>
+    /// Gets a current snapshot of all radios exposed to this process.
+    /// </summary>
+    /// <param name="cancellationToken">A token checked before and after the Windows operation.</param>
+    /// <returns>The current radio snapshots.</returns>
+    public async Task<IReadOnlyList<DesktopRadioInfo>> GetRadiosAsync(CancellationToken cancellationToken = default) {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<Radio> radios = await Radio.GetRadiosAsync();
+        cancellationToken.ThrowIfCancellationRequested();
+        return radios.Select(ToInfo).ToArray();
+    }
+
+    /// <summary>
+    /// Applies an explicit state to radios matching a kind and optional Windows-provided name.
+    /// When no name is supplied, every radio of the requested kind is changed.
+    /// </summary>
+    /// <param name="kind">The radio technology to select.</param>
+    /// <param name="state">The explicit On or Off state to request.</param>
+    /// <param name="name">An optional exact radio name, compared case-insensitively.</param>
+    /// <param name="cancellationToken">A token checked between Windows operations.</param>
+    /// <returns>One result for each matching radio.</returns>
+    public async Task<IReadOnlyList<DesktopRadioSetResult>> SetRadioStateAsync(
+        DesktopRadioKind kind,
+        DesktopRadioState state,
+        string? name = null,
+        CancellationToken cancellationToken = default) {
+        ThrowIfDisposed();
+        if (state != DesktopRadioState.On && state != DesktopRadioState.Off) {
+            throw new ArgumentOutOfRangeException(nameof(state), state, "Only On and Off can be requested.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<Radio> radios = await Radio.GetRadiosAsync();
+        Radio[] matches = radios
+            .Where(radio => ToKind(radio.Kind) == kind)
+            .Where(radio => string.IsNullOrWhiteSpace(name) || string.Equals(radio.Name, name, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (matches.Length == 0) {
+            throw new InvalidOperationException(BuildNoMatchMessage(kind, name));
+        }
+
+        RadioAccessStatus access = await Radio.RequestAccessAsync();
+        DesktopRadioAccessStatus mappedAccess = ToAccessStatus(access);
+        RadioState requestedState = ToWindowsState(state);
+        var results = new List<DesktopRadioSetResult>(matches.Length);
+        foreach (Radio radio in matches) {
+            cancellationToken.ThrowIfCancellationRequested();
+            bool accepted = false;
+            bool applied = false;
+            DesktopRadioAccessStatus operationAccess = mappedAccess;
+            if (access == RadioAccessStatus.Allowed) {
+                RadioAccessStatus setStatus = await radio.SetStateAsync(requestedState);
+                operationAccess = ToAccessStatus(setStatus);
+                accepted = setStatus == RadioAccessStatus.Allowed;
+                applied = await WaitForAppliedStateAsync(radio, setStatus, requestedState, cancellationToken);
+            }
+
+            results.Add(new DesktopRadioSetResult(ToInfo(radio), operationAccess, accepted, applied));
+        }
+
+        return results.ToArray();
+    }
+
+    /// <summary>
+    /// Starts observing the radios currently exposed to this process.
+    /// Call this method again after device arrival or removal to refresh subscriptions.
+    /// </summary>
+    /// <param name="cancellationToken">A token checked before and after enumeration.</param>
+    public async Task StartMonitoringAsync(CancellationToken cancellationToken = default) {
+        ThrowIfDisposed();
+        StopMonitoring();
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<Radio> radios = await Radio.GetRadiosAsync();
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (Radio radio in radios) {
+            radio.StateChanged += HandleStateChanged;
+            _observedRadios.Add(radio);
+        }
+    }
+
+    /// <summary>Stops radio state observation without disposing the service.</summary>
+    public void StopMonitoring() {
+        foreach (Radio radio in _observedRadios) {
+            radio.StateChanged -= HandleStateChanged;
+        }
+        _observedRadios.Clear();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose() {
+        if (_disposed) {
+            return;
+        }
+
+        StopMonitoring();
+        _disposed = true;
+    }
+
+    internal static DesktopRadioKind ToKind(RadioKind kind) {
+        return kind switch {
+            RadioKind.WiFi => DesktopRadioKind.WiFi,
+            RadioKind.MobileBroadband => DesktopRadioKind.MobileBroadband,
+            RadioKind.Bluetooth => DesktopRadioKind.Bluetooth,
+            RadioKind.FM => DesktopRadioKind.FM,
+            _ => DesktopRadioKind.Other
+        };
+    }
+
+    internal static DesktopRadioState ToState(RadioState state) {
+        return state switch {
+            RadioState.On => DesktopRadioState.On,
+            RadioState.Off => DesktopRadioState.Off,
+            RadioState.Disabled => DesktopRadioState.Disabled,
+            _ => DesktopRadioState.Unknown
+        };
+    }
+
+    internal static DesktopRadioAccessStatus ToAccessStatus(RadioAccessStatus status) {
+        return status switch {
+            RadioAccessStatus.Allowed => DesktopRadioAccessStatus.Allowed,
+            RadioAccessStatus.DeniedByUser => DesktopRadioAccessStatus.DeniedByUser,
+            RadioAccessStatus.DeniedBySystem => DesktopRadioAccessStatus.DeniedBySystem,
+            _ => DesktopRadioAccessStatus.Unspecified
+        };
+    }
+
+    internal static bool IsApplied(RadioAccessStatus accessStatus, RadioState effectiveState, RadioState requestedState) {
+        return accessStatus == RadioAccessStatus.Allowed && effectiveState == requestedState;
+    }
+
+    private static RadioState ToWindowsState(DesktopRadioState state) {
+        return state == DesktopRadioState.On ? RadioState.On : RadioState.Off;
+    }
+
+    private static async Task<bool> WaitForAppliedStateAsync(
+        Radio radio,
+        RadioAccessStatus accessStatus,
+        RadioState requestedState,
+        CancellationToken cancellationToken) {
+        if (IsApplied(accessStatus, radio.State, requestedState)) {
+            return true;
+        }
+        if (accessStatus != RadioAccessStatus.Allowed) {
+            return false;
+        }
+
+        var stateChanged = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        TypedEventHandler<Radio, object>? handler = null;
+        handler = (sender, _) => {
+            if (sender.State == requestedState) {
+                stateChanged.TrySetResult(true);
+            }
+        };
+
+        radio.StateChanged += handler;
+        try {
+            if (radio.State == requestedState) {
+                return true;
+            }
+
+            Task timeout = Task.Delay(StateVerificationTimeout, cancellationToken);
+            await Task.WhenAny(stateChanged.Task, timeout);
+            cancellationToken.ThrowIfCancellationRequested();
+            return radio.State == requestedState;
+        } finally {
+            radio.StateChanged -= handler;
+        }
+    }
+
+    private static DesktopRadioInfo ToInfo(Radio radio) {
+        return new DesktopRadioInfo(radio.Name, ToKind(radio.Kind), ToState(radio.State));
+    }
+
+    private static string BuildNoMatchMessage(DesktopRadioKind kind, string? name) {
+        return string.IsNullOrWhiteSpace(name)
+            ? $"No {kind} radios were found."
+            : $"No {kind} radio named '{name}' was found.";
+    }
+
+    private void HandleStateChanged(Radio sender, object args) {
+        NotifyStateChanged(new DesktopRadioStateChangedEventArgs(ToInfo(sender)));
+    }
+
+    /// <summary>Notifies each radio-state subscriber independently so one host callback cannot block the others.</summary>
+    internal void NotifyStateChanged(DesktopRadioStateChangedEventArgs args) {
+        EventHandler<DesktopRadioStateChangedEventArgs>? handlers = StateChanged;
+        if (handlers == null) {
+            return;
+        }
+
+        foreach (EventHandler<DesktopRadioStateChangedEventArgs> handler in handlers.GetInvocationList()) {
+            try {
+                handler(this, args);
+            } catch (Exception ex) {
+                DesktopManagerDiagnostics.Report($"Desktop radio notification handler failed: {ex.Message}");
+            }
+        }
+    }
+
+    private void ThrowIfDisposed() {
+        if (_disposed) {
+            throw new ObjectDisposedException(nameof(RadioService));
+        }
+    }
+}

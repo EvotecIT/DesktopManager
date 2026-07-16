@@ -9,7 +9,7 @@ DesktopManager exposes two automation surfaces:
 
 For agent-driven desktop automation, prefer MCP first and use CLI as fallback.
 
-The MCP server now starts in read-only inspection mode by default. Use `desktopmanager mcp serve --allow-mutations` when you intentionally want mutating tools, add `--allow-process <pattern>` or `--deny-process <pattern>` when the session should be constrained to specific apps, add `--allow-foreground-input` only for sessions that may need focused foreground fallback on zero-handle UIA text or key actions, and use `--dry-run` when you want mutation previews without changing the desktop.
+The MCP server starts in read-only inspection mode. Use `desktopmanager mcp serve --allow-mutations` when you intentionally want mutating tools. System-wide state changes also require `--allow-system-settings`; the undocumented global airplane-mode tools require `--allow-experimental`. Add `--allow-process <pattern>` or `--deny-process <pattern>` when a session should be constrained to specific apps, add `--allow-foreground-input` only when zero-handle UIA text or key actions may need focused fallback, and use `--dry-run` for mutation previews.
 
 The stdio transport follows MCP revision `2025-06-18`: each UTF-8 JSON-RPC message is written on one line. JSON-RPC batches are not accepted by this protocol revision.
 
@@ -69,6 +69,27 @@ The stdio transport follows MCP revision `2025-06-18`: each UTF-8 JSON-RPC messa
 - `prepare_for_coding`
 - `prepare_for_screen_sharing`
 - `clean_up_distractions`
+- `get_system_state`
+- `get_audio_endpoints`
+- `configure_audio_endpoint`
+- `get_personalization`
+- `apply_personalization`
+- `get_taskbars`
+- `configure_taskbar`
+- `get_workstation_profiles`
+- `save_workstation_profile`
+- `apply_workstation_profile`
+- `delete_workstation_profile`
+- `list_radios`
+- `set_radio_state`
+- `get_airplane_mode`
+- `set_airplane_mode`
+- `get_window_virtual_desktop`
+- `move_window_to_virtual_desktop`
+- `invoke_system_action`
+- `configure_keep_awake`
+
+`list_radios` and `set_radio_state` use the supported Windows radio API. `get_airplane_mode` and `set_airplane_mode` are separately gated because they use an undocumented Windows shell contract. The virtual-desktop tools expose only the public window operations; they do not claim support for enumerating, creating, renaming, switching, or removing desktops.
 
 ## Current MCP Resources
 
@@ -92,6 +113,8 @@ The stdio transport follows MCP revision `2025-06-18`: each UTF-8 JSON-RPC messa
 1. Start the server in the safest useful mode.
    - use plain `desktopmanager mcp serve` for inspection-only sessions
    - add `--allow-mutations` only when the workflow really needs state changes
+   - add `--allow-system-settings` only when the workflow needs global audio, power/session, personalization, taskbar, workstation-profile, or radio changes
+   - add `--allow-experimental` only when the workflow explicitly accepts the undocumented global airplane-mode contract
    - add `--allow-process` and `--deny-process` when the workflow should be limited to specific desktop apps
    - add `--allow-foreground-input` only for sacrificial or tightly controlled sessions that may need focused fallback in modern apps
    - add `--dry-run` when you want a preview of mutating requests without side effects
@@ -281,7 +304,9 @@ That keeps screenshot-assisted targeting in the shared core instead of forcing t
 - Shared zero-handle UIA text fallback now prefers focused paste-with-verification before raw typed characters, which should improve reliability for modern edit fields without changing the explicit opt-in safety boundary.
 - Mutating MCP tools can now return best-effort before/after screenshot artifacts plus safety/timing metadata, which makes it easier to verify what actually happened without building custom wrappers around each action.
 - The MCP server now enforces its safety posture instead of documenting it only: default read-only inspection, explicit mutation opt-in through `--allow-mutations`, explicit risky foreground-input opt-in through `--allow-foreground-input`, and side-effect-free mutation previews through `--dry-run`.
-- MCP process filters constrain live mutations to allowed or denied process patterns. Global desktop mutations such as monitor, wallpaper, slideshow, taskbar, background-color, and clipboard changes are blocked while process filters are active because those operations cannot be made process-local.
+- MCP process filters constrain live mutations to allowed or denied process patterns. Global desktop mutations such as monitor, wallpaper, slideshow, taskbar, background-color, clipboard, audio, power/session, personalization, workstation-profile application, and radio changes are blocked while process filters are active because those operations cannot be made process-local.
+- `--allow-system-settings` does not imply `--allow-mutations`; both are required before MCP can change global desktop state.
+- `--allow-experimental` is independent of the normal supported radio surface. It is required even to read the undocumented global airplane-mode contract so an agent cannot mistake it for the supported API.
 - Higher-level workflow tools now exist for coding prep, screen-sharing prep, and distraction cleanup, so agents do not have to reassemble those routines from prompts alone.
 - Saved control targets still pay the underlying UIA discovery cost on modern apps, so target-based `wait` is reusable and safer, but not necessarily cheap.
 - Preferred-root reuse is process-local. It helps a long-running MCP server more than separate one-shot CLI invocations.

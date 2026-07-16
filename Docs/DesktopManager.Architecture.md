@@ -10,6 +10,7 @@ DesktopManager exposes one shared desktop-automation core through several differ
 | PowerShell module | Operators and scripters | Cmdlet UX, object pipeline, easy admin automation | `Install-Module DesktopManager` |
 | CLI | Humans, shell scripts, JSON-oriented tooling | Simple commands, process isolation, direct manual use, MCP host entrypoint | `desktopmanager.exe` |
 | MCP server | Agents and desktop copilots | Inspect-first safety model, process scoping, dry-run and mutation controls | `desktopmanager mcp serve` |
+| Desktop app | Daily operators | Hotkeys plus interactive desktop-state quick controls | `DesktopManager.App.exe` |
 
 ```mermaid
 flowchart TD
@@ -17,6 +18,7 @@ flowchart TD
     B["PowerShell cmdlets"] --> E
     C["desktopmanager.exe CLI"] --> F["DesktopOperations"]
     D["MCP over stdio"] --> C
+    K["Desktop app"] --> E
 
     F --> E
 
@@ -24,6 +26,7 @@ flowchart TD
     E --> H["DesktopAutomationService"]
     E --> I["Monitor and screenshot services"]
     E --> J["WindowInputService and verification helpers"]
+    E --> L["Workstation, audio, power/session, personalization, taskbar, radio, and virtual-desktop services"]
 ```
 ```
 
@@ -35,6 +38,7 @@ The important design choice is that DesktopManager tries hard to keep desktop be
 - The **PowerShell module** wraps that behavior in cmdlets and PowerShell-friendly records.
 - The **CLI** wraps it in command parsing, JSON/text formatting, and desktop-oriented workflows.
 - The **MCP server** is hosted by the CLI executable and reuses the same `DesktopOperations` layer as normal CLI commands.
+- The **desktop app** uses the shared services directly. Its desktop-state tab is a separate control rather than another implementation inside the main hotkey window.
 
 ```mermaid
 flowchart LR
@@ -115,6 +119,8 @@ DesktopManager uses the same core storage concepts across surfaces.
 | Control targets | Reusable control selectors | `%AppData%\DesktopManager\control-targets` |
 | Captures | Screenshots and evidence | `%AppData%\DesktopManager\captures` or caller-provided artifact directory |
 | Hosted-session diagnostics | Focus-steal and retry diagnostics from test harnesses | `Artifacts\HostedSessionTyping` in the repo |
+| Workstation profiles | Displays, audio, personalization, and taskbars captured as one profile | `%AppData%\DesktopManager\workstation-profiles` |
+| Personalization snapshots | Reversible current-user personalization state | `%AppData%\DesktopManager\personalization` |
 
 ```mermaid
 flowchart LR
@@ -153,6 +159,8 @@ DesktopManager now uses a more explicit safety split for tests and agent/operato
 | Area | Safety idea |
 | ---- | ----------- |
 | MCP | Read-only by default, mutations require `--allow-mutations` |
+| MCP system settings | Global state changes additionally require `--allow-system-settings` |
+| MCP experimental contracts | Undocumented global airplane mode additionally requires `--allow-experimental` |
 | Risky control fallback | Explicit `--allow-foreground-input` |
 | Hosted-session typing | Explicit foreground/scancode modes with abort-on-focus-drift behavior |
 | Tests | Separate gates for owned-window UI, destructive owned-window mutation, foreground focus, system-wide changes, external apps, and experiments |

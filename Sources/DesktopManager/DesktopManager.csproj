@@ -47,6 +47,7 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net472' or '$(TargetFramework)' == 'netstandard2.0'">
       <PackageReference Include="System.Text.Json" Version="8.0.5" />
       <PackageReference Include="System.Net.Http" Version="4.3.4" />
+      <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.26100.7705" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
@@ -95,6 +96,9 @@
     </AssemblyAttribute>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>DesktopManager.Cli</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>DesktopManager.PowerShell</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 </Project>

@@ -36,10 +36,19 @@ internal sealed class McpToolSafetyDecision {
 }
 
 internal sealed class McpSafetyPolicy {
-    public McpSafetyPolicy(bool allowMutations, bool allowForegroundInput, bool dryRun, IReadOnlyList<string>? allowedProcessPatterns = null, IReadOnlyList<string>? deniedProcessPatterns = null) {
+    public McpSafetyPolicy(
+        bool allowMutations,
+        bool allowForegroundInput,
+        bool dryRun,
+        IReadOnlyList<string>? allowedProcessPatterns = null,
+        IReadOnlyList<string>? deniedProcessPatterns = null,
+        bool allowSystemSettings = false,
+        bool allowExperimental = false) {
         AllowMutations = allowMutations;
         AllowForegroundInput = allowForegroundInput;
         DryRun = dryRun;
+        AllowSystemSettings = allowSystemSettings;
+        AllowExperimental = allowExperimental;
         AllowedProcessPatterns = NormalizePatterns(allowedProcessPatterns);
         DeniedProcessPatterns = NormalizePatterns(deniedProcessPatterns);
     }
@@ -47,6 +56,8 @@ internal sealed class McpSafetyPolicy {
     public bool AllowMutations { get; }
     public bool AllowForegroundInput { get; }
     public bool DryRun { get; }
+    public bool AllowSystemSettings { get; }
+    public bool AllowExperimental { get; }
     public bool ReadOnly => !AllowMutations;
     public IReadOnlyList<string> AllowedProcessPatterns { get; }
     public IReadOnlyList<string> DeniedProcessPatterns { get; }
@@ -57,6 +68,8 @@ internal sealed class McpSafetyPolicy {
             readOnly = ReadOnly,
             allowMutations = AllowMutations,
             allowForegroundInput = AllowForegroundInput,
+            allowSystemSettings = AllowSystemSettings,
+            allowExperimental = AllowExperimental,
             dryRun = DryRun,
             allowedProcesses = AllowedProcessPatterns,
             deniedProcesses = DeniedProcessPatterns
@@ -75,13 +88,33 @@ internal sealed class McpSafetyPolicy {
             : "Focused foreground input fallback is blocked unless the server is started with --allow-foreground-input.";
 
         string processScopeMode = BuildProcessScopeInstructions();
+        string systemSettingsMode = AllowSystemSettings
+            ? "System-wide settings mutations are enabled."
+            : "System-wide settings mutations require --allow-system-settings.";
+        string experimentalMode = AllowExperimental
+            ? "Experimental tools are enabled."
+            : "Experimental tools require --allow-experimental.";
 
-        return mutationMode + " " + foregroundMode + " " + processScopeMode + " Use read-only inspection tools before mutating the desktop. Layouts and snapshots are stored per-user. Snapshots currently store window layout state only.";
+        return mutationMode + " " + foregroundMode + " " + systemSettingsMode + " " + experimentalMode + " " + processScopeMode + " Use read-only inspection tools before mutating the desktop. Layouts and snapshots are stored per-user. Snapshots currently store window layout state only.";
     }
 
     public McpToolSafetyDecision EvaluateToolCall(string name, JsonElement arguments) {
-        if (!McpCatalog.IsKnownTool(name) || !McpCatalog.IsMutatingTool(name)) {
+        if (!McpCatalog.IsKnownTool(name)) {
             return McpToolSafetyDecision.Allow();
+        }
+
+        if (McpCatalog.RequiresExperimentalAccess(name) && !AllowExperimental) {
+            return McpToolSafetyDecision.Deny(
+                $"The requested tool '{name}' uses an experimental Windows contract. Restart with --allow-experimental to expose it.");
+        }
+
+        if (!McpCatalog.IsMutatingTool(name)) {
+            return McpToolSafetyDecision.Allow();
+        }
+
+        if (AllowMutations && McpCatalog.RequiresSystemSettingsAccess(name) && !AllowSystemSettings) {
+            return McpToolSafetyDecision.Deny(
+                $"The requested mutation '{name}' changes system-wide desktop state. Restart with --allow-system-settings in addition to --allow-mutations.");
         }
 
         if (HasProcessFilters && McpCatalog.AffectsGlobalDesktop(name)) {

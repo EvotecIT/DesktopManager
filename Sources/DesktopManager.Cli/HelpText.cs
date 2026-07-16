@@ -13,6 +13,13 @@ Groups:
   window     List and control windows
   control    Inspect and interact with child controls
   monitor    Inspect and configure monitors
+  workstation Capture and restore cohesive workstation profiles
+  audio      Inspect and configure Core Audio endpoints
+  system     Inspect power/session state and perform explicit system actions
+  personalization Capture, apply, and restore personalization state
+  taskbar    Inspect and configure taskbars
+  radio      Inspect and configure supported radios; opt in to experimental airplane mode
+  virtual-desktop Use the supported Windows virtual-desktop window operations
   process    Start desktop applications
   screenshot Capture the desktop, monitors, or windows
   target     Save and resolve reusable window-relative targets
@@ -40,6 +47,10 @@ Examples:
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400
   desktopmanager monitor list --json
   desktopmanager monitor set-resolution --primary --width 2560 --height 1440 --orientation default
+  desktopmanager workstation save --name coding
+  desktopmanager audio list --active
+  desktopmanager system power
+  desktopmanager radio list
   desktopmanager layout save coding
   desktopmanager layout apply coding --validate
   desktopmanager layout assert coding --position-tolerance-px 50 --size-tolerance-px 50
@@ -52,6 +63,13 @@ Use:
   desktopmanager help window
   desktopmanager help control
   desktopmanager help monitor
+  desktopmanager help workstation
+  desktopmanager help audio
+  desktopmanager help system
+  desktopmanager help personalization
+  desktopmanager help taskbar
+  desktopmanager help radio
+  desktopmanager help virtual-desktop
   desktopmanager help process
   desktopmanager help screenshot
   desktopmanager help target
@@ -62,6 +80,79 @@ Use:
   desktopmanager help diagnostic
   desktopmanager help workflow
   desktopmanager help mcp
+""";
+    }
+
+    public static string GetWorkstationHelp() {
+        return """
+Workstation commands:
+  desktopmanager workstation save --name <name>
+  desktopmanager workstation list [--json]
+  desktopmanager workstation show --name <name>
+  desktopmanager workstation apply --name <name> [--allow-missing-monitors] [--skip-displays] [--skip-audio] [--skip-personalization] [--include-machine-policies] [--skip-taskbars] [--no-rollback]
+  desktopmanager workstation delete --name <name>
+""";
+    }
+
+    public static string GetAudioHelp() {
+        return """
+Audio commands:
+  desktopmanager audio list [--flow <render|capture|all>] [--active] [--json]
+  desktopmanager audio set-default --id <endpoint-id> [--role <console|multimedia|communications>]
+  desktopmanager audio set-volume --id <endpoint-id> --volume <0-100>
+  desktopmanager audio set-mute --id <endpoint-id> (--on | --off)
+""";
+    }
+
+    public static string GetSystemHelp() {
+        return """
+System commands:
+  desktopmanager system power
+  desktopmanager system session
+  desktopmanager system lock
+  desktopmanager system keep-awake --seconds <1-86400> [--display] [--away-mode]
+  desktopmanager system suspend [--hibernate] [--force] --confirm
+  desktopmanager system sign-out [--force] --confirm
+""";
+    }
+
+    public static string GetPersonalizationHelp() {
+        return """
+Personalization commands:
+  desktopmanager personalization capture --name <name>
+  desktopmanager personalization list [--json]
+  desktopmanager personalization show --name <name>
+  desktopmanager personalization restore --name <name> [--skip-machine-policies]
+  desktopmanager personalization apply --file <settings.json>
+  desktopmanager personalization delete --name <name>
+""";
+    }
+
+    public static string GetTaskbarHelp() {
+        return """
+Taskbar commands:
+  desktopmanager taskbar list
+  desktopmanager taskbar set --monitor-index <index> [--show | --hide] [--position <left|top|right|bottom>]
+  desktopmanager taskbar set-auto-hide (--on | --off)
+""";
+    }
+
+    public static string GetRadioHelp() {
+        return """
+Radio commands:
+  desktopmanager radio list
+  desktopmanager radio set --kind <wifi|bluetooth|mobilebroadband|fm> --state <on|off> [--name <radio-name>]
+  desktopmanager radio airplane get --experimental
+  desktopmanager radio airplane set --state <enabled|disabled> --experimental
+""";
+    }
+
+    public static string GetVirtualDesktopHelp() {
+        return """
+Virtual desktop commands:
+  desktopmanager virtual-desktop current --handle <window-handle>
+  desktopmanager virtual-desktop id --handle <window-handle>
+  desktopmanager virtual-desktop move --handle <window-handle> --desktop-id <guid>
 """;
     }
 
@@ -536,9 +627,11 @@ Notes:
     public static string GetMcpHelp() {
         return """
 MCP commands:
-  desktopmanager mcp serve [--read-only] [--allow-mutations] [--allow-process <pattern>] [--deny-process <pattern>] [--allow-foreground-input] [--dry-run] [--json]
+  desktopmanager mcp serve [--read-only] [--allow-mutations] [--allow-system-settings] [--allow-experimental] [--allow-process <pattern>] [--deny-process <pattern>] [--allow-foreground-input] [--dry-run] [--json]
 
 This command group hosts a stdio MCP server that exposes tools, resources, and prompts.
+System-wide settings mutations require both --allow-mutations and --allow-system-settings.
+The undocumented global airplane-mode tools are hidden behind --allow-experimental.
 By default the server is read-only. Use --allow-mutations to enable mutating tools.
 Use --allow-process and --deny-process to constrain live desktop mutations to specific process patterns.
 Use --allow-foreground-input only when you intentionally want focused foreground fallback

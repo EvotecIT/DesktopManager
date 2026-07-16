@@ -1,7 +1,6 @@
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
 using System;
 using System.Management.Automation;
-using System.Timers;
 using System.Runtime.Versioning;
 
 namespace DesktopManager.PowerShell;
@@ -34,15 +33,13 @@ public sealed class CmdletRegisterDesktopMonitorEvent : PSCmdlet {
         var subscriber = Events.SubscribeEvent(watcher, nameof(MonitorWatcher.DisplaySettingsChanged), "MonitorWatcher", null, Action, true, false);
         WriteObject(subscriber);
 
-        if (Duration > TimeSpan.Zero) {
-            var timer = new Timer(Duration.TotalMilliseconds) { AutoReset = false };
-            timer.Elapsed += (_, _) => {
+        EventSubscriptionExpiration.Schedule(Duration, () => {
+            try {
                 Events.UnsubscribeEvent(subscriber);
+            } finally {
                 watcher.Dispose();
-                timer.Dispose();
-            };
-            timer.Start();
-        }
+            }
+        });
     }
 }
 

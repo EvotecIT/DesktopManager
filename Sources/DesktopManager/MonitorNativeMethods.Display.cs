@@ -112,7 +112,7 @@ public static partial class MonitorNativeMethods {
     /// <returns>A <see cref="DisplayChangeConfirmation"/> value indicating the result of the operation.</returns>
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     // A signature for ChangeDisplaySettingsEx with a DEVMODE struct as the second parameter won't allow you to pass in IntPtr.Zero, so create an overload
-    public static extern DisplayChangeConfirmation ChangeDisplaySettingsEx(string lpszDeviceName, IntPtr lpDevMode, IntPtr hwnd, ChangeDisplaySettingsFlags dwflags, IntPtr lParam);
+    public static extern DisplayChangeConfirmation ChangeDisplaySettingsEx(string? lpszDeviceName, IntPtr lpDevMode, IntPtr hwnd, ChangeDisplaySettingsFlags dwflags, IntPtr lParam);
 
     /// <summary>
     /// Gets the number of physical monitors associated with an HMONITOR handle.

@@ -10,6 +10,20 @@ This document captures the image-model design direction for the DesktopManager d
 - Prefer clear operational surfaces over marketing-style presentation.
 - Keep diagnostics first-class so broken hooks, permissions, and monitor identity issues can be understood quickly.
 
+## Current App Surface
+
+The current app keeps the existing hotkey editor intact and adds a separate `Desktop state` tab backed directly by the shared core services. That tab provides:
+
+- power and interactive-session status, bounded keep-awake, and session lock
+- cohesive workstation profile capture, apply, and removal
+- active audio endpoint volume, mute, and default-role controls
+- personalization snapshots and taskbar auto-hide
+- supported per-radio inventory and explicit state changes
+- an isolated, acknowledged experimental airplane-mode control
+- the supported virtual-desktop window inspection and move operations
+
+The navigation-rail and dedicated monitor-canvas work below remains a future app-shell direction. It should reuse the same service-backed controls rather than moving desktop logic into the UI layer.
+
 ## Image Model References
 
 | Surface | Mockup |

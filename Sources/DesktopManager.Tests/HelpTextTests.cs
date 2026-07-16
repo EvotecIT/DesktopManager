@@ -11,6 +11,13 @@ public class HelpTextTests {
     [DataRow("window", "Window commands:")]
     [DataRow("control", "Control commands:")]
     [DataRow("monitor", "Monitor commands:")]
+    [DataRow("workstation", "Workstation commands:")]
+    [DataRow("audio", "Audio commands:")]
+    [DataRow("system", "System commands:")]
+    [DataRow("personalization", "Personalization commands:")]
+    [DataRow("taskbar", "Taskbar commands:")]
+    [DataRow("radio", "Radio commands:")]
+    [DataRow("virtual-desktop", "Virtual desktop commands:")]
     [DataRow("process", "Process commands:")]
     [DataRow("screenshot", "Screenshot commands:")]
     [DataRow("target", "Target commands:")]
@@ -52,6 +59,13 @@ public class HelpTextTests {
             "window",
             "control",
             "monitor",
+            "workstation",
+            "audio",
+            "system",
+            "personalization",
+            "taskbar",
+            "radio",
+            "virtual-desktop",
             "process",
             "screenshot",
             "target",
@@ -115,6 +129,15 @@ public class HelpTextTests {
         StringAssert.Contains(help, "desktopmanager window topmost");
         StringAssert.Contains(help, "desktopmanager window visibility");
         StringAssert.Contains(help, "desktopmanager window transparency");
+    }
+
+    [TestMethod]
+    public void GetMcpHelp_ListsSpecializedDesktopStateSafetyGates() {
+        string help = global::DesktopManager.Cli.HelpText.GetMcpHelp();
+
+        StringAssert.Contains(help, "--allow-system-settings");
+        StringAssert.Contains(help, "--allow-experimental");
+        StringAssert.Contains(help, "both --allow-mutations and --allow-system-settings");
     }
 }
 #endif

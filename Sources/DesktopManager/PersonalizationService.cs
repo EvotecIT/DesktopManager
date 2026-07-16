@@ -64,9 +64,7 @@ public sealed class PersonalizationService {
     /// </summary>
     /// <param name="settings">Settings to apply.</param>
     public void Apply(PersonalizationSettings settings) {
-        if (settings == null) {
-            throw new ArgumentNullException(nameof(settings));
-        }
+        ValidateSettings(settings);
 
         if (settings.DesktopWallpaperPosition.HasValue) {
             _monitors.SetWallpaperPosition(settings.DesktopWallpaperPosition.Value);
@@ -197,16 +195,51 @@ public sealed class PersonalizationService {
         BroadcastSettingChange();
     }
 
+    /// <summary>Validates all enum-backed settings before personalization state is changed.</summary>
+    /// <param name="settings">Settings to validate.</param>
+    internal static void ValidateSettings(PersonalizationSettings settings) {
+        if (settings == null) {
+            throw new ArgumentNullException(nameof(settings));
+        }
+
+        ValidateEnum(settings.SystemTheme, nameof(settings.SystemTheme));
+        ValidateEnum(settings.AppsTheme, nameof(settings.AppsTheme));
+        ValidateEnum(settings.StartLayout, nameof(settings.StartLayout));
+        ValidateEnum(settings.TaskbarAlignment, nameof(settings.TaskbarAlignment));
+        ValidateEnum(settings.TaskbarGrouping, nameof(settings.TaskbarGrouping));
+        ValidateEnum(settings.DesktopWallpaperPosition, nameof(settings.DesktopWallpaperPosition));
+    }
+
+    private static void ValidateEnum<T>(T? value, string propertyName) where T : struct {
+        if (value.HasValue && !Enum.IsDefined(typeof(T), value.Value)) {
+            throw new ArgumentOutOfRangeException(
+                propertyName,
+                value.Value,
+                $"Unsupported {typeof(T).Name} value.");
+        }
+    }
+
     /// <summary>
     /// Restores personalization settings from a snapshot.
     /// </summary>
     /// <param name="snapshot">Snapshot to restore.</param>
     public void Restore(PersonalizationSnapshot snapshot) {
+        Restore(snapshot, restoreMachinePolicies: true);
+    }
+
+    /// <summary>
+    /// Restores a personalization snapshot with explicit control over machine-wide policy values.
+    /// </summary>
+    /// <param name="snapshot">The snapshot to restore.</param>
+    /// <param name="restoreMachinePolicies">Whether to restore machine-wide lock-screen and Spotlight policies.</param>
+    public void Restore(PersonalizationSnapshot snapshot, bool restoreMachinePolicies) {
         if (snapshot == null) {
             throw new ArgumentNullException(nameof(snapshot));
         }
 
-        ApplyPolicySnapshot(snapshot.Policy);
+        if (restoreMachinePolicies) {
+            ApplyPolicySnapshot(snapshot.Policy);
+        }
         ApplyUserSnapshot(snapshot.User);
 
         if (snapshot.WallpaperPosition.HasValue) {

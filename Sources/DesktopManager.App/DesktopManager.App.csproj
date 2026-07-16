@@ -48,4 +48,15 @@
     <Copy SourceFiles="@(HotkeyHostPublishFiles)" DestinationFiles="@(HotkeyHostPublishFiles->'$(PublishDir)DesktopManager.HotkeyHost\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 
+  <Target Name="IncludeWinUiGeneratedResourcesInPublish" BeforeTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <WinUiGeneratedPublishResource Include="$(TargetDir)$(AssemblyName).pri" Condition="Exists('$(TargetDir)$(AssemblyName).pri')" />
+      <WinUiGeneratedPublishResource Include="$(TargetDir)*.xbf" />
+      <ResolvedFileToPublish Include="@(WinUiGeneratedPublishResource)">
+        <RelativePath>%(WinUiGeneratedPublishResource.Filename)%(WinUiGeneratedPublishResource.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
 </Project>

@@ -12,6 +12,8 @@ internal static class McpCommands {
         bool readOnly = arguments.GetBoolFlag("read-only");
         bool allowMutations = arguments.GetBoolFlag("allow-mutations");
         bool allowForegroundInput = arguments.GetBoolFlag("allow-foreground-input");
+        bool allowSystemSettings = arguments.GetBoolFlag("allow-system-settings");
+        bool allowExperimental = arguments.GetBoolFlag("allow-experimental");
         bool dryRun = arguments.GetBoolFlag("dry-run");
         if (readOnly && allowMutations) {
             throw new CommandLineException("Choose either '--read-only' or '--allow-mutations', not both.");
@@ -22,7 +24,9 @@ internal static class McpCommands {
             allowForegroundInput,
             dryRun,
             arguments.GetOptions("allow-process"),
-            arguments.GetOptions("deny-process"));
+            arguments.GetOptions("deny-process"),
+            allowSystemSettings,
+            allowExperimental);
         if (arguments.GetBoolFlag("json")) {
             OutputFormatter.WriteJson(new {
                 status = "ready",
