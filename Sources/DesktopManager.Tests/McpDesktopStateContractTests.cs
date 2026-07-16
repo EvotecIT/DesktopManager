@@ -154,6 +154,36 @@ public class McpDesktopStateContractTests {
         StringAssert.Contains(decision.Message, "global desktop state");
     }
 
+    [TestMethod]
+    public void McpCatalog_ProfileApplyResultContract_RejectsFailedMutation() {
+        var result = new WorkstationProfileApplyResult(
+            succeeded: false,
+            rolledBack: true,
+            error: "A required monitor is missing.",
+            warnings: new[] { "Audio state was not changed." });
+
+        DesktopManager.Cli.CommandLineException exception = Assert.ThrowsExactly<DesktopManager.Cli.CommandLineException>(
+            () => DesktopManager.Cli.McpCatalog.RequireSuccessfulWorkstationProfileApply(result));
+
+        StringAssert.Contains(exception.Message, "A required monitor is missing.");
+        StringAssert.Contains(exception.Message, "Previous desktop state was restored.");
+        StringAssert.Contains(exception.Message, "Audio state was not changed.");
+    }
+
+    [TestMethod]
+    public void McpCatalog_RadioResultContract_RejectsDeniedMutation() {
+        var result = new DesktopRadioSetResult(
+            new DesktopRadioInfo("Wi-Fi", DesktopRadioKind.WiFi, DesktopRadioState.On),
+            DesktopRadioAccessStatus.DeniedBySystem,
+            accepted: false);
+
+        DesktopManager.Cli.CommandLineException exception = Assert.ThrowsExactly<DesktopManager.Cli.CommandLineException>(
+            () => DesktopManager.Cli.McpCatalog.RequireAcceptedRadioResults(new[] { result }));
+
+        StringAssert.Contains(exception.Message, "Wi-Fi");
+        StringAssert.Contains(exception.Message, nameof(DesktopRadioAccessStatus.DeniedBySystem));
+    }
+
     private static JsonElement EmptyArguments() {
         return CreateArguments(new { });
     }

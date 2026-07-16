@@ -11,30 +11,44 @@ internal static class McpKeepAwakeManager {
     private static KeepAwakeLease? _lease;
     private static Timer? _expirationTimer;
     private static DateTimeOffset? _expiresAt;
+    private static long _generation;
 
     public static object Configure(bool enabled, KeepAwakeOptions options, int? durationSeconds) {
+        if (enabled && durationSeconds.HasValue && (durationSeconds.Value <= 0 || durationSeconds.Value > 86400)) {
+            throw new CommandLineException("Property 'durationSeconds' must be between 1 and 86400.");
+        }
+
         lock (Sync) {
             StopCore();
             if (!enabled) {
                 return CreateStateModel();
             }
 
-            if (durationSeconds.HasValue && (durationSeconds.Value <= 0 || durationSeconds.Value > 86400)) {
-                throw new CommandLineException("Property 'durationSeconds' must be between 1 and 86400.");
-            }
-
             _lease = new SystemPowerService().CreateKeepAwakeLease(options);
             if (durationSeconds.HasValue) {
                 _expiresAt = DateTimeOffset.UtcNow.AddSeconds(durationSeconds.Value);
-                _expirationTimer = new Timer(HandleExpiration, null, TimeSpan.FromSeconds(durationSeconds.Value), Timeout.InfiniteTimeSpan);
+                _expirationTimer = new Timer(HandleExpiration, _generation, TimeSpan.FromSeconds(durationSeconds.Value), Timeout.InfiniteTimeSpan);
             }
 
             return CreateStateModel();
         }
     }
 
-    private static void HandleExpiration(object? state) {
+    internal static object GetState() {
         lock (Sync) {
+            return CreateStateModel();
+        }
+    }
+
+    private static void HandleExpiration(object? state) {
+        if (state is not long generation) {
+            return;
+        }
+
+        lock (Sync) {
+            if (generation != _generation) {
+                return;
+            }
             StopCore();
         }
     }
@@ -48,6 +62,7 @@ internal static class McpKeepAwakeManager {
     }
 
     private static void StopCore() {
+        _generation++;
         _expirationTimer?.Dispose();
         _expirationTimer = null;
         _lease?.Dispose();

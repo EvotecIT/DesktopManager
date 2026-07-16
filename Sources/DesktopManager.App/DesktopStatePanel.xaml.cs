@@ -240,10 +240,20 @@ public sealed partial class DesktopStatePanel : UserControl {
             return;
         }
 
-        await RunOperationAsync(async () => {
-            await _radioService.SetRadioStateAsync(radio.Kind, state, radio.Name);
+        try {
+            IReadOnlyList<DesktopRadioSetResult> results = await _radioService.SetRadioStateAsync(radio.Kind, state, radio.Name);
             await RefreshAllAsync();
-        }, $"Requested {state} for {radio.Name}.");
+            DesktopRadioSetResult[] rejected = results.Where(result => !result.Accepted).ToArray();
+            if (rejected.Length > 0) {
+                string details = string.Join(", ", rejected.Select(result => $"{result.Radio.Name}: {result.AccessStatus}"));
+                ShowStatus($"Windows rejected the requested radio change. {details}", InfoBarSeverity.Error);
+                return;
+            }
+
+            ShowStatus($"Set {radio.Name} to {state}.", InfoBarSeverity.Success);
+        } catch (Exception ex) {
+            ShowStatus(ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     private void GetAirplaneModeButton_Click(object sender, RoutedEventArgs e) {

@@ -177,10 +177,10 @@ internal static partial class McpCatalog {
                     throw new CommandLineException("Property 'state' must be On or Off.");
                 }
                 using (var radios = new RadioService()) {
-                    result = radios.SetRadioStateAsync(
+                    result = RequireAcceptedRadioResults(radios.SetRadioStateAsync(
                         ReadRequiredEnum<DesktopRadioKind>(arguments, "kind"),
                         requestedRadioState,
-                        ReadOptionalString(arguments, "name")).GetAwaiter().GetResult();
+                        ReadOptionalString(arguments, "name")).GetAwaiter().GetResult());
                 }
                 return true;
             case "get_airplane_mode":
@@ -304,7 +304,7 @@ internal static partial class McpCatalog {
     }
 
     private static WorkstationProfileApplyResult ApplyWorkstationProfile(JsonElement arguments) {
-        return new WorkstationProfileService().ApplyProfile(
+        WorkstationProfileApplyResult result = new WorkstationProfileService().ApplyProfile(
             ReadRequiredString(arguments, "name"),
             new WorkstationProfileApplyOptions {
                 RequireAllMonitors = !ReadBool(arguments, "allowMissingMonitors"),
@@ -315,6 +315,34 @@ internal static partial class McpCatalog {
                 ApplyTaskbars = !ReadBool(arguments, "skipTaskbars"),
                 RollbackOnFailure = !ReadBool(arguments, "noRollback")
             });
+        return RequireSuccessfulWorkstationProfileApply(result);
+    }
+
+    internal static WorkstationProfileApplyResult RequireSuccessfulWorkstationProfileApply(WorkstationProfileApplyResult result) {
+        if (result.Succeeded) {
+            return result;
+        }
+
+        var details = new List<string> {
+            string.IsNullOrWhiteSpace(result.Error) ? "The operation failed without an error message." : result.Error
+        };
+        if (result.RolledBack) {
+            details.Add("Previous desktop state was restored.");
+        }
+        if (result.Warnings.Count > 0) {
+            details.Add($"Warnings: {string.Join(" ", result.Warnings)}");
+        }
+        throw new CommandLineException($"Workstation profile application failed. {string.Join(" ", details)}");
+    }
+
+    internal static IReadOnlyList<DesktopRadioSetResult> RequireAcceptedRadioResults(IReadOnlyList<DesktopRadioSetResult> results) {
+        DesktopRadioSetResult[] rejected = results.Where(item => !item.Accepted).ToArray();
+        if (rejected.Length == 0) {
+            return results;
+        }
+
+        string details = string.Join(", ", rejected.Select(item => $"{item.Radio.Name}: {item.AccessStatus}"));
+        throw new CommandLineException($"Windows rejected one or more radio state changes. {details}");
     }
 
     private static object GetWindowVirtualDesktop(JsonElement arguments) {
