@@ -32,7 +32,7 @@ internal static class RadioCommands {
             state,
             arguments.GetOption("name")).GetAwaiter().GetResult();
         OutputFormatter.WriteJson(results);
-        return results.All(result => result.Accepted) ? 0 : 2;
+        return results.All(result => result.Applied) ? 0 : 2;
     }
 
     private static int Airplane(CommandLineArguments arguments) {

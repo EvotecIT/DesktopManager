@@ -10,10 +10,16 @@ public sealed class DesktopRadioSetResult {
     /// <param name="radio">The resulting radio snapshot.</param>
     /// <param name="accessStatus">The permission result returned by Windows.</param>
     /// <param name="accepted">Whether Windows accepted the requested change.</param>
-    public DesktopRadioSetResult(DesktopRadioInfo radio, DesktopRadioAccessStatus accessStatus, bool accepted) {
+    /// <param name="applied">Whether the effective radio state reached the requested state.</param>
+    public DesktopRadioSetResult(
+        DesktopRadioInfo radio,
+        DesktopRadioAccessStatus accessStatus,
+        bool accepted,
+        bool applied) {
         Radio = radio ?? throw new ArgumentNullException(nameof(radio));
         AccessStatus = accessStatus;
         Accepted = accepted;
+        Applied = applied;
     }
 
     /// <summary>Gets the resulting radio snapshot.</summary>
@@ -24,4 +30,7 @@ public sealed class DesktopRadioSetResult {
 
     /// <summary>Gets whether Windows accepted the requested change.</summary>
     public bool Accepted { get; }
+
+    /// <summary>Gets whether the effective radio state reached the requested state.</summary>
+    public bool Applied { get; }
 }

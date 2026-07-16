@@ -177,7 +177,7 @@ internal static partial class McpCatalog {
                     throw new CommandLineException("Property 'state' must be On or Off.");
                 }
                 using (var radios = new RadioService()) {
-                    result = RequireAcceptedRadioResults(radios.SetRadioStateAsync(
+                    result = RequireAppliedRadioResults(radios.SetRadioStateAsync(
                         ReadRequiredEnum<DesktopRadioKind>(arguments, "kind"),
                         requestedRadioState,
                         ReadOptionalString(arguments, "name")).GetAwaiter().GetResult());
@@ -335,14 +335,15 @@ internal static partial class McpCatalog {
         throw new CommandLineException($"Workstation profile application failed. {string.Join(" ", details)}");
     }
 
-    internal static IReadOnlyList<DesktopRadioSetResult> RequireAcceptedRadioResults(IReadOnlyList<DesktopRadioSetResult> results) {
-        DesktopRadioSetResult[] rejected = results.Where(item => !item.Accepted).ToArray();
-        if (rejected.Length == 0) {
+    internal static IReadOnlyList<DesktopRadioSetResult> RequireAppliedRadioResults(IReadOnlyList<DesktopRadioSetResult> results) {
+        DesktopRadioSetResult[] failed = results.Where(item => !item.Applied).ToArray();
+        if (failed.Length == 0) {
             return results;
         }
 
-        string details = string.Join(", ", rejected.Select(item => $"{item.Radio.Name}: {item.AccessStatus}"));
-        throw new CommandLineException($"Windows rejected one or more radio state changes. {details}");
+        string details = string.Join(", ", failed.Select(item =>
+            $"{item.Radio.Name}: access {item.AccessStatus}, effective {item.Radio.State}"));
+        throw new CommandLineException($"Windows did not apply one or more requested radio states. {details}");
     }
 
     private static object GetWindowVirtualDesktop(JsonElement arguments) {

@@ -85,7 +85,7 @@ IReadOnlyList<DesktopRadioSetResult> results = await radios.SetRadioStateAsync(
     DesktopRadioState.On);
 ```
 
-Windows can deny state changes because of user consent, policy, hardware switches, or device state. The result reports the Windows access status and the effective state after the request. The API requires an explicit `On` or `Off`; it does not offer a race-prone toggle operation.
+Windows can deny state changes because of user consent, policy, hardware switches, or device state. Each result separates whether Windows accepted the request from whether the effective state reached the requested value within the bounded verification window, and includes the resulting radio snapshot. The API requires an explicit `On` or `Off`; it does not offer a race-prone toggle operation.
 
 Global airplane mode is separate:
 

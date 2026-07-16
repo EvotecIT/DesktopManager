@@ -5,6 +5,7 @@ using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Radios;
+using Windows.Foundation;
 
 namespace DesktopManager;
 
@@ -13,6 +14,7 @@ namespace DesktopManager;
 /// </summary>
 [SupportedOSPlatform("windows10.0.14393.0")]
 public sealed class RadioService : IDisposable {
+    private static readonly TimeSpan StateVerificationTimeout = TimeSpan.FromSeconds(5);
     private readonly List<Radio> _observedRadios = new();
     private bool _disposed;
 
@@ -63,18 +65,21 @@ public sealed class RadioService : IDisposable {
 
         RadioAccessStatus access = await Radio.RequestAccessAsync();
         DesktopRadioAccessStatus mappedAccess = ToAccessStatus(access);
+        RadioState requestedState = ToWindowsState(state);
         var results = new List<DesktopRadioSetResult>(matches.Length);
         foreach (Radio radio in matches) {
             cancellationToken.ThrowIfCancellationRequested();
             bool accepted = false;
+            bool applied = false;
             DesktopRadioAccessStatus operationAccess = mappedAccess;
             if (access == RadioAccessStatus.Allowed) {
-                RadioAccessStatus setStatus = await radio.SetStateAsync(ToWindowsState(state));
+                RadioAccessStatus setStatus = await radio.SetStateAsync(requestedState);
                 operationAccess = ToAccessStatus(setStatus);
                 accepted = setStatus == RadioAccessStatus.Allowed;
+                applied = await WaitForAppliedStateAsync(radio, setStatus, requestedState, cancellationToken);
             }
 
-            results.Add(new DesktopRadioSetResult(ToInfo(radio), operationAccess, accepted));
+            results.Add(new DesktopRadioSetResult(ToInfo(radio), operationAccess, accepted, applied));
         }
 
         return results.ToArray();
@@ -143,8 +148,47 @@ public sealed class RadioService : IDisposable {
         };
     }
 
+    internal static bool IsApplied(RadioAccessStatus accessStatus, RadioState effectiveState, RadioState requestedState) {
+        return accessStatus == RadioAccessStatus.Allowed && effectiveState == requestedState;
+    }
+
     private static RadioState ToWindowsState(DesktopRadioState state) {
         return state == DesktopRadioState.On ? RadioState.On : RadioState.Off;
+    }
+
+    private static async Task<bool> WaitForAppliedStateAsync(
+        Radio radio,
+        RadioAccessStatus accessStatus,
+        RadioState requestedState,
+        CancellationToken cancellationToken) {
+        if (IsApplied(accessStatus, radio.State, requestedState)) {
+            return true;
+        }
+        if (accessStatus != RadioAccessStatus.Allowed) {
+            return false;
+        }
+
+        var stateChanged = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        TypedEventHandler<Radio, object>? handler = null;
+        handler = (sender, _) => {
+            if (sender.State == requestedState) {
+                stateChanged.TrySetResult(true);
+            }
+        };
+
+        radio.StateChanged += handler;
+        try {
+            if (radio.State == requestedState) {
+                return true;
+            }
+
+            Task timeout = Task.Delay(StateVerificationTimeout, cancellationToken);
+            await Task.WhenAny(stateChanged.Task, timeout);
+            cancellationToken.ThrowIfCancellationRequested();
+            return radio.State == requestedState;
+        } finally {
+            radio.StateChanged -= handler;
+        }
     }
 
     private static DesktopRadioInfo ToInfo(Radio radio) {

@@ -119,6 +119,25 @@ public class DesktopStateCapabilityTests {
     }
 
     [TestMethod]
+#if NET5_0_OR_GREATER
+    [SupportedOSPlatform("windows10.0.14393.0")]
+#endif
+    public void RadioService_AppliedResult_RequiresAllowedAccessAndEffectiveState() {
+        Assert.IsTrue(RadioService.IsApplied(RadioAccessStatus.Allowed, RadioState.On, RadioState.On));
+        Assert.IsFalse(RadioService.IsApplied(RadioAccessStatus.Allowed, RadioState.Off, RadioState.On));
+        Assert.IsFalse(RadioService.IsApplied(RadioAccessStatus.DeniedBySystem, RadioState.On, RadioState.On));
+
+        var acceptedButNotApplied = new DesktopRadioSetResult(
+            new DesktopRadioInfo("Wi-Fi", DesktopRadioKind.WiFi, DesktopRadioState.Off),
+            DesktopRadioAccessStatus.Allowed,
+            accepted: true,
+            applied: false);
+
+        Assert.IsTrue(acceptedButNotApplied.Accepted);
+        Assert.IsFalse(acceptedButNotApplied.Applied);
+    }
+
+    [TestMethod]
     public void ExperimentalAirplaneModeService_RejectsUnknownStateBeforeNativeCall() {
         var service = new ExperimentalAirplaneModeService();
 

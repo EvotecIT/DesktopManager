@@ -243,10 +243,11 @@ public sealed partial class DesktopStatePanel : UserControl {
         try {
             IReadOnlyList<DesktopRadioSetResult> results = await _radioService.SetRadioStateAsync(radio.Kind, state, radio.Name);
             await RefreshAllAsync();
-            DesktopRadioSetResult[] rejected = results.Where(result => !result.Accepted).ToArray();
-            if (rejected.Length > 0) {
-                string details = string.Join(", ", rejected.Select(result => $"{result.Radio.Name}: {result.AccessStatus}"));
-                ShowStatus($"Windows rejected the requested radio change. {details}", InfoBarSeverity.Error);
+            DesktopRadioSetResult[] failed = results.Where(result => !result.Applied).ToArray();
+            if (failed.Length > 0) {
+                string details = string.Join(", ", failed.Select(result =>
+                    $"{result.Radio.Name}: access {result.AccessStatus}, effective {result.Radio.State}"));
+                ShowStatus($"Windows did not apply the requested radio state. {details}", InfoBarSeverity.Error);
                 return;
             }
 

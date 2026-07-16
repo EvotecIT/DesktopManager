@@ -171,14 +171,15 @@ public class McpDesktopStateContractTests {
     }
 
     [TestMethod]
-    public void McpCatalog_RadioResultContract_RejectsDeniedMutation() {
+    public void McpCatalog_RadioResultContract_RejectsUnappliedMutation() {
         var result = new DesktopRadioSetResult(
             new DesktopRadioInfo("Wi-Fi", DesktopRadioKind.WiFi, DesktopRadioState.On),
             DesktopRadioAccessStatus.DeniedBySystem,
-            accepted: false);
+            accepted: false,
+            applied: false);
 
         DesktopManager.Cli.CommandLineException exception = Assert.ThrowsExactly<DesktopManager.Cli.CommandLineException>(
-            () => DesktopManager.Cli.McpCatalog.RequireAcceptedRadioResults(new[] { result }));
+            () => DesktopManager.Cli.McpCatalog.RequireAppliedRadioResults(new[] { result }));
 
         StringAssert.Contains(exception.Message, "Wi-Fi");
         StringAssert.Contains(exception.Message, nameof(DesktopRadioAccessStatus.DeniedBySystem));
