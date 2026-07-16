@@ -216,21 +216,24 @@ internal static partial class McpCatalog {
 
     private static AudioEndpointInfo ConfigureAudioEndpoint(JsonElement arguments) {
         string deviceId = ReadRequiredString(arguments, "deviceId");
-        var service = new AudioService();
         double? volume = ReadDouble(arguments, "volume");
         bool? muted = ReadNullableBool(arguments, "muted");
-        IReadOnlyList<string> roles = ReadStringList(arguments, "defaultRoles");
-        if (!volume.HasValue && !muted.HasValue && roles.Count == 0) {
+        AudioRole[] roles = ReadStringList(arguments, "defaultRoles")
+            .Select(ParseAudioRole)
+            .ToArray();
+        if (!volume.HasValue && !muted.HasValue && roles.Length == 0) {
             throw new CommandLineException("At least one of volume, muted, or defaultRoles is required.");
         }
+
+        var service = new AudioService();
         if (volume.HasValue) {
             service.SetEndpointVolume(deviceId, (float)volume.Value);
         }
         if (muted.HasValue) {
             service.SetEndpointMute(deviceId, muted.Value);
         }
-        if (roles.Count > 0) {
-            service.SetDefaultAudioDevice(deviceId, roles.Select(ParseAudioRole).ToArray());
+        if (roles.Length > 0) {
+            service.SetDefaultAudioDevice(deviceId, roles);
         }
         return service.GetEndpoint(deviceId);
     }
@@ -422,7 +425,7 @@ internal static partial class McpCatalog {
     }
 
     private static T ParseEnum<T>(string value, string name) where T : struct {
-        if (Enum.TryParse(value, true, out T parsed)) {
+        if (Enum.TryParse(value, true, out T parsed) && Enum.IsDefined(typeof(T), parsed)) {
             return parsed;
         }
         throw new CommandLineException($"Property '{name}' has unsupported value '{value}'.");

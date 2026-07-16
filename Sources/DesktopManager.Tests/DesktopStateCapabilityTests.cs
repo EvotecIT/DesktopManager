@@ -107,6 +107,68 @@ public class DesktopStateCapabilityTests {
     }
 
     [TestMethod]
+    public void DesktopSessionWatcher_SkipsOverlappingPolls() {
+        DesktopSessionInfo initial = CreateSession(isLocked: false, TimeSpan.Zero);
+        DesktopSessionInfo changed = CreateSession(isLocked: true, TimeSpan.Zero);
+        using var pollStarted = new ManualResetEventSlim();
+        using var releasePoll = new ManualResetEventSlim();
+        using var changeObserved = new ManualResetEventSlim();
+        int readCount = 0;
+        int concurrentReads = 0;
+        int maximumConcurrentReads = 0;
+
+        DesktopSessionInfo ReadSession() {
+            if (Interlocked.Increment(ref readCount) == 1) {
+                return initial;
+            }
+
+            int active = Interlocked.Increment(ref concurrentReads);
+            UpdateMaximum(ref maximumConcurrentReads, active);
+            pollStarted.Set();
+            releasePoll.Wait(TimeSpan.FromSeconds(5));
+            Interlocked.Decrement(ref concurrentReads);
+            return changed;
+        }
+
+        var watcher = new DesktopSessionWatcher(ReadSession, TimeSpan.FromMilliseconds(5));
+        watcher.Changed += (_, _) => changeObserved.Set();
+
+        try {
+            Assert.IsTrue(pollStarted.Wait(TimeSpan.FromSeconds(5)), "The timer did not begin polling.");
+            Thread.Sleep(100);
+            Assert.AreEqual(2, Volatile.Read(ref readCount), "An overlapping timer callback entered the state provider.");
+            Assert.AreEqual(1, Volatile.Read(ref maximumConcurrentReads));
+
+            releasePoll.Set();
+            Assert.IsTrue(changeObserved.Wait(TimeSpan.FromSeconds(5)), "The serialized poll did not publish its change.");
+        } finally {
+            releasePoll.Set();
+            watcher.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void DesktopSessionWatcher_ContainsSubscriberFailureAndNotifiesRemainingSubscribers() {
+        DesktopSessionInfo initial = CreateSession(isLocked: false, TimeSpan.Zero);
+        DesktopSessionInfo changed = CreateSession(isLocked: true, TimeSpan.Zero);
+        using var notificationObserved = new ManualResetEventSlim();
+        int readCount = 0;
+
+        DesktopSessionInfo ReadSession() {
+            return Interlocked.Increment(ref readCount) == 1 ? initial : changed;
+        }
+
+        using var watcher = new DesktopSessionWatcher(ReadSession, TimeSpan.FromMilliseconds(5));
+        watcher.Changed += (_, _) => throw new InvalidOperationException("Subscriber failure.");
+        watcher.Changed += (_, _) => notificationObserved.Set();
+
+        Assert.IsTrue(
+            notificationObserved.Wait(TimeSpan.FromSeconds(5)),
+            "A failed subscriber prevented the remaining subscribers from receiving the change.");
+        Assert.IsTrue(watcher.Current.IsLocked);
+    }
+
+    [TestMethod]
 #if NET5_0_OR_GREATER
     [SupportedOSPlatform("windows10.0.14393.0")]
 #endif
@@ -249,6 +311,22 @@ public class DesktopStateCapabilityTests {
     }
 
     [TestMethod]
+    public void PersonalizationService_RejectsUndefinedEnumsBeforeMutation() {
+        var invalidSettings = new[] {
+            new PersonalizationSettings { SystemTheme = (SystemTheme)42 },
+            new PersonalizationSettings { AppsTheme = (SystemTheme)42 },
+            new PersonalizationSettings { StartLayout = (StartLayoutPreference)42 },
+            new PersonalizationSettings { TaskbarAlignment = (TaskbarAlignmentPreference)42 },
+            new PersonalizationSettings { TaskbarGrouping = (TaskbarGroupingPreference)42 },
+            new PersonalizationSettings { DesktopWallpaperPosition = (DesktopWallpaperPosition)42 }
+        };
+
+        foreach (PersonalizationSettings settings in invalidSettings) {
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => PersonalizationService.ValidateSettings(settings));
+        }
+    }
+
+    [TestMethod]
     public void PersonalizationStateStore_RoundTripsInCurrentUserStateDirectory() {
         string name = "test-" + Guid.NewGuid().ToString("N");
         var snapshot = new PersonalizationSnapshot {
@@ -313,6 +391,16 @@ public class DesktopStateCapabilityTests {
             false,
             isLocked,
             idleTime);
+    }
+
+    private static void UpdateMaximum(ref int maximum, int candidate) {
+        int observed;
+        do {
+            observed = Volatile.Read(ref maximum);
+            if (candidate <= observed) {
+                return;
+            }
+        } while (Interlocked.CompareExchange(ref maximum, candidate, observed) != observed);
     }
 
     private static WorkstationMonitorProfile CreateWorkstationMonitor(string stableKey) {

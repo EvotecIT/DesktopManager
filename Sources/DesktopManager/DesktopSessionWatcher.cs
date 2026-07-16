@@ -84,7 +84,7 @@ public sealed class DesktopSessionWatcher : IDisposable {
 
     private void Poll(object? state) {
         lock (_sync) {
-            if (_disposed) {
+            if (_disposed || _activePolls != 0) {
                 return;
             }
 
@@ -118,7 +118,9 @@ public sealed class DesktopSessionWatcher : IDisposable {
                 }
             }
 
-            handler?.Invoke(this, args!);
+            if (handler != null) {
+                NotifyChanged(handler, args!);
+            }
         } finally {
             _activePollWatcher = previousActiveWatcher;
             lock (_sync) {
@@ -127,6 +129,18 @@ public sealed class DesktopSessionWatcher : IDisposable {
                     _disposeCompleted = true;
                     System.Threading.Monitor.PulseAll(_sync);
                 }
+            }
+        }
+    }
+
+    private void NotifyChanged(
+        EventHandler<DesktopSessionChangedEventArgs> handlers,
+        DesktopSessionChangedEventArgs args) {
+        foreach (EventHandler<DesktopSessionChangedEventArgs> handler in handlers.GetInvocationList()) {
+            try {
+                handler(this, args);
+            } catch (Exception ex) {
+                DesktopManagerDiagnostics.Report($"Desktop session notification handler failed: {ex.Message}");
             }
         }
     }

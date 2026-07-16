@@ -185,6 +185,41 @@ public class McpDesktopStateContractTests {
         StringAssert.Contains(exception.Message, nameof(DesktopRadioAccessStatus.DeniedBySystem));
     }
 
+    [TestMethod]
+    public void McpCatalog_ConfigureAudioEndpoint_RejectsAllInvalidRolesBeforeEndpointAccess() {
+        JsonElement arguments = CreateArguments(new {
+            deviceId = "missing-endpoint",
+            volume = 42,
+            muted = true,
+            defaultRoles = new[] { "Console", "42" }
+        });
+
+        bool succeeded = DesktopManager.Cli.McpCatalog.TryCallTool(
+            "configure_audio_endpoint",
+            arguments,
+            out _,
+            out string? error);
+
+        Assert.IsFalse(succeeded);
+        StringAssert.Contains(error, "defaultRoles");
+        StringAssert.Contains(error, "42");
+    }
+
+    [TestMethod]
+    public void McpCatalog_ApplyPersonalization_RejectsUndefinedEnumsBeforeServiceAccess() {
+        JsonElement arguments = CreateArguments(new { systemTheme = "42" });
+
+        bool succeeded = DesktopManager.Cli.McpCatalog.TryCallTool(
+            "apply_personalization",
+            arguments,
+            out _,
+            out string? error);
+
+        Assert.IsFalse(succeeded);
+        StringAssert.Contains(error, "systemTheme");
+        StringAssert.Contains(error, "42");
+    }
+
     private static JsonElement EmptyArguments() {
         return CreateArguments(new { });
     }

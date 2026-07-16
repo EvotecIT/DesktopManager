@@ -64,9 +64,7 @@ public sealed class PersonalizationService {
     /// </summary>
     /// <param name="settings">Settings to apply.</param>
     public void Apply(PersonalizationSettings settings) {
-        if (settings == null) {
-            throw new ArgumentNullException(nameof(settings));
-        }
+        ValidateSettings(settings);
 
         if (settings.DesktopWallpaperPosition.HasValue) {
             _monitors.SetWallpaperPosition(settings.DesktopWallpaperPosition.Value);
@@ -195,6 +193,30 @@ public sealed class PersonalizationService {
         }
 
         BroadcastSettingChange();
+    }
+
+    /// <summary>Validates all enum-backed settings before personalization state is changed.</summary>
+    /// <param name="settings">Settings to validate.</param>
+    internal static void ValidateSettings(PersonalizationSettings settings) {
+        if (settings == null) {
+            throw new ArgumentNullException(nameof(settings));
+        }
+
+        ValidateEnum(settings.SystemTheme, nameof(settings.SystemTheme));
+        ValidateEnum(settings.AppsTheme, nameof(settings.AppsTheme));
+        ValidateEnum(settings.StartLayout, nameof(settings.StartLayout));
+        ValidateEnum(settings.TaskbarAlignment, nameof(settings.TaskbarAlignment));
+        ValidateEnum(settings.TaskbarGrouping, nameof(settings.TaskbarGrouping));
+        ValidateEnum(settings.DesktopWallpaperPosition, nameof(settings.DesktopWallpaperPosition));
+    }
+
+    private static void ValidateEnum<T>(T? value, string propertyName) where T : struct {
+        if (value.HasValue && !Enum.IsDefined(typeof(T), value.Value)) {
+            throw new ArgumentOutOfRangeException(
+                propertyName,
+                value.Value,
+                $"Unsupported {typeof(T).Name} value.");
+        }
     }
 
     /// <summary>
