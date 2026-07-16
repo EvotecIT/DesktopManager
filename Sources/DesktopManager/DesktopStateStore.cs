@@ -61,6 +61,20 @@ public static class DesktopStateStore {
         return GetNamedPath("snapshots", name);
     }
 
+    /// <summary>Gets the path for a named workstation profile.</summary>
+    /// <param name="name">Workstation profile name.</param>
+    /// <returns>The full workstation profile path.</returns>
+    public static string GetWorkstationProfilePath(string name) {
+        return GetNamedPath("workstation-profiles", name);
+    }
+
+    /// <summary>Gets the path for a named personalization snapshot.</summary>
+    /// <param name="name">Personalization snapshot name.</param>
+    /// <returns>The full personalization snapshot path.</returns>
+    public static string GetPersonalizationSnapshotPath(string name) {
+        return GetNamedPath("personalization", name);
+    }
+
     /// <summary>
     /// Gets the path for a named window target.
     /// </summary>

@@ -166,29 +166,35 @@ internal sealed class McpTestClient : IDisposable {
     }
 
     private static string FindCliExecutablePath() {
+        DirectoryInfo testOutputDirectory = new(AppContext.BaseDirectory);
+        string targetFramework = testOutputDirectory.Name;
+        string configuration = testOutputDirectory.Parent?.Name ?? "Debug";
         DirectoryInfo? current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current != null) {
-            DirectoryInfo cliDebugDirectory = new(Path.Combine(current.FullName, "Sources", "DesktopManager.Cli", "bin", "Debug"));
-            if (cliDebugDirectory.Exists) {
-                FileInfo? debugCandidate = cliDebugDirectory
-                    .EnumerateDirectories("net8.0-windows*")
-                    .OrderByDescending(directory => directory.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(directory => new FileInfo(Path.Combine(directory.FullName, "DesktopManager.Cli.exe")))
-                    .FirstOrDefault(file => file.Exists);
-                if (debugCandidate != null) {
-                    return debugCandidate.FullName;
-                }
+            var matchingCandidate = new FileInfo(Path.Combine(
+                current.FullName,
+                "Sources",
+                "DesktopManager.Cli",
+                "bin",
+                configuration,
+                targetFramework,
+                "DesktopManager.Cli.exe"));
+            if (matchingCandidate.Exists) {
+                return matchingCandidate.FullName;
             }
 
-            DirectoryInfo cliReleaseDirectory = new(Path.Combine(current.FullName, "Sources", "DesktopManager.Cli", "bin", "Release"));
-            if (cliReleaseDirectory.Exists) {
-                FileInfo? releaseCandidate = cliReleaseDirectory
-                    .EnumerateDirectories("net8.0-windows*")
-                    .OrderByDescending(directory => directory.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(directory => new FileInfo(Path.Combine(directory.FullName, "DesktopManager.Cli.exe")))
-                    .FirstOrDefault(file => file.Exists);
-                if (releaseCandidate != null) {
-                    return releaseCandidate.FullName;
+            foreach (string candidateConfiguration in new[] { configuration, "Release", "Debug" }.Distinct(StringComparer.OrdinalIgnoreCase)) {
+                DirectoryInfo cliOutputDirectory = new(Path.Combine(current.FullName, "Sources", "DesktopManager.Cli", "bin", candidateConfiguration));
+                if (cliOutputDirectory.Exists) {
+                    FileInfo? candidate = cliOutputDirectory
+                        .EnumerateDirectories("net*.0-windows*")
+                        .Select(directory => new FileInfo(Path.Combine(directory.FullName, "DesktopManager.Cli.exe")))
+                        .Where(file => file.Exists)
+                        .OrderByDescending(file => file.LastWriteTimeUtc)
+                        .FirstOrDefault();
+                    if (candidate != null) {
+                        return candidate.FullName;
+                    }
                 }
             }
 

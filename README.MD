@@ -58,12 +58,47 @@ It has following features:
 - Subscribe to resolution, orientation or display changes
 - Keep inactive windows awake using periodic input
 - Manage keep-alive sessions for windows
+- Save and restore cohesive workstation profiles across displays, audio, personalization, and taskbars
+- Enumerate Core Audio render/capture endpoints, change volume and mute, set default roles, and observe endpoint changes
+- Inspect power and interactive-session state; lock, sign out, sleep, hibernate, or hold a bounded keep-awake lease
+- Capture and restore personalization snapshots and configure taskbar visibility, position, and auto-hide
+- Enumerate, observe, and explicitly enable or disable Wi-Fi, Bluetooth, mobile broadband, and FM radios through the supported Windows radio API
+- Inspect a window's virtual desktop and move it to a known desktop through the public Windows virtual-desktop API
+
+### Desktop state and controls
+
+The workstation profile is the high-level entrypoint when you want to move between repeatable setups. It captures connected monitor modes and placement, monitor wallpaper and supported brightness/HDR state, active audio endpoint state and default roles, personalization, and taskbars. Applying a profile matches monitors by stable identity, stages display changes together, and rolls back the selected sections when a required step fails. Machine-wide personalization policies are captured but only restored when explicitly requested.
+
+```powershell
+Save-DesktopWorkstationProfile -Name 'office'
+Get-DesktopAudioEndpoint -DataFlow Render -State Active
+Get-DesktopPowerStatus
+Get-DesktopSession
+Get-DesktopRadio
+Restore-DesktopWorkstationProfile -Name 'office' -Confirm
+```
+
+The same capabilities are available from the CLI:
+
+```text
+desktopmanager workstation save --name office
+desktopmanager audio list --flow render --active
+desktopmanager system power
+desktopmanager system session
+desktopmanager radio list
+desktopmanager workstation apply --name office
+```
+
+Radio control has two deliberately separate APIs. `RadioService` and the normal `radio list` / `radio set` commands use the supported `Windows.Devices.Radios` contract for individual radios. Global airplane mode uses an undocumented Windows shell COM contract, so it lives under `ExperimentalAirplaneModeService` and requires `--experimental` in the CLI, `-Experimental` in PowerShell, or `--allow-experimental` in MCP.
+
+`VirtualDesktopService` exposes only the public Windows operations: check whether a top-level window is on the current desktop, get its desktop ID, and move it to a known desktop ID. Desktop enumeration, creation, renaming, switching, and removal are intentionally not presented as supported APIs.
 
 Additional operator-focused docs for the newer CLI and MCP surfaces:
 
 - [Docs/DesktopManager.Cli.md](Docs/DesktopManager.Cli.md)
 - [Docs/DesktopManager.Mcp.md](Docs/DesktopManager.Mcp.md)
 - [Docs/DesktopManager.Architecture.md](Docs/DesktopManager.Architecture.md)
+- [Docs/DesktopManager.DesktopState.md](Docs/DesktopManager.DesktopState.md)
 - [Docs/DesktopManager.AutomationBasics.md](Docs/DesktopManager.AutomationBasics.md)
 - [Docs/DesktopManager.Plugin.md](Docs/DesktopManager.Plugin.md)
 - [.agents/skills/desktopmanager-operator/SKILL.md](.agents/skills/desktopmanager-operator/SKILL.md)
@@ -159,6 +194,34 @@ The important part is that CLI, MCP, and PowerShell are meant to stay aligned by
 | Set-DesktopPosition | Move a monitor by its top-left coordinates without changing resolution |
 | Set-DesktopResolution | Change monitor resolution or orientation |
 | Set-DefaultAudioDevice | Set the default audio playback device |
+| Get-DesktopAudioEndpoint | List Core Audio render and capture endpoints with volume, mute, and default roles |
+| Set-DesktopAudioEndpoint | Set endpoint volume, mute, or selected default roles |
+| Register-DesktopAudioEvent | Subscribe to endpoint, state, property, and default-role changes |
+| Save-DesktopWorkstationProfile | Capture displays, audio, personalization, and taskbars as one named profile |
+| Get-DesktopWorkstationProfile | List or load named workstation profiles |
+| Restore-DesktopWorkstationProfile | Apply a named workstation profile with matching and rollback options |
+| Remove-DesktopWorkstationProfile | Delete a named workstation profile |
+| Get-DesktopPowerStatus | Read AC and battery state |
+| Get-DesktopSession | Read current interactive-session identity, connection, lock, and idle state |
+| Register-DesktopSessionEvent | Subscribe to meaningful session changes |
+| Lock-DesktopSession | Lock the current Windows session |
+| Exit-DesktopSession | Sign out the current Windows session with confirmation support |
+| Start-DesktopKeepAwake | Hold a bounded system/display keep-awake lease |
+| Suspend-DesktopSystem | Request sleep or hibernation with confirmation support |
+| Get-DesktopPersonalization | Capture current state or list/load saved personalization snapshots |
+| Save-DesktopPersonalization | Save a named personalization snapshot |
+| Set-DesktopPersonalization | Apply explicit personalization settings |
+| Restore-DesktopPersonalization | Restore a named personalization snapshot |
+| Remove-DesktopPersonalization | Delete a named personalization snapshot |
+| Get-DesktopTaskbar | List taskbars with monitor mapping, visibility, edge, and bounds |
+| Set-DesktopTaskbarAutoHide | Set the explicit taskbar auto-hide state |
+| Get-DesktopRadio | List radios through the supported Windows radio API |
+| Set-DesktopRadio | Explicitly enable or disable matching supported radios |
+| Register-DesktopRadioEvent | Subscribe to supported radio state changes |
+| Get-DesktopAirplaneMode | Read the experimental global airplane-mode state after explicit acknowledgement |
+| Set-DesktopAirplaneMode | Apply and verify experimental global airplane mode after explicit acknowledgement |
+| Get-DesktopVirtualDesktop | Inspect the supported virtual-desktop state for a top-level window |
+| Move-DesktopWindowToVirtualDesktop | Move a top-level window to a known virtual-desktop ID |
 | Get-LogonWallpaper | Get the lock screen wallpaper path |
 | Set-LogonWallpaper | Set the lock screen wallpaper |
 | Set-TaskbarPosition | Move or hide the taskbar |
@@ -602,3 +665,9 @@ DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0`, `ne
 - `WindowManager` for window enumeration, positioning, resizing and layout persistence.
 - `MonitorWatcher` to receive events when display settings change.
 - `ScreenshotService` to capture the desktop or custom regions.
+- `WorkstationProfileService` and `WorkstationProfileStore` for cohesive named workstation state.
+- `AudioService` and `AudioEndpointWatcher` for Core Audio endpoints, default roles, volume, mute, and changes.
+- `SystemPowerService`, `DesktopSessionService`, and `DesktopSessionWatcher` for power and session state/actions.
+- `PersonalizationService`, `PersonalizationStateStore`, and `TaskbarService` for reversible user settings and taskbars.
+- `RadioService` for supported per-radio operations and `ExperimentalAirplaneModeService` for the separately acknowledged undocumented global switch.
+- `VirtualDesktopService` for the supported window-to-desktop operations.

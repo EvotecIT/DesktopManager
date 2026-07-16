@@ -11,7 +11,7 @@ Sets the default audio device.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DefaultAudioDevice [-DeviceId] <string> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DefaultAudioDevice [-DeviceId] <string> [-Role <AudioRole[]>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -40,6 +40,38 @@ Possible values:
 
 Required: True
 Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -PassThru
+Returns the updated endpoint snapshot.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: True
+```
+
+### -Role
+Roles to assign. The default is all roles.
+
+```yaml
+Type: AudioRole[]
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values: Console, Multimedia, Communications
+
+Required: False
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: True

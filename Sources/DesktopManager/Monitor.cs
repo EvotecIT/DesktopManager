@@ -173,6 +173,18 @@ public class Monitor {
         _monitorService.SetMonitorHdr(DeviceId, enabled);
     }
 
+    /// <summary>Gets the active resolution, refresh rate, and orientation.</summary>
+    /// <returns>The current display mode.</returns>
+    public MonitorDisplayMode GetDisplayMode() {
+        return _monitorService.GetMonitorDisplayMode(DeviceId);
+    }
+
+    /// <summary>Applies resolution, refresh rate, and orientation as one display-mode request.</summary>
+    /// <param name="mode">The explicit display mode to apply.</param>
+    public void SetDisplayMode(MonitorDisplayMode mode) {
+        _monitorService.SetMonitorDisplayMode(DeviceId, mode);
+    }
+
     /// <summary>
     /// Gets the bounds of the monitor.
     /// </summary>

@@ -381,6 +381,20 @@ public class Monitors {
         _monitorService.SetMonitorOrientation(deviceId, orientation);
     }
 
+    /// <summary>Gets the active resolution, refresh rate, and orientation for a monitor.</summary>
+    /// <param name="deviceId">The monitor device ID.</param>
+    /// <returns>The current display mode.</returns>
+    public MonitorDisplayMode GetMonitorDisplayMode(string deviceId) {
+        return _monitorService.GetMonitorDisplayMode(deviceId);
+    }
+
+    /// <summary>Applies resolution, refresh rate, and orientation as one display-mode request.</summary>
+    /// <param name="deviceId">The monitor device ID.</param>
+    /// <param name="mode">The explicit display mode.</param>
+    public void SetMonitorDisplayMode(string deviceId, MonitorDisplayMode mode) {
+        _monitorService.SetMonitorDisplayMode(deviceId, mode);
+    }
+
     /// <summary>
     /// Starts a wallpaper slideshow on the desktop.
     /// </summary>

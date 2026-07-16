@@ -202,11 +202,22 @@ public sealed class PersonalizationService {
     /// </summary>
     /// <param name="snapshot">Snapshot to restore.</param>
     public void Restore(PersonalizationSnapshot snapshot) {
+        Restore(snapshot, restoreMachinePolicies: true);
+    }
+
+    /// <summary>
+    /// Restores a personalization snapshot with explicit control over machine-wide policy values.
+    /// </summary>
+    /// <param name="snapshot">The snapshot to restore.</param>
+    /// <param name="restoreMachinePolicies">Whether to restore machine-wide lock-screen and Spotlight policies.</param>
+    public void Restore(PersonalizationSnapshot snapshot, bool restoreMachinePolicies) {
         if (snapshot == null) {
             throw new ArgumentNullException(nameof(snapshot));
         }
 
-        ApplyPolicySnapshot(snapshot.Policy);
+        if (restoreMachinePolicies) {
+            ApplyPolicySnapshot(snapshot.Policy);
+        }
         ApplyUserSnapshot(snapshot.User);
 
         if (snapshot.WallpaperPosition.HasValue) {

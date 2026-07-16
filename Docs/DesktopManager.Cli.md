@@ -37,6 +37,42 @@ desktopmanager control send-keys
 
 desktopmanager monitor list
 
+desktopmanager workstation save --name office
+desktopmanager workstation list
+desktopmanager workstation show --name office
+desktopmanager workstation apply --name office
+desktopmanager workstation apply --name office --include-machine-policies
+desktopmanager workstation delete --name office
+
+desktopmanager audio list --flow render --active
+desktopmanager audio set-default --id <endpoint-id> --role multimedia
+desktopmanager audio set-volume --id <endpoint-id> --volume 50
+desktopmanager audio set-mute --id <endpoint-id> --on
+
+desktopmanager system power
+desktopmanager system session
+desktopmanager system lock
+desktopmanager system keep-awake --seconds 3600 --display
+desktopmanager system suspend --hibernate --confirm
+desktopmanager system sign-out --confirm
+
+desktopmanager personalization capture --name before-theme-change
+desktopmanager personalization list
+desktopmanager personalization restore --name before-theme-change --skip-machine-policies
+desktopmanager personalization apply --file settings.json
+
+desktopmanager taskbar list
+desktopmanager taskbar set --monitor-index 0 --position bottom --show
+desktopmanager taskbar set-auto-hide --on
+
+desktopmanager radio list
+desktopmanager radio set --kind wifi --state on
+desktopmanager radio airplane get --experimental
+
+desktopmanager virtual-desktop current --handle <window-handle>
+desktopmanager virtual-desktop id --handle <window-handle>
+desktopmanager virtual-desktop move --handle <window-handle> --desktop-id <guid>
+
 desktopmanager desktop slideshow
 desktopmanager desktop start-slideshow
 desktopmanager desktop set-slideshow-options
@@ -83,6 +119,8 @@ desktopmanager workflow clean-up-distractions
 
 desktopmanager mcp serve
 desktopmanager mcp serve --allow-mutations
+desktopmanager mcp serve --allow-mutations --allow-system-settings
+desktopmanager mcp serve --allow-experimental
 desktopmanager mcp serve --allow-mutations --allow-process notepad
 desktopmanager mcp serve --dry-run
 ```
@@ -95,6 +133,12 @@ desktopmanager mcp serve --dry-run
 - `target` stores reusable JSON target definitions under `%AppData%\DesktopManager\targets`.
 - `visual` stores reusable JSON metadata plus PNG baseline images under `%AppData%\DesktopManager\visual-baselines`.
 - `control-target` stores reusable JSON control selector definitions under `%AppData%\DesktopManager\control-targets`.
+- `workstation` stores cohesive display, audio, personalization, and taskbar profiles under `%AppData%\DesktopManager\workstation-profiles`.
+- `personalization` stores current-user snapshots under `%AppData%\DesktopManager\personalization` and can still read older snapshots from the legacy machine-wide directory.
+- `audio` enumerates render and capture endpoints through Windows Core Audio. Default roles can be changed independently instead of always replacing console, multimedia, and communications together.
+- `system` separates read-only power/session inspection from explicit lock, keep-awake, suspend, and sign-out actions. Suspend and sign-out require `--confirm`.
+- `radio list` and `radio set` use the supported Windows radio API. Global airplane mode is separate and requires `--experimental` because its Windows shell COM contract is undocumented.
+- `virtual-desktop` exposes only the public window operations: current-desktop check, desktop ID lookup, and moving a window to a known desktop ID.
 - `monitor list` reports the desktop-coordinate bounds used by monitor screenshots.
 - `desktop slideshow` reports configured wallpaper slideshow images, state flags, options, shuffle state, and slideshow tick interval.
 - `desktop start-slideshow` can replace the slideshow image set and optionally apply shuffle and tick settings in the same call.
@@ -182,6 +226,8 @@ desktopmanager mcp serve --dry-run
 - `mcp serve` hosts a stdio MCP server.
 - `mcp serve` now defaults to read-only inspection so agents can connect safely before any mutation is enabled.
 - `mcp serve --allow-mutations` enables mutating MCP tools for an intentional session.
+- `mcp serve --allow-system-settings` is an additional gate for audio, power/session, personalization, taskbar, profile application, radio, and airplane-mode mutations.
+- `mcp serve --allow-experimental` exposes the undocumented global airplane-mode read/write tools; supported per-radio inventory does not require it.
 - `mcp serve --allow-process <pattern>` and `--deny-process <pattern>` constrain live desktop mutations to specific process patterns.
 - `mcp serve --allow-foreground-input` is a second explicit opt-in for zero-handle UIA text/key fallback that may need focused foreground input.
 - `mcp serve --dry-run` previews mutating tool calls without changing desktop or saved state.

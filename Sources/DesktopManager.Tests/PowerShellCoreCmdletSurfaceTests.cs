@@ -33,6 +33,29 @@ public class PowerShellCoreCmdletSurfaceTests {
     [DataRow("CmdletStopDesktopWindowProcess", "InputObject", "EntireProcessTree", "WaitForExitMilliseconds", "PassThru")]
     [DataRow("CmdletTestDesktopElevation")]
     [DataRow("CmdletWaitDesktopFocusedControl", "Name", "Handle", "ActiveWindow", "TimeoutMs", "IntervalMs")]
+    [DataRow("CmdletGetDesktopAudioEndpoint", "DeviceId", "DataFlow", "ActiveOnly")]
+    [DataRow("CmdletSetDesktopAudioEndpoint", "DeviceId", "Volume", "Muted", "PassThru")]
+    [DataRow("CmdletSetDefaultAudioDevice", "DeviceId", "Role", "PassThru")]
+    [DataRow("CmdletSaveDesktopWorkstationProfile", "Name")]
+    [DataRow("CmdletGetDesktopWorkstationProfile", "Name")]
+    [DataRow("CmdletRestoreDesktopWorkstationProfile", "Name", "AllowMissingMonitor", "SkipDisplay", "SkipAudio", "SkipPersonalization", "IncludeMachinePolicies", "SkipTaskbar", "NoRollback")]
+    [DataRow("CmdletGetDesktopPowerStatus")]
+    [DataRow("CmdletGetDesktopSession")]
+    [DataRow("CmdletLockDesktopSession")]
+    [DataRow("CmdletExitDesktopSession", "Force")]
+    [DataRow("CmdletStartDesktopKeepAwake", "Duration", "Display", "AwayMode")]
+    [DataRow("CmdletSuspendDesktopSystem", "Hibernate", "Force")]
+    [DataRow("CmdletGetDesktopPersonalization", "Name", "List")]
+    [DataRow("CmdletSetDesktopPersonalization", "InputObject", "PassThru")]
+    [DataRow("CmdletRestoreDesktopPersonalization", "Name", "SkipMachinePolicies")]
+    [DataRow("CmdletGetDesktopTaskbar")]
+    [DataRow("CmdletSetDesktopTaskbarAutoHide", "Enabled")]
+    [DataRow("CmdletGetDesktopRadio")]
+    [DataRow("CmdletSetDesktopRadio", "Kind", "State", "Name")]
+    [DataRow("CmdletGetDesktopAirplaneMode", "Experimental")]
+    [DataRow("CmdletSetDesktopAirplaneMode", "State", "Experimental")]
+    [DataRow("CmdletGetDesktopVirtualDesktop", "Handle")]
+    [DataRow("CmdletMoveDesktopWindowToVirtualDesktop", "Handle", "DesktopId")]
     /// <summary>
     /// Ensures the newer core-wrapper cmdlets expose the expected PowerShell parameters.
     /// </summary>
@@ -44,8 +67,9 @@ public class PowerShellCoreCmdletSurfaceTests {
         Assert.IsNotNull(instance);
 
         foreach (string parameterName in parameterNames) {
-            System.Reflection.PropertyInfo? property = cmdletType.GetProperty(parameterName);
-            Assert.IsNotNull(property, $"Expected parameter '{parameterName}' on '{typeName}'.");
+            System.Reflection.MemberInfo? parameter = cmdletType.GetProperty(parameterName) ??
+                                                      (System.Reflection.MemberInfo?)cmdletType.GetField(parameterName);
+            Assert.IsNotNull(parameter, $"Expected parameter '{parameterName}' on '{typeName}'.");
         }
     }
 }

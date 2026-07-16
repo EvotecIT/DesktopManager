@@ -10,6 +10,15 @@ Locale: en-US
 Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.
 
 ## DesktopManager Cmdlets
+### [Exit-DesktopSession](Exit-DesktopSession.md)
+Signs out the current interactive Windows session.
+
+### [Get-DesktopAirplaneMode](Get-DesktopAirplaneMode.md)
+Gets global airplane mode through an undocumented experimental Windows COM contract.
+
+### [Get-DesktopAudioEndpoint](Get-DesktopAudioEndpoint.md)
+Gets Windows Core Audio endpoints.
+
 ### [Get-DesktopBackgroundColor](Get-DesktopBackgroundColor.md)
 Gets the desktop background color.
 
@@ -40,8 +49,26 @@ Gets the desktop monitors information.
 ### [Get-DesktopMouseState](Get-DesktopMouseState.md)
 Gets the current desktop mouse state.
 
+### [Get-DesktopPersonalization](Get-DesktopPersonalization.md)
+Gets current or stored personalization state.
+
+### [Get-DesktopPowerStatus](Get-DesktopPowerStatus.md)
+Gets current AC and battery state.
+
+### [Get-DesktopRadio](Get-DesktopRadio.md)
+Gets radios through the supported Windows radio API.
+
+### [Get-DesktopSession](Get-DesktopSession.md)
+Gets current interactive-session state.
+
 ### [Get-DesktopSlideshow](Get-DesktopSlideshow.md)
 Gets the desktop wallpaper slideshow configuration and state.
+
+### [Get-DesktopTaskbar](Get-DesktopTaskbar.md)
+Gets taskbar windows and global auto-hide state.
+
+### [Get-DesktopVirtualDesktop](Get-DesktopVirtualDesktop.md)
+Gets supported virtual-desktop state for a top-level window.
 
 ### [Get-DesktopWallpaper](Get-DesktopWallpaper.md)
 Gets the current desktop wallpaper for one or more monitors.
@@ -72,6 +99,9 @@ Gets saved reusable window-relative targets, or resolves one against live window
 
 ### [Get-DesktopWindowText](Get-DesktopWindowText.md)
 Observes the best available text for a desktop window.
+
+### [Get-DesktopWorkstationProfile](Get-DesktopWorkstationProfile.md)
+Gets stored workstation profiles or a live profile snapshot.
 
 ### [Get-LogonWallpaper](Get-LogonWallpaper.md)
 Gets the current logon (lock screen) wallpaper.
@@ -109,6 +139,15 @@ Takes a screenshot of a window or control.
 ### [Invoke-DesktopWindowScroll](Invoke-DesktopWindowScroll.md)
 Scrolls at a point relative to a desktop window.
 
+### [Lock-DesktopSession](Lock-DesktopSession.md)
+Locks the current interactive workstation.
+
+### [Move-DesktopWindowToVirtualDesktop](Move-DesktopWindowToVirtualDesktop.md)
+Moves a top-level window to a known virtual desktop.
+
+### [Register-DesktopAudioEvent](Register-DesktopAudioEvent.md)
+Registers for Core Audio endpoint changes.
+
 ### [Register-DesktopHotkey](Register-DesktopHotkey.md)
 Registers a global desktop hotkey.
 
@@ -118,20 +157,50 @@ Registers for desktop monitor change events.
 ### [Register-DesktopOrientationEvent](Register-DesktopOrientationEvent.md)
 Registers for desktop orientation change events.
 
+### [Register-DesktopRadioEvent](Register-DesktopRadioEvent.md)
+Registers for supported Windows radio state changes.
+
 ### [Register-DesktopResolutionEvent](Register-DesktopResolutionEvent.md)
 Registers for desktop resolution change events.
+
+### [Register-DesktopSessionEvent](Register-DesktopSessionEvent.md)
+Registers for meaningful current-session changes.
+
+### [Remove-DesktopPersonalization](Remove-DesktopPersonalization.md)
+Removes a stored personalization snapshot.
+
+### [Remove-DesktopWorkstationProfile](Remove-DesktopWorkstationProfile.md)
+Removes a stored workstation profile.
+
+### [Restore-DesktopPersonalization](Restore-DesktopPersonalization.md)
+Restores a stored personalization snapshot.
 
 ### [Restore-DesktopWindowLayout](Restore-DesktopWindowLayout.md)
 Restores window positions from a saved layout.
 
+### [Restore-DesktopWorkstationProfile](Restore-DesktopWorkstationProfile.md)
+Restores a named workstation profile.
+
+### [Save-DesktopPersonalization](Save-DesktopPersonalization.md)
+Captures and saves current personalization state.
+
 ### [Save-DesktopWindowLayout](Save-DesktopWindowLayout.md)
 Saves the current desktop window layout to a file.
+
+### [Save-DesktopWorkstationProfile](Save-DesktopWorkstationProfile.md)
+Captures and saves a named workstation profile.
 
 ### [Send-DesktopControlKey](Send-DesktopControlKey.md)
 Sends keys to a window control without activating it.
 
 ### [Set-DefaultAudioDevice](Set-DefaultAudioDevice.md)
 Sets the default audio device.
+
+### [Set-DesktopAirplaneMode](Set-DesktopAirplaneMode.md)
+Sets an explicit global airplane-mode state through an undocumented experimental Windows COM contract.
+
+### [Set-DesktopAudioEndpoint](Set-DesktopAudioEndpoint.md)
+Sets master volume or mute for a Windows audio endpoint.
 
 ### [Set-DesktopBackgroundColor](Set-DesktopBackgroundColor.md)
 Sets the desktop background color.
@@ -160,14 +229,23 @@ Sets text on a specific window control.
 ### [Set-DesktopControlVisibility](Set-DesktopControlVisibility.md)
 Shows or hides a desktop control.
 
+### [Set-DesktopPersonalization](Set-DesktopPersonalization.md)
+Applies a typed personalization settings object.
+
 ### [Set-DesktopPosition](Set-DesktopPosition.md)
 Sets the position of the desktop for one or more monitors.
+
+### [Set-DesktopRadio](Set-DesktopRadio.md)
+Sets an explicit state through the supported Windows radio API.
 
 ### [Set-DesktopResolution](Set-DesktopResolution.md)
 Sets the resolution of a desktop monitor.
 
 ### [Set-DesktopSlideshowOptions](Set-DesktopSlideshowOptions.md)
 Sets desktop wallpaper slideshow options.
+
+### [Set-DesktopTaskbarAutoHide](Set-DesktopTaskbarAutoHide.md)
+Sets the global Windows taskbar auto-hide state.
 
 ### [Set-DesktopWallpaper](Set-DesktopWallpaper.md)
 Sets the desktop wallpaper for one or more monitors.
@@ -205,6 +283,9 @@ Sets the logon (lock screen) wallpaper.
 ### [Set-TaskbarPosition](Set-TaskbarPosition.md)
 Moves or hides the taskbar for one or more monitors.
 
+### [Start-DesktopKeepAwake](Start-DesktopKeepAwake.md)
+Prevents selected Windows idle power behaviors for a bounded duration.
+
 ### [Start-DesktopProcess](Start-DesktopProcess.md)
 Starts a desktop application or process.
 
@@ -228,6 +309,9 @@ Stops keep-alive messages for a window.
 
 ### [Stop-DesktopWindowProcess](Stop-DesktopWindowProcess.md)
 Stops the process that owns a desktop window.
+
+### [Suspend-DesktopSystem](Suspend-DesktopSystem.md)
+Requests Windows sleep or hibernation.
 
 ### [Test-DesktopElevation](Test-DesktopElevation.md)
 Tests whether the current DesktopManager host process is elevated.

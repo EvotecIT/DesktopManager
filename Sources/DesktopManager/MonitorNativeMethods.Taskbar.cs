@@ -53,6 +53,16 @@ public static partial class MonitorNativeMethods {
     public const uint ABM_SETPOS = 0x00000003;
     /// <summary>Appbar message to query position.</summary>
     public const uint ABM_QUERYPOS = 0x00000002;
+    /// <summary>Appbar message to query auto-hide and always-on-top state.</summary>
+    public const uint ABM_GETSTATE = 0x00000004;
+    /// <summary>Appbar message to query taskbar position.</summary>
+    public const uint ABM_GETTASKBARPOS = 0x00000005;
+    /// <summary>Appbar message to apply auto-hide and always-on-top state.</summary>
+    public const uint ABM_SETSTATE = 0x0000000A;
+    /// <summary>Auto-hide taskbar state flag.</summary>
+    public const int ABS_AUTOHIDE = 0x1;
+    /// <summary>Always-on-top taskbar state flag.</summary>
+    public const int ABS_ALWAYSONTOP = 0x2;
 }
 
 /// <summary>Data structure used with <c>SHAppBarMessage</c>.</summary>

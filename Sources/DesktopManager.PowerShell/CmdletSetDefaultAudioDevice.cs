@@ -13,13 +13,24 @@ public sealed class CmdletSetDefaultAudioDevice : PSCmdlet {
     [Parameter(Mandatory = true, Position = 0)]
     public string DeviceId;
 
+    /// <summary><para type="description">Roles to assign. The default is all roles.</para></summary>
+    [Parameter(Mandatory = false)]
+    public AudioRole[] Role;
+
+    /// <summary><para type="description">Returns the updated endpoint snapshot.</para></summary>
+    [Parameter(Mandatory = false)]
+    public SwitchParameter PassThru;
+
     /// <summary>
     /// Begin processing the cmdlet.
     /// </summary>
     protected override void BeginProcessing() {
         if (ShouldProcess($"Audio device {DeviceId}", "Set as default")) {
             AudioService service = new AudioService();
-            service.SetDefaultAudioDevice(DeviceId);
+            service.SetDefaultAudioDevice(DeviceId, Role);
+            if (PassThru) {
+                WriteObject(service.GetEndpoint(DeviceId));
+            }
         }
     }
 }

@@ -75,10 +75,11 @@
             </Grid>
         </Border>
 
-        <Grid
-            Grid.Row="1"
-            Padding="20"
-            RowSpacing="16">
+        <TabView Grid.Row="1">
+            <TabViewItem Header="Hotkeys">
+                <Grid
+                    Padding="20"
+                    RowSpacing="16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="240" />
                 <RowDefinition Height="176" />
@@ -534,6 +535,12 @@
                     </Grid>
                 </Grid>
             </Border>
-        </Grid>
+                </Grid>
+            </TabViewItem>
+
+            <TabViewItem Header="Desktop state">
+                <local:DesktopStatePanel />
+            </TabViewItem>
+        </TabView>
     </Grid>
 </Window>
