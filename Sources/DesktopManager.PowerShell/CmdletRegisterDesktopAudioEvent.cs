@@ -1,5 +1,3 @@
-using System.Timers;
-
 namespace DesktopManager.PowerShell;
 
 /// <summary>Registers for Core Audio endpoint changes.</summary>
@@ -19,19 +17,12 @@ public sealed class CmdletRegisterDesktopAudioEvent : PSCmdlet {
         var watcher = new AudioEndpointWatcher();
         PSEventSubscriber subscriber = Events.SubscribeEvent(watcher, nameof(AudioEndpointWatcher.Changed), "DesktopAudio", null, Action, true, false);
         WriteObject(subscriber);
-        DisposeAfterDuration(watcher, subscriber);
-    }
-
-    private void DisposeAfterDuration(AudioEndpointWatcher watcher, PSEventSubscriber subscriber) {
-        if (Duration <= TimeSpan.Zero) {
-            return;
-        }
-        var timer = new Timer(Duration.TotalMilliseconds) { AutoReset = false };
-        timer.Elapsed += (_, _) => {
-            Events.UnsubscribeEvent(subscriber);
-            watcher.Dispose();
-            timer.Dispose();
-        };
-        timer.Start();
+        EventSubscriptionExpiration.Schedule(Duration, () => {
+            try {
+                Events.UnsubscribeEvent(subscriber);
+            } finally {
+                watcher.Dispose();
+            }
+        });
     }
 }

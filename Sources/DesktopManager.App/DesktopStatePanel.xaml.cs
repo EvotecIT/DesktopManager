@@ -154,7 +154,24 @@ public sealed partial class DesktopStatePanel : UserControl {
             return;
         }
 
-        await RunOperationAsync(() => Task.Run(() => _workstationProfileService.ApplyProfile(name)), $"Applied workstation profile '{name}'.");
+        try {
+            WorkstationProfileApplyResult result = await Task.Run(() => _workstationProfileService.ApplyProfile(name));
+            string warnings = result.Warnings.Count == 0
+                ? string.Empty
+                : $" Warnings: {string.Join(" ", result.Warnings)}";
+            if (!result.Succeeded) {
+                string error = string.IsNullOrWhiteSpace(result.Error) ? "The operation failed without an error message." : result.Error;
+                string rollback = result.RolledBack ? " Previous desktop state was restored." : string.Empty;
+                ShowStatus($"Could not apply workstation profile '{name}': {error}{rollback}{warnings}", InfoBarSeverity.Error);
+                return;
+            }
+
+            ShowStatus(
+                $"Applied workstation profile '{name}'.{warnings}",
+                result.Warnings.Count == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
+        } catch (Exception ex) {
+            ShowStatus(ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     private async void DeleteWorkstationProfileButton_Click(object sender, RoutedEventArgs e) {

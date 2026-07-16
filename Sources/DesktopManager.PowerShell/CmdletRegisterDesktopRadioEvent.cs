@@ -1,5 +1,3 @@
-using System.Timers;
-
 namespace DesktopManager.PowerShell;
 
 /// <summary>Registers for supported Windows radio state changes.</summary>
@@ -20,15 +18,12 @@ public sealed class CmdletRegisterDesktopRadioEvent : PSCmdlet {
         service.StartMonitoringAsync().GetAwaiter().GetResult();
         PSEventSubscriber subscriber = Events.SubscribeEvent(service, nameof(RadioService.StateChanged), "DesktopRadio", null, Action, true, false);
         WriteObject(subscriber);
-        if (Duration <= TimeSpan.Zero) {
-            return;
-        }
-        var timer = new Timer(Duration.TotalMilliseconds) { AutoReset = false };
-        timer.Elapsed += (_, _) => {
-            Events.UnsubscribeEvent(subscriber);
-            service.Dispose();
-            timer.Dispose();
-        };
-        timer.Start();
+        EventSubscriptionExpiration.Schedule(Duration, () => {
+            try {
+                Events.UnsubscribeEvent(subscriber);
+            } finally {
+                service.Dispose();
+            }
+        });
     }
 }

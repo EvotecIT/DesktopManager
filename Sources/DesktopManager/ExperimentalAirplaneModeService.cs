@@ -27,6 +27,10 @@ public sealed class ExperimentalAirplaneModeService {
     /// <param name="state">The explicit state to apply.</param>
     /// <returns>The effective state reported after the request.</returns>
     public AirplaneModeState SetState(AirplaneModeState state) {
+        if (state != AirplaneModeState.Enabled && state != AirplaneModeState.Disabled) {
+            throw new ArgumentOutOfRangeException(nameof(state), state, "Airplane mode must be Enabled or Disabled.");
+        }
+
         return Execute(manager => {
             IntPtr vtable = Marshal.ReadIntPtr(manager);
             IntPtr method = Marshal.ReadIntPtr(vtable, IntPtr.Size * 6);

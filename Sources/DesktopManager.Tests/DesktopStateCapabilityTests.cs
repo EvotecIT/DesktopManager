@@ -75,6 +75,16 @@ public class DesktopStateCapabilityTests {
     }
 
     [TestMethod]
+    public void ExperimentalAirplaneModeService_RejectsUnknownStateBeforeNativeCall() {
+        var service = new ExperimentalAirplaneModeService();
+
+        ArgumentOutOfRangeException exception = Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+            () => service.SetState((AirplaneModeState)42));
+
+        Assert.AreEqual("state", exception.ParamName);
+    }
+
+    [TestMethod]
     public void WorkstationProfileStore_RoundTripsCohesiveProfile() {
         string name = "test-" + Guid.NewGuid().ToString("N");
         var profile = new WorkstationProfile {

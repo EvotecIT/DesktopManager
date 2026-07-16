@@ -1,5 +1,3 @@
-using System.Timers;
-
 namespace DesktopManager.PowerShell;
 
 /// <summary>Registers for meaningful current-session changes.</summary>
@@ -22,15 +20,12 @@ public sealed class CmdletRegisterDesktopSessionEvent : PSCmdlet {
         var watcher = new DesktopSessionWatcher(Interval);
         PSEventSubscriber subscriber = Events.SubscribeEvent(watcher, nameof(DesktopSessionWatcher.Changed), "DesktopSession", null, Action, true, false);
         WriteObject(subscriber);
-        if (Duration <= TimeSpan.Zero) {
-            return;
-        }
-        var timer = new Timer(Duration.TotalMilliseconds) { AutoReset = false };
-        timer.Elapsed += (_, _) => {
-            Events.UnsubscribeEvent(subscriber);
-            watcher.Dispose();
-            timer.Dispose();
-        };
-        timer.Start();
+        EventSubscriptionExpiration.Schedule(Duration, () => {
+            try {
+                Events.UnsubscribeEvent(subscriber);
+            } finally {
+                watcher.Dispose();
+            }
+        });
     }
 }
