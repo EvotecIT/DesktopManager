@@ -205,9 +205,13 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             return false;
         }
 
-        profileName = (Marshal.PtrToStringUni(
+        string fixedProfileName = Marshal.PtrToStringUni(
             IntPtr.Add(notification.Data, NativeWifiMethods.ConnectionNotificationProfileNameOffset),
-            NativeWifiMethods.MaxNameLength) ?? string.Empty).TrimEnd('\0');
+            NativeWifiMethods.MaxNameLength) ?? string.Empty;
+        int terminatorIndex = fixedProfileName.IndexOf('\0');
+        profileName = terminatorIndex >= 0
+            ? fixedProfileName.Substring(0, terminatorIndex)
+            : fixedProfileName;
         reasonCode = unchecked((uint)Marshal.ReadInt32(
             notification.Data,
             NativeWifiMethods.ConnectionNotificationReasonCodeOffset));
@@ -235,15 +239,14 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             "No WLAN completion notification was received before the timeout elapsed. The Windows connection attempt may still finish.");
     }
 
-    private static void TryCompleteConnection(
+    internal static void TryCompleteConnection(
         DesktopWifiProfileInfo profile,
         NativeWifiMethods.WlanNotificationData notification,
         TaskCompletionSource<DesktopWifiConnectionResult> completion) {
         try {
             if (notification.NotificationSource != NativeWifiMethods.NotificationSourceAcm ||
                 notification.InterfaceId != profile.InterfaceId ||
-                (notification.NotificationCode != NativeWifiMethods.NotificationAcmConnectionComplete &&
-                 notification.NotificationCode != NativeWifiMethods.NotificationAcmConnectionAttemptFail) ||
+                notification.NotificationCode != NativeWifiMethods.NotificationAcmConnectionComplete ||
                 !TryReadConnectionNotification(notification, out string observedProfile, out uint reasonCode) ||
                 !string.Equals(observedProfile, profile.Name, StringComparison.Ordinal)) {
                 return;

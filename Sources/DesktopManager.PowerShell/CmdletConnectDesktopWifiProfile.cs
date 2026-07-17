@@ -1,3 +1,5 @@
+using System.Threading;
+
 namespace DesktopManager.PowerShell;
 
 /// <summary>Connects an exact saved Windows Wi-Fi profile without scanning nearby networks.</summary>
@@ -12,6 +14,9 @@ namespace DesktopManager.PowerShell;
 [OutputType(typeof(DesktopWifiConnectionResult))]
 [System.Runtime.Versioning.SupportedOSPlatform("windows6.0.6000.0")]
 public sealed class CmdletConnectDesktopWifiProfile : PSCmdlet {
+    private readonly object _cancellationSync = new();
+    private CancellationTokenSource _cancellation;
+
     /// <summary><para type="description">The case-sensitive saved Windows Wi-Fi profile name.</para></summary>
     [Parameter(Mandatory = true, Position = 0)]
     public string Name;
@@ -30,16 +35,38 @@ public sealed class CmdletConnectDesktopWifiProfile : PSCmdlet {
             return;
         }
 
-        using var service = new WifiProfileService();
-        DesktopWifiConnectionResult result = service.ConnectProfileAsync(Name, InterfaceId, Timeout).GetAwaiter().GetResult();
-        if (!result.Succeeded) {
-            ThrowTerminatingError(new ErrorRecord(
-                new InvalidOperationException(result.BuildFailureMessage()),
-                "DesktopWifiProfileConnectionFailed",
-                ErrorCategory.ConnectionError,
-                result));
+        using var cancellation = new CancellationTokenSource();
+        lock (_cancellationSync) {
+            _cancellation = cancellation;
         }
+        try {
+            using var service = new WifiProfileService();
+            DesktopWifiConnectionResult result = service.ConnectProfileAsync(
+                Name,
+                InterfaceId,
+                Timeout,
+                cancellation.Token).GetAwaiter().GetResult();
+            if (!result.Succeeded) {
+                ThrowTerminatingError(new ErrorRecord(
+                    new InvalidOperationException(result.BuildFailureMessage()),
+                    "DesktopWifiProfileConnectionFailed",
+                    ErrorCategory.ConnectionError,
+                    result));
+            }
 
-        WriteObject(result);
+            WriteObject(result);
+        } finally {
+            lock (_cancellationSync) {
+                _cancellation = null;
+            }
+        }
+    }
+
+    /// <summary>Stops waiting for the active Windows connection attempt.</summary>
+    protected override void StopProcessing() {
+        lock (_cancellationSync) {
+            _cancellation?.Cancel();
+        }
+        base.StopProcessing();
     }
 }

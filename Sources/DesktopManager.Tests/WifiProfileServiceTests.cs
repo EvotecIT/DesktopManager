@@ -89,10 +89,14 @@ public class WifiProfileServiceTests {
     }
 
     [TestMethod]
-    public void TryReadConnectionNotification_ReadsProfileAndReasonWithoutLocationSensitiveData() {
+    public void TryReadConnectionNotification_StopsProfileAtFirstNullTerminator() {
         IntPtr data = Marshal.AllocHGlobal(NativeWifiMethods.ConnectionNotificationMinimumSize);
         try {
-            Marshal.Copy(new byte[NativeWifiMethods.ConnectionNotificationMinimumSize], 0, data, NativeWifiMethods.ConnectionNotificationMinimumSize);
+            Marshal.Copy(
+                Enumerable.Repeat((byte)0x41, NativeWifiMethods.ConnectionNotificationMinimumSize).ToArray(),
+                0,
+                data,
+                NativeWifiMethods.ConnectionNotificationMinimumSize);
             byte[] profileName = Encoding.Unicode.GetBytes("Saved profile\0");
             Marshal.Copy(profileName, 0, IntPtr.Add(data, NativeWifiMethods.ConnectionNotificationProfileNameOffset), profileName.Length);
             Marshal.WriteInt32(data, NativeWifiMethods.ConnectionNotificationReasonCodeOffset, 12345);
@@ -106,6 +110,44 @@ public class WifiProfileServiceTests {
             Assert.IsTrue(parsed);
             Assert.AreEqual("Saved profile", observedProfile);
             Assert.AreEqual(12345u, reasonCode);
+        } finally {
+            Marshal.FreeHGlobal(data);
+        }
+    }
+
+    [TestMethod]
+    public async Task TryCompleteConnection_IgnoresIntermediateAttemptFailureUntilConnectionCompletes() {
+        DesktopWifiInterfaceInfo wifiInterface = CreateInterface("Wireless adapter");
+        var profile = new DesktopWifiProfileInfo(wifiInterface, "Saved profile", false, false);
+        var completion = new TaskCompletionSource<DesktopWifiConnectionResult>();
+        IntPtr data = Marshal.AllocHGlobal(NativeWifiMethods.ConnectionNotificationMinimumSize);
+        try {
+            Marshal.Copy(
+                new byte[NativeWifiMethods.ConnectionNotificationMinimumSize],
+                0,
+                data,
+                NativeWifiMethods.ConnectionNotificationMinimumSize);
+            byte[] profileName = Encoding.Unicode.GetBytes("Saved profile\0");
+            Marshal.Copy(profileName, 0, IntPtr.Add(data, NativeWifiMethods.ConnectionNotificationProfileNameOffset), profileName.Length);
+            Marshal.WriteInt32(data, NativeWifiMethods.ConnectionNotificationReasonCodeOffset, 12345);
+            var notification = new NativeWifiMethods.WlanNotificationData {
+                NotificationSource = NativeWifiMethods.NotificationSourceAcm,
+                NotificationCode = NativeWifiMethods.NotificationAcmConnectionAttemptFail,
+                InterfaceId = wifiInterface.InterfaceId,
+                Data = data,
+                DataSize = NativeWifiMethods.ConnectionNotificationMinimumSize
+            };
+
+            NativeWifiProfileApi.TryCompleteConnection(profile, notification, completion);
+
+            Assert.IsFalse(completion.Task.IsCompleted);
+
+            Marshal.WriteInt32(data, NativeWifiMethods.ConnectionNotificationReasonCodeOffset, 0);
+            notification.NotificationCode = NativeWifiMethods.NotificationAcmConnectionComplete;
+            NativeWifiProfileApi.TryCompleteConnection(profile, notification, completion);
+
+            DesktopWifiConnectionResult result = await completion.Task;
+            Assert.AreEqual(DesktopWifiConnectionOutcome.Connected, result.Outcome);
         } finally {
             Marshal.FreeHGlobal(data);
         }
