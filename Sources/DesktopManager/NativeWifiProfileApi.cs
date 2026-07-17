@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -20,11 +21,12 @@ internal interface IWifiProfileApi : IDisposable {
 internal sealed class NativeWifiProfileApi : IWifiProfileApi {
     private const int MaximumInterfaceCount = 1024;
     private const int MaximumProfileCount = 16384;
+    private static readonly NativeWifiConnectionCoordinator ConnectionCoordinator = new();
     private readonly SafeWlanClientHandle _clientHandle;
-    private readonly SemaphoreSlim _connectionGate = new(1, 1);
     private NativeWifiMethods.WlanNotificationCallback? _activeNotificationCallback;
-    private bool _notificationRegistrationFaulted;
+    private NativeWifiConnectionAttempt? _ownedAttempt;
     private bool _disposed;
+    private int _nativeHandleDisposed;
 
     public NativeWifiProfileApi() {
         uint error = NativeWifiMethods.WlanOpenHandle(
@@ -106,60 +108,52 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             throw new ArgumentNullException(nameof(profile));
         }
 
-        await _connectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var stopwatch = Stopwatch.StartNew();
+        bool entered = await ConnectionCoordinator.WaitForTurnAsync(timeout, cancellationToken).ConfigureAwait(false);
+        if (!entered) {
+            return CreatePendingAttemptTimeoutResult(
+                profile,
+                "Another Wi-Fi connection request did not finish before the timeout elapsed. No new Windows connection attempt was started.");
+        }
+
         try {
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
-            NativeWifiMethods.Dot11BssType bssType = GetProfileBssType(profile);
-            var attempt = new NativeWifiConnectionAttempt(profile);
-            NativeWifiMethods.WlanNotificationCallback callback = (ref NativeWifiMethods.WlanNotificationData notification, IntPtr _) => {
-                attempt.Observe(notification);
-            };
 
-            _activeNotificationCallback = callback;
-            uint error = NativeWifiMethods.WlanRegisterNotification(
-                _clientHandle,
-                NativeWifiMethods.NotificationSourceAcm,
-                false,
-                callback,
-                IntPtr.Zero,
-                IntPtr.Zero,
-                IntPtr.Zero);
-            if (error != NativeWifiMethods.ErrorSuccess) {
-                _activeNotificationCallback = null;
+            TimeSpan remaining = GetRemainingTimeout(timeout, stopwatch.Elapsed);
+            if (remaining <= TimeSpan.Zero ||
+                !await ConnectionCoordinator.DrainAsync(remaining, cancellationToken).ConfigureAwait(false)) {
+                return CreatePendingAttemptTimeoutResult(
+                    profile,
+                    "A previous Windows connection attempt is still pending. No new connection attempt was started before the timeout elapsed.");
             }
-            ThrowWindowsError(error, "Register for WLAN Auto Configuration notifications");
+
+            cancellationToken.ThrowIfCancellationRequested();
+            EnsureNotificationsRegistered();
+            NativeWifiMethods.Dot11BssType bssType = GetProfileBssType(profile);
+            var attempt = ConnectionCoordinator.Begin(profile);
+            _ownedAttempt = attempt;
             try {
                 Guid interfaceId = profile.InterfaceId;
                 NativeWifiMethods.WlanConnectionParameters parameters = CreateConnectionParameters(profile, bssType);
-                attempt.Begin();
-                error = NativeWifiMethods.WlanConnect(
+                uint error = NativeWifiMethods.WlanConnect(
                     _clientHandle,
                     ref interfaceId,
                     ref parameters,
                     IntPtr.Zero);
                 ThrowWindowsError(error, $"Start connection to saved Wi-Fi profile '{profile.Name}'");
-
-                return await WaitForCompletionAsync(profile, attempt.Completion, timeout, cancellationToken).ConfigureAwait(false);
-            } finally {
-                uint unregisterError = NativeWifiMethods.WlanRegisterNotification(
-                    _clientHandle,
-                    NativeWifiMethods.NotificationSourceNone,
-                    false,
-                    null,
-                    IntPtr.Zero,
-                    IntPtr.Zero,
-                    IntPtr.Zero);
-                if (unregisterError == NativeWifiMethods.ErrorSuccess) {
-                    _activeNotificationCallback = null;
-                } else {
-                    _notificationRegistrationFaulted = true;
-                }
-                GC.KeepAlive(callback);
-                ThrowWindowsError(unregisterError, "Unregister WLAN Auto Configuration notifications");
+            } catch {
+                ConnectionCoordinator.Abandon(attempt);
+                _ownedAttempt = null;
+                throw;
             }
+
+            remaining = GetRemainingTimeout(timeout, stopwatch.Elapsed);
+            return remaining <= TimeSpan.Zero
+                ? CreateCurrentAttemptTimeoutResult(profile)
+                : await WaitForCompletionAsync(profile, attempt.Completion, remaining, cancellationToken).ConfigureAwait(false);
         } finally {
-            _connectionGate.Release();
+            ConnectionCoordinator.ReleaseTurn();
         }
     }
 
@@ -182,9 +176,12 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
         }
 
         _disposed = true;
-        _clientHandle.Dispose();
-        _activeNotificationCallback = null;
-        _connectionGate.Dispose();
+        NativeWifiConnectionAttempt? ownedAttempt = _ownedAttempt;
+        if (ownedAttempt != null && !ownedAttempt.Completion.IsCompleted) {
+            _ = DisposeAfterCompletionAsync(ownedAttempt.Completion);
+        } else {
+            DisposeNativeHandle();
+        }
     }
 
     internal static DesktopWifiInterfaceState ToInterfaceState(NativeWifiMethods.WlanInterfaceState state) {
@@ -215,11 +212,76 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        return CreateCurrentAttemptTimeoutResult(profile);
+    }
+
+    private static DesktopWifiConnectionResult CreateCurrentAttemptTimeoutResult(DesktopWifiProfileInfo profile) {
         return new DesktopWifiConnectionResult(
             profile,
             DesktopWifiConnectionOutcome.TimedOut,
             0,
             "No WLAN completion notification was received before the timeout elapsed. The Windows connection attempt may still finish.");
+    }
+
+    private static DesktopWifiConnectionResult CreatePendingAttemptTimeoutResult(
+        DesktopWifiProfileInfo profile,
+        string reason) {
+        return new DesktopWifiConnectionResult(
+            profile,
+            DesktopWifiConnectionOutcome.TimedOut,
+            0,
+            reason);
+    }
+
+    private static TimeSpan GetRemainingTimeout(TimeSpan timeout, TimeSpan elapsed) {
+        TimeSpan remaining = timeout - elapsed;
+        return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+    }
+
+    private void EnsureNotificationsRegistered() {
+        if (_activeNotificationCallback != null) {
+            return;
+        }
+
+        NativeWifiMethods.WlanNotificationCallback callback = ObserveConnectionNotification;
+        _activeNotificationCallback = callback;
+        uint error = NativeWifiMethods.WlanRegisterNotification(
+            _clientHandle,
+            NativeWifiMethods.NotificationSourceAcm,
+            false,
+            callback,
+            IntPtr.Zero,
+            IntPtr.Zero,
+            IntPtr.Zero);
+        if (error != NativeWifiMethods.ErrorSuccess) {
+            _activeNotificationCallback = null;
+        }
+        ThrowWindowsError(error, "Register for WLAN Auto Configuration notifications");
+    }
+
+    private static void ObserveConnectionNotification(
+        ref NativeWifiMethods.WlanNotificationData notification,
+        IntPtr _) {
+        ConnectionCoordinator.Observe(notification);
+    }
+
+    private async Task DisposeAfterCompletionAsync(Task<DesktopWifiConnectionResult> completion) {
+        try {
+            await completion.ConfigureAwait(false);
+        } catch {
+            // The native handle must still be released after a malformed or failed notification.
+        }
+
+        DisposeNativeHandle();
+    }
+
+    private void DisposeNativeHandle() {
+        if (Interlocked.Exchange(ref _nativeHandleDisposed, 1) != 0) {
+            return;
+        }
+
+        _clientHandle.Dispose();
+        _activeNotificationCallback = null;
     }
 
     private NativeWifiMethods.Dot11BssType GetProfileBssType(DesktopWifiProfileInfo profile) {
@@ -270,10 +332,6 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
     private void ThrowIfDisposed() {
         if (_disposed) {
             throw new ObjectDisposedException(nameof(NativeWifiProfileApi));
-        }
-        if (_notificationRegistrationFaulted) {
-            throw new InvalidOperationException(
-                "The Native Wi-Fi notification registration is faulted. Dispose this service and create a new instance.");
         }
     }
 }

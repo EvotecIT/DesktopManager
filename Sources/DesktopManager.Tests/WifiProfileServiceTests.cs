@@ -200,6 +200,57 @@ public class WifiProfileServiceTests {
     }
 
     [TestMethod]
+    public async Task ConnectionCoordinator_DrainsTimedOutAttemptBeforeRetryStarts() {
+        DesktopWifiInterfaceInfo wifiInterface = CreateInterface("Wireless adapter");
+        var profile = new DesktopWifiProfileInfo(wifiInterface, "Saved profile", false, false);
+        var coordinator = new NativeWifiConnectionCoordinator();
+        NativeWifiConnectionAttempt firstAttempt = coordinator.Begin(profile);
+
+        Assert.IsFalse(await coordinator.DrainAsync(TimeSpan.Zero, CancellationToken.None));
+        Assert.Throws<InvalidOperationException>(() => coordinator.Begin(profile));
+
+        IntPtr data = Marshal.AllocHGlobal(NativeWifiMethods.ConnectionNotificationMinimumSize);
+        try {
+            Marshal.Copy(
+                new byte[NativeWifiMethods.ConnectionNotificationMinimumSize],
+                0,
+                data,
+                NativeWifiMethods.ConnectionNotificationMinimumSize);
+            byte[] profileName = Encoding.Unicode.GetBytes("Saved profile\0");
+            Marshal.Copy(profileName, 0, IntPtr.Add(data, NativeWifiMethods.ConnectionNotificationProfileNameOffset), profileName.Length);
+            var notification = new NativeWifiMethods.WlanNotificationData {
+                NotificationSource = NativeWifiMethods.NotificationSourceAcm,
+                NotificationCode = NativeWifiMethods.NotificationAcmConnectionStart,
+                InterfaceId = wifiInterface.InterfaceId,
+                Data = data,
+                DataSize = NativeWifiMethods.ConnectionNotificationMinimumSize
+            };
+
+            coordinator.Observe(notification);
+            notification.NotificationCode = NativeWifiMethods.NotificationAcmConnectionComplete;
+            coordinator.Observe(notification);
+
+            DesktopWifiConnectionResult firstResult = await firstAttempt.Completion;
+            Assert.AreEqual(DesktopWifiConnectionOutcome.Connected, firstResult.Outcome);
+            Assert.IsTrue(await coordinator.DrainAsync(TimeSpan.Zero, CancellationToken.None));
+
+            NativeWifiConnectionAttempt retry = coordinator.Begin(profile);
+            coordinator.Observe(notification);
+            Assert.IsFalse(retry.Completion.IsCompleted);
+
+            notification.NotificationCode = NativeWifiMethods.NotificationAcmConnectionStart;
+            coordinator.Observe(notification);
+            notification.NotificationCode = NativeWifiMethods.NotificationAcmConnectionComplete;
+            coordinator.Observe(notification);
+
+            DesktopWifiConnectionResult retryResult = await retry.Completion;
+            Assert.AreEqual(DesktopWifiConnectionOutcome.Connected, retryResult.Outcome);
+        } finally {
+            Marshal.FreeHGlobal(data);
+        }
+    }
+
+    [TestMethod]
     [DataRow("ESS", 1)]
     [DataRow("IBSS", 2)]
     public void ReadBssType_MapsProfileConnectionTypeIntoWlanConnectParameters(
