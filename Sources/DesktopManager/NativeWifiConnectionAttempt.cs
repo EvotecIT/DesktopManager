@@ -31,6 +31,16 @@ internal sealed class NativeWifiConnectionAttempt {
         }
     }
 
+    internal void Expire(string reason) {
+        if (_completion.TrySetResult(new DesktopWifiConnectionResult(
+                _profile,
+                DesktopWifiConnectionOutcome.TimedOut,
+                0,
+                reason))) {
+            Interlocked.Exchange(ref _state, Completed);
+        }
+    }
+
     internal void Observe(NativeWifiMethods.WlanNotificationData notification) {
         try {
             if (notification.NotificationSource != NativeWifiMethods.NotificationSourceAcm ||

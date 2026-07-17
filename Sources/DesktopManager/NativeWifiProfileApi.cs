@@ -21,6 +21,7 @@ internal interface IWifiProfileApi : IDisposable {
 internal sealed class NativeWifiProfileApi : IWifiProfileApi {
     private const int MaximumInterfaceCount = 1024;
     private const int MaximumProfileCount = 16384;
+    private static readonly TimeSpan IncompleteAttemptQuarantine = TimeSpan.FromMinutes(2);
     private static readonly NativeWifiConnectionCoordinator ConnectionCoordinator = new();
     private readonly SafeWlanClientHandle _clientHandle;
     private NativeWifiMethods.WlanNotificationCallback? _activeNotificationCallback;
@@ -149,9 +150,25 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             }
 
             remaining = GetRemainingTimeout(timeout, stopwatch.Elapsed);
-            return remaining <= TimeSpan.Zero
-                ? CreateCurrentAttemptTimeoutResult(profile)
-                : await WaitForCompletionAsync(profile, attempt.Completion, remaining, cancellationToken).ConfigureAwait(false);
+            if (remaining <= TimeSpan.Zero) {
+                QuarantineIncompleteAttempt(attempt);
+                return CreateCurrentAttemptTimeoutResult(profile);
+            }
+
+            try {
+                DesktopWifiConnectionResult result = await WaitForCompletionAsync(
+                    profile,
+                    attempt.Completion,
+                    remaining,
+                    cancellationToken).ConfigureAwait(false);
+                if (result.Outcome == DesktopWifiConnectionOutcome.TimedOut) {
+                    QuarantineIncompleteAttempt(attempt);
+                }
+                return result;
+            } catch (OperationCanceledException) {
+                QuarantineIncompleteAttempt(attempt);
+                throw;
+            }
         } finally {
             ConnectionCoordinator.ReleaseTurn();
         }
@@ -236,6 +253,10 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
     private static TimeSpan GetRemainingTimeout(TimeSpan timeout, TimeSpan elapsed) {
         TimeSpan remaining = timeout - elapsed;
         return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+    }
+
+    private static void QuarantineIncompleteAttempt(NativeWifiConnectionAttempt attempt) {
+        _ = ConnectionCoordinator.QuarantineAsync(attempt, IncompleteAttemptQuarantine);
     }
 
     private void EnsureNotificationsRegistered() {

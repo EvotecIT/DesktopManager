@@ -3,7 +3,7 @@ using System.Threading;
 namespace DesktopManager.PowerShell;
 
 /// <summary>Connects an exact saved Windows Wi-Fi profile without scanning nearby networks.</summary>
-/// <para>The command waits for exclusive access and a Windows WLAN Auto Configuration completion notification. Cancelling or timing out stops the wait but does not cancel an attempt already accepted by Windows, so a later same-process call waits for that attempt to finish before starting another one.</para>
+/// <para>The command waits for exclusive access and a Windows WLAN Auto Configuration completion notification. Cancelling or timing out stops the wait but does not cancel an attempt already accepted by Windows, so a later same-process call waits for that attempt to finish before starting another one. If Windows never reports completion, the library releases the retained notification handle after two minutes and requires restarting the hosting process before another connection attempt.</para>
 /// <example>
 ///   <summary>Connect a saved Wi-Fi profile</summary>
 ///   <prefix>PS&gt; </prefix>
@@ -25,7 +25,7 @@ public sealed class CmdletConnectDesktopWifiProfile : PSCmdlet {
     [Parameter]
     public Guid? InterfaceId;
 
-    /// <summary><para type="description">How long to wait for exclusive access and a Windows connection completion notification.</para></summary>
+    /// <summary><para type="description">How long to wait for exclusive access and a Windows connection completion notification. The default is 30 seconds and the maximum is 2147483647 milliseconds.</para></summary>
     [Parameter]
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 

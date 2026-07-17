@@ -51,7 +51,7 @@ public sealed class WifiProfileService : IDisposable {
     /// </summary>
     /// <param name="profileName">The case-sensitive saved Windows profile name.</param>
     /// <param name="interfaceId">An optional interface identifier used to disambiguate the same profile on multiple adapters.</param>
-    /// <param name="timeout">How long to wait for exclusive access and a Windows ACM completion notification. The Windows attempt can continue after a timeout, and a later same-process call waits for it to finish before starting another attempt.</param>
+    /// <param name="timeout">How long to wait for exclusive access and a Windows ACM completion notification. The default is 30 seconds and the maximum is 2147483647 milliseconds. The Windows attempt can continue after a timeout, and a later same-process call waits for it to finish before starting another attempt. If Windows never reports completion, the retained notification handle is released after two minutes and later connection attempts require restarting the hosting process.</param>
     /// <param name="cancellationToken">Cancels waiting for completion; it does not cancel an attempt already accepted by Windows.</param>
     /// <returns>The observed connection result.</returns>
     public Task<DesktopWifiConnectionResult> ConnectProfileAsync(

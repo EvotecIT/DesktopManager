@@ -251,6 +251,25 @@ public class WifiProfileServiceTests {
     }
 
     [TestMethod]
+    public async Task ConnectionCoordinator_LostCompletionPoisonsFutureAttemptsWithoutRetainingAttempt() {
+        DesktopWifiInterfaceInfo wifiInterface = CreateInterface("Wireless adapter");
+        var profile = new DesktopWifiProfileInfo(wifiInterface, "Saved profile", false, false);
+        var coordinator = new NativeWifiConnectionCoordinator();
+        NativeWifiConnectionAttempt attempt = coordinator.Begin(profile);
+
+        await coordinator.QuarantineAsync(attempt, TimeSpan.Zero);
+
+        DesktopWifiConnectionResult expiredResult = await attempt.Completion;
+        Assert.AreEqual(DesktopWifiConnectionOutcome.TimedOut, expiredResult.Outcome);
+        Assert.IsNotNull(expiredResult.Reason);
+        StringAssert.Contains(expiredResult.Reason, "restart the hosting process");
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => coordinator.DrainAsync(TimeSpan.Zero, CancellationToken.None));
+        StringAssert.Contains(exception.Message, "retained notification handle was released");
+    }
+
+    [TestMethod]
     [DataRow("ESS", 1)]
     [DataRow("IBSS", 2)]
     public void ReadBssType_MapsProfileConnectionTypeIntoWlanConnectParameters(

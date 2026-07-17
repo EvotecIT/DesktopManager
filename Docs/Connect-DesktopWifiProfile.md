@@ -15,7 +15,7 @@ Connect-DesktopWifiProfile [-Name] <string> [-Timeout <timespan>] [-InterfaceId 
 ```
 
 ## DESCRIPTION
-The command waits for exclusive access and a Windows WLAN Auto Configuration completion notification. Cancelling or timing out stops the wait but does not cancel an attempt already accepted by Windows, so a later same-process call waits for that attempt to finish before starting another one.
+The command waits for exclusive access and a Windows WLAN Auto Configuration completion notification. Cancelling or timing out stops the wait but does not cancel an attempt already accepted by Windows, so a later same-process call waits for that attempt to finish before starting another one. If Windows never reports completion, the library releases the retained notification handle after two minutes and requires restarting the hosting process before another connection attempt.
 
 ## EXAMPLES
 
@@ -61,7 +61,7 @@ Accept wildcard characters: True
 ```
 
 ### -Timeout
-How long to wait for exclusive access and a Windows connection completion notification.
+How long to wait for exclusive access and a Windows connection completion notification. The default is 30 seconds and the maximum is 2147483647 milliseconds.
 
 ```yaml
 Type: TimeSpan

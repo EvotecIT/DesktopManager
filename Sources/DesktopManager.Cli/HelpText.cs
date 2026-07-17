@@ -157,7 +157,7 @@ Wi-Fi commands:
   desktopmanager wifi profiles [--interface-id <guid>]
   desktopmanager wifi connect --profile <saved-profile-name> [--interface-id <guid>] [--timeout-ms <value>]
 
-The profile commands use the Windows Native Wi-Fi saved-profile APIs. They do not scan nearby networks, return BSSIDs, expose profile XML or credentials, or query location-sensitive current-connection details. After a connection timeout, a later command in the same process waits for the earlier Windows attempt to finish before starting another one.
+The profile commands use the Windows Native Wi-Fi saved-profile APIs. They do not scan nearby networks, return BSSIDs, expose profile XML or credentials, or query location-sensitive current-connection details. The connection timeout defaults to 30000 milliseconds and can be at most 2147483647 milliseconds. After a connection timeout, a later command in the same process waits for the earlier Windows attempt to finish before starting another one. If Windows never reports completion, the library releases the retained notification handle after two minutes and requires restarting the hosting process before another connection attempt.
 """;
     }
 
