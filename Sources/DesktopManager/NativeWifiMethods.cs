@@ -42,6 +42,16 @@ internal static class NativeWifiMethods {
         IntPtr reserved,
         out IntPtr profileList);
 
+    [DllImport("wlanapi.dll", ExactSpelling = true)]
+    internal static extern uint WlanGetProfile(
+        SafeWlanClientHandle clientHandle,
+        ref Guid interfaceId,
+        [MarshalAs(UnmanagedType.LPWStr)] string profileName,
+        IntPtr reserved,
+        out IntPtr profileXml,
+        IntPtr flags,
+        IntPtr grantedAccess);
+
     [DllImport("wlanapi.dll")]
     internal static extern uint WlanConnect(
         SafeWlanClientHandle clientHandle,
@@ -128,6 +138,8 @@ internal static class NativeWifiMethods {
     }
 
     internal enum Dot11BssType {
+        Infrastructure = 1,
+        Independent = 2,
         Any = 3
     }
 }

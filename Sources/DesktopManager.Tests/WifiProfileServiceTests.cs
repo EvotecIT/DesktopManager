@@ -154,6 +154,29 @@ public class WifiProfileServiceTests {
     }
 
     [TestMethod]
+    [DataRow("ESS", 1)]
+    [DataRow("IBSS", 2)]
+    public void ReadBssType_MapsProfileConnectionTypeIntoWlanConnectParameters(
+        string connectionType,
+        int expectedBssType) {
+        const string ProfileTemplate = """
+            <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+              <name>Saved profile</name>
+              <connectionType>{0}</connectionType>
+            </WLANProfile>
+            """;
+        NativeWifiMethods.Dot11BssType bssType = NativeWifiProfileParser.ReadBssType(
+            string.Format(ProfileTemplate, connectionType));
+        DesktopWifiInterfaceInfo wifiInterface = CreateInterface("Wireless adapter");
+        var profile = new DesktopWifiProfileInfo(wifiInterface, "Saved profile", false, false);
+
+        NativeWifiMethods.WlanConnectionParameters parameters =
+            NativeWifiProfileApi.CreateConnectionParameters(profile, bssType);
+
+        Assert.AreEqual((NativeWifiMethods.Dot11BssType)expectedBssType, parameters.BssType);
+    }
+
+    [TestMethod]
     public void ToInterfaceState_UnknownNativeValue_RemainsExplicitlyUnknown() {
         DesktopWifiInterfaceState state = NativeWifiProfileApi.ToInterfaceState(
             (NativeWifiMethods.WlanInterfaceState)int.MaxValue);

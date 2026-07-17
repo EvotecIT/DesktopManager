@@ -111,6 +111,7 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
         try {
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
+            NativeWifiMethods.Dot11BssType bssType = GetProfileBssType(profile);
             var completion = new TaskCompletionSource<DesktopWifiConnectionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             NativeWifiMethods.WlanNotificationCallback callback = (ref NativeWifiMethods.WlanNotificationData notification, IntPtr _) => {
                 TryCompleteConnection(profile, notification, completion);
@@ -131,14 +132,7 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             ThrowWindowsError(error, "Register for WLAN Auto Configuration notifications");
             try {
                 Guid interfaceId = profile.InterfaceId;
-                var parameters = new NativeWifiMethods.WlanConnectionParameters {
-                    ConnectionMode = NativeWifiMethods.WlanConnectionMode.Profile,
-                    ProfileName = profile.Name,
-                    Dot11Ssid = IntPtr.Zero,
-                    DesiredBssidList = IntPtr.Zero,
-                    BssType = NativeWifiMethods.Dot11BssType.Any,
-                    Flags = 0
-                };
+                NativeWifiMethods.WlanConnectionParameters parameters = CreateConnectionParameters(profile, bssType);
                 error = NativeWifiMethods.WlanConnect(
                     _clientHandle,
                     ref interfaceId,
@@ -167,6 +161,19 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
         } finally {
             _connectionGate.Release();
         }
+    }
+
+    internal static NativeWifiMethods.WlanConnectionParameters CreateConnectionParameters(
+        DesktopWifiProfileInfo profile,
+        NativeWifiMethods.Dot11BssType bssType) {
+        return new NativeWifiMethods.WlanConnectionParameters {
+            ConnectionMode = NativeWifiMethods.WlanConnectionMode.Profile,
+            ProfileName = profile.Name,
+            Dot11Ssid = IntPtr.Zero,
+            DesiredBssidList = IntPtr.Zero,
+            BssType = bssType,
+            Flags = 0
+        };
     }
 
     public void Dispose() {
@@ -278,6 +285,29 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
         return error == NativeWifiMethods.ErrorSuccess && buffer.Length > 0
             ? buffer.ToString().Trim()
             : $"Windows WLAN reason code {reasonCode}.";
+    }
+
+    private NativeWifiMethods.Dot11BssType GetProfileBssType(DesktopWifiProfileInfo profile) {
+        Guid interfaceId = profile.InterfaceId;
+        IntPtr profileXmlPointer = IntPtr.Zero;
+        try {
+            uint error = NativeWifiMethods.WlanGetProfile(
+                _clientHandle,
+                ref interfaceId,
+                profile.Name,
+                IntPtr.Zero,
+                out profileXmlPointer,
+                IntPtr.Zero,
+                IntPtr.Zero);
+            ThrowWindowsError(error, $"Read the connection type for saved Wi-Fi profile '{profile.Name}'");
+            string profileXml = Marshal.PtrToStringUni(profileXmlPointer) ?? throw new InvalidDataException(
+                $"Windows returned empty metadata for saved Wi-Fi profile '{profile.Name}'.");
+            return NativeWifiProfileParser.ReadBssType(profileXml);
+        } finally {
+            if (profileXmlPointer != IntPtr.Zero) {
+                NativeWifiMethods.WlanFreeMemory(profileXmlPointer);
+            }
+        }
     }
 
     private static int ReadListCount(IntPtr listPointer, int maximum, string itemDescription) {
