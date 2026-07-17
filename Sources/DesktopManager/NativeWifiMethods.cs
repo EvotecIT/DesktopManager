@@ -13,6 +13,7 @@ internal static class NativeWifiMethods {
     internal const uint ProfileUser = 0x00000002;
     internal const uint NotificationSourceNone = 0x00000000;
     internal const uint NotificationSourceAcm = 0x00000008;
+    internal const uint NotificationAcmConnectionStart = 9;
     internal const uint NotificationAcmConnectionComplete = 10;
     internal const uint NotificationAcmConnectionAttemptFail = 11;
     internal const int ConnectionNotificationProfileNameOffset = 4;

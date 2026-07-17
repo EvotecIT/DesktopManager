@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -112,16 +111,16 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             ThrowIfDisposed();
             cancellationToken.ThrowIfCancellationRequested();
             NativeWifiMethods.Dot11BssType bssType = GetProfileBssType(profile);
-            var completion = new TaskCompletionSource<DesktopWifiConnectionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var attempt = new NativeWifiConnectionAttempt(profile);
             NativeWifiMethods.WlanNotificationCallback callback = (ref NativeWifiMethods.WlanNotificationData notification, IntPtr _) => {
-                TryCompleteConnection(profile, notification, completion);
+                attempt.Observe(notification);
             };
 
             _activeNotificationCallback = callback;
             uint error = NativeWifiMethods.WlanRegisterNotification(
                 _clientHandle,
                 NativeWifiMethods.NotificationSourceAcm,
-                true,
+                false,
                 callback,
                 IntPtr.Zero,
                 IntPtr.Zero,
@@ -133,6 +132,7 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             try {
                 Guid interfaceId = profile.InterfaceId;
                 NativeWifiMethods.WlanConnectionParameters parameters = CreateConnectionParameters(profile, bssType);
+                attempt.Begin();
                 error = NativeWifiMethods.WlanConnect(
                     _clientHandle,
                     ref interfaceId,
@@ -140,12 +140,12 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
                     IntPtr.Zero);
                 ThrowWindowsError(error, $"Start connection to saved Wi-Fi profile '{profile.Name}'");
 
-                return await WaitForCompletionAsync(profile, completion.Task, timeout, cancellationToken).ConfigureAwait(false);
+                return await WaitForCompletionAsync(profile, attempt.Completion, timeout, cancellationToken).ConfigureAwait(false);
             } finally {
                 uint unregisterError = NativeWifiMethods.WlanRegisterNotification(
                     _clientHandle,
                     NativeWifiMethods.NotificationSourceNone,
-                    true,
+                    false,
                     null,
                     IntPtr.Zero,
                     IntPtr.Zero,
@@ -201,30 +201,6 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
         };
     }
 
-    internal static bool TryReadConnectionNotification(
-        NativeWifiMethods.WlanNotificationData notification,
-        out string profileName,
-        out uint reasonCode) {
-        profileName = string.Empty;
-        reasonCode = 0;
-        if (notification.Data == IntPtr.Zero ||
-            notification.DataSize < NativeWifiMethods.ConnectionNotificationMinimumSize) {
-            return false;
-        }
-
-        string fixedProfileName = Marshal.PtrToStringUni(
-            IntPtr.Add(notification.Data, NativeWifiMethods.ConnectionNotificationProfileNameOffset),
-            NativeWifiMethods.MaxNameLength) ?? string.Empty;
-        int terminatorIndex = fixedProfileName.IndexOf('\0');
-        profileName = terminatorIndex >= 0
-            ? fixedProfileName.Substring(0, terminatorIndex)
-            : fixedProfileName;
-        reasonCode = unchecked((uint)Marshal.ReadInt32(
-            notification.Data,
-            NativeWifiMethods.ConnectionNotificationReasonCodeOffset));
-        return true;
-    }
-
     private static async Task<DesktopWifiConnectionResult> WaitForCompletionAsync(
         DesktopWifiProfileInfo profile,
         Task<DesktopWifiConnectionResult> completion,
@@ -244,47 +220,6 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
             DesktopWifiConnectionOutcome.TimedOut,
             0,
             "No WLAN completion notification was received before the timeout elapsed. The Windows connection attempt may still finish.");
-    }
-
-    internal static void TryCompleteConnection(
-        DesktopWifiProfileInfo profile,
-        NativeWifiMethods.WlanNotificationData notification,
-        TaskCompletionSource<DesktopWifiConnectionResult> completion) {
-        try {
-            if (notification.NotificationSource != NativeWifiMethods.NotificationSourceAcm ||
-                notification.InterfaceId != profile.InterfaceId ||
-                notification.NotificationCode != NativeWifiMethods.NotificationAcmConnectionComplete ||
-                !TryReadConnectionNotification(notification, out string observedProfile, out uint reasonCode) ||
-                !string.Equals(observedProfile, profile.Name, StringComparison.Ordinal)) {
-                return;
-            }
-
-            bool succeeded = notification.NotificationCode == NativeWifiMethods.NotificationAcmConnectionComplete &&
-                             reasonCode == NativeWifiMethods.ErrorSuccess;
-            completion.TrySetResult(new DesktopWifiConnectionResult(
-                profile,
-                succeeded ? DesktopWifiConnectionOutcome.Connected : DesktopWifiConnectionOutcome.Failed,
-                reasonCode,
-                succeeded ? null : GetReasonText(reasonCode)));
-        } catch (Exception ex) {
-            completion.TrySetException(ex);
-        }
-    }
-
-    private static string GetReasonText(uint reasonCode) {
-        if (reasonCode == NativeWifiMethods.ErrorSuccess) {
-            return "The WLAN Auto Configuration service reported that the connection attempt failed.";
-        }
-
-        var buffer = new StringBuilder(1024);
-        uint error = NativeWifiMethods.WlanReasonCodeToString(
-            reasonCode,
-            (uint)buffer.Capacity,
-            buffer,
-            IntPtr.Zero);
-        return error == NativeWifiMethods.ErrorSuccess && buffer.Length > 0
-            ? buffer.ToString().Trim()
-            : $"Windows WLAN reason code {reasonCode}.";
     }
 
     private NativeWifiMethods.Dot11BssType GetProfileBssType(DesktopWifiProfileInfo profile) {
