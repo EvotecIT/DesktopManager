@@ -10,6 +10,9 @@ Locale: en-US
 Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.
 
 ## DesktopManager Cmdlets
+### [Connect-DesktopWifiProfile](Connect-DesktopWifiProfile.md)
+Connects an exact saved Windows Wi-Fi profile without scanning nearby networks.
+
 ### [Exit-DesktopSession](Exit-DesktopSession.md)
 Signs out the current interactive Windows session.
 
@@ -75,6 +78,9 @@ Gets the current desktop wallpaper for one or more monitors.
 
 ### [Get-DesktopWallpaperHistory](Get-DesktopWallpaperHistory.md)
 Returns stored wallpaper history.
+
+### [Get-DesktopWifiProfile](Get-DesktopWifiProfile.md)
+Gets saved Windows Wi-Fi profiles without scanning nearby networks.
 
 ### [Get-DesktopWindow](Get-DesktopWindow.md)
 Gets information about desktop windows.

@@ -63,6 +63,7 @@ public class CliApplicationTests {
     [DataRow("control")]
     [DataRow("desktop")]
     [DataRow("monitor")]
+    [DataRow("wifi")]
     [DataRow("process")]
     [DataRow("screenshot")]
     [DataRow("target")]
@@ -89,6 +90,7 @@ public class CliApplicationTests {
     [DataRow("control")]
     [DataRow("desktop")]
     [DataRow("monitor")]
+    [DataRow("wifi")]
     [DataRow("process")]
     [DataRow("screenshot")]
     [DataRow("target")]
@@ -121,6 +123,25 @@ public class CliApplicationTests {
         Assert.AreEqual(string.Empty, standardOutput);
         StringAssert.Contains(standardError, "Error: Missing required process path.");
         StringAssert.Contains(standardError, "desktopmanager - Windows desktop automation CLI");
+    }
+
+    [TestMethod]
+    public void Run_WifiConnectWithoutProfile_WritesMissingProfileErrorWithoutNativeAccess() {
+        (int exitCode, string standardOutput, string standardError) = RunCli("wifi", "connect");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Missing required option '--profile'.");
+    }
+
+    [TestMethod]
+    public void Run_WifiConnectWithInvalidTimeout_WritesValidationErrorWithoutNativeAccess() {
+        (int exitCode, string standardOutput, string standardError) = RunCli(
+            "wifi", "connect", "--profile", "Saved", "--timeout-ms", "0");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "Error: Option '--timeout-ms' expects a value greater than 0.");
     }
 
     [TestMethod]

@@ -69,6 +69,10 @@ desktopmanager radio list
 desktopmanager radio set --kind wifi --state on
 desktopmanager radio airplane get --experimental
 
+desktopmanager wifi interfaces
+desktopmanager wifi profiles
+desktopmanager wifi connect --profile "Corporate WiFi"
+
 desktopmanager virtual-desktop current --handle <window-handle>
 desktopmanager virtual-desktop id --handle <window-handle>
 desktopmanager virtual-desktop move --handle <window-handle> --desktop-id <guid>
@@ -138,6 +142,7 @@ desktopmanager mcp serve --dry-run
 - `audio` enumerates render and capture endpoints through Windows Core Audio. Default roles can be changed independently instead of always replacing console, multimedia, and communications together.
 - `system` separates read-only power/session inspection from explicit lock, keep-awake, suspend, and sign-out actions. Suspend and sign-out require `--confirm`.
 - `radio list` and `radio set` use the supported Windows radio API. Global airplane mode is separate and requires `--experimental` because its Windows shell COM contract is undocumented.
+- `wifi interfaces` and `wifi profiles` list only Windows interfaces and already-saved profiles. `wifi connect` connects an exact saved profile and waits for ACM completion without scanning nearby networks, reading BSSIDs, exposing profile XML or credentials, or querying location-sensitive current-connection details.
 - `virtual-desktop` exposes only the public window operations: current-desktop check, desktop ID lookup, and moving a window to a known desktop ID.
 - `monitor list` reports the desktop-coordinate bounds used by monitor screenshots.
 - `desktop slideshow` reports configured wallpaper slideshow images, state flags, options, shuffle state, and slideshow tick interval.

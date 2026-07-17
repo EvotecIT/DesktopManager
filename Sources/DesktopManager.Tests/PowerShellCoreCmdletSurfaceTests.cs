@@ -52,6 +52,8 @@ public class PowerShellCoreCmdletSurfaceTests {
     [DataRow("CmdletSetDesktopTaskbarAutoHide", "Enabled")]
     [DataRow("CmdletGetDesktopRadio")]
     [DataRow("CmdletSetDesktopRadio", "Kind", "State", "Name")]
+    [DataRow("CmdletGetDesktopWifiProfile", "InterfaceId")]
+    [DataRow("CmdletConnectDesktopWifiProfile", "Name", "InterfaceId", "Timeout")]
     [DataRow("CmdletGetDesktopAirplaneMode", "Experimental")]
     [DataRow("CmdletSetDesktopAirplaneMode", "State", "Experimental")]
     [DataRow("CmdletGetDesktopVirtualDesktop", "Handle")]
