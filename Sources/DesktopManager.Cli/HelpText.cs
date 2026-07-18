@@ -19,6 +19,7 @@ Groups:
   personalization Capture, apply, and restore personalization state
   taskbar    Inspect and configure taskbars
   radio      Inspect and configure supported radios; opt in to experimental airplane mode
+  wifi       List saved Wi-Fi profiles and connect an exact saved profile without scanning
   virtual-desktop Use the supported Windows virtual-desktop window operations
   process    Start desktop applications
   screenshot Capture the desktop, monitors, or windows
@@ -51,6 +52,7 @@ Examples:
   desktopmanager audio list --active
   desktopmanager system power
   desktopmanager radio list
+  desktopmanager wifi profiles
   desktopmanager layout save coding
   desktopmanager layout apply coding --validate
   desktopmanager layout assert coding --position-tolerance-px 50 --size-tolerance-px 50
@@ -69,6 +71,7 @@ Use:
   desktopmanager help personalization
   desktopmanager help taskbar
   desktopmanager help radio
+  desktopmanager help wifi
   desktopmanager help virtual-desktop
   desktopmanager help process
   desktopmanager help screenshot
@@ -144,6 +147,17 @@ Radio commands:
   desktopmanager radio set --kind <wifi|bluetooth|mobilebroadband|fm> --state <on|off> [--name <radio-name>]
   desktopmanager radio airplane get --experimental
   desktopmanager radio airplane set --state <enabled|disabled> --experimental
+""";
+    }
+
+    public static string GetWifiHelp() {
+        return """
+Wi-Fi commands:
+  desktopmanager wifi interfaces
+  desktopmanager wifi profiles [--interface-id <guid>]
+  desktopmanager wifi connect --profile <saved-profile-name> [--interface-id <guid>] [--timeout-ms <value>]
+
+The profile commands use the Windows Native Wi-Fi saved-profile APIs. They do not scan nearby networks, return BSSIDs, expose profile XML or credentials, or query location-sensitive current-connection details. The connection timeout defaults to 30000 milliseconds and can be at most 2147483647 milliseconds. After a connection timeout, a later command in the same process waits for the earlier Windows attempt to finish before starting another one. If Windows never reports completion, the library releases the retained notification handle after two minutes and requires restarting the hosting process before another connection attempt.
 """;
     }
 

@@ -17,6 +17,7 @@ public class HelpTextTests {
     [DataRow("personalization", "Personalization commands:")]
     [DataRow("taskbar", "Taskbar commands:")]
     [DataRow("radio", "Radio commands:")]
+    [DataRow("wifi", "Wi-Fi commands:")]
     [DataRow("virtual-desktop", "Virtual desktop commands:")]
     [DataRow("process", "Process commands:")]
     [DataRow("screenshot", "Screenshot commands:")]
@@ -65,6 +66,7 @@ public class HelpTextTests {
             "personalization",
             "taskbar",
             "radio",
+            "wifi",
             "virtual-desktop",
             "process",
             "screenshot",
@@ -78,6 +80,16 @@ public class HelpTextTests {
         }) {
             StringAssert.Contains(help, $"desktopmanager help {topic}");
         }
+    }
+
+    [TestMethod]
+    public void GetWifiHelp_DescribesSavedProfileOnlyBoundary() {
+        string help = global::DesktopManager.Cli.HelpText.GetWifiHelp();
+
+        StringAssert.Contains(help, "desktopmanager wifi profiles");
+        StringAssert.Contains(help, "desktopmanager wifi connect");
+        StringAssert.Contains(help, "do not scan nearby networks");
+        StringAssert.Contains(help, "profile XML or credentials");
     }
 
     [TestMethod]

@@ -63,6 +63,7 @@ It has following features:
 - Inspect power and interactive-session state; lock, sign out, sleep, hibernate, or hold a bounded keep-awake lease
 - Capture and restore personalization snapshots and configure taskbar visibility, position, and auto-hide
 - Enumerate, observe, and explicitly enable or disable Wi-Fi, Bluetooth, mobile broadband, and FM radios through the supported Windows radio API
+- List saved Windows Wi-Fi profiles and connect an exact saved profile without scanning nearby networks or exposing credentials
 - Inspect a window's virtual desktop and move it to a known desktop through the public Windows virtual-desktop API
 
 ### Desktop state and controls
@@ -75,6 +76,8 @@ Get-DesktopAudioEndpoint -DataFlow Render -State Active
 Get-DesktopPowerStatus
 Get-DesktopSession
 Get-DesktopRadio
+Get-DesktopWifiProfile
+Connect-DesktopWifiProfile -Name 'Corporate WiFi'
 Restore-DesktopWorkstationProfile -Name 'office' -Confirm
 ```
 
@@ -86,10 +89,14 @@ desktopmanager audio list --flow render --active
 desktopmanager system power
 desktopmanager system session
 desktopmanager radio list
+desktopmanager wifi profiles
+desktopmanager wifi connect --profile "Corporate WiFi"
 desktopmanager workstation apply --name office
 ```
 
 Radio control has two deliberately separate APIs. `RadioService` and the normal `radio list` / `radio set` commands use the supported `Windows.Devices.Radios` contract for individual radios. Global airplane mode uses an undocumented Windows shell COM contract, so it lives under `ExperimentalAirplaneModeService` and requires `--experimental` in the CLI, `-Experimental` in PowerShell, or `--allow-experimental` in MCP.
+
+Wi-Fi profile connection is separate from radio control. `WifiProfileService`, `Get-DesktopWifiProfile`, and `desktopmanager wifi profiles` enumerate only profiles already stored by Windows. Connecting an exact profile uses the Native Wi-Fi profile API and ACM completion notifications; it does not scan nearby networks, return BSSIDs, expose profile XML or credentials, or query location-sensitive current-connection details. Windows still requires location consent for nearby-network scanning and related Wi-Fi information APIs. See [Changes to API behavior for Wi-Fi access and location](https://learn.microsoft.com/windows/win32/nativewifi/wi-fi-access-location-changes).
 
 `VirtualDesktopService` exposes only the public Windows operations: check whether a top-level window is on the current desktop, get its desktop ID, and move it to a known desktop ID. Desktop enumeration, creation, renaming, switching, and removal are intentionally not presented as supported APIs.
 
@@ -218,6 +225,8 @@ The important part is that CLI, MCP, and PowerShell are meant to stay aligned by
 | Get-DesktopRadio | List radios through the supported Windows radio API |
 | Set-DesktopRadio | Explicitly enable or disable matching supported radios |
 | Register-DesktopRadioEvent | Subscribe to supported radio state changes |
+| Get-DesktopWifiProfile | List saved Windows Wi-Fi profiles without scanning nearby networks |
+| Connect-DesktopWifiProfile | Connect an exact saved Windows Wi-Fi profile |
 | Get-DesktopAirplaneMode | Read the experimental global airplane-mode state after explicit acknowledgement |
 | Set-DesktopAirplaneMode | Apply and verify experimental global airplane mode after explicit acknowledgement |
 | Get-DesktopVirtualDesktop | Inspect the supported virtual-desktop state for a top-level window |
@@ -670,4 +679,5 @@ DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0`, `ne
 - `SystemPowerService`, `DesktopSessionService`, and `DesktopSessionWatcher` for power and session state/actions.
 - `PersonalizationService`, `PersonalizationStateStore`, and `TaskbarService` for reversible user settings and taskbars.
 - `RadioService` for supported per-radio operations and `ExperimentalAirplaneModeService` for the separately acknowledged undocumented global switch.
+- `WifiProfileService` for saved-profile inventory and exact profile connection without nearby-network scanning.
 - `VirtualDesktopService` for the supported window-to-desktop operations.

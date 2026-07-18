@@ -26,7 +26,7 @@ flowchart TD
     E --> H["DesktopAutomationService"]
     E --> I["Monitor and screenshot services"]
     E --> J["WindowInputService and verification helpers"]
-    E --> L["Workstation, audio, power/session, personalization, taskbar, radio, and virtual-desktop services"]
+    E --> L["Workstation, audio, power/session, personalization, taskbar, radio, saved Wi-Fi profile, and virtual-desktop services"]
 ```
 ```
 

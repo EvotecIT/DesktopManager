@@ -77,6 +77,14 @@ Describe 'DesktopManager basic tests' {
         Get-Command Set-DefaultAudioDevice | Should -Not -BeNullOrEmpty
     }
 
+    It 'Exports Get-DesktopWifiProfile' {
+        Get-Command Get-DesktopWifiProfile | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Exports Connect-DesktopWifiProfile' {
+        Get-Command Connect-DesktopWifiProfile | Should -Not -BeNullOrEmpty
+    }
+
 
     It 'Exports Set-DesktopWindowText' {
         Get-Command Set-DesktopWindowText | Should -Not -BeNullOrEmpty

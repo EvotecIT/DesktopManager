@@ -11,6 +11,7 @@ DesktopManager keeps desktop-state behavior in the shared C# library. PowerShell
 | Power and session | `SystemPowerService`, `DesktopSessionService`, `DesktopSessionWatcher` | AC/battery status, bounded keep-awake leases, lock, sleep/hibernate, sign-out, session identity, connection, remote/console, lock, and meaningful state changes |
 | Personalization and taskbar | `PersonalizationService`, `PersonalizationStateStore`, `TaskbarService` | Reversible personalization snapshots, monitor wallpapers, theme and Start/taskbar settings, taskbar monitor mapping, visibility, position, bounds, and auto-hide |
 | Radios | `RadioService` | Supported Windows radio inventory, explicit On/Off requests, access results, and state change events |
+| Saved Wi-Fi profiles | `WifiProfileService` | Wireless interface and saved-profile inventory plus exact profile connection without nearby-network scanning or credential access |
 | Experimental airplane mode | `ExperimentalAirplaneModeService` | Explicit global Enabled/Disabled state through an undocumented Windows shell COM contract, followed by verification |
 | Virtual desktops | `VirtualDesktopService` | Current-desktop check, desktop ID lookup, and moving a top-level window to a known desktop ID |
 
@@ -95,6 +96,20 @@ AirplaneModeState observed = airplaneMode.SetState(AirplaneModeState.Enabled);
 ```
 
 That contract is undocumented and may change between Windows releases. The CLI requires `--experimental`, PowerShell requires `-Experimental`, the app requires an acknowledgement, and MCP requires `--allow-experimental`.
+
+## Saved Wi-Fi profile connections
+
+`WifiProfileService` uses the Windows Native Wi-Fi profile APIs. It lists profiles Windows already stores and connects one exact profile without calling the location-sensitive scan, available-network, BSSID, or current-connection APIs:
+
+```csharp
+using var wifi = new WifiProfileService();
+IReadOnlyList<DesktopWifiProfileInfo> profiles = wifi.GetProfiles();
+DesktopWifiConnectionResult result = await wifi.ConnectProfileAsync("Corporate WiFi");
+```
+
+Profile names follow Windows' case-sensitive matching rules. If the same profile name exists on multiple adapters, pass the intended interface ID. The service waits for WLAN Auto Configuration completion or failure notifications; cancellation or timeout stops that wait but cannot cancel an attempt already accepted by Windows.
+
+This is not a general location-permission bypass. Windows still requires location consent for nearby-network scans and related Wi-Fi information. The service does not return profile XML or credentials, and it is currently exposed through the C# library, PowerShell, and CLI rather than MCP.
 
 ## Supported virtual-desktop boundary
 
