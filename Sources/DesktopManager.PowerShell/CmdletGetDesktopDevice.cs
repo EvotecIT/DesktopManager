@@ -68,7 +68,7 @@ public sealed class CmdletGetDesktopDevice : PSCmdlet {
     [Parameter]
     public SwitchParameter IncludeProperties;
 
-    /// <summary>Gets matching device instances.</summary>
+    /// <summary>Validates command-wide device query options.</summary>
     protected override void BeginProcessing() {
         if (Present && NonPresent) {
             ThrowTerminatingError(new ErrorRecord(
@@ -77,6 +77,10 @@ public sealed class CmdletGetDesktopDevice : PSCmdlet {
                 ErrorCategory.InvalidArgument,
                 null));
         }
+    }
+
+    /// <summary>Gets matching device instances for the current pipeline record.</summary>
+    protected override void ProcessRecord() {
         var query = new DesktopDeviceQuery {
             InstanceId = InstanceId,
             DeviceId = DeviceId,

@@ -37,6 +37,17 @@ public sealed class PowerShellDeviceManagementSafetyTests {
         Assert.AreEqual(true, GetNamedArgument(attribute, "SupportsShouldProcess"));
     }
 
+    [TestMethod]
+    [DataRow(typeof(DesktopManager.PowerShell.CmdletGetDesktopDevice))]
+    [DataRow(typeof(DesktopManager.PowerShell.CmdletGetDesktopDriverPackage))]
+    public void PipelineBoundGettersProcessEachInputRecord(Type cmdletType) {
+        const BindingFlags methodFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
+        MethodInfo? processRecord = cmdletType.GetMethod("ProcessRecord", methodFlags);
+
+        Assert.IsNotNull(processRecord, $"{cmdletType.Name} must process property-bound pipeline input per record.");
+    }
+
     private static object? GetNamedArgument(CustomAttributeData attribute, string name) {
         CustomAttributeNamedArgument argument = attribute.NamedArguments.Single(item => item.MemberName == name);
         return argument.TypedValue.Value;

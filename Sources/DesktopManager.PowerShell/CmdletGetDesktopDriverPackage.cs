@@ -28,7 +28,7 @@ public sealed class CmdletGetDesktopDriverPackage : PSCmdlet {
     public SwitchParameter IncludeDevices;
 
     /// <summary>Gets matching Driver Store packages.</summary>
-    protected override void BeginProcessing() {
+    protected override void ProcessRecord() {
         WriteObject(new DeviceManagementService().GetDriverPackages(new DesktopDriverPackageQuery {
             PublishedInfName = PublishedInfName,
             ClassGuid = ClassGuid,
