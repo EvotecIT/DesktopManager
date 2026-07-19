@@ -65,6 +65,7 @@ It has following features:
 - Enumerate, observe, and explicitly enable or disable Wi-Fi, Bluetooth, mobile broadband, and FM radios through the supported Windows radio API
 - List saved Windows Wi-Fi profiles and connect an exact saved profile without scanning nearby networks or exposing credentials
 - Inspect a window's virtual desktop and move it to a known desktop through the public Windows virtual-desktop API
+- Inspect and manage Plug and Play devices and Driver Store packages through documented native Windows APIs
 
 ### Desktop state and controls
 
@@ -78,6 +79,8 @@ Get-DesktopSession
 Get-DesktopRadio
 Get-DesktopWifiProfile
 Connect-DesktopWifiProfile -Name 'Corporate WiFi'
+Get-DesktopDevice -Present -Problem
+Get-DesktopDriverPackage
 Restore-DesktopWorkstationProfile -Name 'office' -Confirm
 ```
 
@@ -91,6 +94,8 @@ desktopmanager system session
 desktopmanager radio list
 desktopmanager wifi profiles
 desktopmanager wifi connect --profile "Corporate WiFi"
+desktopmanager device list --present --problem
+desktopmanager driver list
 desktopmanager workstation apply --name office
 ```
 
@@ -106,6 +111,7 @@ Additional operator-focused docs for the newer CLI and MCP surfaces:
 - [Docs/DesktopManager.Mcp.md](Docs/DesktopManager.Mcp.md)
 - [Docs/DesktopManager.Architecture.md](Docs/DesktopManager.Architecture.md)
 - [Docs/DesktopManager.DesktopState.md](Docs/DesktopManager.DesktopState.md)
+- [Docs/DesktopManager.DeviceManagement.md](Docs/DesktopManager.DeviceManagement.md)
 - [Docs/DesktopManager.AutomationBasics.md](Docs/DesktopManager.AutomationBasics.md)
 - [Docs/DesktopManager.Plugin.md](Docs/DesktopManager.Plugin.md)
 - [.agents/skills/desktopmanager-operator/SKILL.md](.agents/skills/desktopmanager-operator/SKILL.md)

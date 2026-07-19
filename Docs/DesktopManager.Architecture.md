@@ -38,6 +38,7 @@ The important design choice is that DesktopManager tries hard to keep desktop be
 - The **PowerShell module** wraps that behavior in cmdlets and PowerShell-friendly records.
 - The **CLI** wraps it in command parsing, JSON/text formatting, and desktop-oriented workflows.
 - The **MCP server** is hosted by the CLI executable and reuses the same `DesktopOperations` layer as normal CLI commands.
+- Device and driver workflows route through **`DeviceManagementService`**. CLI and PowerShell expose guarded mutations, while MCP deliberately exposes only read-only inventory tools.
 - The **desktop app** uses the shared services directly. Its desktop-state tab is a separate control rather than another implementation inside the main hotkey window.
 
 ```mermaid

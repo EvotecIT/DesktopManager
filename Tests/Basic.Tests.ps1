@@ -85,6 +85,33 @@ Describe 'DesktopManager basic tests' {
         Get-Command Connect-DesktopWifiProfile | Should -Not -BeNullOrEmpty
     }
 
+    It 'Exports device and driver management cmdlets' {
+        $CommandNames = @(
+            'Add-DesktopDriverPackage'
+            'Disable-DesktopDevice'
+            'Enable-DesktopDevice'
+            'Export-DesktopDriverPackage'
+            'Get-DesktopDevice'
+            'Get-DesktopDeviceClass'
+            'Get-DesktopDeviceContainer'
+            'Get-DesktopDeviceDriver'
+            'Get-DesktopDriverPackage'
+            'Invoke-DesktopDeviceScan'
+            'New-DesktopRootDevice'
+            'Remove-DesktopDevice'
+            'Remove-DesktopDriverPackage'
+            'Restart-DesktopDevice'
+            'Restore-DesktopDeviceDriver'
+            'Set-DesktopDeviceClassFilter'
+            'Set-DesktopRootHardwareId'
+            'Update-DesktopDeviceDriver'
+        )
+
+        foreach ($CommandName in $CommandNames) {
+            Get-Command $CommandName | Should -Not -BeNullOrEmpty
+        }
+    }
+
 
     It 'Exports Set-DesktopWindowText' {
         Get-Command Set-DesktopWindowText | Should -Not -BeNullOrEmpty

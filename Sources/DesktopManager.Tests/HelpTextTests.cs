@@ -18,6 +18,8 @@ public class HelpTextTests {
     [DataRow("taskbar", "Taskbar commands:")]
     [DataRow("radio", "Radio commands:")]
     [DataRow("wifi", "Wi-Fi commands:")]
+    [DataRow("device", "desktopmanager device")]
+    [DataRow("driver", "desktopmanager driver")]
     [DataRow("virtual-desktop", "Virtual desktop commands:")]
     [DataRow("process", "Process commands:")]
     [DataRow("screenshot", "Screenshot commands:")]
@@ -67,6 +69,8 @@ public class HelpTextTests {
             "taskbar",
             "radio",
             "wifi",
+            "device",
+            "driver",
             "virtual-desktop",
             "process",
             "screenshot",
@@ -90,6 +94,19 @@ public class HelpTextTests {
         StringAssert.Contains(help, "desktopmanager wifi connect");
         StringAssert.Contains(help, "do not scan nearby networks");
         StringAssert.Contains(help, "profile XML or credentials");
+    }
+
+    [TestMethod]
+    public void GetDeviceManagementHelp_DescribesConfirmationExpertAndNoRebootBoundaries() {
+        string deviceHelp = global::DesktopManager.Cli.HelpText.GetDeviceHelp();
+        string driverHelp = global::DesktopManager.Cli.HelpText.GetDriverHelp();
+
+        StringAssert.Contains(deviceHelp, "require --confirm");
+        StringAssert.Contains(deviceHelp, "--expert");
+        StringAssert.Contains(deviceHelp, "never reboot Windows");
+        StringAssert.Contains(driverHelp, "require --confirm");
+        StringAssert.Contains(driverHelp, "--expert");
+        StringAssert.Contains(driverHelp, "No command reboots Windows");
     }
 
     [TestMethod]
