@@ -92,7 +92,7 @@ internal sealed partial class NativeDeviceManagementApi {
 
     public IReadOnlyList<DesktopDeviceClassInfo> GetDeviceClasses() {
         DeviceNativeMethods.SetupDiBuildClassInfoList(
-            DeviceNativeMethods.DibciNoInstallClass | DeviceNativeMethods.DibciNoDisplayClass,
+            0,
             null,
             0,
             out uint requiredSize);
@@ -101,7 +101,7 @@ internal sealed partial class NativeDeviceManagementApi {
         }
         var classGuids = new Guid[requiredSize];
         if (!DeviceNativeMethods.SetupDiBuildClassInfoList(
-            DeviceNativeMethods.DibciNoInstallClass | DeviceNativeMethods.DibciNoDisplayClass,
+            0,
             classGuids,
             requiredSize,
             out uint returnedSize)) {
@@ -155,7 +155,7 @@ internal sealed partial class NativeDeviceManagementApi {
                 typeof(DeviceNativeMethods.SpDrvInfoDetailData),
                 nameof(DeviceNativeMethods.SpDrvInfoDetailData.HardwareId)).ToInt32();
             string? hardwareId = Marshal.PtrToStringUni(IntPtr.Add(buffer, hardwareOffset));
-            string[] compatibleIds = ReadCompatibleIds(buffer, hardwareOffset, native);
+            string[] compatibleIds = ReadCompatibleIds(buffer, bufferSize, hardwareOffset, native);
             return new DriverDetail {
                 InfPath = native.InfFileName,
                 InfSection = native.SectionName,
@@ -167,15 +167,34 @@ internal sealed partial class NativeDeviceManagementApi {
         }
     }
 
-    private static string[] ReadCompatibleIds(
+    internal static string[] ReadCompatibleIds(
         IntPtr buffer,
+        int bufferSize,
         int hardwareOffset,
         DeviceNativeMethods.SpDrvInfoDetailData detail) {
         if (detail.CompatibleIdsLength == 0) {
             return Array.Empty<string>();
         }
-        IntPtr compatibleIds = IntPtr.Add(buffer, checked(hardwareOffset + (int)detail.CompatibleIdsOffset * 2));
-        string text = Marshal.PtrToStringUni(compatibleIds, checked((int)detail.CompatibleIdsLength)) ?? string.Empty;
+
+        int compatibleOffsetBytes;
+        int compatibleLength;
+        int compatibleLengthBytes;
+        int compatibleStart;
+        try {
+            compatibleOffsetBytes = checked((int)detail.CompatibleIdsOffset * sizeof(char));
+            compatibleLength = checked((int)detail.CompatibleIdsLength);
+            compatibleLengthBytes = checked(compatibleLength * sizeof(char));
+            compatibleStart = checked(hardwareOffset + compatibleOffsetBytes);
+        } catch (OverflowException) {
+            return Array.Empty<string>();
+        }
+        if (hardwareOffset < 0 || compatibleStart < hardwareOffset || compatibleStart > bufferSize ||
+            compatibleLengthBytes > bufferSize - compatibleStart) {
+            return Array.Empty<string>();
+        }
+
+        IntPtr compatibleIds = IntPtr.Add(buffer, compatibleStart);
+        string text = Marshal.PtrToStringUni(compatibleIds, compatibleLength) ?? string.Empty;
         return text.Split(new[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
     }
 

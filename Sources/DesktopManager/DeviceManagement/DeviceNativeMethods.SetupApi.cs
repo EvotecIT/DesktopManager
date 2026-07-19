@@ -7,8 +7,6 @@ internal static partial class DeviceNativeMethods {
     internal const uint DigcfPresent = 0x00000002;
     internal const uint DigcfAllClasses = 0x00000004;
     internal const uint DigcfDeviceInterface = 0x00000010;
-    internal const uint DibciNoInstallClass = 0x00000001;
-    internal const uint DibciNoDisplayClass = 0x00000002;
     internal const uint SpditCompatibleDriver = 0x00000002;
     internal const uint DifInstallDevice = 0x00000002;
     internal const uint DifPropertyChange = 0x00000012;

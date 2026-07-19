@@ -58,61 +58,9 @@ internal sealed partial class NativeDeviceManagementApi {
             if (result != DeviceNativeMethods.CrSuccess) {
                 return null;
             }
-            switch (resourceType) {
-                case DeviceNativeMethods.ResourceTypeMemory:
-                case DeviceNativeMethods.ResourceTypeLargeMemory:
-                    return RangeResource("Memory", buffer);
-                case DeviceNativeMethods.ResourceTypeIo:
-                    return RangeResource("IoPort", buffer);
-                case DeviceNativeMethods.ResourceTypeDma:
-                    return ScalarResource("Dma", buffer);
-                case DeviceNativeMethods.ResourceTypeIrq:
-                    return ScalarResource("Irq", buffer);
-                case DeviceNativeMethods.ResourceTypeBusNumber:
-                    return BusNumberResource(buffer);
-                default:
-                    return null;
-            }
+            return NativeDeviceResourceDecoder.Decode(resourceType, buffer, size);
         } finally {
             Marshal.FreeHGlobal(buffer);
         }
-    }
-
-    private static DesktopDeviceResourceInfo RangeResource(string kind, IntPtr buffer) {
-        ulong start = unchecked((ulong)Marshal.ReadInt64(buffer, 8));
-        ulong end = unchecked((ulong)Marshal.ReadInt64(buffer, 16));
-        uint flags = unchecked((uint)Marshal.ReadInt32(buffer, 24));
-        return new DesktopDeviceResourceInfo {
-            Kind = kind,
-            Start = start,
-            End = end,
-            Flags = flags,
-            DisplayValue = $"0x{start:X}-0x{end:X}"
-        };
-    }
-
-    private static DesktopDeviceResourceInfo ScalarResource(string kind, IntPtr buffer) {
-        uint flags = unchecked((uint)Marshal.ReadInt32(buffer, 8));
-        uint value = unchecked((uint)Marshal.ReadInt32(buffer, 12));
-        return new DesktopDeviceResourceInfo {
-            Kind = kind,
-            Start = value,
-            End = value,
-            Flags = flags,
-            DisplayValue = value.ToString(System.Globalization.CultureInfo.InvariantCulture)
-        };
-    }
-
-    private static DesktopDeviceResourceInfo BusNumberResource(IntPtr buffer) {
-        uint flags = unchecked((uint)Marshal.ReadInt32(buffer, 8));
-        uint start = unchecked((uint)Marshal.ReadInt32(buffer, 12));
-        uint end = unchecked((uint)Marshal.ReadInt32(buffer, 16));
-        return new DesktopDeviceResourceInfo {
-            Kind = "BusNumber",
-            Start = start,
-            End = end,
-            Flags = flags,
-            DisplayValue = start == end ? start.ToString() : $"{start}-{end}"
-        };
     }
 }
