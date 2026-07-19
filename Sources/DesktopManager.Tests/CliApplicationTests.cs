@@ -64,6 +64,8 @@ public class CliApplicationTests {
     [DataRow("desktop")]
     [DataRow("monitor")]
     [DataRow("wifi")]
+    [DataRow("device")]
+    [DataRow("driver")]
     [DataRow("process")]
     [DataRow("screenshot")]
     [DataRow("target")]
@@ -91,6 +93,8 @@ public class CliApplicationTests {
     [DataRow("desktop")]
     [DataRow("monitor")]
     [DataRow("wifi")]
+    [DataRow("device")]
+    [DataRow("driver")]
     [DataRow("process")]
     [DataRow("screenshot")]
     [DataRow("target")]
@@ -142,6 +146,44 @@ public class CliApplicationTests {
         Assert.AreEqual(1, exitCode);
         Assert.AreEqual(string.Empty, standardOutput);
         StringAssert.Contains(standardError, "Error: Option '--timeout-ms' expects a value greater than 0.");
+    }
+
+    [TestMethod]
+    [DataRow("device", "disable", "--instance-id", @"ROOT\TEST\0000")]
+    [DataRow("device", "scan", "--instance-id", @"ROOT\TEST\0000")]
+    [DataRow("driver", "stage", "--inf", @"C:\missing.inf")]
+    [DataRow("driver", "delete", "--published-name", "oem42.inf")]
+    public void Run_DeviceAndDriverMutationsWithoutConfirm_AreRejectedBeforeNativeAccess(
+        string group,
+        string action,
+        string option,
+        string value) {
+        (int exitCode, string standardOutput, string standardError) = RunCli(group, action, option, value);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "requires '--confirm'");
+    }
+
+    [TestMethod]
+    [DataRow("device", "disable", "--force")]
+    [DataRow("device", "remove", "--instance-id")]
+    [DataRow("driver", "install", "--force")]
+    [DataRow("driver", "create-root", "--inf")]
+    public void Run_ExpertDeviceAndDriverOperationsWithoutExpert_AreRejectedBeforeNativeAccess(
+        string group,
+        string action,
+        string option) {
+        (int exitCode, string standardOutput, string standardError) = RunCli(
+            group,
+            action,
+            option,
+            option == "--instance-id" ? @"ROOT\TEST\0000" : "value",
+            "--confirm");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(string.Empty, standardOutput);
+        StringAssert.Contains(standardError, "requires '--expert'");
     }
 
     [TestMethod]

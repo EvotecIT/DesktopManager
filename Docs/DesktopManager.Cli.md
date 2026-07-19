@@ -1,5 +1,7 @@
 # DesktopManager CLI MVP
 
+Device and Driver Store management is available through the `device` and `driver` groups. Read-only inventory accepts exact optional filters. Every mutation requires `--confirm`; force, subtree, ROOT-device, hardware-ID, and class-filter operations additionally require `--expert`. Commands return structured results and never reboot Windows. See [DesktopManager.DeviceManagement.md](DesktopManager.DeviceManagement.md) for the complete capability and DevCon/PnPUtil mapping.
+
 The repository now includes a `DesktopManager.Cli` project that exposes a small, noun-based command tree over the existing `DesktopManager` C# library.
 
 ## Goals

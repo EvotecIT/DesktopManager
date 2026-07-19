@@ -1,6 +1,6 @@
 namespace DesktopManager.Cli;
 
-internal static class HelpText {
+internal static partial class HelpText {
     public static string GetGeneralHelp() {
         return """
 desktopmanager - Windows desktop automation CLI
@@ -20,6 +20,8 @@ Groups:
   taskbar    Inspect and configure taskbars
   radio      Inspect and configure supported radios; opt in to experimental airplane mode
   wifi       List saved Wi-Fi profiles and connect an exact saved profile without scanning
+  device     Inspect and manage exact Plug and Play device instances
+  driver     Inspect and manage Windows Driver Store packages and device drivers
   virtual-desktop Use the supported Windows virtual-desktop window operations
   process    Start desktop applications
   screenshot Capture the desktop, monitors, or windows
@@ -53,6 +55,8 @@ Examples:
   desktopmanager system power
   desktopmanager radio list
   desktopmanager wifi profiles
+  desktopmanager device list --present
+  desktopmanager driver list
   desktopmanager layout save coding
   desktopmanager layout apply coding --validate
   desktopmanager layout assert coding --position-tolerance-px 50 --size-tolerance-px 50
@@ -72,6 +76,8 @@ Use:
   desktopmanager help taskbar
   desktopmanager help radio
   desktopmanager help wifi
+  desktopmanager help device
+  desktopmanager help driver
   desktopmanager help virtual-desktop
   desktopmanager help process
   desktopmanager help screenshot

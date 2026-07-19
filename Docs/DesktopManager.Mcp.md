@@ -11,6 +11,8 @@ For agent-driven desktop automation, prefer MCP first and use CLI as fallback.
 
 The MCP server starts in read-only inspection mode. Use `desktopmanager mcp serve --allow-mutations` when you intentionally want mutating tools. System-wide state changes also require `--allow-system-settings`; the undocumented global airplane-mode tools require `--allow-experimental`. Add `--allow-process <pattern>` or `--deny-process <pattern>` when a session should be constrained to specific apps, add `--allow-foreground-input` only when zero-handle UIA text or key actions may need focused fallback, and use `--dry-run` for mutation previews.
 
+Device management remains inventory-only in MCP. `list_devices`, `get_device`, `list_device_drivers`, `list_driver_packages`, `list_device_classes`, and `list_device_containers` are always read-only; native device and driver mutations stay on the confirmation-aware CLI and PowerShell surfaces. See [DesktopManager.DeviceManagement.md](DesktopManager.DeviceManagement.md).
+
 The stdio transport follows MCP revision `2025-06-18`: each UTF-8 JSON-RPC message is written on one line. JSON-RPC batches are not accepted by this protocol revision.
 
 ## Current MCP Tools

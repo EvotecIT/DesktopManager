@@ -9,6 +9,10 @@ internal static partial class McpCatalog {
                 error = null;
                 return true;
             }
+            if (TryCallDeviceManagementTool(name, arguments, out result)) {
+                error = null;
+                return true;
+            }
 
             result = name switch {
                 "get_active_window" => DesktopOperations.GetActiveWindow(),

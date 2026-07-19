@@ -8,6 +8,7 @@ internal static partial class McpCatalog {
         return CreateInspectionAndControlTools()
             .Concat(CreateWindowAndStorageTools())
             .Concat(CreateDesktopStateTools())
+            .Concat(CreateDeviceManagementTools())
             .ToArray();
     }
 
