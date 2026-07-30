@@ -43,26 +43,9 @@
         <Using Include="DesktopManager" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' != '$(DesktopManagerNet10WindowsTfm)'">
-        <!-- This is needed for XmlDoc2CmdletDoc to generate a PowerShell documentation. DLL itself
-        will be removed/hidden -->
-        <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.8.0">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
-
     <PropertyGroup>
-        <!-- This is needed for XmlDoc2CmdletDoc to generate a PowerShell documentation. -->
+        <!-- PowerForge enriches module help from the compiler XML documentation file. -->
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
-    <Target Name="CopyDocumentationToPublishFolder" AfterTargets="GenerateDocumentationFile;Publish">
-        <!-- This is needed for XmlDoc2CmdletDoc to copy a PowerShell documentation file to Publish
-        folder -->
-        <ItemGroup>
-            <DocFiles Include="$(OutputPath)$(AssemblyName).dll-Help.xml" />
-        </ItemGroup>
-        <Copy SourceFiles="@(DocFiles)" DestinationFolder="$(PublishDir)" />
-    </Target>
 </Project>
