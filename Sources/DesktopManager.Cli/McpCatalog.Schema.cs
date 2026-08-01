@@ -131,8 +131,7 @@ internal static partial class McpCatalog {
             ["maxTextLength"] = CreateIntegerSchema("Maximum plain-text characters returned per control."),
             ["expectedText"] = CreateStringSchema("Optional literal text to locate in the provider document."),
             ["ignoreCase"] = CreateBooleanSchema("Use ordinal case-insensitive text matching."),
-            ["includeTextRanges"] = CreateBooleanSchema("Include selection, caret, and composition ranges."),
-            ["realizeVirtualizedItem"] = CreateBooleanSchema("Realize a matching virtualized item before observing it.")
+            ["includeTextRanges"] = CreateBooleanSchema("Include selection, caret, and composition ranges.")
         };
 
         if (includeMultiple) {
@@ -163,7 +162,6 @@ internal static partial class McpCatalog {
         properties.Remove("expectedText");
         properties.Remove("ignoreCase");
         properties.Remove("includeTextRanges");
-        properties.Remove("realizeVirtualizedItem");
         properties["text"] = CreateStringSchema("Replacement or inserted text.");
         properties["mode"] = CreateStringSchema("ReplaceDocument, ReplaceSelection, or InsertAtCaret.");
         properties["expectedFingerprint"] = CreateStringSchema("Optional complete-content fingerprint that must still match before editing.");

@@ -17,6 +17,8 @@ internal sealed partial class UiAutomationControlService {
         bool selectCaretRange,
         bool deleteSelectionWhenEmpty,
         string expectedEditContextFingerprint,
+        string expectedContentFingerprint,
+        int? expectedCaretOffset,
         int maxTextLength) {
         if (window == null) {
             throw new ArgumentNullException(nameof(window));
@@ -34,6 +36,14 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentException("An edit context fingerprint is required.", nameof(expectedEditContextFingerprint));
         }
 
+        if (string.IsNullOrWhiteSpace(expectedContentFingerprint)) {
+            throw new ArgumentException("A content fingerprint is required.", nameof(expectedContentFingerprint));
+        }
+
+        if (selectCaretRange && !expectedCaretOffset.HasValue) {
+            throw new ArgumentException("An expected caret offset is required for insertion.", nameof(expectedCaretOffset));
+        }
+
         ValidateTextReadLength(maxTextLength);
 
         return RunInSta(service => service.TryPasteTextAtSelectionCore(
@@ -44,6 +54,8 @@ internal sealed partial class UiAutomationControlService {
             selectCaretRange,
             deleteSelectionWhenEmpty,
             expectedEditContextFingerprint,
+            expectedContentFingerprint,
+            expectedCaretOffset,
             maxTextLength), window.Handle, isMutation: true);
     }
 
@@ -55,6 +67,8 @@ internal sealed partial class UiAutomationControlService {
         bool selectCaretRange,
         bool deleteSelectionWhenEmpty,
         string expectedEditContextFingerprint,
+        string expectedContentFingerprint,
+        int? expectedCaretOffset,
         int maxTextLength) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
@@ -86,14 +100,22 @@ internal sealed partial class UiAutomationControlService {
             return UiAutomationTextEditAttempt.Failed("foreground-required");
         }
 
-        if (selectCaretRange && !TrySelectCurrentCaret(element)) {
-            return UiAutomationTextEditAttempt.Failed("caret-unavailable");
-        }
-
-        string currentEditContextFingerprint = ReadCurrentEditContextFingerprint(element, maxTextLength);
+        DesktopControlTextObservation currentContext = ReadCurrentEditContext(element, maxTextLength);
+        string currentEditContextFingerprint = currentContext.EditContextFingerprint;
         if (string.IsNullOrWhiteSpace(currentEditContextFingerprint) ||
             !string.Equals(currentEditContextFingerprint, expectedEditContextFingerprint, StringComparison.OrdinalIgnoreCase)) {
             return UiAutomationTextEditAttempt.Failed("edit-context-changed", currentEditContextFingerprint);
+        }
+
+        if (selectCaretRange) {
+            if (!expectedCaretOffset.HasValue || !TrySelectCurrentCaret(element)) {
+                return UiAutomationTextEditAttempt.Failed("caret-unavailable");
+            }
+
+            DesktopControlTextObservation collapsedContext = ReadCurrentEditContext(element, maxTextLength);
+            if (!IsExpectedCollapsedCaret(collapsedContext, expectedContentFingerprint, expectedCaretOffset.Value)) {
+                return UiAutomationTextEditAttempt.Failed("edit-context-changed", collapsedContext.EditContextFingerprint);
+            }
         }
 
         if (value.Length == 0) {
@@ -128,7 +150,26 @@ internal sealed partial class UiAutomationControlService {
         }
     }
 
-    private string ReadCurrentEditContextFingerprint(object element, int maxTextLength) {
+    internal static bool IsExpectedCollapsedCaret(
+        DesktopControlTextObservation observation,
+        string expectedContentFingerprint,
+        int expectedCaretOffset) {
+        if (!observation.IsComplete ||
+            !string.Equals(observation.ContentFingerprint, expectedContentFingerprint, StringComparison.OrdinalIgnoreCase) ||
+            observation.CaretOffset != expectedCaretOffset) {
+            return false;
+        }
+
+        foreach (DesktopTextRangeObservation range in observation.SelectionRanges) {
+            if (range.Length != 0 || range.Offset != expectedCaretOffset) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private DesktopControlTextObservation ReadCurrentEditContext(object element, int maxTextLength) {
         var errors = new System.Collections.Generic.List<string>();
         Dictionary<string, object> patterns = ReadObservationPatterns(element, errors);
         var options = new DesktopControlObservationOptions {
@@ -136,8 +177,7 @@ internal sealed partial class UiAutomationControlService {
             IncludeTextRanges = true,
             IncludeSemanticState = false
         };
-        DesktopControlTextObservation observation = ReadControlTextObservation(element, patterns, options, errors);
-        return observation.EditContextFingerprint;
+        return ReadControlTextObservation(element, patterns, options, errors);
     }
 
     private bool TrySelectCurrentCaret(object element) {

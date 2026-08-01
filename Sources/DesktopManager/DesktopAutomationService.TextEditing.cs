@@ -249,8 +249,12 @@ public sealed partial class DesktopAutomationService {
                     request.Text,
                     request.EnsureForegroundWindow,
                     selectCaretRange: selectCaret,
-                    deleteSelectionWhenEmpty: request.Mode == DesktopTextEditMode.ReplaceSelection,
+                    deleteSelectionWhenEmpty: request.Mode == DesktopTextEditMode.ReplaceSelection &&
+                        before.Text.SelectionRanges.Count == 1 &&
+                        before.Text.SelectionRanges[0].Length > 0,
                     expectedEditContextFingerprint: expectedEditContextFingerprint,
+                    expectedContentFingerprint: before.Text.ContentFingerprint,
+                    expectedCaretOffset: selectCaret ? before.Text.CaretOffset : null,
                     maxTextLength: settings.MaxTextLength);
                 applied = attempt.Applied;
                 method = applied

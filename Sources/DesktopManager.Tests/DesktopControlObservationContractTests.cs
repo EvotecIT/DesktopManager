@@ -206,6 +206,28 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void UiAutomationControlService_IsExpectedCollapsedCaret_RequiresSameContentCaretAndCollapsedRanges() {
+        string contentFingerprint = DesktopTextObservationBuilder.CreateFingerprint("alpha beta gamma");
+        var observation = new DesktopControlTextObservation {
+            IsComplete = true,
+            ContentFingerprint = contentFingerprint,
+            CaretOffset = 11,
+            SelectionRanges = new[] {
+                new DesktopTextRangeObservation { Offset = 11, Length = 0 }
+            }
+        };
+
+        Assert.IsTrue(UiAutomationControlService.IsExpectedCollapsedCaret(observation, contentFingerprint, 11));
+        observation.SelectionRanges = new[] {
+            new DesktopTextRangeObservation { Offset = 7, Length = 4, Text = "beta" }
+        };
+        Assert.IsFalse(UiAutomationControlService.IsExpectedCollapsedCaret(observation, contentFingerprint, 11));
+        observation.SelectionRanges = Array.Empty<DesktopTextRangeObservation>();
+        Assert.IsFalse(UiAutomationControlService.IsExpectedCollapsedCaret(observation, contentFingerprint, 10));
+        Assert.IsFalse(UiAutomationControlService.IsExpectedCollapsedCaret(observation, new string('0', 64), 11));
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_MatchesObservedIdentity_PrefersRuntimeIdOverHandle() {
         var control = new WindowControlInfo {
             Handle = new IntPtr(42),

@@ -21,14 +21,14 @@ public class McpCatalogTests {
         Assert.IsTrue(wait.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("minimumRangeValue", out _));
         JsonElement waitProperties = wait.GetProperty("inputSchema").GetProperty("properties");
         Assert.IsTrue(waitProperties.TryGetProperty("includeTextRanges", out _));
-        Assert.IsTrue(waitProperties.TryGetProperty("realizeVirtualizedItem", out _));
+        Assert.IsFalse(observe.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("realizeVirtualizedItem", out _));
+        Assert.IsFalse(waitProperties.TryGetProperty("realizeVirtualizedItem", out _));
         JsonElement editProperties = edit.GetProperty("inputSchema").GetProperty("properties");
         Assert.IsTrue(editProperties.TryGetProperty("expectedFingerprint", out _));
         Assert.IsTrue(editProperties.TryGetProperty("expectedEditContextFingerprint", out _));
         Assert.IsFalse(editProperties.TryGetProperty("expectedText", out _));
         Assert.IsFalse(editProperties.TryGetProperty("ignoreCase", out _));
         Assert.IsFalse(editProperties.TryGetProperty("includeTextRanges", out _));
-        Assert.IsFalse(editProperties.TryGetProperty("realizeVirtualizedItem", out _));
         Assert.IsTrue(DesktopManager.Cli.McpCatalog.AffectsLiveDesktop("edit_control_text"));
     }
 

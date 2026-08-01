@@ -87,7 +87,7 @@ internal static partial class McpCatalog {
                     ReadOptionalString(arguments, "expectedText"),
                     ReadBool(arguments, "ignoreCase"),
                     !TryReadProperty(arguments, "includeTextRanges", out _) || ReadBool(arguments, "includeTextRanges"),
-                    ReadBool(arguments, "realizeVirtualizedItem"),
+                    realizeVirtualizedItem: false,
                     ReadBool(arguments, "allWindows")),
                 "wait_for_control_observation" => DesktopOperations.WaitForControlObservation(
                     ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),
@@ -95,7 +95,7 @@ internal static partial class McpCatalog {
                     ReadControlObservationCondition(arguments),
                     ReadInt(arguments, "maxTextLength") ?? 4096,
                     !TryReadProperty(arguments, "includeTextRanges", out _) || ReadBool(arguments, "includeTextRanges"),
-                    ReadBool(arguments, "realizeVirtualizedItem"),
+                    realizeVirtualizedItem: false,
                     ReadInt(arguments, "timeoutMs") ?? 10000,
                     ReadInt(arguments, "intervalMs") ?? 200),
                 "get_control_state" => DesktopOperations.GetControlState(

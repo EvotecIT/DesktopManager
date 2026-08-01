@@ -106,6 +106,20 @@ public class DesktopWpfControlObservationTests {
             allControls: false).Single();
         Assert.IsTrue(caret.Text.CaretOffset.HasValue, caret.FailureReason);
 
+        DesktopTextEditResult emptyCollapsedReplacement = automation.EditControlText(
+            caret,
+            new DesktopTextEditRequest {
+                Text = string.Empty,
+                Mode = DesktopTextEditMode.ReplaceSelection,
+                ExpectedFingerprint = caret.Text.ContentFingerprint,
+                EnsureForegroundWindow = true,
+                AllowForegroundInputFallback = true
+            },
+            options);
+        Assert.IsTrue(emptyCollapsedReplacement.Success, emptyCollapsedReplacement.FailureReason);
+        Assert.AreEqual(caret.Text.Value, emptyCollapsedReplacement.After!.Text.Value);
+        caret = emptyCollapsedReplacement.After;
+
         DesktopTextEditResult insert = automation.EditControlText(
             caret,
             new DesktopTextEditRequest {
