@@ -1358,14 +1358,7 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private static bool ContainsEquivalentControl(List<WindowControlInfo> controls, WindowControlInfo candidate) {
-        return controls.Any(existing =>
-            (existing.Handle != IntPtr.Zero &&
-            candidate.Handle != IntPtr.Zero &&
-            existing.Handle == candidate.Handle) ||
-            (string.Equals(existing.AutomationId, candidate.AutomationId, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.ControlType, candidate.ControlType, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.Text, candidate.Text, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.ClassName, candidate.ClassName, StringComparison.OrdinalIgnoreCase)));
+        return controls.Any(existing => WindowManager.AreEquivalentControls(existing, candidate));
     }
 
     private WindowControlInfo? CreateControlInfo(object element, bool readValue = true) {
@@ -1402,6 +1395,7 @@ internal sealed partial class UiAutomationControlService {
             Text = isPassword == true ? string.Empty : name,
             Value = value,
             Source = WindowControlSource.UiAutomation,
+            HasUiAutomationIdentity = true,
             AutomationId = automationId,
             ControlType = controlType,
             FrameworkId = frameworkId,

@@ -638,8 +638,9 @@ public sealed class DesktopAutomationService {
         bool isPassword = automationText?.IsPassword == true || control?.IsPassword == true;
         string liveText = string.Empty;
         bool nativeTextTruncated = false;
-        if (!isPassword && automationText == null && focusedHandle != IntPtr.Zero) {
-            liveText = WindowTextHelper.GetWindowText(focusedHandle, maxObservedTextLength, out nativeTextTruncated);
+        IntPtr nativeTextHandle = ResolveNativeTextHandle(automationResult, focusedHandle);
+        if (!isPassword && automationText == null && nativeTextHandle != IntPtr.Zero) {
+            liveText = WindowTextHelper.GetWindowText(nativeTextHandle, maxObservedTextLength, out nativeTextTruncated);
         }
         string controlText = isPassword
             ? string.Empty
@@ -673,6 +674,12 @@ public sealed class DesktopAutomationService {
     }
 
     internal static IntPtr ResolveFocusedControlHandle(UiAutomationFocusedControlResult? automationResult, IntPtr nativeFocusedHandle) {
+        return automationResult != null
+            ? automationResult.Control?.Handle ?? IntPtr.Zero
+            : nativeFocusedHandle;
+    }
+
+    internal static IntPtr ResolveNativeTextHandle(UiAutomationFocusedControlResult? automationResult, IntPtr nativeFocusedHandle) {
         return automationResult != null
             ? automationResult.Control?.Handle ?? IntPtr.Zero
             : nativeFocusedHandle;

@@ -20,6 +20,7 @@ public class WindowControlInfo {
     public string Value { get; internal set; } = string.Empty;
     /// <summary>Origin of the control metadata.</summary>
     public WindowControlSource Source { get; internal set; } = WindowControlSource.Win32;
+    internal bool HasUiAutomationIdentity { get; set; }
     /// <summary>UI Automation automation identifier when available.</summary>
     public string AutomationId { get; internal set; } = string.Empty;
     /// <summary>UI Automation control type when available.</summary>

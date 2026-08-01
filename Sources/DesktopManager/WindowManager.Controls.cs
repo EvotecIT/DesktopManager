@@ -215,14 +215,7 @@ public partial class WindowManager {
         merged.AddRange(win32Controls);
 
         foreach (WindowControlInfo uiAutomationControl in uiAutomationControls) {
-            WindowControlInfo? existing = merged.FirstOrDefault(candidate =>
-                (candidate.Handle != IntPtr.Zero &&
-                uiAutomationControl.Handle != IntPtr.Zero &&
-                candidate.Handle == uiAutomationControl.Handle) ||
-                (string.Equals(candidate.AutomationId, uiAutomationControl.AutomationId, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(candidate.ControlType, uiAutomationControl.ControlType, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(candidate.Text, uiAutomationControl.Text, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(candidate.ClassName, uiAutomationControl.ClassName, StringComparison.OrdinalIgnoreCase)));
+            WindowControlInfo? existing = merged.FirstOrDefault(candidate => AreEquivalentControls(candidate, uiAutomationControl));
             if (existing == null) {
                 merged.Add(uiAutomationControl);
                 continue;
@@ -232,6 +225,41 @@ public partial class WindowManager {
         }
 
         return merged;
+    }
+
+    internal static bool AreEquivalentControls(WindowControlInfo existing, WindowControlInfo candidate) {
+        if (existing.Handle != IntPtr.Zero &&
+            candidate.Handle != IntPtr.Zero &&
+            existing.Handle == candidate.Handle) {
+            return true;
+        }
+
+        bool metadataMatches = string.Equals(existing.AutomationId, candidate.AutomationId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.ControlType, candidate.ControlType, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.Text, candidate.Text, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(existing.ClassName, candidate.ClassName, StringComparison.OrdinalIgnoreCase);
+        if (!metadataMatches) {
+            return false;
+        }
+
+        if (existing.IsPassword == true || candidate.IsPassword == true) {
+            return existing.IsPassword == true &&
+                candidate.IsPassword == true &&
+                existing.Handle == IntPtr.Zero &&
+                candidate.Handle == IntPtr.Zero &&
+                HasUsableBounds(existing) &&
+                HasUsableBounds(candidate) &&
+                existing.Left == candidate.Left &&
+                existing.Top == candidate.Top &&
+                existing.Width == candidate.Width &&
+                existing.Height == candidate.Height;
+        }
+
+        return true;
+    }
+
+    private static bool HasUsableBounds(WindowControlInfo control) {
+        return control.Width > 0 && control.Height > 0;
     }
 
     internal static void MergeControlMetadata(WindowControlInfo target, WindowControlInfo source) {
@@ -250,6 +278,10 @@ public partial class WindowManager {
         if (string.IsNullOrWhiteSpace(target.FrameworkId)) {
             target.FrameworkId = source.FrameworkId;
         }
+
+        target.HasUiAutomationIdentity = target.HasUiAutomationIdentity ||
+            source.HasUiAutomationIdentity ||
+            source.Source == WindowControlSource.UiAutomation;
 
         if (!target.IsKeyboardFocusable.HasValue) {
             target.IsKeyboardFocusable = source.IsKeyboardFocusable;

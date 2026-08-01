@@ -55,7 +55,7 @@ internal sealed partial class UiAutomationControlService {
         }
 
         ValidateTextReadLength(maxLength);
-        if (!IsAvailable || control.Source != WindowControlSource.UiAutomation) {
+        if (!IsAvailable || (control.Source != WindowControlSource.UiAutomation && !control.HasUiAutomationIdentity)) {
             return null;
         }
 

@@ -356,6 +356,75 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures native text fallback never reads a top-level handle for a handleless UI Automation child.
+    /// </summary>
+    public void DesktopAutomationService_ResolveNativeTextHandle_HandlelessUiAutomationControl_ReturnsZero() {
+        UiAutomationFocusedControlResult automationResult = new() {
+            Control = new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                AutomationId = "RichEditor",
+                ControlType = "Document"
+            }
+        };
+
+        IntPtr result = DesktopAutomationService.ResolveNativeTextHandle(automationResult, new IntPtr(1234));
+
+        Assert.AreEqual(IntPtr.Zero, result);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures exactly bounded native text is not marked truncated when the length API is unavailable.
+    /// </summary>
+    public void WindowTextHelper_CreateBoundedTextResult_ExactUnknownLength_IsNotTruncated() {
+        string result = WindowTextHelper.CreateBoundedTextResult("123456", reportedLength: 0, maxLength: 6, out bool isTruncated);
+
+        Assert.AreEqual("123456", result);
+        Assert.IsFalse(isTruncated);
+        Assert.AreEqual(8, WindowTextHelper.GetBoundedTextCapacity(reportedLength: 0, maxLength: 6));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures the extra native probe character is removed and reports truncation.
+    /// </summary>
+    public void WindowTextHelper_CreateBoundedTextResult_ProbeCharacter_IsTruncated() {
+        string result = WindowTextHelper.CreateBoundedTextResult("1234567", reportedLength: 0, maxLength: 6, out bool isTruncated);
+
+        Assert.AreEqual("123456", result);
+        Assert.IsTrue(isTruncated);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures privacy-safe bounds keep distinct handleless password controls separate.
+    /// </summary>
+    public void WindowManager_AreEquivalentControls_DistinctPasswordBounds_ReturnsFalse() {
+        WindowControlInfo first = CreatePasswordControl(left: 10);
+        WindowControlInfo second = CreatePasswordControl(left: 40);
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        Assert.IsTrue(WindowManager.AreEquivalentControls(first, CreatePasswordControl(left: 10)));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures merged native controls retain explicit UI Automation provenance for TextPattern reads.
+    /// </summary>
+    public void WindowManager_MergeControlMetadata_UiAutomationSource_PreservesUiAutomationIdentity() {
+        WindowControlInfo native = new() { Source = WindowControlSource.Win32 };
+        WindowControlInfo automation = new() {
+            Source = WindowControlSource.UiAutomation,
+            ControlType = "Document"
+        };
+
+        WindowManager.MergeControlMetadata(native, automation);
+
+        Assert.IsTrue(native.HasUiAutomationIdentity);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures password controls are excluded from editable text observation candidates.
     /// </summary>
     public void DesktopAutomationService_IsEditableTextCandidate_PasswordControl_ReturnsFalse() {
@@ -639,6 +708,21 @@ public class DesktopAutomationObservationTests {
         }, 3000, 50);
 
         Assert.IsTrue(result.ElapsedMilliseconds >= 0);
+    }
+
+    private static WindowControlInfo CreatePasswordControl(int left) {
+        return new WindowControlInfo {
+            Handle = IntPtr.Zero,
+            AutomationId = string.Empty,
+            ClassName = string.Empty,
+            ControlType = "Edit",
+            Text = string.Empty,
+            IsPassword = true,
+            Left = left,
+            Top = 10,
+            Width = 20,
+            Height = 20
+        };
     }
 
     private sealed class TextPatternRangeStub {

@@ -52,19 +52,23 @@ public static class WindowTextHelper {
         }
 
         int reportedLength = MonitorNativeMethods.GetWindowTextLength(handle);
-        int boundedLength = reportedLength > 0 ? Math.Min(reportedLength, maxLength) : maxLength;
-        int capacity = boundedLength == int.MaxValue ? int.MaxValue : boundedLength + 1;
+        int capacity = GetBoundedTextCapacity(reportedLength, maxLength);
         var builder = new StringBuilder(capacity);
         int copied = MonitorNativeMethods.GetWindowText(handle, builder, builder.Capacity);
         string value = copied > 0
             ? builder.ToString()
             : GetViaMessage(handle, capacity);
-        if (value.Length > maxLength) {
-            value = value.Substring(0, maxLength);
-        }
+        return CreateBoundedTextResult(value, reportedLength, maxLength, out isTruncated);
+    }
 
-        isTruncated = reportedLength > maxLength || (reportedLength <= 0 && value.Length >= maxLength);
-        return value;
+    internal static int GetBoundedTextCapacity(int reportedLength, int maxLength) {
+        int boundedLength = reportedLength > 0 ? Math.Min(reportedLength, maxLength) : maxLength;
+        return reportedLength > 0 ? boundedLength + 1 : boundedLength + 2;
+    }
+
+    internal static string CreateBoundedTextResult(string value, int reportedLength, int maxLength, out bool isTruncated) {
+        isTruncated = reportedLength > maxLength || value.Length > maxLength;
+        return value.Length > maxLength ? value.Substring(0, maxLength) : value;
     }
 
     private static string GetViaMessage(IntPtr handle, int capacity) {
