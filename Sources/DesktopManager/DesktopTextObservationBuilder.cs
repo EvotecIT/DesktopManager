@@ -16,6 +16,7 @@ internal static class DesktopTextObservationBuilder {
             ignoreCase: false,
             maxMatches: 0,
             contextLength: 0);
+        observation.IsComplete = false;
         observation.ContentFingerprint = string.Empty;
         return observation;
     }

@@ -44,7 +44,7 @@ internal sealed partial class UiAutomationControlService {
             selectCaretRange,
             deleteSelectionWhenEmpty,
             expectedEditContextFingerprint,
-            maxTextLength), window.Handle);
+            maxTextLength), window.Handle, isMutation: true);
     }
 
     private UiAutomationTextEditAttempt TryPasteTextAtSelectionCore(

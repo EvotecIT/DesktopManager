@@ -48,7 +48,7 @@ public sealed partial class DesktopAutomationService {
             return CreateTextEditFailure("window-not-found", ex.Message);
         }
 
-        WindowControlInfo? control = GetControls(
+        WindowControlInfo? control = GetObservationTargets(
                 new WindowQueryOptions {
                     Handle = window.Handle,
                     IncludeHidden = true,
@@ -60,6 +60,7 @@ public sealed partial class DesktopAutomationService {
                     UseUiAutomation = settings.UseUiAutomation,
                     IncludeUiAutomation = settings.UseUiAutomation
                 },
+                settings,
                 allWindows: false,
                 allControls: true)
             .Select(target => target.Control)
@@ -87,7 +88,12 @@ public sealed partial class DesktopAutomationService {
 
         ValidateTextEditRequest(request);
         DesktopControlObservationOptions settings = CreateTextEditObservationOptions(observationOptions, request.Text.Length);
-        WindowControlTargetInfo? target = GetControls(windowOptions, controlOptions, allWindows: false, allControls: false).FirstOrDefault();
+        WindowControlTargetInfo? target = GetObservationTargets(
+            windowOptions,
+            controlOptions,
+            settings,
+            allWindows: false,
+            allControls: false).FirstOrDefault();
         return target == null
             ? CreateTextEditFailure("control-not-found", "No matching control was found.")
             : EditResolvedControlText(target.Window, target.Control, request, settings, priorEditContextFingerprint: null);
@@ -120,7 +126,12 @@ public sealed partial class DesktopAutomationService {
             ? new UiAutomationControlService().TryGetFocusedControl(window.Handle, focusedHandle, settings.MaxTextLength, settings.ExpectedText)?.Control
             : null;
         if (control == null && focusedHandle != IntPtr.Zero && settings.IncludeNativeFallback) {
-            control = GetControl(window.Handle, focusedHandle, useUiAutomation: false, includeUiAutomation: false);
+            control = GetControl(
+                window.Handle,
+                focusedHandle,
+                useUiAutomation: false,
+                includeUiAutomation: false,
+                maxTextLength: settings.MaxTextLength);
         }
 
         return control == null
@@ -203,57 +214,63 @@ public sealed partial class DesktopAutomationService {
         bool applied = false;
         string method = string.Empty;
         var uiAutomation = new UiAutomationControlService();
-        if (request.Mode == DesktopTextEditMode.ReplaceDocument) {
-            if (settings.UseUiAutomation && uiAutomation.TrySetValue(window, control, request.Text)) {
-                applied = true;
-                method = "uia.value";
-            } else if (control.Handle != IntPtr.Zero) {
-                try {
-                    _windowManager.SetControlText(control, request.Text);
+        try {
+            if (request.Mode == DesktopTextEditMode.ReplaceDocument) {
+                if (settings.UseUiAutomation && uiAutomation.TrySetValue(window, control, request.Text)) {
                     applied = true;
-                    method = "win32.message";
-                } catch {
-                    applied = false;
+                    method = "uia.value";
+                } else if (control.Handle != IntPtr.Zero) {
+                    try {
+                        _windowManager.SetControlText(control, request.Text);
+                        applied = true;
+                        method = "win32.message";
+                    } catch {
+                        applied = false;
+                    }
+                }
+
+                if (!applied && request.AllowForegroundInputFallback) {
+                    applied = uiAutomation.TrySetText(window, control, request.Text, request.EnsureForegroundWindow);
+                    method = applied ? "foreground.replaceDocument" : string.Empty;
+                }
+            } else {
+                if (!request.AllowForegroundInputFallback) {
+                    DesktopTextEditResult blocked = CreateTextEditFailure(
+                        "foreground-input-required",
+                        "Selection and caret edits require explicit foreground-input fallback authorization.");
+                    blocked.Before = before;
+                    return blocked;
+                }
+
+                bool selectCaret = request.Mode == DesktopTextEditMode.InsertAtCaret;
+                UiAutomationTextEditAttempt attempt = uiAutomation.TryPasteTextAtSelection(
+                    window,
+                    control,
+                    request.Text,
+                    request.EnsureForegroundWindow,
+                    selectCaretRange: selectCaret,
+                    deleteSelectionWhenEmpty: request.Mode == DesktopTextEditMode.ReplaceSelection,
+                    expectedEditContextFingerprint: expectedEditContextFingerprint,
+                    maxTextLength: settings.MaxTextLength);
+                applied = attempt.Applied;
+                method = applied
+                    ? request.Mode == DesktopTextEditMode.ReplaceSelection
+                        ? "foreground.replaceSelection"
+                        : "foreground.insertAtCaret"
+                    : string.Empty;
+                if (!applied && string.Equals(attempt.FailureCode, "edit-context-changed", StringComparison.Ordinal)) {
+                    DesktopTextEditResult changed = CreateTextEditFailure(
+                        attempt.FailureCode,
+                        $"The selection or caret changed before foreground input was applied (expected {expectedEditContextFingerprint}, observed {attempt.ObservedEditContextFingerprint}).");
+                    changed.Before = before;
+                    changed.PreconditionMatched = false;
+                    return changed;
                 }
             }
-
-            if (!applied && request.AllowForegroundInputFallback) {
-                applied = uiAutomation.TrySetText(window, control, request.Text, request.EnsureForegroundWindow);
-                method = applied ? "foreground.replaceDocument" : string.Empty;
-            }
-        } else {
-            if (!request.AllowForegroundInputFallback) {
-                DesktopTextEditResult blocked = CreateTextEditFailure(
-                    "foreground-input-required",
-                    "Selection and caret edits require explicit foreground-input fallback authorization.");
-                blocked.Before = before;
-                return blocked;
-            }
-
-            bool selectCaret = request.Mode == DesktopTextEditMode.InsertAtCaret;
-            UiAutomationTextEditAttempt attempt = uiAutomation.TryPasteTextAtSelection(
-                window,
-                control,
-                request.Text,
-                request.EnsureForegroundWindow,
-                selectCaretRange: selectCaret,
-                deleteSelectionWhenEmpty: request.Mode == DesktopTextEditMode.ReplaceSelection,
-                expectedEditContextFingerprint: expectedEditContextFingerprint,
-                maxTextLength: settings.MaxTextLength);
-            applied = attempt.Applied;
-            method = applied
-                ? request.Mode == DesktopTextEditMode.ReplaceSelection
-                    ? "foreground.replaceSelection"
-                    : "foreground.insertAtCaret"
-                : string.Empty;
-            if (!applied && string.Equals(attempt.FailureCode, "edit-context-changed", StringComparison.Ordinal)) {
-                DesktopTextEditResult changed = CreateTextEditFailure(
-                    attempt.FailureCode,
-                    $"The selection or caret changed before foreground input was applied (expected {expectedEditContextFingerprint}, observed {attempt.ObservedEditContextFingerprint}).");
-                changed.Before = before;
-                changed.PreconditionMatched = false;
-                return changed;
-            }
+        } catch (UiAutomationOperationInFlightException ex) {
+            DesktopTextEditResult uncertain = CreateTextEditFailure("mutation-outcome-unknown", ex.Message);
+            uncertain.Before = before;
+            return uncertain;
         }
 
         if (!applied) {
@@ -390,6 +407,10 @@ public sealed partial class DesktopAutomationService {
     private static void ValidateTextEditRequest(DesktopTextEditRequest request) {
         if (request.Text == null) {
             throw new ArgumentNullException(nameof(request.Text));
+        }
+
+        if (!Enum.IsDefined(typeof(DesktopTextEditMode), request.Mode)) {
+            throw new ArgumentOutOfRangeException(nameof(request.Mode), "Mode must be ReplaceDocument, ReplaceSelection, or InsertAtCaret.");
         }
 
         if (request.VerificationTimeoutMilliseconds < 0) {

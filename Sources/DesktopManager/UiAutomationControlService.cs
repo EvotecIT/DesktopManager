@@ -130,7 +130,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryInvokeCore(window, control), window.Handle);
+        return RunInSta(service => service.TryInvokeCore(window, control), window.Handle, isMutation: true);
     }
 
     public bool TrySetValue(WindowInfo window, WindowControlInfo control, string value) {
@@ -146,7 +146,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(value));
         }
 
-        return RunInSta(service => service.TrySetValueCore(window, control, value), window.Handle);
+        return RunInSta(service => service.TrySetValueCore(window, control, value), window.Handle, isMutation: true);
     }
 
     public bool TrySetText(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
@@ -162,7 +162,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(value));
         }
 
-        return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow), window.Handle);
+        return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow), window.Handle, isMutation: true);
     }
 
     public bool TrySetCheckState(WindowInfo window, WindowControlInfo control, bool check) {
@@ -174,7 +174,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TrySetCheckStateCore(window, control, check), window.Handle);
+        return RunInSta(service => service.TrySetCheckStateCore(window, control, check), window.Handle, isMutation: true);
     }
 
     public bool TrySetSelectedValue(WindowInfo window, WindowControlInfo control, string selectedValue) {
@@ -190,7 +190,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(selectedValue));
         }
 
-        return RunInSta(service => service.TrySetSelectedValueCore(window, control, selectedValue), window.Handle);
+        return RunInSta(service => service.TrySetSelectedValueCore(window, control, selectedValue), window.Handle, isMutation: true);
     }
 
     public bool TrySendKeys(WindowInfo window, WindowControlInfo control, IReadOnlyList<VirtualKey> keys, bool ensureForegroundWindow) {
@@ -206,7 +206,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentException("At least one key is required.", nameof(keys));
         }
 
-        return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow), window.Handle);
+        return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow), window.Handle, isMutation: true);
     }
 
     public bool? TryReadCheckState(WindowInfo window, WindowControlInfo control) {
@@ -242,7 +242,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryFocusCore(window, control, ensureForegroundWindow), window.Handle);
+        return RunInSta(service => service.TryFocusCore(window, control, ensureForegroundWindow), window.Handle, isMutation: true);
     }
 
     public IReadOnlyList<DesktopUiAutomationRootDiagnostic> DiagnoseRoots(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles = null, int sampleLimit = 3) {
@@ -270,7 +270,10 @@ internal sealed partial class UiAutomationControlService {
         return RunInSta(service => service.ProbeActionResolutionCore(window, control), window.Handle);
     }
 
-    private T RunInSta<T>(Func<UiAutomationControlService, T> operation, IntPtr targetWindowHandle = default) {
+    private T RunInSta<T>(
+        Func<UiAutomationControlService, T> operation,
+        IntPtr targetWindowHandle = default,
+        bool isMutation = false) {
         if (!IsAvailable) {
             return default!;
         }
@@ -286,6 +289,9 @@ internal sealed partial class UiAutomationControlService {
             }
 
             return StaDispatcher.Value.Invoke(operation);
+        } catch (UiAutomationOperationInFlightException) when (isMutation) {
+            LastOperationTimedOut = true;
+            throw;
         } catch (TimeoutException) {
             LastOperationTimedOut = true;
             return CreateTimedOutOperationFallback<T>();

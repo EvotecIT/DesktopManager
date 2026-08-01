@@ -55,6 +55,15 @@ public class DesktopWpfControlObservationTests {
         CollectionAssert.Contains(before.Capabilities.Patterns.ToArray(), "Text");
         Assert.AreEqual(64, before.Text.EditContextFingerprint.Length);
 
+        IReadOnlyList<DesktopControlObservation> defaultDiscovery = harness.Invoke(() => automation.ObserveControls(
+            windowQuery,
+            controlOptions: null,
+            options,
+            allWindows: false,
+            allControls: true));
+        Assert.IsTrue(defaultDiscovery.Any(observation =>
+            string.Equals(observation.Identity.AutomationId, PumpingWpfHarness.RichAutomationId, StringComparison.Ordinal)));
+
         harness.SelectGamma();
         DesktopTextEditResult movedRange = automation.EditControlText(
             before,
@@ -124,6 +133,7 @@ public class DesktopWpfControlObservationTests {
         Assert.AreEqual(true, protectedObservation.IsPassword);
         Assert.AreEqual(string.Empty, protectedObservation.Text.Value);
         Assert.AreEqual(string.Empty, protectedObservation.Text.ContentFingerprint);
+        Assert.IsFalse(protectedObservation.Text.IsComplete);
         Assert.AreEqual(0, protectedObservation.Text.SelectedText.Count);
         Assert.AreEqual(0, protectedObservation.Text.SelectionRanges.Count);
 

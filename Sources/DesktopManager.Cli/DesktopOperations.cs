@@ -1118,7 +1118,8 @@ internal static partial class DesktopOperations {
         bool allowForegroundInputFallback,
         bool verifyAfterEdit,
         int maxTextLength) {
-        if (!Enum.TryParse(mode, ignoreCase: true, out DesktopTextEditMode editMode)) {
+        if (!Enum.TryParse(mode, ignoreCase: true, out DesktopTextEditMode editMode) ||
+            !Enum.IsDefined(typeof(DesktopTextEditMode), editMode)) {
             throw new CommandLineException("Text edit mode must be ReplaceDocument, ReplaceSelection, or InsertAtCaret.");
         }
 

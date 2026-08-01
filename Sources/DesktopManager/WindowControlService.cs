@@ -141,6 +141,18 @@ public static class WindowControlService {
     /// <param name="control">Control to query.</param>
     /// <returns>The selected item text when available; otherwise the live control text.</returns>
     public static string GetSelectedValue(WindowControlInfo control) {
+        return GetSelectedValueCore(control, maxTextLength: null);
+    }
+
+    internal static string GetSelectedValue(WindowControlInfo control, int maxTextLength) {
+        if (maxTextLength < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
+        }
+
+        return GetSelectedValueCore(control, maxTextLength);
+    }
+
+    private static string GetSelectedValueCore(WindowControlInfo control, int? maxTextLength) {
         if (control == null) {
             throw new ArgumentNullException(nameof(control));
         }
@@ -151,10 +163,12 @@ public static class WindowControlService {
 
         int selectedIndex = GetSelectedIndex(control);
         if (selectedIndex < 0) {
-            return WindowTextHelper.GetWindowText(control.Handle);
+            return maxTextLength.HasValue
+                ? WindowTextHelper.GetWindowText(control.Handle, maxTextLength.Value, out _)
+                : WindowTextHelper.GetWindowText(control.Handle);
         }
 
-        return GetComboBoxItemText(control.Handle, selectedIndex);
+        return GetComboBoxItemText(control.Handle, selectedIndex, maxTextLength);
     }
 
     /// <summary>
@@ -181,7 +195,7 @@ public static class WindowControlService {
         }
 
         for (int index = 0; index < itemCount; index++) {
-            string itemText = GetComboBoxItemText(control.Handle, index);
+            string itemText = GetComboBoxItemText(control.Handle, index, maxTextLength: null);
             if (!string.Equals(itemText, value, StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
@@ -445,15 +459,22 @@ public static class WindowControlService {
         return string.Equals(WindowTextHelper.GetWindowText(handle), expectedText, StringComparison.Ordinal);
     }
 
-    private static string GetComboBoxItemText(IntPtr handle, int index) {
+    private static string GetComboBoxItemText(IntPtr handle, int index, int? maxTextLength) {
         int itemTextLength = unchecked((int)MonitorNativeMethods.SendMessage(handle, CbGetLbTextLen, unchecked((uint)index), 0u));
         if (itemTextLength == ComboBoxError) {
             return string.Empty;
         }
 
+        if (maxTextLength.HasValue && itemTextLength > maxTextLength.Value) {
+            return WindowTextHelper.GetWindowText(handle, maxTextLength.Value, out _);
+        }
+
         var buffer = new StringBuilder(itemTextLength + 1);
         MonitorNativeMethods.SendMessage(handle, CbGetLbText, new IntPtr(index), buffer);
-        return buffer.ToString();
+        string value = buffer.ToString();
+        return maxTextLength.HasValue && value.Length > maxTextLength.Value
+            ? value.Substring(0, maxTextLength.Value)
+            : value;
     }
 
     private static void NotifyParentSelectionChanged(WindowControlInfo control) {

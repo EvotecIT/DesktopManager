@@ -36,6 +36,30 @@ public class ControlEnumeratorTests {
     }
 
     [TestMethod]
+    [TestCategory("UITest")]
+    public void Enumerate_WinFormsControls_WithMaximumLength_BoundsTextAndValue() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Bounded Control Enumerator Form", ShowInTaskbar = false };
+        using TextBox textBox = new() { Text = "DesktopManager" };
+        form.Controls.Add(textBox);
+        form.Show();
+        textBox.CreateControl();
+        Application.DoEvents();
+
+        WindowControlInfo? control = new ControlEnumerator()
+            .EnumerateControls(form.Handle, maxTextLength: 4)
+            .FirstOrDefault(candidate => candidate.Handle == textBox.Handle);
+
+        Assert.IsNotNull(control);
+        Assert.AreEqual("Desk", control.Text);
+        Assert.AreEqual("Desk", control.Value);
+    }
+
+    [TestMethod]
     public void IsPasswordStyle_EditWithPasswordStyle_ReturnsTrue() {
         Assert.IsTrue(ControlEnumerator.IsPasswordStyle("WindowsForms10.EDIT.app", 0x0020));
         Assert.IsFalse(ControlEnumerator.IsPasswordStyle("WindowsForms10.EDIT.app", 0));

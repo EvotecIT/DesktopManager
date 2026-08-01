@@ -483,6 +483,24 @@ public sealed partial class DesktopAutomationService {
     /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
     /// <returns>The matching control when found; otherwise null.</returns>
     public WindowControlInfo? GetControl(IntPtr windowHandle, IntPtr controlHandle, bool useUiAutomation = true, bool includeUiAutomation = true) {
+        return GetControlCore(windowHandle, controlHandle, useUiAutomation, includeUiAutomation, maxTextLength: null);
+    }
+
+    internal WindowControlInfo? GetControl(
+        IntPtr windowHandle,
+        IntPtr controlHandle,
+        bool useUiAutomation,
+        bool includeUiAutomation,
+        int maxTextLength) {
+        return GetControlCore(windowHandle, controlHandle, useUiAutomation, includeUiAutomation, maxTextLength);
+    }
+
+    private WindowControlInfo? GetControlCore(
+        IntPtr windowHandle,
+        IntPtr controlHandle,
+        bool useUiAutomation,
+        bool includeUiAutomation,
+        int? maxTextLength) {
         if (windowHandle == IntPtr.Zero) {
             throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
         }
@@ -502,7 +520,8 @@ public sealed partial class DesktopAutomationService {
                 Handle = controlHandle,
                 UseUiAutomation = false,
                 IncludeUiAutomation = false
-            }).FirstOrDefault();
+            },
+            maxTextLength).FirstOrDefault();
         if (nativeMatch != null || (!useUiAutomation && !includeUiAutomation)) {
             return nativeMatch;
         }
@@ -513,7 +532,8 @@ public sealed partial class DesktopAutomationService {
                 Handle = controlHandle,
                 UseUiAutomation = useUiAutomation,
                 IncludeUiAutomation = includeUiAutomation
-            }).FirstOrDefault();
+            },
+            maxTextLength).FirstOrDefault();
     }
 
     /// <summary>
@@ -3952,14 +3972,18 @@ public sealed partial class DesktopAutomationService {
         return windows;
     }
 
-    private IReadOnlyList<WindowControlTargetInfo> GetControls(IReadOnlyList<WindowInfo> windows, WindowControlQueryOptions? controlOptions, bool allControls) {
+    private IReadOnlyList<WindowControlTargetInfo> GetControls(
+        IReadOnlyList<WindowInfo> windows,
+        WindowControlQueryOptions? controlOptions,
+        bool allControls,
+        int? maxTextLength = null) {
         if (windows == null || windows.Count == 0) {
             return Array.Empty<WindowControlTargetInfo>();
         }
 
         var results = new List<WindowControlTargetInfo>();
         foreach (WindowInfo window in windows) {
-            List<WindowControlInfo> controls = _windowManager.GetControls(window, controlOptions);
+            List<WindowControlInfo> controls = _windowManager.GetControls(window, controlOptions, maxTextLength);
             foreach (WindowControlInfo control in controls) {
                 results.Add(new WindowControlTargetInfo {
                     Window = window,

@@ -41,11 +41,22 @@ public partial class WindowManager {
     /// <param name="options">Optional control filter options.</param>
     /// <returns>A list of matching controls.</returns>
     public List<WindowControlInfo> GetControls(WindowInfo window, WindowControlQueryOptions? options = null) {
+        return GetControls(window, options, maxTextLength: null);
+    }
+
+    internal List<WindowControlInfo> GetControls(
+        WindowInfo window,
+        WindowControlQueryOptions? options,
+        int? maxTextLength) {
         ValidateWindowInfo(window);
+
+        if (maxTextLength.HasValue && maxTextLength.Value < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
+        }
 
         WindowControlQueryOptions filter = options ?? new WindowControlQueryOptions();
         PrepareWindowForUiAutomation(window, filter);
-        List<WindowControlInfo> controls = GetControlsInternal(window.Handle, filter);
+        List<WindowControlInfo> controls = GetControlsInternal(window.Handle, filter, maxTextLength);
         foreach (WindowControlInfo control in controls) {
             control.ParentWindowHandle = window.Handle;
         }
@@ -148,11 +159,16 @@ public partial class WindowManager {
         return UiAutomationPreparationResult.Failed;
     }
 
-    private List<WindowControlInfo> GetControlsInternal(IntPtr windowHandle, WindowControlQueryOptions filter) {
+    private List<WindowControlInfo> GetControlsInternal(
+        IntPtr windowHandle,
+        WindowControlQueryOptions filter,
+        int? maxTextLength) {
         var enumerator = new ControlEnumerator();
         List<WindowControlInfo> win32Controls = filter.RequiresUiAutomation()
             ? enumerator.EnumerateControlMetadata(windowHandle)
-            : enumerator.EnumerateControls(windowHandle);
+            : maxTextLength.HasValue
+                ? enumerator.EnumerateControls(windowHandle, maxTextLength.Value)
+                : enumerator.EnumerateControls(windowHandle);
 
         if (!filter.RequiresUiAutomation()) {
             return win32Controls;
@@ -162,7 +178,7 @@ public partial class WindowManager {
         IReadOnlyList<IntPtr> fallbackRootHandles = UiAutomationControlService.GetFallbackRootHandles(windowHandle, win32Controls);
         List<WindowControlInfo> uiAutomationControls = uiAutomation.EnumerateControls(windowHandle, fallbackRootHandles);
         ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
-        ControlEnumerator.PopulateControlValues(win32Controls);
+        ControlEnumerator.PopulateControlValues(win32Controls, maxTextLength);
 
         return SelectDiscoveredControls(filter, win32Controls, uiAutomationControls);
     }

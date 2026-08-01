@@ -26,7 +26,12 @@ public sealed partial class DesktopAutomationService {
 
         DesktopControlObservationOptions settings = observationOptions ?? new DesktopControlObservationOptions();
         UiAutomationControlService.ValidateObservationOptions(settings);
-        IReadOnlyList<WindowControlTargetInfo> targets = GetControls(windowOptions, controlOptions, allWindows, allControls);
+        IReadOnlyList<WindowControlTargetInfo> targets = GetObservationTargets(
+            windowOptions,
+            controlOptions,
+            settings,
+            allWindows,
+            allControls);
         var observations = new List<DesktopControlObservation>(targets.Count);
         foreach (WindowControlTargetInfo target in targets) {
             DesktopControlObservation? observation = ObserveResolvedControl(target.Window, target.Control, settings);
@@ -56,7 +61,12 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservationOptions settings = observationOptions ?? new DesktopControlObservationOptions();
         UiAutomationControlService.ValidateObservationOptions(settings);
         WindowInfo window = ResolveWindowByHandle(windowHandle);
-        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation: settings.UseUiAutomation, includeUiAutomation: settings.UseUiAutomation);
+        WindowControlInfo? control = GetControl(
+            windowHandle,
+            controlHandle,
+            useUiAutomation: settings.UseUiAutomation,
+            includeUiAutomation: settings.UseUiAutomation,
+            maxTextLength: settings.MaxTextLength);
         return control == null ? null : ObserveResolvedControl(window, control, settings);
     }
 
@@ -89,7 +99,12 @@ public sealed partial class DesktopAutomationService {
         }
 
         if (focusedControl == null && focusedHandle != IntPtr.Zero && settings.IncludeNativeFallback) {
-            focusedControl = GetControl(window.Handle, focusedHandle, useUiAutomation: false, includeUiAutomation: false);
+            focusedControl = GetControl(
+                window.Handle,
+                focusedHandle,
+                useUiAutomation: false,
+                includeUiAutomation: false,
+                maxTextLength: settings.MaxTextLength);
         }
 
         return focusedControl == null ? null : ObserveResolvedControl(window, focusedControl, settings);
@@ -265,7 +280,7 @@ public sealed partial class DesktopAutomationService {
             return;
         }
 
-        if (settings.IncludeNativeFallback && string.IsNullOrEmpty(observation.Text.Value) && control.Handle != IntPtr.Zero) {
+        if (ShouldUseNativeTextFallback(observation, control, settings)) {
             string nativeValue = WindowTextHelper.GetWindowText(control.Handle, settings.MaxTextLength, out bool isTruncated);
             if (!string.IsNullOrEmpty(nativeValue)) {
                 observation.Text = DesktopTextObservationBuilder.Create(
@@ -288,5 +303,37 @@ public sealed partial class DesktopAutomationService {
             IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
             observation.IsFocused = focusedHandle != IntPtr.Zero ? focusedHandle == control.Handle : null;
         }
+    }
+
+    internal static bool ShouldUseNativeTextFallback(
+        DesktopControlObservation observation,
+        WindowControlInfo control,
+        DesktopControlObservationOptions settings) {
+        return settings.IncludeNativeFallback &&
+            string.IsNullOrEmpty(observation.Text.Source) &&
+            control.Handle != IntPtr.Zero;
+    }
+
+    internal IReadOnlyList<WindowControlTargetInfo> GetObservationTargets(
+        WindowQueryOptions windowOptions,
+        WindowControlQueryOptions? controlOptions,
+        DesktopControlObservationOptions settings,
+        bool allWindows,
+        bool allControls) {
+        WindowControlQueryOptions discoveryOptions = controlOptions ?? new WindowControlQueryOptions {
+            UseUiAutomation = settings.UseUiAutomation,
+            IncludeUiAutomation = settings.UseUiAutomation
+        };
+        IReadOnlyList<WindowInfo> windows = GetMatchingWindows(windowOptions, allWindows);
+        IReadOnlyList<WindowControlTargetInfo> targets = GetControls(
+            windows,
+            discoveryOptions,
+            allControls: true,
+            maxTextLength: settings.MaxTextLength);
+        if (allControls || targets.Count == 0) {
+            return targets;
+        }
+
+        return new[] { targets[0] };
     }
 }

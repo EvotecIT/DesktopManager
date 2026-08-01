@@ -19,6 +19,16 @@ public class ControlEnumerator {
         return controls;
     }
 
+    internal List<WindowControlInfo> EnumerateControls(IntPtr parent, int maxTextLength) {
+        if (maxTextLength < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
+        }
+
+        List<WindowControlInfo> controls = EnumerateControlMetadata(parent);
+        PopulateControlValues(controls, maxTextLength);
+        return controls;
+    }
+
     internal List<WindowControlInfo> EnumerateControlMetadata(IntPtr parent) {
         List<WindowControlInfo> controls = new List<WindowControlInfo>();
         MonitorNativeMethods.EnumChildWindows(parent, (hWnd, lParam) => {
@@ -28,7 +38,11 @@ public class ControlEnumerator {
         return controls;
     }
 
-    internal static void PopulateControlValues(IEnumerable<WindowControlInfo> controls) {
+    internal static void PopulateControlValues(IEnumerable<WindowControlInfo> controls, int? maxTextLength = null) {
+        if (maxTextLength.HasValue && maxTextLength.Value < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
+        }
+
         foreach (WindowControlInfo control in controls) {
             if (control.IsPassword == true) {
                 control.Text = string.Empty;
@@ -36,9 +50,13 @@ public class ControlEnumerator {
                 continue;
             }
 
-            control.Text = WindowTextHelper.GetWindowText(control.Handle);
+            control.Text = maxTextLength.HasValue
+                ? WindowTextHelper.GetWindowText(control.Handle, maxTextLength.Value, out _)
+                : WindowTextHelper.GetWindowText(control.Handle);
             control.Value = WindowControlService.SupportsSelection(control)
-                ? WindowControlService.GetSelectedValue(control)
+                ? maxTextLength.HasValue
+                    ? WindowControlService.GetSelectedValue(control, maxTextLength.Value)
+                    : WindowControlService.GetSelectedValue(control)
                 : control.Text;
         }
     }
@@ -82,7 +100,9 @@ public class ControlEnumerator {
                 ? WindowTextHelper.GetWindowText(handle, maxTextLength.Value, out _)
                 : WindowTextHelper.GetWindowText(handle);
             info.Value = WindowControlService.SupportsSelection(info)
-                ? BoundValue(WindowControlService.GetSelectedValue(info), maxTextLength)
+                ? maxTextLength.HasValue
+                    ? WindowControlService.GetSelectedValue(info, maxTextLength.Value)
+                    : WindowControlService.GetSelectedValue(info)
                 : info.Text;
         }
 

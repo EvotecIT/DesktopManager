@@ -385,19 +385,62 @@ public class UiAutomationControlServiceTests {
     }
 
     [TestMethod]
-    public void UiAutomationStaDispatcher_TimedOutProviderCall_DoesNotPermanentlyBlockQueue() {
+    public void UiAutomationStaDispatcher_InFlightTimeout_ReportsUnknownOutcomeAndQueueRecovers() {
         using var dispatcher = new UiAutomationStaDispatcher();
+        using var started = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
 
-        Assert.ThrowsExactly<TimeoutException>(() => dispatcher.Invoke(
-            _ => {
-                Thread.Sleep(150);
-                return true;
-            },
-            timeoutMilliseconds: 20));
+        Task<Exception?> timedOutInvocation = Task.Run(() => {
+            try {
+                dispatcher.Invoke(
+                    _ => {
+                        started.Set();
+                        release.Wait();
+                        return true;
+                    },
+                    timeoutMilliseconds: 50);
+                return null;
+            } catch (Exception ex) {
+                return ex;
+            }
+        });
 
-        Thread.Sleep(175);
+        Assert.IsTrue(started.Wait(1000), "The dispatcher operation did not start.");
+        Assert.IsTrue(timedOutInvocation.Wait(1000), "The in-flight invocation did not time out.");
+        Assert.IsInstanceOfType<UiAutomationOperationInFlightException>(timedOutInvocation.Result);
+
+        release.Set();
         int result = dispatcher.Invoke(_ => 42, timeoutMilliseconds: 1000);
         Assert.AreEqual(42, result);
+    }
+
+    [TestMethod]
+    public void UiAutomationStaDispatcher_QueuedTimeout_CancelsWorkBeforeExecution() {
+        using var dispatcher = new UiAutomationStaDispatcher();
+        using var started = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        int mutationCount = 0;
+
+        Task firstInvocation = Task.Run(() => dispatcher.Invoke(
+            _ => {
+                started.Set();
+                release.Wait();
+                return true;
+            },
+            timeoutMilliseconds: 2000));
+
+        Assert.IsTrue(started.Wait(1000), "The blocking dispatcher operation did not start.");
+        Assert.ThrowsExactly<TimeoutException>(() => dispatcher.Invoke(
+            _ => {
+                Interlocked.Increment(ref mutationCount);
+                return true;
+            },
+            timeoutMilliseconds: 50));
+
+        release.Set();
+        Assert.IsTrue(firstInvocation.Wait(1000), "The blocking dispatcher operation did not finish.");
+        dispatcher.Invoke(_ => true, timeoutMilliseconds: 1000);
+        Assert.AreEqual(0, mutationCount);
     }
 
     [TestMethod]

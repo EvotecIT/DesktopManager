@@ -84,10 +84,60 @@ public class DesktopControlObservationContractTests {
         Assert.AreEqual("restricted", observation.Status);
         Assert.AreEqual(string.Empty, observation.Text.Value);
         Assert.AreEqual(string.Empty, observation.Text.ContentFingerprint);
+        Assert.IsFalse(observation.Text.IsComplete);
         Assert.IsFalse(observation.Capabilities.CanReadText);
         Assert.IsFalse(observation.Capabilities.CanSetValue);
         Assert.IsFalse(observation.Capabilities.SupportsBackgroundText);
     }
+
+    [TestMethod]
+    public void DesktopAutomationService_ShouldUseNativeTextFallback_ProviderEmptyText_RemainsAuthoritative() {
+        var observation = new DesktopControlObservation {
+            Text = DesktopTextObservationBuilder.Create(
+                string.Empty,
+                "uia.valuePattern",
+                isTruncated: false,
+                expectedText: null,
+                ignoreCase: false,
+                maxMatches: 0,
+                contextLength: 0)
+        };
+        var control = new WindowControlInfo { Handle = new IntPtr(42) };
+        var settings = new DesktopControlObservationOptions { IncludeNativeFallback = true };
+
+        Assert.IsFalse(DesktopAutomationService.ShouldUseNativeTextFallback(observation, control, settings));
+        observation.Text.Source = string.Empty;
+        Assert.IsTrue(DesktopAutomationService.ShouldUseNativeTextFallback(observation, control, settings));
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_EditControlText_UndefinedMode_Throws() {
+        var request = new DesktopTextEditRequest {
+            Text = "value",
+            Mode = (DesktopTextEditMode)3
+        };
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            new DesktopAutomationService().EditControlText(new WindowControlInfo(), request));
+    }
+
+#if NET8_0_OR_GREATER
+    [TestMethod]
+    public void DesktopOperations_EditControlText_NumericUndefinedMode_ThrowsCommandLineException() {
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() =>
+            global::DesktopManager.Cli.DesktopOperations.EditControlText(
+                new global::DesktopManager.Cli.WindowSelectionCriteria(),
+                new global::DesktopManager.Cli.ControlSelectionCriteria(),
+                text: "value",
+                mode: "3",
+                expectedFingerprint: null,
+                expectedEditContextFingerprint: null,
+                ensureForegroundWindow: false,
+                allowForegroundInputFallback: false,
+                verifyAfterEdit: true,
+                maxTextLength: 1024));
+    }
+#endif
 
     [TestMethod]
     public void DesktopControlObservationCondition_MatchesSemanticStateAndRange() {
@@ -285,6 +335,7 @@ public class DesktopControlObservationContractTests {
         Assert.AreEqual(string.Empty, observation.Text.NormalizedValue);
         Assert.AreEqual(string.Empty, observation.Text.EscapedValue);
         Assert.AreEqual(string.Empty, observation.Text.ContentFingerprint);
+        Assert.IsFalse(observation.Text.IsComplete);
         Assert.AreEqual(0, observation.Text.SelectedText.Count);
         Assert.AreEqual(0, observation.Text.SelectionRanges.Count);
         Assert.AreNotEqual(true, observation.Text.ContainsExpected);
