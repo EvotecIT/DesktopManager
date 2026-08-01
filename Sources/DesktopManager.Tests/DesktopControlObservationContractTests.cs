@@ -228,6 +228,16 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopAutomationService_DisposeAutomationChangeSubscription_UsesRemainingWaitBudget() {
+        var subscription = new RecordingBoundedDisposable();
+
+        DesktopAutomationService.DisposeAutomationChangeSubscription(subscription, () => 37);
+
+        Assert.AreEqual(37, subscription.TimeoutMilliseconds);
+        Assert.AreEqual(1, subscription.DisposeCount);
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_TryCalculateExpectedEditedText_ReplacesExactSelection() {
         var before = new DesktopControlTextObservation {
             Value = "alpha beta gamma",
@@ -632,6 +642,60 @@ public class DesktopControlObservationContractTests {
         Assert.AreEqual(42d, range.Range.Value);
     }
 
+    [TestMethod]
+    public void DesktopAutomationService_ObserveControl_NativeCheckboxReportsToggleState() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        const int wsChild = 0x40000000;
+        const int wsVisible = 0x10000000;
+        const int bsAutoCheckBox = 0x00000003;
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create("DesktopManager Native Toggle Harness");
+        IntPtr checkBoxHandle = MonitorNativeMethods.CreateWindowExW(
+            0,
+            "Button",
+            "Native toggle",
+            wsChild | wsVisible | bsAutoCheckBox,
+            12,
+            12,
+            180,
+            24,
+            harness.Form.Handle,
+            new IntPtr(1003),
+            IntPtr.Zero,
+            IntPtr.Zero);
+        if (checkBoxHandle == IntPtr.Zero) {
+            Assert.Inconclusive("Failed to create a native checkbox control for observation testing.");
+        }
+
+        try {
+            var nativeControl = new WindowControlInfo {
+                ParentWindowHandle = harness.Window.Handle,
+                Handle = checkBoxHandle,
+                ClassName = "Button"
+            };
+            WindowControlService.SetCheckState(nativeControl, true);
+            Application.DoEvents();
+
+            DesktopControlObservation? observation = new DesktopAutomationService().ObserveControl(
+                harness.Window.Handle,
+                checkBoxHandle,
+                new DesktopControlObservationOptions {
+                    UseUiAutomation = false,
+                    IncludeNativeFallback = true
+                });
+
+            Assert.IsNotNull(observation);
+            Assert.IsTrue(observation.Capabilities.CanToggle);
+            Assert.AreEqual(true, observation.IsChecked);
+            Assert.IsTrue(new DesktopControlObservationCondition { IsChecked = true }.Matches(observation));
+        } finally {
+            MonitorNativeMethods.DestroyWindow(checkBoxHandle);
+        }
+    }
+
     private static WindowQueryOptions CreateWindowQuery(IntPtr handle) {
         return new WindowQueryOptions {
             Handle = handle,
@@ -640,6 +704,21 @@ public class DesktopControlObservationContractTests {
             IncludeOwned = true,
             IncludeEmptyTitles = true
         };
+    }
+}
+
+internal sealed class RecordingBoundedDisposable : IUiAutomationBoundedDisposable {
+    internal int DisposeCount { get; private set; }
+
+    internal int TimeoutMilliseconds { get; private set; } = -1;
+
+    public void Dispose() {
+        Dispose(UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds);
+    }
+
+    public void Dispose(int timeoutMilliseconds) {
+        DisposeCount++;
+        TimeoutMilliseconds = timeoutMilliseconds;
     }
 }
 

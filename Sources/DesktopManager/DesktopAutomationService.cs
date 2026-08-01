@@ -3150,8 +3150,9 @@ public sealed partial class DesktopAutomationService {
         ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
 
         using var signal = new AutoResetEvent(false);
-        IDisposable? subscription = TryCreateAutomationChangeSubscription(options, signal);
         Stopwatch stopwatch = Stopwatch.StartNew();
+        Func<int> getProviderTimeout = () => GetRemainingProviderTimeout(stopwatch, timeoutMilliseconds);
+        IDisposable? subscription = TryCreateAutomationChangeSubscription(options, signal, getProviderTimeout);
         try {
             while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
                 DesktopWindowTextObservation? observation = ObserveWindowText(options, expectedText, settings);
@@ -3159,13 +3160,17 @@ public sealed partial class DesktopAutomationService {
                     return observation;
                 }
 
-                subscription ??= TryCreateAutomationChangeSubscription(options, signal);
+                if (getProviderTimeout() <= 0) {
+                    break;
+                }
+
+                subscription ??= TryCreateAutomationChangeSubscription(options, signal, getProviderTimeout);
                 UiAutomationControlService.WaitForSignalWithCurrentUiMessagePump(
                     signal,
                     GetRemainingWaitInterval(stopwatch, timeoutMilliseconds, intervalMilliseconds));
             }
         } finally {
-            subscription?.Dispose();
+            DisposeAutomationChangeSubscription(subscription, getProviderTimeout);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for observed text '{expectedText}'.");
@@ -3209,8 +3214,9 @@ public sealed partial class DesktopAutomationService {
         ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
 
         using var signal = new AutoResetEvent(false);
-        IDisposable? subscription = TryCreateAutomationChangeSubscription(options, signal);
         Stopwatch stopwatch = Stopwatch.StartNew();
+        Func<int> getProviderTimeout = () => GetRemainingProviderTimeout(stopwatch, timeoutMilliseconds);
+        IDisposable? subscription = TryCreateAutomationChangeSubscription(options, signal, getProviderTimeout);
         try {
             while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
                 DesktopFocusedControlObservation? observation = GetFocusedControlObservation(options);
@@ -3218,13 +3224,17 @@ public sealed partial class DesktopAutomationService {
                     return observation;
                 }
 
-                subscription ??= TryCreateAutomationChangeSubscription(options, signal);
+                if (getProviderTimeout() <= 0) {
+                    break;
+                }
+
+                subscription ??= TryCreateAutomationChangeSubscription(options, signal, getProviderTimeout);
                 UiAutomationControlService.WaitForSignalWithCurrentUiMessagePump(
                     signal,
                     GetRemainingWaitInterval(stopwatch, timeoutMilliseconds, intervalMilliseconds));
             }
         } finally {
-            subscription?.Dispose();
+            DisposeAutomationChangeSubscription(subscription, getProviderTimeout);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a focused control.");

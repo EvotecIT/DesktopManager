@@ -424,6 +424,18 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures a changing native value that fills the growth probe is never reported as complete.
+    /// </summary>
+    public void WindowTextHelper_CreateBoundedTextResult_StalePositiveLength_IsTruncated() {
+        string result = WindowTextHelper.CreateBoundedTextResult("123456", reportedLength: 5, maxLength: 10, out bool isTruncated);
+
+        Assert.AreEqual("123456", result);
+        Assert.IsTrue(isTruncated);
+        Assert.AreEqual(7, WindowTextHelper.GetBoundedTextCapacity(reportedLength: 5, maxLength: 10));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures privacy-safe bounds keep distinct handleless password controls separate.
     /// </summary>
     public void WindowManager_AreEquivalentControls_DistinctPasswordBounds_ReturnsFalse() {

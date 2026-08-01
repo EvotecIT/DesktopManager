@@ -224,12 +224,14 @@ public sealed partial class DesktopAutomationService {
             Height = control.Height
         };
         identity.SessionKey = UiAutomationControlService.CreateObservationSessionKey(identity);
+        bool supportsCheckState = control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control);
         var observation = new DesktopControlObservation {
             Identity = identity,
             Capabilities = new DesktopControlCapabilities {
                 CanReadText = canAccessText && (control.Handle != IntPtr.Zero || !string.IsNullOrEmpty(value)),
                 CanSetValue = canAccessText && control.SupportsBackgroundText,
                 CanInvoke = control.SupportsBackgroundClick,
+                CanToggle = supportsCheckState,
                 CanSelect = canAccessText && !string.IsNullOrEmpty(control.Value),
                 SupportsBackgroundClick = control.SupportsBackgroundClick,
                 SupportsBackgroundText = canAccessText && control.SupportsBackgroundText,
@@ -253,7 +255,8 @@ public sealed partial class DesktopAutomationService {
             IsEnabled = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowEnabled(control.Handle) : control.IsEnabled,
             IsVisible = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null,
             IsOffscreen = control.IsOffscreen,
-            IsKeyboardFocusable = control.IsKeyboardFocusable
+            IsKeyboardFocusable = control.IsKeyboardFocusable,
+            IsChecked = supportsCheckState ? WindowControlService.GetCheckState(control) : null
         };
         IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
         observation.IsFocused = focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero ? focusedHandle == control.Handle : null;
@@ -332,6 +335,10 @@ public sealed partial class DesktopAutomationService {
         observation.IsVisible ??= control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null;
         observation.IsOffscreen ??= control.IsOffscreen;
         observation.IsKeyboardFocusable ??= control.IsKeyboardFocusable;
+        if (control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control)) {
+            observation.Capabilities.CanToggle = true;
+            observation.IsChecked ??= WindowControlService.GetCheckState(control);
+        }
         if (!observation.IsFocused.HasValue && control.Handle != IntPtr.Zero) {
             IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
             observation.IsFocused = focusedHandle != IntPtr.Zero ? focusedHandle == control.Handle : null;

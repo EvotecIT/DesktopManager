@@ -56,12 +56,7 @@ public sealed partial class DesktopAutomationService {
                     GetRemainingWaitInterval(stopwatch, timeoutMilliseconds, intervalMilliseconds));
             }
         } finally {
-            int cleanupTimeout = getProviderTimeout();
-            if (subscription is IUiAutomationBoundedDisposable boundedSubscription) {
-                boundedSubscription.Dispose(cleanupTimeout);
-            } else {
-                subscription?.Dispose();
-            }
+            DisposeAutomationChangeSubscription(subscription, getProviderTimeout);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching control observation.");
@@ -106,6 +101,24 @@ public sealed partial class DesktopAutomationService {
 
     internal static int GetRemainingProviderTimeout(Stopwatch stopwatch, int timeoutMilliseconds) {
         return GetProviderInvocationTimeout(timeoutMilliseconds, stopwatch.ElapsedMilliseconds);
+    }
+
+    internal static void DisposeAutomationChangeSubscription(
+        IDisposable? subscription,
+        Func<int> getInvocationTimeoutMilliseconds) {
+        if (subscription == null) {
+            return;
+        }
+
+        if (getInvocationTimeoutMilliseconds == null) {
+            throw new ArgumentNullException(nameof(getInvocationTimeoutMilliseconds));
+        }
+
+        if (subscription is IUiAutomationBoundedDisposable boundedSubscription) {
+            boundedSubscription.Dispose(getInvocationTimeoutMilliseconds());
+        } else {
+            subscription.Dispose();
+        }
     }
 
     internal static int GetProviderInvocationTimeout(int timeoutMilliseconds, long elapsedMilliseconds) {

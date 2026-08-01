@@ -62,12 +62,14 @@ public static class WindowTextHelper {
     }
 
     internal static int GetBoundedTextCapacity(int reportedLength, int maxLength) {
-        int boundedLength = reportedLength > 0 ? Math.Min(reportedLength, maxLength) : maxLength;
-        return reportedLength > 0 ? boundedLength + 1 : boundedLength + 2;
+        return reportedLength > 0 && reportedLength < maxLength
+            ? reportedLength + 2
+            : maxLength + 2;
     }
 
     internal static string CreateBoundedTextResult(string value, int reportedLength, int maxLength, out bool isTruncated) {
-        isTruncated = reportedLength > maxLength || value.Length > maxLength;
+        bool filledGrowthProbe = reportedLength > 0 && reportedLength < maxLength && value.Length > reportedLength;
+        isTruncated = reportedLength > maxLength || value.Length > maxLength || filledGrowthProbe;
         return value.Length > maxLength ? value.Substring(0, maxLength) : value;
     }
 
