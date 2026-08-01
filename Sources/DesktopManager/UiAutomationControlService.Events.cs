@@ -193,7 +193,7 @@ internal sealed partial class UiAutomationControlService {
         };
     }
 
-    private sealed class UiAutomationChangeSubscription : IDisposable {
+    private sealed class UiAutomationChangeSubscription : IUiAutomationBoundedDisposable {
         private readonly IReadOnlyList<Action> _cleanup;
         private readonly IDisposable _signalGuard;
         private int _disposed;
@@ -204,11 +204,18 @@ internal sealed partial class UiAutomationControlService {
         }
 
         public void Dispose() {
+            Dispose(UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds);
+        }
+
+        public void Dispose(int timeoutMilliseconds) {
             if (Interlocked.Exchange(ref _disposed, 1) != 0) {
                 return;
             }
 
             _signalGuard.Dispose();
+            if (timeoutMilliseconds <= 0) {
+                return;
+            }
 
             try {
                 StaDispatcher.Value.Invoke(_ => {
@@ -221,7 +228,7 @@ internal sealed partial class UiAutomationControlService {
                     }
 
                     return true;
-                });
+                }, timeoutMilliseconds);
             } catch (TimeoutException) {
                 // A wedged provider must not make wait cleanup block indefinitely.
             }
@@ -252,4 +259,8 @@ internal sealed partial class UiAutomationControlService {
             Interlocked.Exchange(ref _disposed, 1);
         }
     }
+}
+
+internal interface IUiAutomationBoundedDisposable : IDisposable {
+    void Dispose(int timeoutMilliseconds);
 }

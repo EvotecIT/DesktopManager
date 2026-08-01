@@ -63,7 +63,7 @@ public partial class WindowManager {
         }
 
         if (maxTextLength.HasValue && !IsWildcardFilter(filter.ValuePattern)) {
-            PopulateBoundedUiAutomationValues(window, controls, maxTextLength.Value, getUiAutomationTimeoutMilliseconds);
+            PopulateBoundedUiAutomationValues(window, controls, filter.ValuePattern, maxTextLength.Value, getUiAutomationTimeoutMilliseconds);
         }
 
         return controls.FindAll(control => MatchesControl(control, filter));
@@ -215,11 +215,17 @@ public partial class WindowManager {
     private static void PopulateBoundedUiAutomationValues(
         WindowInfo window,
         IEnumerable<WindowControlInfo> controls,
+        string valuePattern,
         int maxTextLength,
         Func<int>? getUiAutomationTimeoutMilliseconds) {
+        string? providerExpectedText = valuePattern.IndexOf('*') < 0 && valuePattern.IndexOf('?') < 0
+            ? valuePattern
+            : null;
         var uiAutomation = new UiAutomationControlService();
         var options = new DesktopControlObservationOptions {
             MaxTextLength = maxTextLength,
+            ExpectedText = providerExpectedText,
+            IgnoreCase = true,
             IncludeTextRanges = false,
             IncludeSemanticState = false
         };
@@ -242,6 +248,9 @@ public partial class WindowManager {
 
             control.Value = observation.Text.Value;
             control.ValueIsTruncated = observation.Text.IsTruncated;
+            control.ValueMatchPattern = providerExpectedText ?? string.Empty;
+            control.ValueMatchIgnoreCase = true;
+            control.ValuePatternMatched = providerExpectedText == null ? null : observation.Text.ContainsExpected;
         }
     }
 
@@ -446,7 +455,7 @@ public partial class WindowManager {
         }
 
         if (!string.IsNullOrWhiteSpace(filter.ValuePattern) && filter.ValuePattern != "*") {
-            if (!MatchesWildcard(control.Value ?? string.Empty, filter.ValuePattern)) {
+            if (!MatchesValuePattern(control, filter.ValuePattern)) {
                 return false;
             }
         }
@@ -480,6 +489,13 @@ public partial class WindowManager {
         }
 
         return true;
+    }
+
+    internal bool MatchesValuePattern(WindowControlInfo control, string valuePattern) {
+        bool matchingProviderEvidence = control.ValuePatternMatched == true &&
+            control.ValueMatchIgnoreCase &&
+            string.Equals(control.ValueMatchPattern, valuePattern, StringComparison.OrdinalIgnoreCase);
+        return matchingProviderEvidence || MatchesWildcard(control.Value ?? string.Empty, valuePattern);
     }
 
     /// <summary>

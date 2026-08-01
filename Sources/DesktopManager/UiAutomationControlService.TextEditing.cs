@@ -130,12 +130,12 @@ internal sealed partial class UiAutomationControlService {
             return UiAutomationTextEditAttempt.Succeeded();
         }
 
-        string clipboardBackup = string.Empty;
-        bool restoreClipboard = false;
+        ClipboardHelper.ClipboardSnapshot? clipboardSnapshot = null;
         try {
-            restoreClipboard = ClipboardHelper.TryGetText(out clipboardBackup);
+            clipboardSnapshot = ClipboardHelper.CaptureSnapshot();
             ClipboardHelper.SetText(value);
         } catch {
+            clipboardSnapshot?.Dispose();
             return UiAutomationTextEditAttempt.Failed("clipboard-unavailable");
         }
 
@@ -148,12 +148,12 @@ internal sealed partial class UiAutomationControlService {
             WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
             return UiAutomationTextEditAttempt.Succeeded();
         } finally {
-            if (restoreClipboard) {
-                try {
-                    ClipboardHelper.SetText(clipboardBackup);
-                } catch {
-                    // Preserve the input result if clipboard restoration is blocked.
-                }
+            try {
+                clipboardSnapshot.Restore();
+            } catch {
+                // Preserve the input result if clipboard restoration is blocked.
+            } finally {
+                clipboardSnapshot.Dispose();
             }
         }
     }
@@ -272,15 +272,20 @@ internal sealed class UiAutomationTextEditAttempt {
     internal bool Applied { get; private set; }
     internal string FailureCode { get; private set; } = string.Empty;
     internal string ObservedEditContextFingerprint { get; private set; } = string.Empty;
+    internal string ObservedContentFingerprint { get; private set; } = string.Empty;
 
     internal static UiAutomationTextEditAttempt Succeeded() {
         return new UiAutomationTextEditAttempt { Applied = true };
     }
 
-    internal static UiAutomationTextEditAttempt Failed(string failureCode, string? observedEditContextFingerprint = null) {
+    internal static UiAutomationTextEditAttempt Failed(
+        string failureCode,
+        string? observedEditContextFingerprint = null,
+        string? observedContentFingerprint = null) {
         return new UiAutomationTextEditAttempt {
             FailureCode = failureCode,
-            ObservedEditContextFingerprint = observedEditContextFingerprint ?? string.Empty
+            ObservedEditContextFingerprint = observedEditContextFingerprint ?? string.Empty,
+            ObservedContentFingerprint = observedContentFingerprint ?? string.Empty
         };
     }
 }

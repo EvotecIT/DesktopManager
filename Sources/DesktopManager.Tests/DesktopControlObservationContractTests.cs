@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace DesktopManager.Tests;
@@ -263,6 +265,51 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopAutomationService_TryCalculateExpectedEditedText_RejectsOversizedCombinedResult() {
+        var before = new DesktopControlTextObservation {
+            Value = new string('a', DesktopTextObservationOptions.MaximumTextLength),
+            IsComplete = true,
+            CaretOffset = DesktopTextObservationOptions.MaximumTextLength
+        };
+
+        bool success = DesktopAutomationService.TryCalculateExpectedEditedText(
+            before,
+            new DesktopTextEditRequest { Text = "x", Mode = DesktopTextEditMode.InsertAtCaret },
+            out _,
+            out string? error);
+
+        Assert.IsFalse(success);
+        StringAssert.Contains(error, "semantic text limit");
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_VerificationBudget_ClampsProviderAndSleepDurations() {
+        var stopwatch = Stopwatch.StartNew();
+        Assert.IsTrue(SpinWait.SpinUntil(() => stopwatch.ElapsedMilliseconds >= 25, 1000));
+
+        int providerTimeout = DesktopAutomationService.GetVerificationProviderTimeout(stopwatch, 100);
+        int waitInterval = DesktopAutomationService.GetVerificationWaitInterval(stopwatch, 100, 200);
+
+        Assert.IsTrue(providerTimeout > 0 && providerTimeout <= 75);
+        Assert.IsTrue(waitInterval > 0 && waitInterval <= 75);
+        stopwatch.Stop();
+    }
+
+    [TestMethod]
+    public void WindowManager_MatchesValuePattern_PreservesProviderEvidenceBeyondPrefix() {
+        var control = new WindowControlInfo {
+            Value = "prefix",
+            ValueIsTruncated = true,
+            ValueMatchPattern = "needle",
+            ValueMatchIgnoreCase = true,
+            ValuePatternMatched = true
+        };
+
+        Assert.IsTrue(new WindowManager().MatchesValuePattern(control, "NEEDLE"));
+        Assert.IsFalse(new WindowManager().MatchesValuePattern(control, "different"));
+    }
+
+    [TestMethod]
     public void UiAutomationControlService_IsExpectedCollapsedCaret_RequiresSameContentCaretAndCollapsedRanges() {
         string contentFingerprint = DesktopTextObservationBuilder.CreateFingerprint("alpha beta gamma");
         var observation = new DesktopControlTextObservation {
@@ -312,6 +359,42 @@ public class DesktopControlObservationContractTests {
         Assert.IsFalse(DesktopAutomationService.MatchesObservedWindowOwner(window, identity));
         identity.ProcessId = 0;
         Assert.IsFalse(DesktopAutomationService.MatchesObservedWindowOwner(window, identity));
+    }
+
+    [TestMethod]
+    public void ClipboardSnapshot_RestoresTextAndCustomFormats() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireForegroundWindowUiTests();
+        using PumpingWinFormsHarness harness = PumpingWinFormsHarness.Create("DesktopManager Clipboard Harness", _ => { });
+        try {
+            harness.Invoke(() => {
+                var dataObject = new DataObject();
+                dataObject.SetText("original clipboard text");
+                dataObject.SetData("DesktopManager.Custom", false, "custom clipboard value");
+                Clipboard.SetDataObject(dataObject, copy: true);
+
+                using (ClipboardHelper.ClipboardSnapshot snapshot = ClipboardHelper.CaptureSnapshot()) {
+                    ClipboardHelper.SetText("temporary semantic edit text");
+                    snapshot.Restore();
+                }
+
+                System.Windows.Forms.IDataObject? restored = Clipboard.GetDataObject();
+                Assert.IsNotNull(restored);
+                Assert.AreEqual("original clipboard text", restored.GetData(DataFormats.UnicodeText));
+                Assert.AreEqual("custom clipboard value", restored.GetData("DesktopManager.Custom"));
+            });
+        } catch (InvalidOperationException ex) when (ex.InnerException is ExternalException) {
+            Assert.Inconclusive("The interactive clipboard was unavailable to the test harness.");
+        } finally {
+            try {
+                harness.Invoke(Clipboard.Clear);
+            } catch {
+                // Clipboard cleanup is best-effort when another desktop process owns it.
+            }
+        }
     }
 
     [TestMethod]

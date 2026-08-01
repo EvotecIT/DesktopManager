@@ -56,11 +56,21 @@ internal sealed partial class UiAutomationControlService {
         bool canAccessText) {
         var names = new List<string>(patterns.Keys);
         names.Sort(StringComparer.OrdinalIgnoreCase);
+        bool valuePatternWritable = true;
+        if (patterns.TryGetValue("Value", out object? valuePattern)) {
+            valuePatternWritable = ReadPatternCurrentBoolean(
+                valuePattern,
+                "IsReadOnly",
+                new List<string>(),
+                "value.isReadOnly") == false;
+        }
+
         return new DesktopControlCapabilities {
             Patterns = names,
             CanReadText = canAccessText && (patterns.ContainsKey("Text") || patterns.ContainsKey("Value") || patterns.ContainsKey("RangeValue") || patterns.ContainsKey("LegacyIAccessible")),
             CanReadTextSelection = canAccessText && (patterns.ContainsKey("Text") || patterns.ContainsKey("Text2")),
-            CanSetValue = canAccessText && (patterns.ContainsKey("Value") || patterns.ContainsKey("LegacyIAccessible") || control.Handle != IntPtr.Zero),
+            CanSetValue = canAccessText && valuePatternWritable &&
+                (patterns.ContainsKey("Value") || patterns.ContainsKey("LegacyIAccessible") || control.Handle != IntPtr.Zero),
             CanInvoke = patterns.ContainsKey("Invoke") || patterns.ContainsKey("LegacyIAccessible"),
             CanToggle = patterns.ContainsKey("Toggle"),
             CanSelect = patterns.ContainsKey("Selection") || patterns.ContainsKey("SelectionItem"),
@@ -92,6 +102,9 @@ internal sealed partial class UiAutomationControlService {
 
         if (patterns.TryGetValue("Value", out object? valuePattern)) {
             observation.IsReadOnly = ReadPatternCurrentBoolean(valuePattern, "IsReadOnly", errors, "value.isReadOnly");
+            if (observation.IsReadOnly != false) {
+                observation.Capabilities.CanSetValue = false;
+            }
         }
 
         var textBudget = new SemanticTextBudget(maxTextLength, MaximumSemanticCollectionItems);
@@ -252,17 +265,18 @@ internal sealed partial class UiAutomationControlService {
             textBudget.RemainingItems--;
 
             try {
-                WindowControlInfo? info = CreateControlInfo(item);
+                WindowControlInfo? info = CreateControlInfo(item, readValue: false);
                 if (info == null || info.IsPassword != false) {
                     continue;
                 }
 
-                string label = !string.IsNullOrWhiteSpace(info.Value) ? info.Value : info.Text;
+                int allowedLength = Math.Min(4096, textBudget.RemainingCharacters);
+                UiAutomationTextReadResult? text = ReadElementText(item, allowedLength, expectedText: null);
+                string label = text?.Value ?? info.Text;
                 if (!string.IsNullOrWhiteSpace(label)) {
-                    int allowedLength = Math.Min(4096, textBudget.RemainingCharacters);
-                    if (label.Length > allowedLength) {
-                        labels.Add(label.Substring(0, allowedLength));
-                        textBudget.RemainingCharacters -= allowedLength;
+                    if (text?.IsTruncated == true || label.Length > allowedLength) {
+                        labels.Add(label.Length > allowedLength ? label.Substring(0, allowedLength) : label);
+                        textBudget.RemainingCharacters -= Math.Min(label.Length, allowedLength);
                         isTruncated = true;
                         break;
                     }

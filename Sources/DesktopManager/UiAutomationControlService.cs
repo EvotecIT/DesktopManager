@@ -167,6 +167,19 @@ internal sealed partial class UiAutomationControlService {
         return RunInSta(service => service.TrySetValueCore(window, control, value), window.Handle, isMutation: true);
     }
 
+    internal UiAutomationTextEditAttempt TrySetValue(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        string expectedContentFingerprint,
+        int maxTextLength) {
+        ValidateTextReadLength(maxTextLength);
+        return RunInSta(
+            service => service.TrySetValueCore(window, control, value, expectedContentFingerprint, maxTextLength),
+            window.Handle,
+            isMutation: true);
+    }
+
     public bool TrySetText(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
         if (window == null) {
             throw new ArgumentNullException(nameof(window));
@@ -181,6 +194,20 @@ internal sealed partial class UiAutomationControlService {
         }
 
         return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow), window.Handle, isMutation: true);
+    }
+
+    internal UiAutomationTextEditAttempt TrySetText(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        bool ensureForegroundWindow,
+        string expectedContentFingerprint,
+        int maxTextLength) {
+        ValidateTextReadLength(maxTextLength);
+        return RunInSta(
+            service => service.TrySetTextCore(window, control, value, ensureForegroundWindow, expectedContentFingerprint, maxTextLength),
+            window.Handle,
+            isMutation: true);
     }
 
     public bool TrySetCheckState(WindowInfo window, WindowControlInfo control, bool check) {
@@ -556,10 +583,24 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private bool TrySetValueCore(WindowInfo window, WindowControlInfo control, string value) {
+        return TrySetValueCore(window, control, value, expectedContentFingerprint: null, maxTextLength: DesktopTextObservationOptions.MaximumTextLength).Applied;
+    }
+
+    private UiAutomationTextEditAttempt TrySetValueCore(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        string? expectedContentFingerprint,
+        int maxTextLength) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
         if (element == null || !IsTextMutationAllowed(element)) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("control-unavailable");
+        }
+
+        UiAutomationTextEditAttempt precondition = ValidateContentPrecondition(element, expectedContentFingerprint, maxTextLength);
+        if (!precondition.Applied) {
+            return precondition;
         }
 
         bool patternApplied = TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
@@ -567,10 +608,12 @@ internal sealed partial class UiAutomationControlService {
             patternApplied = TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
         }
         if (!patternApplied) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("provider-unavailable");
         }
 
-        return WaitForResolvedValue(window, control, value);
+        return WaitForResolvedValue(window, control, value)
+            ? UiAutomationTextEditAttempt.Succeeded()
+            : UiAutomationTextEditAttempt.Failed("verification-failed");
     }
 
     private bool TrySetSelectedValueCore(WindowInfo window, WindowControlInfo control, string selectedValue) {
@@ -626,10 +669,25 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private bool TrySetTextCore(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
+        return TrySetTextCore(window, control, value, ensureForegroundWindow, expectedContentFingerprint: null, maxTextLength: DesktopTextObservationOptions.MaximumTextLength).Applied;
+    }
+
+    private UiAutomationTextEditAttempt TrySetTextCore(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        bool ensureForegroundWindow,
+        string? expectedContentFingerprint,
+        int maxTextLength) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
         if (element == null || !IsTextMutationAllowed(element)) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("control-unavailable");
+        }
+
+        UiAutomationTextEditAttempt precondition = ValidateContentPrecondition(element, expectedContentFingerprint, maxTextLength);
+        if (!precondition.Applied) {
+            return precondition;
         }
 
         bool patternApplied = TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
@@ -638,38 +696,43 @@ internal sealed partial class UiAutomationControlService {
         }
 
         if (patternApplied) {
-            return true;
+            return UiAutomationTextEditAttempt.Succeeded();
         }
 
         TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
         if (!TrySetFocus(element)) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("focus-failed");
         }
 
         if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("foreground-failed");
         }
 
         if (MonitorNativeMethods.GetForegroundWindow() != window.Handle) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("foreground-required");
         }
 
         if (!IsTextMutationAllowed(element)) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+        }
+
+        precondition = ValidateContentPrecondition(element, expectedContentFingerprint, maxTextLength);
+        if (!precondition.Applied) {
+            return precondition;
         }
 
         if (TryReplaceFocusedTextWithPaste(window, control, value)) {
-            return true;
+            return UiAutomationTextEditAttempt.Succeeded();
         }
 
         if (!IsTextMutationAllowed(element)) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
         }
 
         KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
         WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
         if (!IsTextMutationAllowed(element)) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
         }
 
         if (value.Length == 0) {
@@ -678,7 +741,28 @@ internal sealed partial class UiAutomationControlService {
             KeyboardInputService.SendTextToForeground(value);
         }
 
-        return WaitForResolvedValue(window, control, value);
+        return WaitForResolvedValue(window, control, value)
+            ? UiAutomationTextEditAttempt.Succeeded()
+            : UiAutomationTextEditAttempt.Failed("verification-failed");
+    }
+
+    private UiAutomationTextEditAttempt ValidateContentPrecondition(
+        object element,
+        string? expectedContentFingerprint,
+        int maxTextLength) {
+        if (string.IsNullOrWhiteSpace(expectedContentFingerprint)) {
+            return UiAutomationTextEditAttempt.Succeeded();
+        }
+
+        UiAutomationTextReadResult? current = ReadElementText(element, maxTextLength, expectedText: null);
+        if (current == null || current.IsTruncated) {
+            return UiAutomationTextEditAttempt.Failed("incomplete-precondition");
+        }
+
+        string observedFingerprint = DesktopTextObservationBuilder.CreateFingerprint(current.Value);
+        return string.Equals(observedFingerprint, expectedContentFingerprint, StringComparison.OrdinalIgnoreCase)
+            ? UiAutomationTextEditAttempt.Succeeded()
+            : UiAutomationTextEditAttempt.Failed("content-changed", observedContentFingerprint: observedFingerprint);
     }
 
     private bool? TryReadCheckStateCore(WindowInfo window, WindowControlInfo control) {
@@ -754,7 +838,7 @@ internal sealed partial class UiAutomationControlService {
 
     private UiAutomationElementMatchResult ResolveMatchingElement(IntPtr windowHandle, WindowControlInfo control) {
         var enumerator = new ControlEnumerator();
-        List<WindowControlInfo> win32Controls = enumerator.EnumerateControls(windowHandle);
+        List<WindowControlInfo> win32Controls = enumerator.EnumerateControlMetadata(windowHandle);
         IReadOnlyList<IntPtr> fallbackRootHandles = GetFallbackRootHandles(windowHandle, win32Controls);
         IntPtr preferredRootHandle = GetPreferredSearchRootHandle(windowHandle, fallbackRootHandles);
         IReadOnlyList<IntPtr> searchRootHandles = GetSearchRootHandles(windowHandle, win32Controls);
@@ -938,7 +1022,7 @@ internal sealed partial class UiAutomationControlService {
 
     private void FindBestMatchInRoot(IntPtr rootHandle, bool includeRoot, WindowControlInfo expected, ref object? bestMatch, ref int bestScore, ref IntPtr bestRootHandle, ref WindowControlInfo? bestControlInfo) {
         foreach (object candidate in EnumerateElementsForRoot(rootHandle, includeRoot)) {
-            WindowControlInfo? candidateInfo = CreateControlInfo(candidate);
+            WindowControlInfo? candidateInfo = CreateControlInfo(candidate, readValue: false);
             if (candidateInfo == null) {
                 continue;
             }
@@ -1059,7 +1143,7 @@ internal sealed partial class UiAutomationControlService {
                     continue;
                 }
 
-                WindowControlInfo? info = CreateControlInfo(element);
+                WindowControlInfo? info = CreateControlInfo(element, readValue: false);
                 if (info == null) {
                     continue;
                 }
@@ -1388,7 +1472,7 @@ internal sealed partial class UiAutomationControlService {
 
             WindowControlInfo? info;
             try {
-                info = CreateControlInfo(candidate);
+                info = CreateControlInfo(candidate, readValue: false);
             } catch {
                 continue;
             }
@@ -1576,13 +1660,13 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private bool TryReplaceFocusedTextWithPaste(WindowInfo window, WindowControlInfo control, string value) {
-        string clipboardBackup = string.Empty;
-        bool restoreClipboard = false;
+        ClipboardHelper.ClipboardSnapshot? clipboardSnapshot = null;
 
         try {
-            restoreClipboard = ClipboardHelper.TryGetText(out clipboardBackup);
+            clipboardSnapshot = ClipboardHelper.CaptureSnapshot();
             ClipboardHelper.SetText(value);
         } catch {
+            clipboardSnapshot?.Dispose();
             return false;
         }
 
@@ -1596,12 +1680,12 @@ internal sealed partial class UiAutomationControlService {
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
             return WaitForResolvedValue(window, control, value);
         } finally {
-            if (restoreClipboard) {
-                try {
-                    ClipboardHelper.SetText(clipboardBackup);
-                } catch {
-                    // Preserve the successful input result even if clipboard restoration fails.
-                }
+            try {
+                clipboardSnapshot.Restore();
+            } catch {
+                // Preserve the successful input result even if clipboard restoration fails.
+            } finally {
+                clipboardSnapshot.Dispose();
             }
         }
     }

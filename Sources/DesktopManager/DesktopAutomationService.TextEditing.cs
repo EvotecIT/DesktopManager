@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 
 namespace DesktopManager;
@@ -227,9 +228,17 @@ public sealed partial class DesktopAutomationService {
                         return CreateLiveMutationSafetyFailure(before, safetyCode, safetyReason);
                     }
 
-                    if (uiAutomation.TrySetValue(window, control, request.Text)) {
+                    UiAutomationTextEditAttempt attempt = uiAutomation.TrySetValue(
+                        window,
+                        control,
+                        request.Text,
+                        before.Text.ContentFingerprint,
+                        settings.MaxTextLength);
+                    if (attempt.Applied) {
                         applied = true;
                         method = "uia.value";
+                    } else if (IsMutationPreconditionFailure(attempt.FailureCode)) {
+                        return CreateMutationPreconditionFailure(before, attempt.FailureCode, attempt.ObservedContentFingerprint);
                     }
                 }
 
@@ -239,9 +248,18 @@ public sealed partial class DesktopAutomationService {
                     }
 
                     try {
-                        _windowManager.SetControlText(control, request.Text);
-                        applied = true;
-                        method = "win32.message";
+                        if (WindowControlService.TrySetTextIfUnchanged(
+                            control,
+                            request.Text,
+                            before.Text.ContentFingerprint,
+                            settings.MaxTextLength,
+                            out string nativeFailureCode,
+                            out string nativeObservedFingerprint)) {
+                            applied = true;
+                            method = "win32.message";
+                        } else if (IsMutationPreconditionFailure(nativeFailureCode)) {
+                            return CreateMutationPreconditionFailure(before, nativeFailureCode, nativeObservedFingerprint);
+                        }
                     } catch {
                         applied = false;
                     }
@@ -252,8 +270,18 @@ public sealed partial class DesktopAutomationService {
                         return CreateLiveMutationSafetyFailure(before, safetyCode, safetyReason);
                     }
 
-                    applied = uiAutomation.TrySetText(window, control, request.Text, request.EnsureForegroundWindow);
+                    UiAutomationTextEditAttempt attempt = uiAutomation.TrySetText(
+                        window,
+                        control,
+                        request.Text,
+                        request.EnsureForegroundWindow,
+                        before.Text.ContentFingerprint,
+                        settings.MaxTextLength);
+                    applied = attempt.Applied;
                     method = applied ? "foreground.replaceDocument" : string.Empty;
+                    if (!applied && IsMutationPreconditionFailure(attempt.FailureCode)) {
+                        return CreateMutationPreconditionFailure(before, attempt.FailureCode, attempt.ObservedContentFingerprint);
+                    }
                 }
             } else {
                 if (!request.AllowForegroundInputFallback) {
@@ -319,17 +347,28 @@ public sealed partial class DesktopAutomationService {
             return result;
         }
 
-        DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(request.VerificationTimeoutMilliseconds);
+        Stopwatch verificationStopwatch = Stopwatch.StartNew();
         do {
-            DesktopControlObservation? after = ObserveResolvedControl(window, control, settings);
+            int providerTimeout = GetVerificationProviderTimeout(verificationStopwatch, request.VerificationTimeoutMilliseconds);
+            DesktopControlObservation? after = ObserveResolvedControl(window, control, settings, providerTimeout);
             result.After = after;
-            if (after?.Text.IsComplete == true && string.Equals(after.Text.Value, expectedText, StringComparison.Ordinal)) {
+            bool resultWithinDeadline = request.VerificationTimeoutMilliseconds == 0 ||
+                verificationStopwatch.ElapsedMilliseconds <= request.VerificationTimeoutMilliseconds;
+            if (resultWithinDeadline && after?.Text.IsComplete == true && string.Equals(after.Text.Value, expectedText, StringComparison.Ordinal)) {
                 result.Success = true;
                 return result;
             }
 
-            UiAutomationControlService.WaitWithCurrentUiMessagePump(request.VerificationIntervalMilliseconds);
-        } while (DateTime.UtcNow <= deadlineUtc);
+            int waitMilliseconds = GetVerificationWaitInterval(
+                verificationStopwatch,
+                request.VerificationTimeoutMilliseconds,
+                request.VerificationIntervalMilliseconds);
+            if (waitMilliseconds <= 0) {
+                break;
+            }
+
+            UiAutomationControlService.WaitWithCurrentUiMessagePump(waitMilliseconds);
+        } while (verificationStopwatch.ElapsedMilliseconds < request.VerificationTimeoutMilliseconds);
 
         result.FailureCode = "verification-failed";
         result.FailureReason = "The edit was applied, but the complete observed text did not reach the expected value before the timeout.";
@@ -383,8 +422,47 @@ public sealed partial class DesktopAutomationService {
             return false;
         }
 
+        long resultLength = (long)before.Value.Length - length + request.Text.Length;
+        if (resultLength > DesktopTextObservationOptions.MaximumTextLength) {
+            error = $"The edited result would exceed the {DesktopTextObservationOptions.MaximumTextLength}-character semantic text limit.";
+            return false;
+        }
+
         expectedText = before.Value.Remove(resolvedOffset, length).Insert(resolvedOffset, request.Text);
         return true;
+    }
+
+    internal static int GetVerificationProviderTimeout(Stopwatch stopwatch, int timeoutMilliseconds) {
+        if (timeoutMilliseconds == 0) {
+            return 1;
+        }
+
+        long remaining = timeoutMilliseconds - stopwatch.ElapsedMilliseconds;
+        return (int)Math.Max(1, Math.Min(UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds, remaining));
+    }
+
+    internal static int GetVerificationWaitInterval(Stopwatch stopwatch, int timeoutMilliseconds, int intervalMilliseconds) {
+        long remaining = timeoutMilliseconds - stopwatch.ElapsedMilliseconds;
+        return remaining <= 0 ? 0 : (int)Math.Min(intervalMilliseconds, remaining);
+    }
+
+    private static bool IsMutationPreconditionFailure(string failureCode) {
+        return string.Equals(failureCode, "content-changed", StringComparison.Ordinal) ||
+            string.Equals(failureCode, "incomplete-precondition", StringComparison.Ordinal);
+    }
+
+    private static DesktopTextEditResult CreateMutationPreconditionFailure(
+        DesktopControlObservation before,
+        string failureCode,
+        string observedContentFingerprint) {
+        DesktopTextEditResult result = CreateTextEditFailure(
+            failureCode,
+            failureCode == "content-changed"
+                ? $"The target content changed before mutation (observed {observedContentFingerprint})."
+                : "The complete target content was unavailable immediately before mutation.");
+        result.Before = before;
+        result.PreconditionMatched = false;
+        return result;
     }
 
     internal static bool MatchesObservedIdentity(WindowControlInfo control, DesktopControlIdentity identity) {

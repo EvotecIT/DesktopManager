@@ -308,6 +308,37 @@ public static class WindowControlService {
         ReplaceAllText(control.Handle, text);
     }
 
+    internal static bool TrySetTextIfUnchanged(
+        WindowControlInfo control,
+        string text,
+        string expectedContentFingerprint,
+        int maxTextLength,
+        out string failureCode,
+        out string observedContentFingerprint) {
+        failureCode = string.Empty;
+        observedContentFingerprint = string.Empty;
+        if (control == null || control.Handle == IntPtr.Zero) {
+            failureCode = "control-unavailable";
+            return false;
+        }
+
+        EnsureNativeTextMutationAllowed(control.Handle);
+        string current = WindowTextHelper.GetWindowText(control.Handle, maxTextLength, out bool isTruncated);
+        if (isTruncated) {
+            failureCode = "incomplete-precondition";
+            return false;
+        }
+
+        observedContentFingerprint = DesktopTextObservationBuilder.CreateFingerprint(current);
+        if (!string.Equals(observedContentFingerprint, expectedContentFingerprint, StringComparison.OrdinalIgnoreCase)) {
+            failureCode = "content-changed";
+            return false;
+        }
+
+        SetText(control, text);
+        return true;
+    }
+
     /// <summary>
     /// Sends key messages directly to a control without stealing focus.
     /// </summary>

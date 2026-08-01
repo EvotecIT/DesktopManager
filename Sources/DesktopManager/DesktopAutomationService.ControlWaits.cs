@@ -56,7 +56,12 @@ public sealed partial class DesktopAutomationService {
                     GetRemainingWaitInterval(stopwatch, timeoutMilliseconds, intervalMilliseconds));
             }
         } finally {
-            subscription?.Dispose();
+            int cleanupTimeout = getProviderTimeout();
+            if (subscription is IUiAutomationBoundedDisposable boundedSubscription) {
+                boundedSubscription.Dispose(cleanupTimeout);
+            } else {
+                subscription?.Dispose();
+            }
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching control observation.");
