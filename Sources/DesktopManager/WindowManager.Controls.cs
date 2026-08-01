@@ -218,9 +218,7 @@ public partial class WindowManager {
         string valuePattern,
         int maxTextLength,
         Func<int>? getUiAutomationTimeoutMilliseconds) {
-        string? providerExpectedText = valuePattern.IndexOf('*') < 0 && valuePattern.IndexOf('?') < 0
-            ? valuePattern
-            : null;
+        string? providerExpectedText = GetProviderContainsLiteral(valuePattern);
         var uiAutomation = new UiAutomationControlService();
         var options = new DesktopControlObservationOptions {
             MaxTextLength = maxTextLength,
@@ -248,7 +246,7 @@ public partial class WindowManager {
 
             control.Value = observation.Text.Value;
             control.ValueIsTruncated = observation.Text.IsTruncated;
-            control.ValueMatchPattern = providerExpectedText ?? string.Empty;
+            control.ValueMatchPattern = providerExpectedText == null ? string.Empty : valuePattern;
             control.ValueMatchIgnoreCase = true;
             control.ValuePatternMatched = providerExpectedText == null ? null : observation.Text.ContainsExpected;
         }
@@ -496,6 +494,24 @@ public partial class WindowManager {
             control.ValueMatchIgnoreCase &&
             string.Equals(control.ValueMatchPattern, valuePattern, StringComparison.OrdinalIgnoreCase);
         return matchingProviderEvidence || MatchesWildcard(control.Value ?? string.Empty, valuePattern);
+    }
+
+    internal static string? GetProviderContainsLiteral(string valuePattern) {
+        if (string.IsNullOrEmpty(valuePattern) || valuePattern.IndexOf('?') >= 0) {
+            return null;
+        }
+
+        int firstWildcard = valuePattern.IndexOf('*');
+        if (firstWildcard < 0) {
+            return valuePattern;
+        }
+
+        if (firstWildcard != 0 || valuePattern.Length < 3 || valuePattern[valuePattern.Length - 1] != '*') {
+            return null;
+        }
+
+        string literal = valuePattern.Substring(1, valuePattern.Length - 2);
+        return literal.IndexOf('*') < 0 && literal.Length > 0 ? literal : null;
     }
 
     /// <summary>

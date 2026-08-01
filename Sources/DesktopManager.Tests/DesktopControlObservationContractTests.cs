@@ -300,12 +300,15 @@ public class DesktopControlObservationContractTests {
         var control = new WindowControlInfo {
             Value = "prefix",
             ValueIsTruncated = true,
-            ValueMatchPattern = "needle",
+            ValueMatchPattern = "*needle*",
             ValueMatchIgnoreCase = true,
             ValuePatternMatched = true
         };
 
-        Assert.IsTrue(new WindowManager().MatchesValuePattern(control, "NEEDLE"));
+        Assert.AreEqual("needle", WindowManager.GetProviderContainsLiteral("*needle*"));
+        Assert.IsNull(WindowManager.GetProviderContainsLiteral("needle*"));
+        Assert.IsNull(WindowManager.GetProviderContainsLiteral("*need?e*"));
+        Assert.IsTrue(new WindowManager().MatchesValuePattern(control, "*NEEDLE*"));
         Assert.IsFalse(new WindowManager().MatchesValuePattern(control, "different"));
     }
 
