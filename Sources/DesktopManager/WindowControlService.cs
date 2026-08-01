@@ -58,15 +58,36 @@ public static class WindowControlService {
     /// <param name="control">Control to query.</param>
     /// <returns><c>true</c> if checked; otherwise <c>false</c>.</returns>
     public static bool GetCheckState(WindowControlInfo control) {
+        if (!TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool isChecked)) {
+            throw new TimeoutException($"The check state did not respond within {MessageTimeoutMilliseconds}ms.");
+        }
+
+        return isChecked;
+    }
+
+    internal static bool TryGetCheckState(WindowControlInfo control, int timeoutMilliseconds, out bool isChecked) {
         if (control == null) {
             throw new ArgumentNullException(nameof(control));
         }
         if (control.Handle == IntPtr.Zero) {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
+        if (timeoutMilliseconds <= 0) {
+            isChecked = false;
+            return false;
+        }
 
-        int state = (int)MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.BM_GETCHECK, 0u, 0u);
-        return state != 0;
+        uint boundedTimeout = (uint)Math.Min(timeoutMilliseconds, (int)MessageTimeoutMilliseconds);
+        IntPtr sendResult = MonitorNativeMethods.SendMessageTimeout(
+            control.Handle,
+            MonitorNativeMethods.BM_GETCHECK,
+            IntPtr.Zero,
+            IntPtr.Zero,
+            MonitorNativeMethods.SMTO_ABORTIFHUNG,
+            boundedTimeout,
+            out IntPtr state);
+        isChecked = state != IntPtr.Zero;
+        return sendResult != IntPtr.Zero;
     }
 
     /// <summary>
@@ -573,8 +594,8 @@ public static class WindowControlService {
     }
 
     private static bool GetCheckStateForHandle(IntPtr handle) {
-        int state = (int)MonitorNativeMethods.SendMessage(handle, MonitorNativeMethods.BM_GETCHECK, 0u, 0u);
-        return state != 0;
+        var control = new WindowControlInfo { Handle = handle };
+        return TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool isChecked) && isChecked;
     }
 
     private static bool TrySendMessageWithTimeout(IntPtr handle, uint message, uint wParam, uint lParam) {

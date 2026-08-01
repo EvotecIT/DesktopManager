@@ -124,6 +124,10 @@ internal sealed partial class UiAutomationControlService {
 
         if (value.Length == 0) {
             if (deleteSelectionWhenEmpty) {
+                if (!IsExpectedForegroundInputTarget(window, control, element)) {
+                    return UiAutomationTextEditAttempt.Failed("input-target-changed");
+                }
+
                 KeyboardInputService.SendToForeground(VirtualKey.VK_DELETE);
             }
 
@@ -142,6 +146,10 @@ internal sealed partial class UiAutomationControlService {
         try {
             if (!IsTextMutationAllowed(element)) {
                 return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+            }
+
+            if (!IsExpectedForegroundInputTarget(window, control, element)) {
+                return UiAutomationTextEditAttempt.Failed("input-target-changed");
             }
 
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
@@ -165,6 +173,49 @@ internal sealed partial class UiAutomationControlService {
 
     internal static bool IsTextMutationAllowed(object element) {
         return element != null && TryReadElementPasswordState(element) == false;
+    }
+
+    private static bool IsExpectedForegroundInputTarget(
+        WindowInfo window,
+        WindowControlInfo control,
+        object element) {
+        try {
+            object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            bool? hasKeyboardFocus = current == null
+                ? null
+                : ReadObservationBoolean(current, "HasKeyboardFocus", new List<string>());
+            int nativeHandle = current == null ? 0 : ReadInt32(current, "NativeWindowHandle");
+            return MatchesForegroundInputTarget(
+                window.Handle,
+                control.Handle,
+                MonitorNativeMethods.GetForegroundWindow(),
+                WindowActivationService.GetFocusedControlHandle(window.Handle),
+                hasKeyboardFocus,
+                nativeHandle);
+        } catch {
+            return false;
+        }
+    }
+
+    internal static bool MatchesForegroundInputTarget(
+        IntPtr expectedWindowHandle,
+        IntPtr expectedControlHandle,
+        IntPtr foregroundWindowHandle,
+        IntPtr focusedControlHandle,
+        bool? hasKeyboardFocus,
+        int elementNativeHandle) {
+        if (expectedWindowHandle == IntPtr.Zero ||
+            foregroundWindowHandle != expectedWindowHandle ||
+            hasKeyboardFocus != true) {
+            return false;
+        }
+
+        if (expectedControlHandle == IntPtr.Zero) {
+            return true;
+        }
+
+        return new IntPtr(elementNativeHandle) == expectedControlHandle &&
+            focusedControlHandle == expectedControlHandle;
     }
 
     private static bool? TryReadElementPasswordState(object element) {

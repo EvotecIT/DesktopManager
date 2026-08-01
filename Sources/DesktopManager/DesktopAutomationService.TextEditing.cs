@@ -350,7 +350,12 @@ public sealed partial class DesktopAutomationService {
         Stopwatch verificationStopwatch = Stopwatch.StartNew();
         do {
             int providerTimeout = GetVerificationProviderTimeout(verificationStopwatch, request.VerificationTimeoutMilliseconds);
-            DesktopControlObservation? after = ObserveResolvedControl(window, control, settings, providerTimeout);
+            DesktopControlObservation? after = ObserveResolvedControl(
+                window,
+                control,
+                settings,
+                providerTimeout,
+                () => GetVerificationProviderTimeout(verificationStopwatch, request.VerificationTimeoutMilliseconds));
             result.After = after;
             bool resultWithinDeadline = request.VerificationTimeoutMilliseconds == 0 ||
                 verificationStopwatch.ElapsedMilliseconds <= request.VerificationTimeoutMilliseconds;

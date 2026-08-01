@@ -59,8 +59,16 @@ internal static class DesktopTextObservationBuilder {
     }
 
     internal static string CreateFingerprint(string value) {
+        string source = value ?? string.Empty;
+        var bytes = new byte[source.Length * sizeof(char)];
+        for (int index = 0; index < source.Length; index++) {
+            char codeUnit = source[index];
+            bytes[index * 2] = (byte)codeUnit;
+            bytes[index * 2 + 1] = (byte)(codeUnit >> 8);
+        }
+
         using SHA256 sha256 = SHA256.Create();
-        byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(value ?? string.Empty));
+        byte[] hash = sha256.ComputeHash(bytes);
         var builder = new StringBuilder(hash.Length * 2);
         foreach (byte item in hash) {
             builder.Append(item.ToString("x2"));

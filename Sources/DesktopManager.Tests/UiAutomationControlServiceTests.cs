@@ -243,6 +243,33 @@ public class UiAutomationControlServiceTests {
     }
 
     [TestMethod]
+    public void ScoreMatch_WithRuntimeId_RejectsDifferentOrUnavailableCandidateIdentity() {
+        var expected = new WindowControlInfo {
+            RuntimeId = "1.2.3",
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+        var matching = new WindowControlInfo {
+            RuntimeId = "1.2.3",
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+        var different = new WindowControlInfo {
+            RuntimeId = "1.2.4",
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+        var unavailable = new WindowControlInfo {
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+
+        Assert.IsTrue(UiAutomationControlService.ScoreMatch(expected, matching) >= 200);
+        Assert.AreEqual(-1, UiAutomationControlService.ScoreMatch(expected, different));
+        Assert.AreEqual(-1, UiAutomationControlService.ScoreMatch(expected, unavailable));
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures editable UIA controls can opt into explicit foreground fallback even when focusability metadata is missing.
     /// </summary>

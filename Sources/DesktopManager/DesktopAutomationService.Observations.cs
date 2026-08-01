@@ -56,7 +56,12 @@ public sealed partial class DesktopAutomationService {
                 break;
             }
 
-            DesktopControlObservation? observation = ObserveResolvedControl(target.Window, target.Control, settings, providerTimeout);
+            DesktopControlObservation? observation = ObserveResolvedControl(
+                target.Window,
+                target.Control,
+                settings,
+                providerTimeout,
+                getUiAutomationTimeoutMilliseconds);
             if (getUiAutomationTimeoutMilliseconds != null && getUiAutomationTimeoutMilliseconds() <= 0) {
                 break;
             }
@@ -159,14 +164,20 @@ public sealed partial class DesktopAutomationService {
         WindowInfo window,
         WindowControlInfo control,
         DesktopControlObservationOptions settings,
-        int uiAutomationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
+        int uiAutomationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
+        Func<int>? getRemainingProviderTimeoutMilliseconds = null) {
         DesktopControlObservation? observation = null;
         if (settings.UseUiAutomation) {
             var uiAutomation = new UiAutomationControlService();
             observation = uiAutomation.TryObserveControl(window, control, settings, uiAutomationTimeoutMilliseconds);
             if (observation == null && uiAutomation.LastOperationTimedOut) {
                 observation = settings.IncludeNativeFallback && control.IsPassword == false
-                    ? CreateNativeControlObservation(window, control, settings)
+                    ? CreateNativeControlObservation(
+                        window,
+                        control,
+                        settings,
+                        uiAutomationTimeoutMilliseconds,
+                        getRemainingProviderTimeoutMilliseconds)
                     : CreateUnavailableControlObservation(window, control, "uia.timeout");
                 observation.Status = "partial";
                 observation.FailureReason = $"UI Automation did not complete within {uiAutomationTimeoutMilliseconds}ms.";
@@ -174,21 +185,34 @@ public sealed partial class DesktopAutomationService {
         }
 
         if (observation == null && settings.IncludeNativeFallback) {
-            return CreateNativeControlObservation(window, control, settings);
+            return CreateNativeControlObservation(
+                window,
+                control,
+                settings,
+                uiAutomationTimeoutMilliseconds,
+                getRemainingProviderTimeoutMilliseconds);
         }
 
         if (observation == null) {
             return null;
         }
 
-        MergeNativeObservationState(observation, window, control, settings);
+        MergeNativeObservationState(
+            observation,
+            window,
+            control,
+            settings,
+            uiAutomationTimeoutMilliseconds,
+            getRemainingProviderTimeoutMilliseconds);
         return observation;
     }
 
     internal static DesktopControlObservation CreateNativeControlObservation(
         WindowInfo window,
         WindowControlInfo control,
-        DesktopControlObservationOptions settings) {
+        DesktopControlObservationOptions settings,
+        int nativeTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
+        Func<int>? getRemainingProviderTimeoutMilliseconds = null) {
         bool canAccessText = control.IsPassword == false;
         string value = string.Empty;
         bool isTruncated = false;
@@ -225,6 +249,13 @@ public sealed partial class DesktopAutomationService {
         };
         identity.SessionKey = UiAutomationControlService.CreateObservationSessionKey(identity);
         bool supportsCheckState = control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control);
+        bool supportsSelection = control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control);
+        bool nativeCheckState = false;
+        int checkStateTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
+        bool checkStateAvailable = supportsCheckState && WindowControlService.TryGetCheckState(
+            control,
+            checkStateTimeoutMilliseconds,
+            out nativeCheckState);
         var observation = new DesktopControlObservation {
             Identity = identity,
             Capabilities = new DesktopControlCapabilities {
@@ -232,7 +263,7 @@ public sealed partial class DesktopAutomationService {
                 CanSetValue = canAccessText && control.SupportsBackgroundText,
                 CanInvoke = control.SupportsBackgroundClick,
                 CanToggle = supportsCheckState,
-                CanSelect = canAccessText && !string.IsNullOrEmpty(control.Value),
+                CanSelect = supportsSelection,
                 SupportsBackgroundClick = control.SupportsBackgroundClick,
                 SupportsBackgroundText = canAccessText && control.SupportsBackgroundText,
                 SupportsBackgroundKeys = control.SupportsBackgroundKeys,
@@ -256,8 +287,13 @@ public sealed partial class DesktopAutomationService {
             IsVisible = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null,
             IsOffscreen = control.IsOffscreen,
             IsKeyboardFocusable = control.IsKeyboardFocusable,
-            IsChecked = supportsCheckState ? WindowControlService.GetCheckState(control) : null
+            IsChecked = checkStateAvailable ? nativeCheckState : null
         };
+        if (supportsCheckState && !checkStateAvailable) {
+            AddObservationFailure(
+                observation,
+                "The native check state was unavailable within the observation deadline.");
+        }
         IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
         observation.IsFocused = focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero ? focusedHandle == control.Handle : null;
         return observation;
@@ -305,7 +341,9 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservation observation,
         WindowInfo window,
         WindowControlInfo control,
-        DesktopControlObservationOptions settings) {
+        DesktopControlObservationOptions settings,
+        int nativeTimeoutMilliseconds,
+        Func<int>? getRemainingProviderTimeoutMilliseconds) {
         if (observation.IsPassword != false) {
             observation.Text = DesktopTextObservationBuilder.CreateRestricted(
                 observation.IsPassword == true ? "password" : "passwordStateUnavailable");
@@ -335,14 +373,33 @@ public sealed partial class DesktopAutomationService {
         observation.IsVisible ??= control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null;
         observation.IsOffscreen ??= control.IsOffscreen;
         observation.IsKeyboardFocusable ??= control.IsKeyboardFocusable;
+        if (control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)) {
+            observation.Capabilities.CanSelect = true;
+        }
         if (control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control)) {
             observation.Capabilities.CanToggle = true;
-            observation.IsChecked ??= WindowControlService.GetCheckState(control);
+            if (!observation.IsChecked.HasValue) {
+                int checkStateTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
+                if (WindowControlService.TryGetCheckState(control, checkStateTimeoutMilliseconds, out bool nativeCheckState)) {
+                    observation.IsChecked = nativeCheckState;
+                } else {
+                    AddObservationFailure(
+                        observation,
+                        "The native check state was unavailable within the observation deadline.");
+                }
+            }
         }
         if (!observation.IsFocused.HasValue && control.Handle != IntPtr.Zero) {
             IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
             observation.IsFocused = focusedHandle != IntPtr.Zero ? focusedHandle == control.Handle : null;
         }
+    }
+
+    private static void AddObservationFailure(DesktopControlObservation observation, string reason) {
+        observation.Status = "partial";
+        observation.FailureReason = string.IsNullOrWhiteSpace(observation.FailureReason)
+            ? reason
+            : $"{observation.FailureReason} {reason}";
     }
 
     internal static bool ShouldUseNativeTextFallback(

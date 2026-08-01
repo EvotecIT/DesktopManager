@@ -87,6 +87,15 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopTextObservationBuilder_CreateFingerprint_PreservesUnpairedUtf16CodeUnits() {
+        string first = DesktopTextObservationBuilder.CreateFingerprint("\uD800");
+        string second = DesktopTextObservationBuilder.CreateFingerprint("\uD801");
+
+        Assert.AreEqual(64, first.Length);
+        Assert.AreNotEqual(first, second);
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_CreateNativeControlObservation_UnknownPasswordState_FailsClosed() {
         DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
             new WindowInfo { Handle = new IntPtr(10), ProcessId = 20 },
@@ -235,6 +244,34 @@ public class DesktopControlObservationContractTests {
 
         Assert.AreEqual(37, subscription.TimeoutMilliseconds);
         Assert.AreEqual(1, subscription.DisposeCount);
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_MatchesForegroundInputTarget_RequiresExactFocusedTarget() {
+        IntPtr windowHandle = new(100);
+        IntPtr controlHandle = new(200);
+
+        Assert.IsTrue(UiAutomationControlService.MatchesForegroundInputTarget(
+            windowHandle, controlHandle, windowHandle, controlHandle, hasKeyboardFocus: true, elementNativeHandle: 200));
+        Assert.IsFalse(UiAutomationControlService.MatchesForegroundInputTarget(
+            windowHandle, controlHandle, new IntPtr(101), controlHandle, hasKeyboardFocus: true, elementNativeHandle: 200));
+        Assert.IsFalse(UiAutomationControlService.MatchesForegroundInputTarget(
+            windowHandle, controlHandle, windowHandle, new IntPtr(201), hasKeyboardFocus: true, elementNativeHandle: 200));
+        Assert.IsFalse(UiAutomationControlService.MatchesForegroundInputTarget(
+            windowHandle, controlHandle, windowHandle, controlHandle, hasKeyboardFocus: false, elementNativeHandle: 200));
+        Assert.IsTrue(UiAutomationControlService.MatchesForegroundInputTarget(
+            windowHandle, IntPtr.Zero, windowHandle, IntPtr.Zero, hasKeyboardFocus: true, elementNativeHandle: 0));
+    }
+
+    [TestMethod]
+    public void WindowControlService_TryGetCheckState_ExpiredDeadlineSkipsNativeMessage() {
+        bool success = WindowControlService.TryGetCheckState(
+            new WindowControlInfo { Handle = new IntPtr(123) },
+            timeoutMilliseconds: 0,
+            out bool isChecked);
+
+        Assert.IsFalse(success);
+        Assert.IsFalse(isChecked);
     }
 
     [TestMethod]
@@ -666,8 +703,28 @@ public class DesktopControlObservationContractTests {
             new IntPtr(1003),
             IntPtr.Zero,
             IntPtr.Zero);
-        if (checkBoxHandle == IntPtr.Zero) {
-            Assert.Inconclusive("Failed to create a native checkbox control for observation testing.");
+        IntPtr comboBoxHandle = MonitorNativeMethods.CreateWindowExW(
+            0,
+            "ComboBox",
+            string.Empty,
+            wsChild | wsVisible | 0x00000003,
+            12,
+            48,
+            180,
+            120,
+            harness.Form.Handle,
+            new IntPtr(1004),
+            IntPtr.Zero,
+            IntPtr.Zero);
+        if (checkBoxHandle == IntPtr.Zero || comboBoxHandle == IntPtr.Zero) {
+            if (checkBoxHandle != IntPtr.Zero) {
+                MonitorNativeMethods.DestroyWindow(checkBoxHandle);
+            }
+            if (comboBoxHandle != IntPtr.Zero) {
+                MonitorNativeMethods.DestroyWindow(comboBoxHandle);
+            }
+
+            Assert.Inconclusive("Failed to create native checkbox and combo-box controls for observation testing.");
         }
 
         try {
@@ -691,8 +748,20 @@ public class DesktopControlObservationContractTests {
             Assert.IsTrue(observation.Capabilities.CanToggle);
             Assert.AreEqual(true, observation.IsChecked);
             Assert.IsTrue(new DesktopControlObservationCondition { IsChecked = true }.Matches(observation));
+
+            DesktopControlObservation? comboObservation = new DesktopAutomationService().ObserveControl(
+                harness.Window.Handle,
+                comboBoxHandle,
+                new DesktopControlObservationOptions {
+                    UseUiAutomation = false,
+                    IncludeNativeFallback = true
+                });
+            Assert.IsNotNull(comboObservation);
+            Assert.AreEqual(string.Empty, comboObservation.Text.Value);
+            Assert.IsTrue(comboObservation.Capabilities.CanSelect);
         } finally {
             MonitorNativeMethods.DestroyWindow(checkBoxHandle);
+            MonitorNativeMethods.DestroyWindow(comboBoxHandle);
         }
     }
 

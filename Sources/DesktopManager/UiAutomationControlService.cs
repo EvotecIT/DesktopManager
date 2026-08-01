@@ -611,9 +611,7 @@ internal sealed partial class UiAutomationControlService {
             return UiAutomationTextEditAttempt.Failed("provider-unavailable");
         }
 
-        return WaitForResolvedValue(window, control, value)
-            ? UiAutomationTextEditAttempt.Succeeded()
-            : UiAutomationTextEditAttempt.Failed("verification-failed");
+        return UiAutomationTextEditAttempt.Succeeded();
     }
 
     private bool TrySetSelectedValueCore(WindowInfo window, WindowControlInfo control, string selectedValue) {
@@ -721,12 +719,16 @@ internal sealed partial class UiAutomationControlService {
             return precondition;
         }
 
-        if (TryReplaceFocusedTextWithPaste(window, control, value)) {
+        if (TryReplaceFocusedTextWithPaste(window, control, element, value)) {
             return UiAutomationTextEditAttempt.Succeeded();
         }
 
         if (!IsTextMutationAllowed(element)) {
             return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+        }
+
+        if (!IsExpectedForegroundInputTarget(window, control, element)) {
+            return UiAutomationTextEditAttempt.Failed("input-target-changed");
         }
 
         KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
@@ -735,15 +737,17 @@ internal sealed partial class UiAutomationControlService {
             return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
         }
 
+        if (!IsExpectedForegroundInputTarget(window, control, element)) {
+            return UiAutomationTextEditAttempt.Failed("input-target-changed");
+        }
+
         if (value.Length == 0) {
             KeyboardInputService.SendToForeground(VirtualKey.VK_DELETE);
         } else {
             KeyboardInputService.SendTextToForeground(value);
         }
 
-        return WaitForResolvedValue(window, control, value)
-            ? UiAutomationTextEditAttempt.Succeeded()
-            : UiAutomationTextEditAttempt.Failed("verification-failed");
+        return UiAutomationTextEditAttempt.Succeeded();
     }
 
     private UiAutomationTextEditAttempt ValidateContentPrecondition(
@@ -796,6 +800,10 @@ internal sealed partial class UiAutomationControlService {
         }
 
         if (MonitorNativeMethods.GetForegroundWindow() != window.Handle) {
+            return false;
+        }
+
+        if (!IsExpectedForegroundInputTarget(window, control, element)) {
             return false;
         }
 
@@ -967,6 +975,14 @@ internal sealed partial class UiAutomationControlService {
 
     internal static int ScoreMatch(WindowControlInfo expected, WindowControlInfo candidate) {
         int score = 0;
+        if (!string.IsNullOrWhiteSpace(expected.RuntimeId)) {
+            if (!string.Equals(expected.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal)) {
+                return -1;
+            }
+
+            score += 200;
+        }
+
         if (expected.Handle != IntPtr.Zero && candidate.Handle == expected.Handle) {
             score += 100;
         }
@@ -1659,7 +1675,7 @@ internal sealed partial class UiAutomationControlService {
             string.Empty;
     }
 
-    private bool TryReplaceFocusedTextWithPaste(WindowInfo window, WindowControlInfo control, string value) {
+    private bool TryReplaceFocusedTextWithPaste(WindowInfo window, WindowControlInfo control, object element, string value) {
         ClipboardHelper.ClipboardSnapshot? clipboardSnapshot = null;
 
         try {
@@ -1671,14 +1687,20 @@ internal sealed partial class UiAutomationControlService {
         }
 
         try {
+            if (!IsExpectedForegroundInputTarget(window, control, element)) {
+                return false;
+            }
+
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
             WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
-            if (TryReadResolvedPasswordStateCore(window, control) != false) {
+            if (TryReadResolvedPasswordStateCore(window, control) != false ||
+                !IsExpectedForegroundInputTarget(window, control, element)) {
                 return false;
             }
 
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
-            return WaitForResolvedValue(window, control, value);
+            WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
+            return true;
         } finally {
             try {
                 clipboardSnapshot.Restore();
@@ -1687,38 +1709,6 @@ internal sealed partial class UiAutomationControlService {
             } finally {
                 clipboardSnapshot.Dispose();
             }
-        }
-    }
-
-    private bool WaitForResolvedValue(WindowInfo window, WindowControlInfo control, string expectedValue) {
-        DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(ForegroundTextVerificationMilliseconds);
-        while (DateTime.UtcNow <= deadlineUtc) {
-            string? currentValue = TryReadResolvedValue(window, control);
-            if (currentValue != null && string.Equals(currentValue, expectedValue, StringComparison.Ordinal)) {
-                control.Value = expectedValue;
-                if (string.IsNullOrWhiteSpace(control.Text) || IsLikelyEditableControl(control.ControlType, control.ClassName)) {
-                    control.Text = expectedValue;
-                }
-
-                return true;
-            }
-
-            WaitWithCurrentUiMessagePump(ForegroundTextVerificationIntervalMilliseconds);
-        }
-
-        return false;
-    }
-
-    private string? TryReadResolvedValue(WindowInfo window, WindowControlInfo control) {
-        UiAutomationElementMatchResult refreshedMatch = ResolveMatchingElement(window.Handle, control);
-        if (refreshedMatch.Element == null || !IsTextMutationAllowed(refreshedMatch.Element)) {
-            return null;
-        }
-
-        try {
-            return ReadValue(refreshedMatch.Element);
-        } catch {
-            return null;
         }
     }
 
