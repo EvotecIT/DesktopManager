@@ -191,7 +191,7 @@ public partial class WindowManager {
                 readValues: !maxTextLength.HasValue,
                 invocationTimeoutMilliseconds: providerTimeout);
         ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
-        ControlEnumerator.PopulateControlValues(win32Controls, maxTextLength);
+        ControlEnumerator.PopulateControlValues(win32Controls, maxTextLength, getUiAutomationTimeoutMilliseconds);
 
         return SelectDiscoveredControls(filter, win32Controls, uiAutomationControls);
     }
@@ -303,9 +303,8 @@ public partial class WindowManager {
 
     internal static bool AreEquivalentControls(WindowControlInfo existing, WindowControlInfo candidate) {
         if (!string.IsNullOrWhiteSpace(existing.RuntimeId) &&
-            !string.IsNullOrWhiteSpace(candidate.RuntimeId) &&
-            string.Equals(existing.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal)) {
-            return true;
+            !string.IsNullOrWhiteSpace(candidate.RuntimeId)) {
+            return string.Equals(existing.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal);
         }
 
         if (existing.Handle != IntPtr.Zero &&

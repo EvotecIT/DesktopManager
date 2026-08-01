@@ -447,6 +447,28 @@ public class DesktopAutomationObservationTests {
     }
 
     [TestMethod]
+    public void WindowManager_AreEquivalentControls_DifferentRuntimeIds_ReturnsFalse() {
+        var first = new WindowControlInfo {
+            RuntimeId = "1.2.3",
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same",
+            ClassName = "same"
+        };
+        var second = new WindowControlInfo {
+            RuntimeId = "1.2.4",
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same",
+            ClassName = "same"
+        };
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        second.RuntimeId = first.RuntimeId;
+        Assert.IsTrue(WindowManager.AreEquivalentControls(first, second));
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures merged native controls retain explicit UI Automation provenance for TextPattern reads.
     /// </summary>

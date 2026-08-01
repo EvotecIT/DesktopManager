@@ -178,7 +178,7 @@ internal static partial class DesktopOperations {
     }
 
     private static bool MatchesControlValue(WindowControlInfo control, string expected, bool contains, StringComparison comparison) {
-        string value = string.IsNullOrWhiteSpace(control.Value) ? control.Text : control.Value;
+        string value = string.IsNullOrEmpty(control.Value) ? control.Text : control.Value;
         if (contains) {
             return value.IndexOf(expected, comparison) >= 0;
         }

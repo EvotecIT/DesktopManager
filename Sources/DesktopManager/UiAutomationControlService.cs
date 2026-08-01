@@ -1730,9 +1730,9 @@ internal sealed partial class UiAutomationControlService {
         DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(ForegroundTextVerificationMilliseconds);
         while (DateTime.UtcNow <= deadlineUtc) {
             string? currentValue = TryReadResolvedSelectedValue(window, control);
-            if (!string.IsNullOrWhiteSpace(currentValue) && string.Equals(currentValue, expectedValue, StringComparison.OrdinalIgnoreCase)) {
+            if (currentValue != null && string.Equals(currentValue, expectedValue, StringComparison.OrdinalIgnoreCase)) {
                 control.Value = expectedValue;
-                if (string.IsNullOrWhiteSpace(control.Text) || string.Equals(control.ControlType, "ComboBox", StringComparison.OrdinalIgnoreCase)) {
+                if (string.IsNullOrEmpty(control.Text) || string.Equals(control.ControlType, "ComboBox", StringComparison.OrdinalIgnoreCase)) {
                     control.Text = expectedValue;
                 }
 

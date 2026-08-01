@@ -9,6 +9,7 @@ namespace DesktopManager;
 /// </summary>
 public class ControlEnumerator {
     private const long EditStylePassword = 0x0020;
+    private const int NativeReadTimeoutMilliseconds = 1000;
 
     /// <summary>Enumerates all child controls of the given parent window.</summary>
     /// <param name="parent">Handle of the parent window.</param>
@@ -38,7 +39,10 @@ public class ControlEnumerator {
         return controls;
     }
 
-    internal static void PopulateControlValues(IEnumerable<WindowControlInfo> controls, int? maxTextLength = null) {
+    internal static void PopulateControlValues(
+        IEnumerable<WindowControlInfo> controls,
+        int? maxTextLength = null,
+        Func<int>? getRemainingTimeoutMilliseconds = null) {
         if (maxTextLength.HasValue && maxTextLength.Value < 1) {
             throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
         }
@@ -50,16 +54,28 @@ public class ControlEnumerator {
                 continue;
             }
 
-            control.Text = maxTextLength.HasValue
-                ? WindowTextHelper.GetWindowText(control.Handle, maxTextLength.Value, out _)
-                : WindowTextHelper.GetWindowText(control.Handle);
+            int boundedLength = maxTextLength ?? DesktopTextObservationOptions.MaximumTextLength;
+            int textTimeoutMilliseconds = getRemainingTimeoutMilliseconds?.Invoke() ?? NativeReadTimeoutMilliseconds;
+            bool textAvailable = WindowControlService.TryGetControlText(
+                control,
+                boundedLength,
+                textTimeoutMilliseconds,
+                out string text,
+                out _);
+            control.Text = textAvailable ? text : string.Empty;
             control.ValueIsTruncated = false;
             if (WindowControlService.SupportsSelection(control)) {
-                if (maxTextLength.HasValue) {
-                    control.Value = WindowControlService.GetSelectedValue(control, maxTextLength.Value, out bool valueIsTruncated);
+                int selectionTimeoutMilliseconds = getRemainingTimeoutMilliseconds?.Invoke() ?? NativeReadTimeoutMilliseconds;
+                if (WindowControlService.TryGetSelectedValue(
+                        control,
+                        boundedLength,
+                        selectionTimeoutMilliseconds,
+                        out string selectedValue,
+                        out bool valueIsTruncated)) {
+                    control.Value = selectedValue;
                     control.ValueIsTruncated = valueIsTruncated;
                 } else {
-                    control.Value = WindowControlService.GetSelectedValue(control);
+                    control.Value = string.Empty;
                 }
             } else {
                 control.Value = control.Text;
@@ -110,19 +126,7 @@ public class ControlEnumerator {
         long style = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE).ToInt64();
         info.IsPassword = classNameLength > 0 ? IsPasswordStyle(info.ClassName, style) : null;
         if (info.IsPassword == false && readValue) {
-            info.Text = maxTextLength.HasValue
-                ? WindowTextHelper.GetWindowText(handle, maxTextLength.Value, out _)
-                : WindowTextHelper.GetWindowText(handle);
-            if (WindowControlService.SupportsSelection(info)) {
-                if (maxTextLength.HasValue) {
-                    info.Value = WindowControlService.GetSelectedValue(info, maxTextLength.Value, out bool valueIsTruncated);
-                    info.ValueIsTruncated = valueIsTruncated;
-                } else {
-                    info.Value = WindowControlService.GetSelectedValue(info);
-                }
-            } else {
-                info.Value = info.Text;
-            }
+            PopulateControlValues(new[] { info }, maxTextLength);
         }
 
         PopulateBounds(info, handle);

@@ -101,7 +101,8 @@ public class ControlQueryAndDiagnosticsMappingTests {
                     ControlType = "Edit",
                     Text = "DesktopManager",
                     Value = "DesktopManager",
-                    SupportsForegroundInputFallback = true
+                    SupportsForegroundInputFallback = true,
+                    IsPassword = false
                 }
             },
             UiAutomationRoots = new[] {
@@ -121,7 +122,8 @@ public class ControlQueryAndDiagnosticsMappingTests {
                             Handle = IntPtr.Zero,
                             AutomationId = "EditorTextBox",
                             ControlType = "Edit",
-                            Text = "DesktopManager"
+                            Text = "DesktopManager",
+                            IsPassword = false
                         }
                     }
                 }

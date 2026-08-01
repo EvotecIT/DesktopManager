@@ -8,7 +8,7 @@ namespace DesktopManager;
 /// Provides helper methods for interacting with window controls.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public static class WindowControlService {
+public static partial class WindowControlService {
     private const uint MessageTimeoutMilliseconds = 1000;
     private const uint WmCommand = 0x0111;
     private const long ButtonStyleMask = 0x0000000F;
@@ -18,13 +18,6 @@ public static class WindowControlService {
     private const long ButtonStyleThreeState = 0x00000005;
     private const long ButtonStyleAutoThreeState = 0x00000006;
     private const long ButtonStyleAutoRadioButton = 0x00000009;
-    private const int ComboBoxError = -1;
-    private const uint CbGetCount = 0x0146;
-    private const uint CbGetCurSel = 0x0147;
-    private const uint CbGetLbText = 0x0148;
-    private const uint CbGetLbTextLen = 0x0149;
-    private const uint CbSetCurSel = 0x014E;
-    private const int CbnSelChange = 1;
 
     /// <summary>
     /// Clicks the specified control.
@@ -121,129 +114,6 @@ public static class WindowControlService {
     }
 
     /// <summary>
-    /// Returns whether the control exposes a native single-selection list such as a combo box.
-    /// </summary>
-    /// <param name="control">Control to inspect.</param>
-    /// <returns><c>true</c> when the control supports native combo-box selection messages; otherwise <c>false</c>.</returns>
-    public static bool SupportsSelection(WindowControlInfo control) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            return false;
-        }
-
-        return control.ClassName.IndexOf("combobox", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            string.Equals(control.ControlType, "ComboBox", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Retrieves the selected index for a combo-box-style control.
-    /// </summary>
-    /// <param name="control">Control to query.</param>
-    /// <returns>The selected index, or <c>-1</c> when no selection exists.</returns>
-    public static int GetSelectedIndex(WindowControlInfo control) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        int selectedIndex = unchecked((int)MonitorNativeMethods.SendMessage(control.Handle, CbGetCurSel, 0u, 0u));
-        return selectedIndex == ComboBoxError ? -1 : selectedIndex;
-    }
-
-    /// <summary>
-    /// Retrieves the selected value for a combo-box-style control.
-    /// </summary>
-    /// <param name="control">Control to query.</param>
-    /// <returns>The selected item text when available; otherwise the live control text.</returns>
-    public static string GetSelectedValue(WindowControlInfo control) {
-        return GetSelectedValueCore(control, maxTextLength: null);
-    }
-
-    internal static string GetSelectedValue(WindowControlInfo control, int maxTextLength) {
-        return GetSelectedValue(control, maxTextLength, out _);
-    }
-
-    internal static string GetSelectedValue(WindowControlInfo control, int maxTextLength, out bool isTruncated) {
-        if (maxTextLength < 1) {
-            throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
-        }
-
-        return GetSelectedValueCore(control, maxTextLength, out isTruncated);
-    }
-
-    private static string GetSelectedValueCore(WindowControlInfo control, int? maxTextLength) {
-        return GetSelectedValueCore(control, maxTextLength, out _);
-    }
-
-    private static string GetSelectedValueCore(WindowControlInfo control, int? maxTextLength, out bool isTruncated) {
-        isTruncated = false;
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.IsPassword != false) {
-            return string.Empty;
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        int selectedIndex = GetSelectedIndex(control);
-        if (selectedIndex < 0) {
-            if (maxTextLength.HasValue) {
-                return WindowTextHelper.GetWindowText(control.Handle, maxTextLength.Value, out isTruncated);
-            }
-
-            return WindowTextHelper.GetWindowText(control.Handle);
-        }
-
-        return GetComboBoxItemText(control.Handle, selectedIndex, maxTextLength, out isTruncated);
-    }
-
-    /// <summary>
-    /// Selects a combo-box-style item by its displayed text.
-    /// </summary>
-    /// <param name="control">Control to update.</param>
-    /// <param name="value">Displayed item text to select.</param>
-    public static void SetSelectedValue(WindowControlInfo control, string value) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (value == null) {
-            throw new ArgumentNullException(nameof(value));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        int itemCount = unchecked((int)MonitorNativeMethods.SendMessage(control.Handle, CbGetCount, 0u, 0u));
-        if (itemCount == ComboBoxError) {
-            throw new InvalidOperationException("The combo box item count could not be resolved.");
-        }
-
-        for (int index = 0; index < itemCount; index++) {
-            string itemText = GetComboBoxItemText(control.Handle, index, maxTextLength: null, out _);
-            if (!string.Equals(itemText, value, StringComparison.OrdinalIgnoreCase)) {
-                continue;
-            }
-
-            SetSelectedIndex(control, index);
-            return;
-        }
-
-        throw new InvalidOperationException($"The combo box does not contain an item named '{value}'.");
-    }
-
-    /// <summary>
     /// Sets the check state of a button control.
     /// </summary>
     /// <param name="control">Control to modify.</param>
@@ -268,32 +138,6 @@ public static class WindowControlService {
 
         // Some controls ignore BM_SETCHECK unless they are toggled through their standard click path.
         SendMessageWithTimeout(control.Handle, MonitorNativeMethods.BM_CLICK, 0u, 0u);
-    }
-
-    /// <summary>
-    /// Selects a combo-box-style item by its zero-based index.
-    /// </summary>
-    /// <param name="control">Control to update.</param>
-    /// <param name="index">Zero-based item index.</param>
-    public static void SetSelectedIndex(WindowControlInfo control, int index) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        if (index < 0) {
-            throw new ArgumentOutOfRangeException(nameof(index), "The selected index must be zero or greater.");
-        }
-
-        int result = unchecked((int)MonitorNativeMethods.SendMessage(control.Handle, CbSetCurSel, unchecked((uint)index), 0u));
-        if (result == ComboBoxError) {
-            throw new InvalidOperationException($"The combo box does not expose an item at index {index}.");
-        }
-
-        NotifyParentSelectionChanged(control);
     }
 
     /// <summary>
@@ -544,49 +388,6 @@ public static class WindowControlService {
         if (ControlEnumerator.IsPasswordStyle(classBuilder.ToString(), style)) {
             throw new InvalidOperationException("Password controls cannot be updated through direct text messages.");
         }
-    }
-
-    private static string GetComboBoxItemText(IntPtr handle, int index, int? maxTextLength, out bool isTruncated) {
-        isTruncated = false;
-        int itemTextLength = unchecked((int)MonitorNativeMethods.SendMessage(handle, CbGetLbTextLen, unchecked((uint)index), 0u));
-        if (itemTextLength == ComboBoxError) {
-            return string.Empty;
-        }
-
-        if (maxTextLength.HasValue && itemTextLength > maxTextLength.Value) {
-            isTruncated = true;
-            return string.Empty;
-        }
-
-        var buffer = new StringBuilder(itemTextLength + 1);
-        MonitorNativeMethods.SendMessage(handle, CbGetLbText, new IntPtr(index), buffer);
-        string value = buffer.ToString();
-        if (maxTextLength.HasValue && value.Length > maxTextLength.Value) {
-            isTruncated = true;
-            return value.Substring(0, maxTextLength.Value);
-        }
-
-        return value;
-    }
-
-    private static void NotifyParentSelectionChanged(WindowControlInfo control) {
-        IntPtr parentHandle = control.ParentWindowHandle != IntPtr.Zero
-            ? control.ParentWindowHandle
-            : MonitorNativeMethods.GetParent(control.Handle);
-        if (parentHandle == IntPtr.Zero) {
-            return;
-        }
-
-        int controlId = control.Id != 0 ? control.Id : MonitorNativeMethods.GetDlgCtrlID(control.Handle);
-        int wParam = unchecked((CbnSelChange << 16) | (controlId & 0xFFFF));
-        MonitorNativeMethods.SendMessageTimeout(
-            parentHandle,
-            WmCommand,
-            new IntPtr(wParam),
-            control.Handle,
-            MonitorNativeMethods.SMTO_ABORTIFHUNG,
-            MessageTimeoutMilliseconds,
-            out _);
     }
 
     private static void SendMessageWithTimeout(IntPtr handle, uint message, uint wParam, uint lParam) {

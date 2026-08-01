@@ -216,16 +216,28 @@ public sealed partial class DesktopAutomationService {
         bool canAccessText = control.IsPassword == false;
         string value = string.Empty;
         bool isTruncated = false;
+        bool nativeTextAvailable = true;
         string textSource = "native.windowText";
         if (canAccessText) {
+            int textTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
             if (control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)) {
-                value = WindowControlService.GetSelectedValue(control, settings.MaxTextLength, out isTruncated);
+                nativeTextAvailable = WindowControlService.TryGetSelectedValue(
+                    control,
+                    settings.MaxTextLength,
+                    textTimeoutMilliseconds,
+                    out value,
+                    out isTruncated);
                 textSource = "native.selection";
             } else if (control.Handle != IntPtr.Zero) {
-                value = WindowTextHelper.GetWindowText(control.Handle, settings.MaxTextLength, out isTruncated);
+                nativeTextAvailable = WindowControlService.TryGetControlText(
+                    control,
+                    settings.MaxTextLength,
+                    textTimeoutMilliseconds,
+                    out value,
+                    out isTruncated);
             }
 
-            if (string.IsNullOrEmpty(value) && !isTruncated) {
+            if (nativeTextAvailable && string.IsNullOrEmpty(value) && !isTruncated) {
                 string candidate = !string.IsNullOrEmpty(control.Value) ? control.Value : control.Text;
                 isTruncated = control.ValueIsTruncated || candidate.Length > settings.MaxTextLength;
                 value = candidate.Length > settings.MaxTextLength
@@ -259,7 +271,7 @@ public sealed partial class DesktopAutomationService {
         var observation = new DesktopControlObservation {
             Identity = identity,
             Capabilities = new DesktopControlCapabilities {
-                CanReadText = canAccessText && (control.Handle != IntPtr.Zero || !string.IsNullOrEmpty(value)),
+                CanReadText = canAccessText && nativeTextAvailable && (control.Handle != IntPtr.Zero || !string.IsNullOrEmpty(value)),
                 CanSetValue = canAccessText && control.SupportsBackgroundText,
                 CanInvoke = control.SupportsBackgroundClick,
                 CanToggle = supportsCheckState,
@@ -271,6 +283,12 @@ public sealed partial class DesktopAutomationService {
             },
             Text = !canAccessText
                 ? DesktopTextObservationBuilder.CreateRestricted(control.IsPassword == true ? "native.password" : "native.passwordStateUnavailable")
+                : !nativeTextAvailable
+                    ? DesktopTextObservationBuilder.CreateUnavailable(
+                        $"{textSource}.unavailable",
+                        settings.ExpectedText,
+                        settings.IgnoreCase,
+                        containsExpected: null)
                 : DesktopTextObservationBuilder.Create(
                     value,
                     textSource,
@@ -281,7 +299,7 @@ public sealed partial class DesktopAutomationService {
                     settings.MatchContextLength),
             Source = control.Source == WindowControlSource.UiAutomation ? "uia.metadata" : "win32",
             ObservedAtUtc = DateTime.UtcNow,
-            Status = canAccessText ? "available" : "restricted",
+            Status = !canAccessText ? "restricted" : nativeTextAvailable ? "available" : "partial",
             IsPassword = control.IsPassword,
             IsEnabled = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowEnabled(control.Handle) : control.IsEnabled,
             IsVisible = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null,
@@ -289,6 +307,11 @@ public sealed partial class DesktopAutomationService {
             IsKeyboardFocusable = control.IsKeyboardFocusable,
             IsChecked = checkStateAvailable ? nativeCheckState : null
         };
+        if (canAccessText && !nativeTextAvailable) {
+            AddObservationFailure(
+                observation,
+                "The native text was unavailable within the observation deadline.");
+        }
         if (supportsCheckState && !checkStateAvailable) {
             AddObservationFailure(
                 observation,
@@ -355,17 +378,34 @@ public sealed partial class DesktopAutomationService {
         }
 
         if (ShouldUseNativeTextFallback(observation, control, settings)) {
-            string nativeValue = WindowTextHelper.GetWindowText(control.Handle, settings.MaxTextLength, out bool isTruncated);
-            if (!string.IsNullOrEmpty(nativeValue)) {
-                observation.Text = DesktopTextObservationBuilder.Create(
-                    nativeValue,
-                    "native.windowText",
-                    isTruncated,
+            int textTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
+            if (WindowControlService.TryGetControlText(
+                    control,
+                    settings.MaxTextLength,
+                    textTimeoutMilliseconds,
+                    out string nativeValue,
+                    out bool isTruncated)) {
+                if (!string.IsNullOrEmpty(nativeValue)) {
+                    observation.Text = DesktopTextObservationBuilder.Create(
+                        nativeValue,
+                        "native.windowText",
+                        isTruncated,
+                        settings.ExpectedText,
+                        settings.IgnoreCase,
+                        settings.MaxMatches,
+                        settings.MatchContextLength,
+                        observation.Text.ContainsExpected);
+                }
+            } else {
+                observation.Text = DesktopTextObservationBuilder.CreateUnavailable(
+                    "native.windowText.unavailable",
                     settings.ExpectedText,
                     settings.IgnoreCase,
-                    settings.MaxMatches,
-                    settings.MatchContextLength,
                     observation.Text.ContainsExpected);
+                observation.Capabilities.CanReadText = false;
+                AddObservationFailure(
+                    observation,
+                    "The native text fallback was unavailable within the observation deadline.");
             }
         }
 

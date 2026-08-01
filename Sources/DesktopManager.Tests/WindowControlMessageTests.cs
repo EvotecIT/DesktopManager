@@ -104,7 +104,8 @@ public class WindowControlMessageTests {
             Handle = comboBox.Handle,
             ClassName = "ComboBox",
             Id = MonitorNativeMethods.GetDlgCtrlID(comboBox.Handle),
-            Text = comboBox.Text
+            Text = comboBox.Text,
+            IsPassword = false
         };
 
         WindowControlService.SetSelectedValue(control, "Beta");

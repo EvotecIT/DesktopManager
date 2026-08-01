@@ -8,14 +8,23 @@ namespace DesktopManager;
 
 internal static class DesktopTextObservationBuilder {
     internal static DesktopControlTextObservation CreateRestricted(string source) {
+        return CreateUnavailable(source, expectedText: null, ignoreCase: false, containsExpected: null);
+    }
+
+    internal static DesktopControlTextObservation CreateUnavailable(
+        string source,
+        string? expectedText,
+        bool ignoreCase,
+        bool? containsExpected) {
         DesktopControlTextObservation observation = Create(
             string.Empty,
             source,
             isTruncated: false,
-            expectedText: null,
-            ignoreCase: false,
+            expectedText,
+            ignoreCase,
             maxMatches: 0,
-            contextLength: 0);
+            contextLength: 0,
+            containsExpected);
         observation.IsComplete = false;
         observation.ContentFingerprint = string.Empty;
         return observation;

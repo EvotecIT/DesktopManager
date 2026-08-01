@@ -138,6 +138,19 @@ internal sealed partial class UiAutomationControlService {
             providerContains = TryFindTextWithProvider(patterns, options.ExpectedText!, options.IgnoreCase, errors);
         }
 
+        bool providerTextSupported = patterns.ContainsKey("Text") ||
+            patterns.ContainsKey("Value") ||
+            patterns.ContainsKey("RangeValue") ||
+            patterns.ContainsKey("LegacyIAccessible");
+        if (textResult == null && providerTextSupported) {
+            errors.Add("text.unavailable");
+            return DesktopTextObservationBuilder.CreateUnavailable(
+                "uia.textUnavailable",
+                options.ExpectedText,
+                options.IgnoreCase,
+                providerContains ? true : null);
+        }
+
         DesktopControlTextObservation observation = DesktopTextObservationBuilder.Create(
             value,
             textResult?.Source ?? string.Empty,

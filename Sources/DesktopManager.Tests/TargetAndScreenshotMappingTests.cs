@@ -118,7 +118,8 @@ public class TargetAndScreenshotMappingTests {
                 Value = "DesktopManager",
                 SupportsForegroundInputFallback = true,
                 IsKeyboardFocusable = true,
-                IsEnabled = true
+                IsEnabled = true,
+                IsPassword = false
             }
         };
 
@@ -141,6 +142,45 @@ public class TargetAndScreenshotMappingTests {
         Assert.AreEqual("WPF", result.Control.FrameworkId);
         Assert.AreEqual("DesktopManager", result.Control.Value);
         Assert.AreEqual("DesktopManager Command Surface", result.Control.ParentWindow.Title);
+    }
+
+    [TestMethod]
+    public void MapResolvedControlTarget_UnknownPasswordState_SuppressesEveryTextChannel() {
+        var resolvedTarget = new DesktopResolvedControlTarget {
+            Definition = new DesktopControlTargetDefinition(),
+            Window = new WindowInfo { Handle = new IntPtr(0x2222) },
+            Control = new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                Text = "must-not-map-text",
+                Value = "must-not-map-value",
+                IsPassword = null
+            }
+        };
+
+        global::DesktopManager.Cli.ResolvedControlTargetResult result = global::DesktopManager.Cli.DesktopOperations.MapResolvedControlTarget(resolvedTarget);
+
+        Assert.AreEqual(string.Empty, result.Control.Text);
+        Assert.AreEqual(string.Empty, result.Control.Value);
+        Assert.IsNull(result.Control.IsPassword);
+    }
+
+    [TestMethod]
+    public void MapResolvedControlTarget_KnownSafeWhitespaceValue_PreservesWhitespace() {
+        var resolvedTarget = new DesktopResolvedControlTarget {
+            Definition = new DesktopControlTargetDefinition(),
+            Window = new WindowInfo { Handle = new IntPtr(0x2222) },
+            Control = new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                Text = "  ",
+                Value = "\t",
+                IsPassword = false
+            }
+        };
+
+        global::DesktopManager.Cli.ResolvedControlTargetResult result = global::DesktopManager.Cli.DesktopOperations.MapResolvedControlTarget(resolvedTarget);
+
+        Assert.AreEqual("  ", result.Control.Text);
+        Assert.AreEqual("\t", result.Control.Value);
     }
 }
 #endif

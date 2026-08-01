@@ -96,6 +96,24 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopTextObservationBuilder_CreateUnavailable_PreservesEvidenceWithoutClaimingCompleteness() {
+        DesktopControlTextObservation observation = DesktopTextObservationBuilder.CreateUnavailable(
+            "uia.textUnavailable",
+            "needle",
+            ignoreCase: true,
+            containsExpected: true);
+
+        Assert.AreEqual(string.Empty, observation.Value);
+        Assert.AreEqual("uia.textUnavailable", observation.Source);
+        Assert.IsFalse(observation.IsComplete);
+        Assert.IsFalse(observation.IsTruncated);
+        Assert.AreEqual(string.Empty, observation.ContentFingerprint);
+        Assert.AreEqual(true, observation.ContainsExpected);
+        Assert.AreEqual("needle", observation.ExpectedText);
+        Assert.IsTrue(observation.ExpectedTextIgnoreCase);
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_CreateNativeControlObservation_UnknownPasswordState_FailsClosed() {
         DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
             new WindowInfo { Handle = new IntPtr(10), ProcessId = 20 },
@@ -272,6 +290,20 @@ public class DesktopControlObservationContractTests {
 
         Assert.IsFalse(success);
         Assert.IsFalse(isChecked);
+    }
+
+    [TestMethod]
+    public void WindowControlService_TryGetSelectedValue_ExpiredDeadlineSkipsNativeMessages() {
+        bool success = WindowControlService.TryGetSelectedValue(
+            new WindowControlInfo { Handle = new IntPtr(123), IsPassword = false },
+            maxTextLength: 32,
+            timeoutMilliseconds: 0,
+            out string value,
+            out bool isTruncated);
+
+        Assert.IsFalse(success);
+        Assert.AreEqual(string.Empty, value);
+        Assert.IsFalse(isTruncated);
     }
 
     [TestMethod]

@@ -2458,18 +2458,18 @@ internal static partial class DesktopOperations {
             Handle = $"0x{control.Handle.ToInt64():X}",
             ClassName = control.ClassName,
             Id = control.Id,
-            Text = control.IsPassword == true
-                ? string.Empty
-                : !string.IsNullOrWhiteSpace(control.Text)
+            Text = control.IsPassword == false
+                ? !string.IsNullOrEmpty(control.Text)
                     ? control.Text
-                    : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
-            Value = control.IsPassword == true
-                ? string.Empty
-                : !string.IsNullOrWhiteSpace(control.Value)
+                    : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty
+                : string.Empty,
+            Value = control.IsPassword == false
+                ? !string.IsNullOrEmpty(control.Value)
                     ? control.Value
-                    : !string.IsNullOrWhiteSpace(control.Text)
+                    : !string.IsNullOrEmpty(control.Text)
                         ? control.Text
-                        : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
+                        : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty
+                : string.Empty,
             Source = control.Source.ToString(),
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
