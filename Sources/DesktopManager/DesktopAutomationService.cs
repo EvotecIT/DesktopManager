@@ -626,11 +626,11 @@ public sealed class DesktopAutomationService {
         WindowControlInfo? control = automationResult?.Control;
         if (control != null) {
             control.ParentWindowHandle = window.Handle;
-        } else if (focusedHandle != IntPtr.Zero) {
+        } else if (focusedHandle != IntPtr.Zero && focusedHandle != window.Handle) {
             control = new ControlEnumerator().GetControl(window.Handle, focusedHandle, maxObservedTextLength);
         }
 
-        if (focusedHandle == IntPtr.Zero && control == null) {
+        if (control == null) {
             return null;
         }
 
@@ -646,12 +646,13 @@ public sealed class DesktopAutomationService {
             : !string.IsNullOrWhiteSpace(liveText)
                 ? liveText
                 : control?.Text ?? string.Empty;
+        string valueSource = string.Empty;
         string value = isPassword
             ? string.Empty
-            : automationText?.Value ?? control?.Value ?? string.Empty;
-        string valueSource = isPassword
-            ? "uia.password"
-            : automationText?.Source ?? (!string.IsNullOrWhiteSpace(control?.Value) ? "native.windowText" : string.Empty);
+            : ResolveFocusedValue(automationText, control, liveText, out valueSource);
+        if (isPassword) {
+            valueSource = "uia.password";
+        }
 
         return new DesktopFocusedControlObservation {
             WindowHandle = window.Handle,
@@ -675,6 +676,31 @@ public sealed class DesktopAutomationService {
         return automationResult != null
             ? automationResult.Control?.Handle ?? IntPtr.Zero
             : nativeFocusedHandle;
+    }
+
+    internal static string ResolveFocusedValue(
+        UiAutomationTextReadResult? automationText,
+        WindowControlInfo? control,
+        string liveText,
+        out string valueSource) {
+        if (automationText != null) {
+            valueSource = automationText.Source;
+            return automationText.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(liveText)) {
+            valueSource = "native.windowText";
+            return liveText;
+        }
+
+        string? controlValue = control?.Value;
+        if (controlValue != null && !string.IsNullOrWhiteSpace(controlValue)) {
+            valueSource = "native.windowText";
+            return controlValue;
+        }
+
+        valueSource = string.Empty;
+        return string.Empty;
     }
 
     internal static bool? ResolveExpectedTextMatch(string? expectedText, params string?[] candidateValues) {

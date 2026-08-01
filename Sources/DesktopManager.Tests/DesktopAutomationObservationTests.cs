@@ -315,6 +315,29 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures native text supplies both the value and source when UI Automation exposes no readable pattern.
+    /// </summary>
+    public void DesktopAutomationService_ResolveFocusedValue_NativeText_ReturnsNativeValueAndSource() {
+        string value = DesktopAutomationService.ResolveFocusedValue(null, new WindowControlInfo(), "native editor value", out string source);
+
+        Assert.AreEqual("native editor value", value);
+        Assert.AreEqual("native.windowText", source);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures a focused window root is not retained when no focused descendant exists.
+    /// </summary>
+    public void UiAutomationControlService_ResolveFocusedElementCandidate_RootWithoutDescendant_ReturnsNull() {
+        object root = new();
+
+        object? result = UiAutomationControlService.ResolveFocusedElementCandidate(root, belongsToWindow: true, isRootWindow: true, focusedDescendant: null);
+
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures UIA-only focused children do not inherit the unrelated top-level window handle.
     /// </summary>
     public void DesktopAutomationService_ResolveFocusedControlHandle_HandlelessUiAutomationControl_ReturnsZero() {
@@ -422,6 +445,32 @@ public class DesktopAutomationObservationTests {
         Assert.AreEqual(true, observation.IsPassword);
         Assert.AreEqual(string.Empty, observation.Text);
         Assert.AreEqual(string.Empty, observation.Value);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures a window root is not reported as its own focused child when no control has focus.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_WindowRootOnly_ReturnsNull() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireForegroundWindowUiTests();
+
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create(
+            "DesktopManager Root Focus Harness",
+            form => {
+                form.FormBorderStyle = FormBorderStyle.None;
+                form.ControlBox = false;
+            });
+        new WindowManager().ActivateWindow(harness.Window);
+        Application.DoEvents();
+        Task.Delay(150).Wait();
+
+        DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(harness.Window.Handle);
+
+        Assert.IsNull(observation);
     }
 
     [TestMethod]

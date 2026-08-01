@@ -114,14 +114,26 @@ internal sealed partial class UiAutomationControlService {
 
     private UiAutomationFocusedControlResult? TryGetFocusedControlCore(IntPtr windowHandle, IntPtr focusedHandle, int maxLength, string? expectedText) {
         object? element = TryGetAutomationFocusedElement();
-        if (element == null || !BelongsToWindow(element, windowHandle) || IsRootWindowElement(element, windowHandle)) {
-            element = TryFindFocusedDescendant(windowHandle) ?? element;
+        bool belongsToWindow = element != null && BelongsToWindow(element, windowHandle);
+        bool isRootWindow = element != null && belongsToWindow && IsRootWindowElement(element, windowHandle);
+        if (element == null || !belongsToWindow || isRootWindow) {
+            element = ResolveFocusedElementCandidate(
+                element,
+                belongsToWindow,
+                isRootWindow,
+                TryFindFocusedDescendant(windowHandle));
         }
 
         if (element == null || !BelongsToWindow(element, windowHandle)) {
-            element = focusedHandle != IntPtr.Zero && TryResolveRootElement(focusedHandle, out object? handleElement)
-                ? handleElement
-                : null;
+            element = null;
+            if (focusedHandle != IntPtr.Zero &&
+                focusedHandle != windowHandle &&
+                TryResolveRootElement(focusedHandle, out object? handleElement) &&
+                handleElement != null &&
+                BelongsToWindow(handleElement, windowHandle) &&
+                !IsRootWindowElement(handleElement, windowHandle)) {
+                element = handleElement;
+            }
         }
 
         if (element == null) {
@@ -143,6 +155,16 @@ internal sealed partial class UiAutomationControlService {
             Control = control,
             Text = ReadElementText(element, maxLength, expectedText)
         };
+    }
+
+    internal static object? ResolveFocusedElementCandidate(
+        object? focusedElement,
+        bool belongsToWindow,
+        bool isRootWindow,
+        object? focusedDescendant) {
+        return focusedElement != null && belongsToWindow && !isRootWindow
+            ? focusedElement
+            : focusedDescendant;
     }
 
     private UiAutomationTextReadResult? TryReadTextCore(WindowInfo window, WindowControlInfo control, int maxLength, string? expectedText) {
