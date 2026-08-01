@@ -951,7 +951,11 @@ internal sealed partial class UiAutomationControlService {
             control.ClassName ?? string.Empty,
             control.Text ?? string.Empty,
             control.Value ?? string.Empty,
-            control.FrameworkId ?? string.Empty
+            control.FrameworkId ?? string.Empty,
+            control.Left.ToString("X"),
+            control.Top.ToString("X"),
+            control.Width.ToString("X"),
+            control.Height.ToString("X")
         });
     }
 

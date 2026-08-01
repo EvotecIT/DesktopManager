@@ -326,6 +326,19 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures whitespace-only native editor content remains observable rather than being treated as absent.
+    /// </summary>
+    public void DesktopAutomationService_ResolveFocusedValue_WhitespaceNativeText_PreservesValueAndSource() {
+        const string whitespace = " \t\r\n";
+
+        string value = DesktopAutomationService.ResolveFocusedValue(null, new WindowControlInfo(), whitespace, out string source);
+
+        Assert.AreEqual(whitespace, value);
+        Assert.AreEqual("native.windowText", source);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures a focused window root is not retained when no focused descendant exists.
     /// </summary>
     public void UiAutomationControlService_ResolveFocusedElementCandidate_RootWithoutDescendant_ReturnsNull() {

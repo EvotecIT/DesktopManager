@@ -177,6 +177,35 @@ public class UiAutomationControlServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures privacy-safe bounds distinguish handleless controls whose readable identity is intentionally empty.
+    /// </summary>
+    public void GetActionMatchCacheKey_HandlelessPasswordControlsAtDifferentBounds_ReturnsDifferentKeys() {
+        IntPtr windowHandle = new IntPtr(104);
+        var first = new WindowControlInfo {
+            ControlType = "Edit",
+            IsPassword = true,
+            Left = 10,
+            Top = 20,
+            Width = 120,
+            Height = 24
+        };
+        var second = new WindowControlInfo {
+            ControlType = "Edit",
+            IsPassword = true,
+            Left = 10,
+            Top = 64,
+            Width = 120,
+            Height = 24
+        };
+
+        string firstKey = UiAutomationControlService.GetActionMatchCacheKey(windowHandle, first);
+        string secondKey = UiAutomationControlService.GetActionMatchCacheKey(windowHandle, second);
+
+        Assert.AreNotEqual(firstKey, secondKey);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures richer UIA metadata improves match scoring.
     /// </summary>
     public void ScoreMatch_WithMetadataAndBounds_ReturnsPositiveScore() {

@@ -644,7 +644,7 @@ public sealed partial class DesktopAutomationService {
         }
         string controlText = isPassword
             ? string.Empty
-            : !string.IsNullOrWhiteSpace(liveText)
+            : !string.IsNullOrEmpty(liveText)
                 ? liveText
                 : control?.Text ?? string.Empty;
         string valueSource = string.Empty;
@@ -695,15 +695,15 @@ public sealed partial class DesktopAutomationService {
             return automationText.Value;
         }
 
-        if (!string.IsNullOrWhiteSpace(liveText)) {
+        if (!string.IsNullOrEmpty(liveText)) {
             valueSource = "native.windowText";
             return liveText;
         }
 
         string? controlValue = control?.Value;
-        if (controlValue != null && !string.IsNullOrWhiteSpace(controlValue)) {
+        if (!string.IsNullOrEmpty(controlValue)) {
             valueSource = "native.windowText";
-            return controlValue;
+            return controlValue!;
         }
 
         valueSource = string.Empty;
@@ -3811,22 +3811,22 @@ public sealed partial class DesktopAutomationService {
         string uiAutomationValue = !isPassword ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
         string resolvedText = isPassword
             ? string.Empty
-            : !string.IsNullOrWhiteSpace(liveText)
+            : !string.IsNullOrEmpty(liveText)
             ? liveText
-            : !string.IsNullOrWhiteSpace(selectedValue)
+            : !string.IsNullOrEmpty(selectedValue)
                 ? selectedValue
-                : !string.IsNullOrWhiteSpace(control.Text)
+                : !string.IsNullOrEmpty(control.Text)
                     ? control.Text
                     : uiAutomationValue;
         string resolvedValue = isPassword
             ? string.Empty
-            : !string.IsNullOrWhiteSpace(selectedValue)
+            : !string.IsNullOrEmpty(selectedValue)
             ? selectedValue
-            : !string.IsNullOrWhiteSpace(liveText)
+            : !string.IsNullOrEmpty(liveText)
                 ? liveText
-                : !string.IsNullOrWhiteSpace(control.Value)
+                : !string.IsNullOrEmpty(control.Value)
                     ? control.Value
-                    : !string.IsNullOrWhiteSpace(uiAutomationValue)
+                    : !string.IsNullOrEmpty(uiAutomationValue)
                         ? uiAutomationValue
                         : resolvedText;
         bool? isFocused = null;
@@ -4060,7 +4060,7 @@ public sealed partial class DesktopAutomationService {
             return null;
         }
 
-        if (!string.IsNullOrWhiteSpace(focusedControl.Value)) {
+        if (!string.IsNullOrEmpty(focusedControl.Value)) {
             DesktopWindowTextObservation observation = CreateTextObservation(
                 window,
                 focusedControl.FocusedHandle,
@@ -4076,7 +4076,7 @@ public sealed partial class DesktopAutomationService {
             return observation;
         }
 
-        if (!string.IsNullOrWhiteSpace(focusedControl.Text)) {
+        if (!string.IsNullOrEmpty(focusedControl.Text)) {
             return CreateTextObservation(
                 window,
                 focusedControl.FocusedHandle,
@@ -4102,9 +4102,9 @@ public sealed partial class DesktopAutomationService {
             return null;
         }
 
-        string? rawValue = automationText?.Value ?? (!string.IsNullOrWhiteSpace(control.Value)
+        string? rawValue = automationText?.Value ?? (!string.IsNullOrEmpty(control.Value)
             ? control.Value
-            : !string.IsNullOrWhiteSpace(control.Text)
+            : !string.IsNullOrEmpty(control.Text)
                 ? control.Text
                 : control.Handle != IntPtr.Zero
                     ? WindowTextHelper.GetWindowText(control.Handle)
@@ -4113,9 +4113,9 @@ public sealed partial class DesktopAutomationService {
             return null;
         }
 
-        string source = automationText?.Source ?? (!string.IsNullOrWhiteSpace(control.Value)
+        string source = automationText?.Source ?? (!string.IsNullOrEmpty(control.Value)
             ? "control.value"
-            : !string.IsNullOrWhiteSpace(control.Text)
+            : !string.IsNullOrEmpty(control.Text)
                 ? "control.text"
                 : "control.liveText");
 
