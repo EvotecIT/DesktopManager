@@ -42,8 +42,8 @@ public static class WindowTextHelper {
     /// <param name="isTruncated">Whether the native text is longer than the returned value.</param>
     /// <returns>Bounded window text or an empty string.</returns>
     public static string GetWindowText(IntPtr handle, int maxLength, out bool isTruncated) {
-        if (maxLength < 1) {
-            throw new ArgumentOutOfRangeException(nameof(maxLength), "maxLength must be greater than zero.");
+        if (maxLength < 1 || maxLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(maxLength), $"maxLength must be between 1 and {DesktopTextObservationOptions.MaximumTextLength}.");
         }
 
         isTruncated = false;

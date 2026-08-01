@@ -1399,7 +1399,7 @@ internal sealed partial class UiAutomationControlService {
             Handle = nativeWindowHandle == 0 ? IntPtr.Zero : new IntPtr(nativeWindowHandle),
             ClassName = className,
             Id = 0,
-            Text = name,
+            Text = isPassword == true ? string.Empty : name,
             Value = value,
             Source = WindowControlSource.UiAutomation,
             AutomationId = automationId,

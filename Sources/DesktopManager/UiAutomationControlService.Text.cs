@@ -361,8 +361,8 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private static void ValidateTextReadLength(int maxLength) {
-        if (maxLength < 1) {
-            throw new ArgumentOutOfRangeException(nameof(maxLength), "maxLength must be greater than zero.");
+        if (maxLength < 1 || maxLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(maxLength), $"maxLength must be between 1 and {DesktopTextObservationOptions.MaximumTextLength}.");
         }
     }
 }

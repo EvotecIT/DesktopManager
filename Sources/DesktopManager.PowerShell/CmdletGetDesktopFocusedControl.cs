@@ -41,7 +41,7 @@ public sealed class CmdletGetDesktopFocusedControl : PSCmdlet {
     /// <para type="description">Maximum number of focused-control value characters to return. The default is 2048.</para>
     /// </summary>
     [Parameter]
-    [ValidateRange(1, int.MaxValue)]
+    [ValidateRange(1, DesktopTextObservationOptions.MaximumTextLength)]
     public int MaxObservedTextLength { get; set; } = 2048;
 
     /// <summary>

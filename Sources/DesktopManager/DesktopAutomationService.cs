@@ -600,8 +600,8 @@ public sealed class DesktopAutomationService {
             throw new ArgumentNullException(nameof(options));
         }
 
-        if (maxObservedTextLength < 1) {
-            throw new ArgumentOutOfRangeException(nameof(maxObservedTextLength), "maxObservedTextLength must be greater than zero.");
+        if (maxObservedTextLength < 1 || maxObservedTextLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(maxObservedTextLength), $"maxObservedTextLength must be between 1 and {DesktopTextObservationOptions.MaximumTextLength}.");
         }
 
         WindowInfo? window = TryResolveSingleWindow(options);
@@ -641,9 +641,11 @@ public sealed class DesktopAutomationService {
         if (!isPassword && automationText == null && focusedHandle != IntPtr.Zero) {
             liveText = WindowTextHelper.GetWindowText(focusedHandle, maxObservedTextLength, out nativeTextTruncated);
         }
-        string controlText = !string.IsNullOrWhiteSpace(liveText)
-            ? liveText
-            : control?.Text ?? string.Empty;
+        string controlText = isPassword
+            ? string.Empty
+            : !string.IsNullOrWhiteSpace(liveText)
+                ? liveText
+                : control?.Text ?? string.Empty;
         string value = isPassword
             ? string.Empty
             : automationText?.Value ?? control?.Value ?? string.Empty;
@@ -654,7 +656,7 @@ public sealed class DesktopAutomationService {
         return new DesktopFocusedControlObservation {
             WindowHandle = window.Handle,
             WindowTitle = window.Title,
-            FocusedHandle = focusedHandle != IntPtr.Zero ? focusedHandle : control?.Handle ?? IntPtr.Zero,
+            FocusedHandle = ResolveFocusedControlHandle(automationResult, focusedHandle),
             ClassName = control?.ClassName ?? string.Empty,
             AutomationId = control?.AutomationId ?? string.Empty,
             ControlType = control?.ControlType ?? string.Empty,
@@ -662,11 +664,31 @@ public sealed class DesktopAutomationService {
             Value = value,
             ValueSource = valueSource,
             IsValueTruncated = automationText?.IsTruncated == true || nativeTextTruncated,
-            ContainsExpected = automationText?.ContainsExpected,
+            ContainsExpected = automationText?.ContainsExpected ?? ResolveExpectedTextMatch(expectedText, liveText, value),
             IsPassword = isPassword ? true : control?.IsPassword,
             IsKeyboardFocusable = control?.IsKeyboardFocusable,
             IsEnabled = control?.IsEnabled
         };
+    }
+
+    internal static IntPtr ResolveFocusedControlHandle(UiAutomationFocusedControlResult? automationResult, IntPtr nativeFocusedHandle) {
+        return automationResult != null
+            ? automationResult.Control?.Handle ?? IntPtr.Zero
+            : nativeFocusedHandle;
+    }
+
+    internal static bool? ResolveExpectedTextMatch(string? expectedText, params string?[] candidateValues) {
+        if (string.IsNullOrEmpty(expectedText)) {
+            return null;
+        }
+
+        foreach (string? candidateValue in candidateValues) {
+            if (candidateValue?.IndexOf(expectedText, StringComparison.Ordinal) >= 0) {
+                return true;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -3921,8 +3943,8 @@ public sealed class DesktopAutomationService {
             throw new ArgumentNullException(nameof(options));
         }
 
-        if (options.MaxObservedTextLength < 1) {
-            throw new ArgumentOutOfRangeException(nameof(options.MaxObservedTextLength), "MaxObservedTextLength must be greater than zero.");
+        if (options.MaxObservedTextLength < 1 || options.MaxObservedTextLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(options.MaxObservedTextLength), $"MaxObservedTextLength must be between 1 and {DesktopTextObservationOptions.MaximumTextLength}.");
         }
 
         if (options.RetryCount < 1) {
@@ -4153,8 +4175,8 @@ public sealed class DesktopAutomationService {
             throw new ArgumentException("source is required.", nameof(source));
         }
 
-        if (maxObservedTextLength < 1) {
-            throw new ArgumentOutOfRangeException(nameof(maxObservedTextLength), "maxObservedTextLength must be greater than zero.");
+        if (maxObservedTextLength < 1 || maxObservedTextLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(maxObservedTextLength), $"maxObservedTextLength must be between 1 and {DesktopTextObservationOptions.MaximumTextLength}.");
         }
 
         bool isTruncated = value.Length > maxObservedTextLength;

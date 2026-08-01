@@ -35,6 +35,20 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures text observation rejects provider requests above the shared safe limit.
+    /// </summary>
+    public void DesktopAutomationService_ObserveWindowText_ExcessiveMaxLength_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ObserveWindowText(
+            new WindowQueryOptions { TitlePattern = "__never__" },
+            observationOptions: new DesktopTextObservationOptions {
+                MaxObservedTextLength = DesktopTextObservationOptions.MaximumTextLength + 1
+            }));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures handle-based window lookup rejects invalid handles.
     /// </summary>
     public void DesktopAutomationService_GetWindow_ZeroHandle_ThrowsArgumentException() {
@@ -97,6 +111,18 @@ public class DesktopAutomationObservationTests {
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.GetFocusedControlObservation(
             new WindowQueryOptions { TitlePattern = "__never__" },
             0));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures focused observation rejects provider requests above the shared safe limit.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_ExcessiveMaxLength_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.GetFocusedControlObservation(
+            new WindowQueryOptions { TitlePattern = "__never__" },
+            DesktopTextObservationOptions.MaximumTextLength + 1));
     }
 
     [TestMethod]
@@ -267,6 +293,46 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures bounded UI Automation reads reject requests above the shared safe limit.
+    /// </summary>
+    public void UiAutomationControlService_CreateBoundedTextResult_ExcessiveMaxLength_ThrowsArgumentOutOfRangeException() {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => UiAutomationControlService.CreateBoundedTextResult(
+            "sample",
+            "uia.textPattern",
+            DesktopTextObservationOptions.MaximumTextLength + 1,
+            null));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures native fallback values report expected text present in the returned prefix.
+    /// </summary>
+    public void DesktopAutomationService_ResolveExpectedTextMatch_FindsNativePrefix() {
+        Assert.AreEqual(true, DesktopAutomationService.ResolveExpectedTextMatch("needle", "native needle value"));
+        Assert.IsNull(DesktopAutomationService.ResolveExpectedTextMatch("missing", "bounded native value"));
+        Assert.IsNull(DesktopAutomationService.ResolveExpectedTextMatch(null, "native value"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures UIA-only focused children do not inherit the unrelated top-level window handle.
+    /// </summary>
+    public void DesktopAutomationService_ResolveFocusedControlHandle_HandlelessUiAutomationControl_ReturnsZero() {
+        UiAutomationFocusedControlResult automationResult = new() {
+            Control = new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                AutomationId = "RichEditor",
+                ControlType = "Document"
+            }
+        };
+
+        IntPtr result = DesktopAutomationService.ResolveFocusedControlHandle(automationResult, new IntPtr(1234));
+
+        Assert.AreEqual(IntPtr.Zero, result);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures password controls are excluded from editable text observation candidates.
     /// </summary>
     public void DesktopAutomationService_IsEditableTextCandidate_PasswordControl_ReturnsFalse() {
@@ -315,6 +381,47 @@ public class DesktopAutomationObservationTests {
 
         Assert.IsNotNull(window);
         Assert.AreEqual(harness.Window.Handle, window.Handle);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures focused password controls expose neither text nor value.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_PasswordControl_ClearsTextAndValue() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireForegroundWindowUiTests();
+
+        TextBox? passwordBox = null;
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create(
+            "DesktopManager Password Observation Harness",
+            form => {
+                passwordBox = new TextBox {
+                    Name = "ProtectedEditor",
+                    Left = 12,
+                    Top = 12,
+                    Width = 220,
+                    Text = "password-sentinel-never-return",
+                    UseSystemPasswordChar = true
+                };
+                form.Controls.Add(passwordBox);
+                form.Shown += (_, _) => passwordBox.Focus();
+            });
+
+        Assert.IsNotNull(passwordBox);
+        new WindowManager().ActivateWindow(harness.Window);
+        passwordBox.Focus();
+        Application.DoEvents();
+        Task.Delay(150).Wait();
+
+        DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(harness.Window.Handle);
+
+        Assert.IsNotNull(observation);
+        Assert.AreEqual(true, observation.IsPassword);
+        Assert.AreEqual(string.Empty, observation.Text);
+        Assert.AreEqual(string.Empty, observation.Value);
     }
 
     [TestMethod]

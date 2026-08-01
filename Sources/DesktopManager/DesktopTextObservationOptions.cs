@@ -5,6 +5,11 @@ namespace DesktopManager;
 /// </summary>
 public sealed class DesktopTextObservationOptions {
     /// <summary>
+    /// Largest supported observation length. This keeps provider and native buffer requests bounded.
+    /// </summary>
+    public const int MaximumTextLength = 1_048_576;
+
+    /// <summary>
     /// Gets or sets the maximum number of characters returned in the observed value.
     /// </summary>
     public int MaxObservedTextLength { get; set; } = 2048;
