@@ -18,6 +18,7 @@ public class WindowControlInfo {
     public string Text { get; internal set; } = string.Empty;
     /// <summary>Current control value when available.</summary>
     public string Value { get; internal set; } = string.Empty;
+    internal bool ValueIsTruncated { get; set; }
     /// <summary>Origin of the control metadata.</summary>
     public WindowControlSource Source { get; internal set; } = WindowControlSource.Win32;
     internal bool HasUiAutomationIdentity { get; set; }

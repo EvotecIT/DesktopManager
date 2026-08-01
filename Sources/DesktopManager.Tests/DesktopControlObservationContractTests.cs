@@ -49,6 +49,22 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopTextObservationBuilder_Create_ZeroMatchDetailsStillDetectsVisibleExpectedText() {
+        DesktopControlTextObservation observation = DesktopTextObservationBuilder.Create(
+            "alpha beta",
+            "test",
+            isTruncated: false,
+            expectedText: "beta",
+            ignoreCase: false,
+            maxMatches: 0,
+            contextLength: 0);
+
+        Assert.AreEqual(true, observation.ContainsExpected);
+        Assert.IsFalse(observation.MatchFoundBeyondObservedPrefix);
+        Assert.AreEqual(0, observation.Matches.Count);
+    }
+
+    [TestMethod]
     public void DesktopTextObservationBuilder_CreateEditContextFingerprint_ChangesWhenRangeMovesWithoutTextChange() {
         DesktopControlTextObservation observation = DesktopTextObservationBuilder.Create(
             "alpha beta gamma", "test", false, null, false, 0, 0);
@@ -243,6 +259,18 @@ public class DesktopControlObservationContractTests {
         Assert.IsTrue(DesktopAutomationService.MatchesObservedIdentity(control, identity));
         identity.RuntimeId = "1.2.4";
         Assert.IsFalse(DesktopAutomationService.MatchesObservedIdentity(control, identity));
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_MatchesObservedWindowOwner_RequiresStablePositiveProcessId() {
+        var window = new WindowInfo { ProcessId = 42 };
+        var identity = new DesktopControlIdentity { ProcessId = 42 };
+
+        Assert.IsTrue(DesktopAutomationService.MatchesObservedWindowOwner(window, identity));
+        identity.ProcessId = 43;
+        Assert.IsFalse(DesktopAutomationService.MatchesObservedWindowOwner(window, identity));
+        identity.ProcessId = 0;
+        Assert.IsFalse(DesktopAutomationService.MatchesObservedWindowOwner(window, identity));
     }
 
     [TestMethod]

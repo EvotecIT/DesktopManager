@@ -36,8 +36,9 @@ internal sealed partial class UiAutomationControlService {
         object subtree = Enum.Parse(_treeScopeType!, "Subtree", ignoreCase: false);
         var cleanup = new List<Action>();
         IDisposable signalGuard = CreateGuardedEventSignal(signal, out Action guardedSignal);
+        Action structureChangedSignal = CreateStructureChangedSignal(guardedSignal);
         TryAddTextChangedSubscription(automationType, rootElement, subtree, guardedSignal, cleanup);
-        TryAddStructureChangedSubscription(automationType, rootElement, subtree, guardedSignal, cleanup);
+        TryAddStructureChangedSubscription(automationType, rootElement, subtree, structureChangedSignal, cleanup);
         TryAddPropertyChangedSubscription(automationType, rootElement, subtree, guardedSignal, cleanup);
         if (cleanup.Count == 0) {
             signalGuard.Dispose();
@@ -172,6 +173,17 @@ internal sealed partial class UiAutomationControlService {
         var guard = new UiAutomationEventSignal(signal);
         guardedSignal = guard.TrySignal;
         return guard;
+    }
+
+    internal static Action CreateStructureChangedSignal(Action signal) {
+        if (signal == null) {
+            throw new ArgumentNullException(nameof(signal));
+        }
+
+        return () => {
+            InvalidateControlCaches();
+            signal();
+        };
     }
 
     private sealed class UiAutomationChangeSubscription : IDisposable {

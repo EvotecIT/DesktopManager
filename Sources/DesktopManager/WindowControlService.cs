@@ -145,14 +145,23 @@ public static class WindowControlService {
     }
 
     internal static string GetSelectedValue(WindowControlInfo control, int maxTextLength) {
+        return GetSelectedValue(control, maxTextLength, out _);
+    }
+
+    internal static string GetSelectedValue(WindowControlInfo control, int maxTextLength, out bool isTruncated) {
         if (maxTextLength < 1) {
             throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
         }
 
-        return GetSelectedValueCore(control, maxTextLength);
+        return GetSelectedValueCore(control, maxTextLength, out isTruncated);
     }
 
     private static string GetSelectedValueCore(WindowControlInfo control, int? maxTextLength) {
+        return GetSelectedValueCore(control, maxTextLength, out _);
+    }
+
+    private static string GetSelectedValueCore(WindowControlInfo control, int? maxTextLength, out bool isTruncated) {
+        isTruncated = false;
         if (control == null) {
             throw new ArgumentNullException(nameof(control));
         }
@@ -163,12 +172,14 @@ public static class WindowControlService {
 
         int selectedIndex = GetSelectedIndex(control);
         if (selectedIndex < 0) {
-            return maxTextLength.HasValue
-                ? WindowTextHelper.GetWindowText(control.Handle, maxTextLength.Value, out _)
-                : WindowTextHelper.GetWindowText(control.Handle);
+            if (maxTextLength.HasValue) {
+                return WindowTextHelper.GetWindowText(control.Handle, maxTextLength.Value, out isTruncated);
+            }
+
+            return WindowTextHelper.GetWindowText(control.Handle);
         }
 
-        return GetComboBoxItemText(control.Handle, selectedIndex, maxTextLength);
+        return GetComboBoxItemText(control.Handle, selectedIndex, maxTextLength, out isTruncated);
     }
 
     /// <summary>
@@ -195,7 +206,7 @@ public static class WindowControlService {
         }
 
         for (int index = 0; index < itemCount; index++) {
-            string itemText = GetComboBoxItemText(control.Handle, index, maxTextLength: null);
+            string itemText = GetComboBoxItemText(control.Handle, index, maxTextLength: null, out _);
             if (!string.Equals(itemText, value, StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
@@ -278,7 +289,10 @@ public static class WindowControlService {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
 
+        EnsureNativeTextMutationAllowed(control.Handle);
+
         if (!TrySendStringMessageWithTimeout(control.Handle, MonitorNativeMethods.WM_SETTEXT, IntPtr.Zero, text)) {
+            EnsureNativeTextMutationAllowed(control.Handle);
             MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_SETTEXT, IntPtr.Zero, text);
         }
 
@@ -286,6 +300,7 @@ public static class WindowControlService {
             return;
         }
 
+        EnsureNativeTextMutationAllowed(control.Handle);
         ReplaceAllText(control.Handle, text);
     }
 
@@ -447,10 +462,13 @@ public static class WindowControlService {
     }
 
     private static void ReplaceSelectedText(IntPtr handle, string text, bool appendToEnd) {
+        EnsureNativeTextMutationAllowed(handle);
         uint start = appendToEnd ? unchecked((uint)0xFFFFFFFF) : 0u;
         uint end = unchecked((uint)0xFFFFFFFF);
         SendMessageWithTimeout(handle, MonitorNativeMethods.EM_SETSEL, start, end);
+        EnsureNativeTextMutationAllowed(handle);
         if (!TrySendStringMessageWithTimeout(handle, MonitorNativeMethods.EM_REPLACESEL, new IntPtr(1), text)) {
+            EnsureNativeTextMutationAllowed(handle);
             MonitorNativeMethods.SendMessage(handle, MonitorNativeMethods.EM_REPLACESEL, new IntPtr(1), text);
         }
     }
@@ -459,22 +477,40 @@ public static class WindowControlService {
         return string.Equals(WindowTextHelper.GetWindowText(handle), expectedText, StringComparison.Ordinal);
     }
 
-    private static string GetComboBoxItemText(IntPtr handle, int index, int? maxTextLength) {
+    private static void EnsureNativeTextMutationAllowed(IntPtr handle) {
+        StringBuilder classBuilder = new StringBuilder(256);
+        int classNameLength = MonitorNativeMethods.GetClassName(handle, classBuilder, classBuilder.Capacity);
+        if (classNameLength <= 0) {
+            throw new InvalidOperationException("The live native control class could not be verified before editing.");
+        }
+
+        long style = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE).ToInt64();
+        if (ControlEnumerator.IsPasswordStyle(classBuilder.ToString(), style)) {
+            throw new InvalidOperationException("Password controls cannot be updated through direct text messages.");
+        }
+    }
+
+    private static string GetComboBoxItemText(IntPtr handle, int index, int? maxTextLength, out bool isTruncated) {
+        isTruncated = false;
         int itemTextLength = unchecked((int)MonitorNativeMethods.SendMessage(handle, CbGetLbTextLen, unchecked((uint)index), 0u));
         if (itemTextLength == ComboBoxError) {
             return string.Empty;
         }
 
         if (maxTextLength.HasValue && itemTextLength > maxTextLength.Value) {
-            return WindowTextHelper.GetWindowText(handle, maxTextLength.Value, out _);
+            isTruncated = true;
+            return string.Empty;
         }
 
         var buffer = new StringBuilder(itemTextLength + 1);
         MonitorNativeMethods.SendMessage(handle, CbGetLbText, new IntPtr(index), buffer);
         string value = buffer.ToString();
-        return maxTextLength.HasValue && value.Length > maxTextLength.Value
-            ? value.Substring(0, maxTextLength.Value)
-            : value;
+        if (maxTextLength.HasValue && value.Length > maxTextLength.Value) {
+            isTruncated = true;
+            return value.Substring(0, maxTextLength.Value);
+        }
+
+        return value;
     }
 
     private static void NotifyParentSelectionChanged(WindowControlInfo control) {

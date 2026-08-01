@@ -53,11 +53,17 @@ public class ControlEnumerator {
             control.Text = maxTextLength.HasValue
                 ? WindowTextHelper.GetWindowText(control.Handle, maxTextLength.Value, out _)
                 : WindowTextHelper.GetWindowText(control.Handle);
-            control.Value = WindowControlService.SupportsSelection(control)
-                ? maxTextLength.HasValue
-                    ? WindowControlService.GetSelectedValue(control, maxTextLength.Value)
-                    : WindowControlService.GetSelectedValue(control)
-                : control.Text;
+            control.ValueIsTruncated = false;
+            if (WindowControlService.SupportsSelection(control)) {
+                if (maxTextLength.HasValue) {
+                    control.Value = WindowControlService.GetSelectedValue(control, maxTextLength.Value, out bool valueIsTruncated);
+                    control.ValueIsTruncated = valueIsTruncated;
+                } else {
+                    control.Value = WindowControlService.GetSelectedValue(control);
+                }
+            } else {
+                control.Value = control.Text;
+            }
         }
     }
 
@@ -71,6 +77,14 @@ public class ControlEnumerator {
         }
 
         return CreateControlInfo(parent, handle, maxTextLength, readValue: true);
+    }
+
+    internal WindowControlInfo GetControlMetadata(IntPtr parent, IntPtr handle) {
+        if (handle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid control handle.", nameof(handle));
+        }
+
+        return CreateControlInfo(parent, handle, maxTextLength: null, readValue: false);
     }
 
     internal static bool IsPasswordStyle(string? className, long style) {
@@ -91,19 +105,24 @@ public class ControlEnumerator {
         };
 
         StringBuilder classBuilder = new StringBuilder(256);
-        MonitorNativeMethods.GetClassName(handle, classBuilder, classBuilder.Capacity);
+        int classNameLength = MonitorNativeMethods.GetClassName(handle, classBuilder, classBuilder.Capacity);
         info.ClassName = classBuilder.ToString();
         long style = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE).ToInt64();
-        info.IsPassword = IsPasswordStyle(info.ClassName, style);
+        info.IsPassword = classNameLength > 0 ? IsPasswordStyle(info.ClassName, style) : null;
         if (info.IsPassword != true && readValue) {
             info.Text = maxTextLength.HasValue
                 ? WindowTextHelper.GetWindowText(handle, maxTextLength.Value, out _)
                 : WindowTextHelper.GetWindowText(handle);
-            info.Value = WindowControlService.SupportsSelection(info)
-                ? maxTextLength.HasValue
-                    ? WindowControlService.GetSelectedValue(info, maxTextLength.Value)
-                    : WindowControlService.GetSelectedValue(info)
-                : info.Text;
+            if (WindowControlService.SupportsSelection(info)) {
+                if (maxTextLength.HasValue) {
+                    info.Value = WindowControlService.GetSelectedValue(info, maxTextLength.Value, out bool valueIsTruncated);
+                    info.ValueIsTruncated = valueIsTruncated;
+                } else {
+                    info.Value = WindowControlService.GetSelectedValue(info);
+                }
+            } else {
+                info.Value = info.Text;
+            }
         }
 
         PopulateBounds(info, handle);

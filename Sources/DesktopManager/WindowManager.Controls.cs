@@ -61,6 +61,10 @@ public partial class WindowManager {
             control.ParentWindowHandle = window.Handle;
         }
 
+        if (maxTextLength.HasValue && !IsWildcardFilter(filter.ValuePattern)) {
+            PopulateBoundedUiAutomationValues(window, controls, maxTextLength.Value);
+        }
+
         return controls.FindAll(control => MatchesControl(control, filter));
     }
 
@@ -176,7 +180,10 @@ public partial class WindowManager {
 
         var uiAutomation = new UiAutomationControlService();
         IReadOnlyList<IntPtr> fallbackRootHandles = UiAutomationControlService.GetFallbackRootHandles(windowHandle, win32Controls);
-        List<WindowControlInfo> uiAutomationControls = uiAutomation.EnumerateControls(windowHandle, fallbackRootHandles);
+        List<WindowControlInfo> uiAutomationControls = uiAutomation.EnumerateControls(
+            windowHandle,
+            fallbackRootHandles,
+            readValues: !maxTextLength.HasValue);
         ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
         ControlEnumerator.PopulateControlValues(win32Controls, maxTextLength);
 
@@ -194,8 +201,40 @@ public partial class WindowManager {
                 nativeControl.IsPassword = true;
                 nativeControl.Text = string.Empty;
                 nativeControl.Value = string.Empty;
+                nativeControl.ValueIsTruncated = false;
             }
         }
+    }
+
+    private static void PopulateBoundedUiAutomationValues(
+        WindowInfo window,
+        IEnumerable<WindowControlInfo> controls,
+        int maxTextLength) {
+        var uiAutomation = new UiAutomationControlService();
+        var options = new DesktopControlObservationOptions {
+            MaxTextLength = maxTextLength,
+            IncludeTextRanges = false,
+            IncludeSemanticState = false
+        };
+        foreach (WindowControlInfo control in controls) {
+            if (!control.HasUiAutomationIdentity && control.Source != WindowControlSource.UiAutomation) {
+                continue;
+            }
+
+            DesktopControlObservation? observation = uiAutomation.TryObserveControl(window, control, options);
+            if (observation?.IsPassword != false) {
+                control.Value = string.Empty;
+                control.ValueIsTruncated = false;
+                continue;
+            }
+
+            control.Value = observation.Text.Value;
+            control.ValueIsTruncated = observation.Text.IsTruncated;
+        }
+    }
+
+    private static bool IsWildcardFilter(string? value) {
+        return string.IsNullOrWhiteSpace(value) || value == "*";
     }
 
     private static List<WindowControlInfo> SelectDiscoveredControls(WindowControlQueryOptions filter, List<WindowControlInfo> win32Controls, List<WindowControlInfo> uiAutomationControls) {
@@ -329,8 +368,13 @@ public partial class WindowManager {
             target.IsPassword = true;
             target.Text = string.Empty;
             target.Value = string.Empty;
+            target.ValueIsTruncated = false;
         } else if (string.IsNullOrWhiteSpace(target.Value)) {
             target.Value = source.Value;
+        }
+
+        if (target.IsPassword != true) {
+            target.ValueIsTruncated = target.ValueIsTruncated || source.ValueIsTruncated;
         }
 
         if (target.Width <= 0 || target.Height <= 0) {

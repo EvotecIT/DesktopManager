@@ -3,6 +3,7 @@ using System;
 namespace DesktopManager.Tests;
 
 [TestClass]
+[DoNotParallelize]
 /// <summary>
 /// Tests for UI Automation helper behavior.
 /// </summary>
@@ -467,7 +468,87 @@ public class UiAutomationControlServiceTests {
         Assert.AreEqual(1, signalCount);
     }
 
+    [TestMethod]
+    public void GetEnumeratedControlsCacheKey_MetadataOnlyAndValueReadsDoNotShareCache() {
+        string metadataKey = UiAutomationControlService.GetEnumeratedControlsCacheKey(new IntPtr(42), includeRoot: false, readValues: false);
+        string valueKey = UiAutomationControlService.GetEnumeratedControlsCacheKey(new IntPtr(42), includeRoot: false, readValues: true);
+
+        Assert.AreNotEqual(metadataKey, valueKey);
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void EnumerateControls_MetadataOnlyDoesNotReadValuesAndStructureSignalInvalidatesCache() {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using System.Windows.Forms.Form form = new() { Text = "UIA Metadata Enumeration Harness", ShowInTaskbar = false };
+        using System.Windows.Forms.TextBox textBox = new() { Text = "value-must-not-be-read" };
+        form.Controls.Add(textBox);
+        form.Show();
+        textBox.CreateControl();
+        System.Windows.Forms.Application.DoEvents();
+
+        UiAutomationControlService.InvalidateControlCaches();
+        var service = new UiAutomationControlService();
+        WindowControlInfo? metadata = service
+            .EnumerateControls(form.Handle, fallbackRootHandles: null, readValues: false)
+            .FirstOrDefault(control => control.Handle == textBox.Handle);
+
+        Assert.IsNotNull(metadata);
+        Assert.AreEqual(string.Empty, metadata.Value);
+        Assert.IsTrue(UiAutomationControlService.EnumeratedControlsCacheCount > 0);
+
+        WindowControlInfo? boundedValueMatch = new WindowManager()
+            .GetControls(
+                new WindowInfo {
+                    Handle = form.Handle,
+                    ProcessId = unchecked((uint)System.Diagnostics.Process.GetCurrentProcess().Id)
+                },
+                new WindowControlQueryOptions {
+                    IncludeUiAutomation = true,
+                    ValuePattern = "value-must-not-be-read"
+                },
+                maxTextLength: 64)
+            .FirstOrDefault(control => control.Handle == textBox.Handle);
+        Assert.IsNotNull(boundedValueMatch);
+        Assert.AreEqual("value-must-not-be-read", boundedValueMatch.Value);
+
+        int cacheCountSeenByWaiter = -1;
+        Action structureSignal = UiAutomationControlService.CreateStructureChangedSignal(
+            () => cacheCountSeenByWaiter = UiAutomationControlService.EnumeratedControlsCacheCount);
+        structureSignal();
+
+        Assert.AreEqual(0, cacheCountSeenByWaiter);
+        Assert.AreEqual(0, UiAutomationControlService.EnumeratedControlsCacheCount);
+    }
+
+    [TestMethod]
+    public void IsTextMutationAllowed_RequiresLiveExplicitNonPasswordState() {
+        Assert.IsTrue(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(false)));
+        Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(true)));
+        Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(null)));
+    }
+
     private sealed class UnknownPasswordState {
         public bool? IsPassword => null;
+    }
+
+    private sealed class AutomationElementStub {
+        internal AutomationElementStub(bool? isPassword) {
+            Current = new PasswordStateStub(isPassword);
+        }
+
+        public PasswordStateStub Current { get; }
+    }
+
+    private sealed class PasswordStateStub {
+        internal PasswordStateStub(bool? isPassword) {
+            IsPassword = isPassword;
+        }
+
+        public bool? IsPassword { get; }
     }
 }

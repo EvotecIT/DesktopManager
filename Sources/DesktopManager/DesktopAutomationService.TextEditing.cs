@@ -48,6 +48,12 @@ public sealed partial class DesktopAutomationService {
             return CreateTextEditFailure("window-not-found", ex.Message);
         }
 
+        if (!MatchesObservedWindowOwner(window, observation.Identity)) {
+            return CreateTextEditFailure(
+                "window-owner-changed",
+                "The observed window handle now belongs to a different process.");
+        }
+
         WindowControlInfo? control = GetObservationTargets(
                 new WindowQueryOptions {
                     Handle = window.Handle,
@@ -216,10 +222,22 @@ public sealed partial class DesktopAutomationService {
         var uiAutomation = new UiAutomationControlService();
         try {
             if (request.Mode == DesktopTextEditMode.ReplaceDocument) {
-                if (settings.UseUiAutomation && uiAutomation.TrySetValue(window, control, request.Text)) {
-                    applied = true;
-                    method = "uia.value";
-                } else if (control.Handle != IntPtr.Zero) {
+                if (settings.UseUiAutomation) {
+                    if (!TryValidateLiveMutationTarget(window, control, uiAutomation, out string safetyCode, out string safetyReason)) {
+                        return CreateLiveMutationSafetyFailure(before, safetyCode, safetyReason);
+                    }
+
+                    if (uiAutomation.TrySetValue(window, control, request.Text)) {
+                        applied = true;
+                        method = "uia.value";
+                    }
+                }
+
+                if (!applied && control.Handle != IntPtr.Zero) {
+                    if (!TryValidateLiveMutationTarget(window, control, uiAutomation, out string safetyCode, out string safetyReason)) {
+                        return CreateLiveMutationSafetyFailure(before, safetyCode, safetyReason);
+                    }
+
                     try {
                         _windowManager.SetControlText(control, request.Text);
                         applied = true;
@@ -230,6 +248,10 @@ public sealed partial class DesktopAutomationService {
                 }
 
                 if (!applied && request.AllowForegroundInputFallback) {
+                    if (!TryValidateLiveMutationTarget(window, control, uiAutomation, out string safetyCode, out string safetyReason)) {
+                        return CreateLiveMutationSafetyFailure(before, safetyCode, safetyReason);
+                    }
+
                     applied = uiAutomation.TrySetText(window, control, request.Text, request.EnsureForegroundWindow);
                     method = applied ? "foreground.replaceDocument" : string.Empty;
                 }
@@ -240,6 +262,10 @@ public sealed partial class DesktopAutomationService {
                         "Selection and caret edits require explicit foreground-input fallback authorization.");
                     blocked.Before = before;
                     return blocked;
+                }
+
+                if (!TryValidateLiveMutationTarget(window, control, uiAutomation, out string safetyCode, out string safetyReason)) {
+                    return CreateLiveMutationSafetyFailure(before, safetyCode, safetyReason);
                 }
 
                 bool selectCaret = request.Mode == DesktopTextEditMode.InsertAtCaret;
@@ -378,6 +404,83 @@ public sealed partial class DesktopAutomationService {
             control.Top == identity.Top &&
             control.Width == identity.Width &&
             control.Height == identity.Height;
+    }
+
+    internal static bool MatchesObservedWindowOwner(WindowInfo window, DesktopControlIdentity identity) {
+        return window != null && identity != null &&
+            window.ProcessId > 0 &&
+            identity.ProcessId > 0 &&
+            window.ProcessId == identity.ProcessId;
+    }
+
+    internal static bool TryValidateLiveMutationTarget(
+        WindowInfo window,
+        WindowControlInfo control,
+        UiAutomationControlService uiAutomation,
+        out string failureCode,
+        out string failureReason) {
+        failureCode = string.Empty;
+        failureReason = string.Empty;
+        bool providerStateChecked = false;
+
+        MonitorNativeMethods.GetWindowThreadProcessId(window.Handle, out uint windowProcessId);
+        if (windowProcessId == 0 || windowProcessId != window.ProcessId) {
+            failureCode = "window-owner-changed";
+            failureReason = "The target window handle no longer belongs to the resolved process.";
+            return false;
+        }
+
+        if (control.HasUiAutomationIdentity ||
+            control.Source == WindowControlSource.UiAutomation ||
+            !string.IsNullOrWhiteSpace(control.RuntimeId)) {
+            bool? isPassword = uiAutomation.TryReadResolvedPasswordState(window, control);
+            if (isPassword != false) {
+                failureCode = isPassword == true ? "password-control" : "password-state-unavailable";
+                failureReason = isPassword == true
+                    ? "The resolved UI Automation target is now password-protected."
+                    : "The resolved UI Automation target no longer exposes a reliable password state.";
+                return false;
+            }
+
+            providerStateChecked = true;
+        }
+
+        if (control.Handle != IntPtr.Zero) {
+            MonitorNativeMethods.GetWindowThreadProcessId(control.Handle, out uint controlProcessId);
+            if (controlProcessId == 0 || controlProcessId != unchecked((uint)window.ProcessId)) {
+                failureCode = "control-owner-changed";
+                failureReason = "The resolved native control handle no longer belongs to the target window process.";
+                return false;
+            }
+
+            WindowControlInfo liveControl = new ControlEnumerator().GetControlMetadata(window.Handle, control.Handle);
+            if (liveControl.IsPassword != false) {
+                failureCode = liveControl.IsPassword == true ? "password-control" : "password-state-unavailable";
+                failureReason = liveControl.IsPassword == true
+                    ? "The resolved native target is now password-protected."
+                    : "The resolved native target no longer exposes a reliable password state.";
+                return false;
+            }
+
+            providerStateChecked = true;
+        }
+
+        if (providerStateChecked) {
+            return true;
+        }
+
+        failureCode = "password-state-unavailable";
+        failureReason = "No live provider could verify that the resolved target is not password-protected.";
+        return false;
+    }
+
+    private static DesktopTextEditResult CreateLiveMutationSafetyFailure(
+        DesktopControlObservation before,
+        string code,
+        string reason) {
+        DesktopTextEditResult result = CreateTextEditFailure(code, reason);
+        result.Before = before;
+        return result;
     }
 
     private static DesktopControlObservationOptions CreateTextEditObservationOptions(

@@ -60,6 +60,41 @@ public class ControlEnumeratorTests {
     }
 
     [TestMethod]
+    [TestCategory("UITest")]
+    public void Enumerate_WinFormsComboBox_LongSelectionReportsIncompleteWithoutSubstitutingWindowText() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Bounded Combo Control Enumerator Form", ShowInTaskbar = false };
+        using ComboBox comboBox = new() { Width = 220, DropDownStyle = ComboBoxStyle.DropDownList };
+        comboBox.Items.Add("selected-value-beyond-bound");
+        comboBox.SelectedIndex = 0;
+        form.Controls.Add(comboBox);
+        form.Show();
+        comboBox.CreateControl();
+        Application.DoEvents();
+
+        WindowControlInfo? control = new ControlEnumerator()
+            .EnumerateControls(form.Handle, maxTextLength: 4)
+            .FirstOrDefault(candidate => candidate.Handle == comboBox.Handle);
+
+        Assert.IsNotNull(control);
+        Assert.AreEqual(string.Empty, control.Value);
+        Assert.IsTrue(control.ValueIsTruncated);
+
+        DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
+            new WindowInfo { Handle = form.Handle, ProcessId = unchecked((uint)System.Diagnostics.Process.GetCurrentProcess().Id) },
+            control,
+            new DesktopControlObservationOptions { MaxTextLength = 4 });
+        Assert.AreEqual(string.Empty, observation.Text.Value);
+        Assert.AreEqual("native.selection", observation.Text.Source);
+        Assert.IsTrue(observation.Text.IsTruncated);
+        Assert.IsFalse(observation.Text.IsComplete);
+    }
+
+    [TestMethod]
     public void IsPasswordStyle_EditWithPasswordStyle_ReturnsTrue() {
         Assert.IsTrue(ControlEnumerator.IsPasswordStyle("WindowsForms10.EDIT.app", 0x0020));
         Assert.IsFalse(ControlEnumerator.IsPasswordStyle("WindowsForms10.EDIT.app", 0));
@@ -108,5 +143,44 @@ public class ControlEnumeratorTests {
         Assert.AreEqual(true, control.IsPassword);
         Assert.AreEqual(string.Empty, control.Text);
         Assert.AreEqual(string.Empty, control.Value);
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void ValidateLiveMutationTarget_StaleNonPasswordMetadataRefusesCurrentPasswordControl() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Live Password Revalidation Form", ShowInTaskbar = false };
+        using TextBox passwordBox = new() { Text = "password-sentinel", UseSystemPasswordChar = true };
+        form.Controls.Add(passwordBox);
+        form.Show();
+        passwordBox.CreateControl();
+        Application.DoEvents();
+
+        var staleControl = new WindowControlInfo {
+            ParentWindowHandle = form.Handle,
+            Handle = passwordBox.Handle,
+            ClassName = passwordBox.GetType().Name,
+            IsPassword = false,
+            Source = WindowControlSource.Win32
+        };
+        var window = new WindowInfo {
+            Handle = form.Handle,
+            ProcessId = unchecked((uint)System.Diagnostics.Process.GetCurrentProcess().Id)
+        };
+
+        bool safe = DesktopAutomationService.TryValidateLiveMutationTarget(
+            window,
+            staleControl,
+            new UiAutomationControlService(),
+            out string code,
+            out _);
+
+        Assert.IsFalse(safe);
+        Assert.AreEqual("password-control", code);
+        Assert.AreEqual("password-sentinel", passwordBox.Text);
     }
 }

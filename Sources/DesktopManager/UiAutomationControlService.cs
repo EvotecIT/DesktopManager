@@ -50,11 +50,18 @@ internal sealed partial class UiAutomationControlService {
         _treeScopeType != null;
 
     public List<WindowControlInfo> EnumerateControls(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles = null) {
+        return EnumerateControls(windowHandle, fallbackRootHandles, readValues: true);
+    }
+
+    internal List<WindowControlInfo> EnumerateControls(
+        IntPtr windowHandle,
+        IReadOnlyList<IntPtr>? fallbackRootHandles,
+        bool readValues) {
         if (!IsAvailable || windowHandle == IntPtr.Zero) {
             return new List<WindowControlInfo>();
         }
 
-        return RunInSta(service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles), windowHandle);
+        return RunInSta(service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles, readValues), windowHandle);
     }
 
     internal static IReadOnlyList<IntPtr> GetFallbackRootHandles(IntPtr windowHandle, IEnumerable<WindowControlInfo>? win32Controls) {
@@ -221,6 +228,18 @@ internal sealed partial class UiAutomationControlService {
         return RunInSta(service => service.TryReadCheckStateCore(window, control), window.Handle);
     }
 
+    internal bool? TryReadResolvedPasswordState(WindowInfo window, WindowControlInfo control) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        return RunInSta(service => service.TryReadResolvedPasswordStateCore(window, control), window.Handle);
+    }
+
     public string? TryReadSelectedValue(WindowInfo window, WindowControlInfo control) {
         if (window == null) {
             throw new ArgumentNullException(nameof(window));
@@ -316,11 +335,14 @@ internal sealed partial class UiAutomationControlService {
         return default!;
     }
 
-    private List<WindowControlInfo> EnumerateControlsCore(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles) {
+    private List<WindowControlInfo> EnumerateControlsCore(
+        IntPtr windowHandle,
+        IReadOnlyList<IntPtr>? fallbackRootHandles,
+        bool readValues) {
         try {
             IntPtr preferredRootHandle = GetPreferredSearchRootHandle(windowHandle, fallbackRootHandles);
             if (preferredRootHandle != IntPtr.Zero && preferredRootHandle != windowHandle) {
-                List<WindowControlInfo> preferredControls = EnumerateControlsForRoot(preferredRootHandle, includeRoot: true, out _);
+                List<WindowControlInfo> preferredControls = EnumerateControlsForRoot(preferredRootHandle, includeRoot: true, readValues: readValues, out _);
                 if (preferredControls.Count > 0) {
                     return preferredControls;
                 }
@@ -328,7 +350,7 @@ internal sealed partial class UiAutomationControlService {
                 ForgetPreferredSearchRootHandle(windowHandle, preferredRootHandle);
             }
 
-            List<WindowControlInfo> primaryControls = EnumerateControlsForRoot(windowHandle, includeRoot: false, out _);
+            List<WindowControlInfo> primaryControls = EnumerateControlsForRoot(windowHandle, includeRoot: false, readValues: readValues, out _);
             if (primaryControls.Count > 0 || fallbackRootHandles == null || fallbackRootHandles.Count == 0) {
                 if (primaryControls.Count > 0) {
                     RememberPreferredSearchRootHandle(windowHandle, windowHandle);
@@ -339,7 +361,7 @@ internal sealed partial class UiAutomationControlService {
 
             var mergedControls = new List<WindowControlInfo>();
             foreach (IntPtr fallbackRootHandle in OrderFallbackRootHandles(fallbackRootHandles, preferredRootHandle)) {
-                List<WindowControlInfo> fallbackControls = EnumerateControlsForRoot(fallbackRootHandle, includeRoot: true, out _);
+                List<WindowControlInfo> fallbackControls = EnumerateControlsForRoot(fallbackRootHandle, includeRoot: true, readValues: readValues, out _);
                 if (fallbackControls.Count > 0) {
                     RememberPreferredSearchRootHandle(windowHandle, fallbackRootHandle);
                 }
@@ -373,7 +395,7 @@ internal sealed partial class UiAutomationControlService {
             try {
                 elementResolved = TryResolveRootElement(rootHandle, out _);
                 if (elementResolved) {
-                    controls = EnumerateControlsForRoot(rootHandle, includeRoot, out bool usedCache);
+                    controls = EnumerateControlsForRoot(rootHandle, includeRoot, readValues: true, out bool usedCache);
                     diagnostics.Add(new DesktopUiAutomationRootDiagnostic {
                         Order = index,
                         Handle = rootHandle,
@@ -411,8 +433,12 @@ internal sealed partial class UiAutomationControlService {
         return diagnostics;
     }
 
-    private List<WindowControlInfo> EnumerateControlsForRoot(IntPtr rootHandle, bool includeRoot, out bool usedCache) {
-        if (TryGetCachedEnumeratedControls(rootHandle, includeRoot, out List<WindowControlInfo> cachedControls)) {
+    private List<WindowControlInfo> EnumerateControlsForRoot(
+        IntPtr rootHandle,
+        bool includeRoot,
+        bool readValues,
+        out bool usedCache) {
+        if (TryGetCachedEnumeratedControls(rootHandle, includeRoot, readValues, out List<WindowControlInfo> cachedControls)) {
             usedCache = true;
             return cachedControls;
         }
@@ -449,7 +475,7 @@ internal sealed partial class UiAutomationControlService {
             }
 
             try {
-                WindowControlInfo? info = CreateControlInfo(element);
+                WindowControlInfo? info = CreateControlInfo(element, readValues);
                 if (info != null) {
                     controls.Add(info);
                 }
@@ -459,7 +485,7 @@ internal sealed partial class UiAutomationControlService {
             }
         }
 
-        CacheEnumeratedControls(rootHandle, includeRoot, controls);
+        CacheEnumeratedControls(rootHandle, includeRoot, readValues, controls);
         return controls;
     }
 
@@ -515,13 +541,14 @@ internal sealed partial class UiAutomationControlService {
     private bool TrySetValueCore(WindowInfo window, WindowControlInfo control, string value) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
-        if (element == null) {
+        if (element == null || !IsTextMutationAllowed(element)) {
             return false;
         }
 
-        bool patternApplied =
-            TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value) ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+        bool patternApplied = TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
+        if (!patternApplied && IsTextMutationAllowed(element)) {
+            patternApplied = TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+        }
         if (!patternApplied) {
             return false;
         }
@@ -584,12 +611,16 @@ internal sealed partial class UiAutomationControlService {
     private bool TrySetTextCore(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
-        if (element == null) {
+        if (element == null || !IsTextMutationAllowed(element)) {
             return false;
         }
 
-        if (TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value) ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value)) {
+        bool patternApplied = TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
+        if (!patternApplied && IsTextMutationAllowed(element)) {
+            patternApplied = TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+        }
+
+        if (patternApplied) {
             return true;
         }
 
@@ -606,12 +637,24 @@ internal sealed partial class UiAutomationControlService {
             return false;
         }
 
+        if (!IsTextMutationAllowed(element)) {
+            return false;
+        }
+
         if (TryReplaceFocusedTextWithPaste(window, control, value)) {
             return true;
         }
 
+        if (!IsTextMutationAllowed(element)) {
+            return false;
+        }
+
         KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
         WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
+        if (!IsTextMutationAllowed(element)) {
+            return false;
+        }
+
         if (value.Length == 0) {
             KeyboardInputService.SendToForeground(VirtualKey.VK_DELETE);
         } else {
@@ -914,8 +957,8 @@ internal sealed partial class UiAutomationControlService {
         return ordered;
     }
 
-    private static bool TryGetCachedEnumeratedControls(IntPtr rootHandle, bool includeRoot, out List<WindowControlInfo> controls) {
-        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot);
+    private static bool TryGetCachedEnumeratedControls(IntPtr rootHandle, bool includeRoot, bool readValues, out List<WindowControlInfo> controls) {
+        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot, readValues);
         if (EnumeratedControlsCache.TryGetValue(cacheKey, out CachedControlCollection? cached) &&
             DateTime.UtcNow <= cached.ExpiresAtUtc) {
             controls = CloneControls(cached.Controls);
@@ -930,8 +973,8 @@ internal sealed partial class UiAutomationControlService {
         return false;
     }
 
-    private static void CacheEnumeratedControls(IntPtr rootHandle, bool includeRoot, List<WindowControlInfo> controls) {
-        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot);
+    private static void CacheEnumeratedControls(IntPtr rootHandle, bool includeRoot, bool readValues, List<WindowControlInfo> controls) {
+        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot, readValues);
         EnumeratedControlsCache[cacheKey] = new CachedControlCollection {
             ExpiresAtUtc = DateTime.UtcNow.AddMilliseconds(EnumeratedControlsCacheMilliseconds),
             Controls = CloneControls(controls).ToArray()
@@ -939,8 +982,15 @@ internal sealed partial class UiAutomationControlService {
         TrimExpiringCache(EnumeratedControlsCache, EnumeratedControlsCacheMaximumCount, cached => cached.ExpiresAtUtc);
     }
 
-    private static string GetEnumeratedControlsCacheKey(IntPtr rootHandle, bool includeRoot) {
-        return $"{rootHandle.ToInt64():X}:{(includeRoot ? 1 : 0)}";
+    internal static string GetEnumeratedControlsCacheKey(IntPtr rootHandle, bool includeRoot, bool readValues) {
+        return $"{rootHandle.ToInt64():X}:{(includeRoot ? 1 : 0)}:{(readValues ? 1 : 0)}";
+    }
+
+    internal static int EnumeratedControlsCacheCount => EnumeratedControlsCache.Count;
+
+    internal static void InvalidateControlCaches() {
+        EnumeratedControlsCache.Clear();
+        ActionMatchCache.Clear();
     }
 
     internal static string GetActionMatchCacheKey(IntPtr windowHandle, WindowControlInfo control) {
@@ -1152,6 +1202,7 @@ internal sealed partial class UiAutomationControlService {
             Id = control.Id,
             Text = control.Text,
             Value = control.Value,
+            ValueIsTruncated = control.ValueIsTruncated,
             Source = control.Source,
             HasUiAutomationIdentity = control.HasUiAutomationIdentity,
             RuntimeId = control.RuntimeId,
@@ -1521,6 +1572,10 @@ internal sealed partial class UiAutomationControlService {
         try {
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
             WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
+            if (TryReadResolvedPasswordStateCore(window, control) != false) {
+                return false;
+            }
+
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
             return WaitForResolvedValue(window, control, value);
         } finally {
@@ -1555,7 +1610,7 @@ internal sealed partial class UiAutomationControlService {
 
     private string? TryReadResolvedValue(WindowInfo window, WindowControlInfo control) {
         UiAutomationElementMatchResult refreshedMatch = ResolveMatchingElement(window.Handle, control);
-        if (refreshedMatch.Element == null) {
+        if (refreshedMatch.Element == null || !IsTextMutationAllowed(refreshedMatch.Element)) {
             return null;
         }
 

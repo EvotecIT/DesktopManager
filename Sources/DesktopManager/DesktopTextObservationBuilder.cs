@@ -33,9 +33,11 @@ internal static class DesktopTextObservationBuilder {
         string observedValue = value ?? string.Empty;
         StringComparison comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         IReadOnlyList<DesktopTextMatch> matches = FindMatches(observedValue, expectedText, comparison, maxMatches, contextLength);
+        bool visibleContainsExpected = !string.IsNullOrEmpty(expectedText) &&
+            observedValue.IndexOf(expectedText!, comparison) >= 0;
         bool? resolvedContainsExpected = string.IsNullOrEmpty(expectedText)
             ? null
-            : containsExpected == true || matches.Count > 0
+            : containsExpected == true || visibleContainsExpected
                 ? true
                 : null;
 
@@ -47,7 +49,7 @@ internal static class DesktopTextObservationBuilder {
             IsTruncated = isTruncated,
             IsComplete = !isTruncated,
             ContainsExpected = resolvedContainsExpected,
-            MatchFoundBeyondObservedPrefix = resolvedContainsExpected == true && matches.Count == 0,
+            MatchFoundBeyondObservedPrefix = containsExpected == true && !visibleContainsExpected,
             Matches = matches,
             ContentFingerprint = isTruncated ? string.Empty : CreateFingerprint(observedValue),
             HasNonPrintingCharacters = HasNonPrintingCharacters(observedValue)

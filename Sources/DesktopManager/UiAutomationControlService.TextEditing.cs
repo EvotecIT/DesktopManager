@@ -118,6 +118,10 @@ internal sealed partial class UiAutomationControlService {
             }
         }
 
+        if (!IsTextMutationAllowed(element)) {
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+        }
+
         if (value.Length == 0) {
             if (deleteSelectionWhenEmpty) {
                 KeyboardInputService.SendToForeground(VirtualKey.VK_DELETE);
@@ -136,6 +140,10 @@ internal sealed partial class UiAutomationControlService {
         }
 
         try {
+            if (!IsTextMutationAllowed(element)) {
+                return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+            }
+
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
             WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
             return UiAutomationTextEditAttempt.Succeeded();
@@ -147,6 +155,26 @@ internal sealed partial class UiAutomationControlService {
                     // Preserve the input result if clipboard restoration is blocked.
                 }
             }
+        }
+    }
+
+    private bool? TryReadResolvedPasswordStateCore(WindowInfo window, WindowControlInfo control) {
+        UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
+        return match.Element == null ? null : TryReadElementPasswordState(match.Element);
+    }
+
+    internal static bool IsTextMutationAllowed(object element) {
+        return element != null && TryReadElementPasswordState(element) == false;
+    }
+
+    private static bool? TryReadElementPasswordState(object element) {
+        try {
+            object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            return current != null && TryReadPasswordState(current, out bool? isPassword)
+                ? isPassword
+                : null;
+        } catch {
+            return null;
         }
     }
 

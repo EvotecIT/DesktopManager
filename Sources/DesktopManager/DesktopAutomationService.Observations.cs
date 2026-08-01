@@ -165,15 +165,21 @@ public sealed partial class DesktopAutomationService {
         bool canAccessText = control.IsPassword == false;
         string value = string.Empty;
         bool isTruncated = false;
+        string textSource = "native.windowText";
         if (canAccessText) {
-            if (control.Handle != IntPtr.Zero) {
+            if (control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)) {
+                value = WindowControlService.GetSelectedValue(control, settings.MaxTextLength, out isTruncated);
+                textSource = "native.selection";
+            } else if (control.Handle != IntPtr.Zero) {
                 value = WindowTextHelper.GetWindowText(control.Handle, settings.MaxTextLength, out isTruncated);
             }
 
-            if (string.IsNullOrEmpty(value)) {
+            if (string.IsNullOrEmpty(value) && !isTruncated) {
                 string candidate = !string.IsNullOrEmpty(control.Value) ? control.Value : control.Text;
-                isTruncated = candidate.Length > settings.MaxTextLength;
-                value = isTruncated ? candidate.Substring(0, settings.MaxTextLength) : candidate;
+                isTruncated = control.ValueIsTruncated || candidate.Length > settings.MaxTextLength;
+                value = candidate.Length > settings.MaxTextLength
+                    ? candidate.Substring(0, settings.MaxTextLength)
+                    : candidate;
             }
         }
 
@@ -207,7 +213,7 @@ public sealed partial class DesktopAutomationService {
                 ? DesktopTextObservationBuilder.CreateRestricted(control.IsPassword == true ? "native.password" : "native.passwordStateUnavailable")
                 : DesktopTextObservationBuilder.Create(
                     value,
-                    "native.windowText",
+                    textSource,
                     isTruncated,
                     settings.ExpectedText,
                     settings.IgnoreCase,
