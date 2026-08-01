@@ -81,13 +81,21 @@ public class ControlEnumerator {
             info.Text = maxTextLength.HasValue
                 ? WindowTextHelper.GetWindowText(handle, maxTextLength.Value, out _)
                 : WindowTextHelper.GetWindowText(handle);
-            info.Value = !maxTextLength.HasValue && WindowControlService.SupportsSelection(info)
-                ? WindowControlService.GetSelectedValue(info)
+            info.Value = WindowControlService.SupportsSelection(info)
+                ? BoundValue(WindowControlService.GetSelectedValue(info), maxTextLength)
                 : info.Text;
         }
 
         PopulateBounds(info, handle);
         return info;
+    }
+
+    internal static string BoundValue(string value, int? maxTextLength) {
+        if (!maxTextLength.HasValue || value.Length <= maxTextLength.Value) {
+            return value;
+        }
+
+        return value.Substring(0, maxTextLength.Value);
     }
 
     private static void PopulateBounds(WindowControlInfo control, IntPtr handle) {

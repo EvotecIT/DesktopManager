@@ -184,7 +184,11 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        if (ReadNullableBoolean(current, "IsPassword") == true) {
+        if (!TryReadPasswordState(current, out bool? isPassword)) {
+            return null;
+        }
+
+        if (isPassword == true) {
             return new UiAutomationTextReadResult {
                 Source = "uia.password",
                 IsPassword = true
@@ -197,7 +201,7 @@ internal sealed partial class UiAutomationControlService {
         }
 
         string? valuePatternValue = ReadPatternValue(element, "System.Windows.Automation.ValuePattern");
-        if (!string.IsNullOrEmpty(valuePatternValue)) {
+        if (IsPatternResultAvailable(valuePatternValue)) {
             return CreateBoundedTextResult(valuePatternValue!, "uia.valuePattern", maxLength, expectedText);
         }
 
@@ -211,11 +215,21 @@ internal sealed partial class UiAutomationControlService {
             return CreateBoundedTextResult(legacyValue, "uia.legacyValuePattern", maxLength, expectedText);
         }
 
-        if (valuePatternValue != null) {
-            return CreateBoundedTextResult(valuePatternValue, "uia.valuePattern", maxLength, expectedText);
-        }
-
         return null;
+    }
+
+    internal static bool IsPatternResultAvailable(string? value) {
+        return value != null;
+    }
+
+    internal static bool TryReadPasswordState(object current, out bool? isPassword) {
+        try {
+            isPassword = ReadNullableBoolean(current, "IsPassword");
+            return true;
+        } catch {
+            isPassword = null;
+            return false;
+        }
     }
 
     private UiAutomationTextReadResult? ReadTextPatternValue(object element, int maxLength, string? expectedText) {

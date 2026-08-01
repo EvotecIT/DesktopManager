@@ -955,7 +955,7 @@ internal sealed partial class UiAutomationControlService {
                     continue;
                 }
 
-                if (ScoreMatch(expected, info) > 0) {
+                if (IsStrongCachedMatch(expected, info)) {
                     return element;
                 }
             } catch {
@@ -964,6 +964,36 @@ internal sealed partial class UiAutomationControlService {
         }
 
         return null;
+    }
+
+    internal static bool IsStrongCachedMatch(WindowControlInfo expected, WindowControlInfo candidate) {
+        if (expected.Handle != IntPtr.Zero || candidate.Handle != IntPtr.Zero) {
+            return expected.Handle != IntPtr.Zero && expected.Handle == candidate.Handle;
+        }
+
+        bool hasExpectedBounds = expected.Width > 0 && expected.Height > 0;
+        bool hasCandidateBounds = candidate.Width > 0 && candidate.Height > 0;
+        if (hasExpectedBounds || hasCandidateBounds) {
+            if (!hasExpectedBounds || !hasCandidateBounds || ScoreBoundsMatch(expected, candidate) < 16) {
+                return false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(expected.ControlType) &&
+            !string.Equals(expected.ControlType, candidate.ControlType, StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expected.ClassName) &&
+            !string.Equals(expected.ClassName, candidate.ClassName, StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expected.AutomationId)) {
+            return string.Equals(expected.AutomationId, candidate.AutomationId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return WindowManager.AreEquivalentControls(expected, candidate);
     }
 
     private IEnumerable<(string PropertyName, string Value)> GetFastSearchTerms(WindowControlInfo control) {

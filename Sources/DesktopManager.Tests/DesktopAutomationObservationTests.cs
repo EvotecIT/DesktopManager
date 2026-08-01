@@ -425,6 +425,47 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures cached UI Automation lookup rejects a duplicate automation ID at different bounds.
+    /// </summary>
+    public void UiAutomationControlService_IsStrongCachedMatch_DuplicateIdDifferentBounds_ReturnsFalse() {
+        WindowControlInfo expected = CreateDocumentControl(left: 10);
+        WindowControlInfo wrongCandidate = CreateDocumentControl(left: 210);
+
+        Assert.IsFalse(UiAutomationControlService.IsStrongCachedMatch(expected, wrongCandidate));
+        Assert.IsTrue(UiAutomationControlService.IsStrongCachedMatch(expected, CreateDocumentControl(left: 10)));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures an empty ValuePattern result remains authoritative over legacy fallbacks.
+    /// </summary>
+    public void UiAutomationControlService_IsPatternResultAvailable_EmptyValue_ReturnsTrue() {
+        Assert.IsTrue(UiAutomationControlService.IsPatternResultAvailable(string.Empty));
+        Assert.IsFalse(UiAutomationControlService.IsPatternResultAvailable(null));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures provider exceptions while reading IsPassword are contained.
+    /// </summary>
+    public void UiAutomationControlService_TryReadPasswordState_ThrowingProvider_ReturnsFalse() {
+        bool result = UiAutomationControlService.TryReadPasswordState(new ThrowingPasswordState(), out bool? isPassword);
+
+        Assert.IsFalse(result);
+        Assert.IsNull(isPassword);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures selected native values remain available and bounded.
+    /// </summary>
+    public void ControlEnumerator_BoundValue_SelectedValue_ReturnsBoundedPrefix() {
+        Assert.AreEqual("Sele", ControlEnumerator.BoundValue("SelectionValue", 4));
+        Assert.AreEqual("SelectionValue", ControlEnumerator.BoundValue("SelectionValue", null));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures password controls are excluded from editable text observation candidates.
     /// </summary>
     public void DesktopAutomationService_IsEditableTextCandidate_PasswordControl_ReturnsFalse() {
@@ -723,6 +764,23 @@ public class DesktopAutomationObservationTests {
             Width = 20,
             Height = 20
         };
+    }
+
+    private static WindowControlInfo CreateDocumentControl(int left) {
+        return new WindowControlInfo {
+            Handle = IntPtr.Zero,
+            AutomationId = "Editor",
+            ClassName = "RichEdit",
+            ControlType = "Document",
+            Left = left,
+            Top = 10,
+            Width = 100,
+            Height = 40
+        };
+    }
+
+    private sealed class ThrowingPasswordState {
+        public bool IsPassword => throw new InvalidOperationException("Provider unavailable");
     }
 
     private sealed class TextPatternRangeStub {
