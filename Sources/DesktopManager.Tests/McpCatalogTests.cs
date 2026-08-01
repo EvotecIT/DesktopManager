@@ -9,6 +9,30 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class McpCatalogTests {
     [TestMethod]
+    public void McpCatalog_GetTools_ExposesSemanticControlObservationAndSafeEditContracts() {
+        JsonElement observe = GetTool("observe_control");
+        JsonElement wait = GetTool("wait_for_control_observation");
+        JsonElement edit = GetTool("edit_control_text");
+
+        Assert.IsTrue(observe.GetProperty("annotations").GetProperty("readOnlyHint").GetBoolean());
+        Assert.IsTrue(wait.GetProperty("annotations").GetProperty("readOnlyHint").GetBoolean());
+        Assert.IsFalse(edit.GetProperty("annotations").GetProperty("readOnlyHint").GetBoolean());
+        Assert.IsTrue(observe.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("includeTextRanges", out _));
+        Assert.IsTrue(wait.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("minimumRangeValue", out _));
+        JsonElement waitProperties = wait.GetProperty("inputSchema").GetProperty("properties");
+        Assert.IsTrue(waitProperties.TryGetProperty("includeTextRanges", out _));
+        Assert.IsTrue(waitProperties.TryGetProperty("realizeVirtualizedItem", out _));
+        JsonElement editProperties = edit.GetProperty("inputSchema").GetProperty("properties");
+        Assert.IsTrue(editProperties.TryGetProperty("expectedFingerprint", out _));
+        Assert.IsTrue(editProperties.TryGetProperty("expectedEditContextFingerprint", out _));
+        Assert.IsFalse(editProperties.TryGetProperty("expectedText", out _));
+        Assert.IsFalse(editProperties.TryGetProperty("ignoreCase", out _));
+        Assert.IsFalse(editProperties.TryGetProperty("includeTextRanges", out _));
+        Assert.IsFalse(editProperties.TryGetProperty("realizeVirtualizedItem", out _));
+        Assert.IsTrue(DesktopManager.Cli.McpCatalog.AffectsLiveDesktop("edit_control_text"));
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures the server-side mutation policy is derived from the same read-only annotations advertised to MCP clients.
     /// </summary>

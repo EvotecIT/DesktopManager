@@ -1,0 +1,292 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace DesktopManager;
+
+public sealed partial class DesktopAutomationService {
+    /// <summary>
+    /// Observes matching controls through one provider-neutral semantic contract.
+    /// </summary>
+    /// <param name="windowOptions">Window selector.</param>
+    /// <param name="controlOptions">Optional control selector.</param>
+    /// <param name="observationOptions">Observation limits and semantic options.</param>
+    /// <param name="allWindows">Whether every matching window should be inspected.</param>
+    /// <param name="allControls">Whether every matching control should be returned.</param>
+    /// <returns>Current semantic control observations.</returns>
+    public IReadOnlyList<DesktopControlObservation> ObserveControls(
+        WindowQueryOptions windowOptions,
+        WindowControlQueryOptions? controlOptions = null,
+        DesktopControlObservationOptions? observationOptions = null,
+        bool allWindows = false,
+        bool allControls = true) {
+        if (windowOptions == null) {
+            throw new ArgumentNullException(nameof(windowOptions));
+        }
+
+        DesktopControlObservationOptions settings = observationOptions ?? new DesktopControlObservationOptions();
+        UiAutomationControlService.ValidateObservationOptions(settings);
+        IReadOnlyList<WindowControlTargetInfo> targets = GetControls(windowOptions, controlOptions, allWindows, allControls);
+        var observations = new List<DesktopControlObservation>(targets.Count);
+        foreach (WindowControlTargetInfo target in targets) {
+            DesktopControlObservation? observation = ObserveResolvedControl(target.Window, target.Control, settings);
+            if (observation != null) {
+                observations.Add(observation);
+            }
+        }
+
+        return observations;
+    }
+
+    /// <summary>
+    /// Observes one handle-backed control through the provider-neutral semantic contract.
+    /// </summary>
+    public DesktopControlObservation? ObserveControl(
+        IntPtr windowHandle,
+        IntPtr controlHandle,
+        DesktopControlObservationOptions? observationOptions = null) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        if (controlHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid control handle.", nameof(controlHandle));
+        }
+
+        DesktopControlObservationOptions settings = observationOptions ?? new DesktopControlObservationOptions();
+        UiAutomationControlService.ValidateObservationOptions(settings);
+        WindowInfo window = ResolveWindowByHandle(windowHandle);
+        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation: settings.UseUiAutomation, includeUiAutomation: settings.UseUiAutomation);
+        return control == null ? null : ObserveResolvedControl(window, control, settings);
+    }
+
+    /// <summary>
+    /// Observes the focused child of the first matching window through the generic semantic contract.
+    /// </summary>
+    public DesktopControlObservation? ObserveFocusedControl(
+        WindowQueryOptions windowOptions,
+        DesktopControlObservationOptions? observationOptions = null) {
+        if (windowOptions == null) {
+            throw new ArgumentNullException(nameof(windowOptions));
+        }
+
+        DesktopControlObservationOptions settings = observationOptions ?? new DesktopControlObservationOptions();
+        UiAutomationControlService.ValidateObservationOptions(settings);
+        WindowInfo? window = GetMatchingWindows(windowOptions, all: false).FirstOrDefault();
+        if (window == null) {
+            return null;
+        }
+
+        IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
+        WindowControlInfo? focusedControl = null;
+        if (settings.UseUiAutomation) {
+            UiAutomationFocusedControlResult? result = new UiAutomationControlService().TryGetFocusedControl(
+                window.Handle,
+                focusedHandle,
+                settings.MaxTextLength,
+                settings.ExpectedText);
+            focusedControl = result?.Control;
+        }
+
+        if (focusedControl == null && focusedHandle != IntPtr.Zero && settings.IncludeNativeFallback) {
+            focusedControl = GetControl(window.Handle, focusedHandle, useUiAutomation: false, includeUiAutomation: false);
+        }
+
+        return focusedControl == null ? null : ObserveResolvedControl(window, focusedControl, settings);
+    }
+
+    /// <summary>
+    /// Observes the focused child of a specific window through the generic semantic contract.
+    /// </summary>
+    public DesktopControlObservation? ObserveFocusedControl(
+        IntPtr windowHandle,
+        DesktopControlObservationOptions? observationOptions = null) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return ObserveFocusedControl(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, observationOptions);
+    }
+
+    internal DesktopControlObservation? ObserveResolvedControl(
+        WindowInfo window,
+        WindowControlInfo control,
+        DesktopControlObservationOptions settings) {
+        DesktopControlObservation? observation = null;
+        if (settings.UseUiAutomation) {
+            var uiAutomation = new UiAutomationControlService();
+            observation = uiAutomation.TryObserveControl(window, control, settings);
+            if (observation == null && uiAutomation.LastOperationTimedOut) {
+                observation = settings.IncludeNativeFallback && control.IsPassword == false
+                    ? CreateNativeControlObservation(window, control, settings)
+                    : CreateUnavailableControlObservation(window, control, "uia.timeout");
+                observation.Status = "partial";
+                observation.FailureReason = $"UI Automation did not complete within {UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds}ms.";
+            }
+        }
+
+        if (observation == null && settings.IncludeNativeFallback) {
+            return CreateNativeControlObservation(window, control, settings);
+        }
+
+        if (observation == null) {
+            return null;
+        }
+
+        MergeNativeObservationState(observation, window, control, settings);
+        return observation;
+    }
+
+    internal static DesktopControlObservation CreateNativeControlObservation(
+        WindowInfo window,
+        WindowControlInfo control,
+        DesktopControlObservationOptions settings) {
+        bool canAccessText = control.IsPassword == false;
+        string value = string.Empty;
+        bool isTruncated = false;
+        if (canAccessText) {
+            if (control.Handle != IntPtr.Zero) {
+                value = WindowTextHelper.GetWindowText(control.Handle, settings.MaxTextLength, out isTruncated);
+            }
+
+            if (string.IsNullOrEmpty(value)) {
+                string candidate = !string.IsNullOrEmpty(control.Value) ? control.Value : control.Text;
+                isTruncated = candidate.Length > settings.MaxTextLength;
+                value = isTruncated ? candidate.Substring(0, settings.MaxTextLength) : candidate;
+            }
+        }
+
+        var identity = new DesktopControlIdentity {
+            ProcessId = window.ProcessId,
+            WindowHandle = window.Handle,
+            ControlHandle = control.Handle,
+            AutomationId = control.AutomationId,
+            ControlType = control.ControlType,
+            FrameworkId = control.FrameworkId,
+            ClassName = control.ClassName,
+            Left = control.Left,
+            Top = control.Top,
+            Width = control.Width,
+            Height = control.Height
+        };
+        identity.SessionKey = UiAutomationControlService.CreateObservationSessionKey(identity);
+        var observation = new DesktopControlObservation {
+            Identity = identity,
+            Capabilities = new DesktopControlCapabilities {
+                CanReadText = canAccessText && (control.Handle != IntPtr.Zero || !string.IsNullOrEmpty(value)),
+                CanSetValue = canAccessText && control.SupportsBackgroundText,
+                CanInvoke = control.SupportsBackgroundClick,
+                CanSelect = canAccessText && !string.IsNullOrEmpty(control.Value),
+                SupportsBackgroundClick = control.SupportsBackgroundClick,
+                SupportsBackgroundText = canAccessText && control.SupportsBackgroundText,
+                SupportsBackgroundKeys = control.SupportsBackgroundKeys,
+                SupportsForegroundInputFallback = control.SupportsForegroundInputFallback
+            },
+            Text = !canAccessText
+                ? DesktopTextObservationBuilder.CreateRestricted(control.IsPassword == true ? "native.password" : "native.passwordStateUnavailable")
+                : DesktopTextObservationBuilder.Create(
+                    value,
+                    "native.windowText",
+                    isTruncated,
+                    settings.ExpectedText,
+                    settings.IgnoreCase,
+                    settings.MaxMatches,
+                    settings.MatchContextLength),
+            Source = control.Source == WindowControlSource.UiAutomation ? "uia.metadata" : "win32",
+            ObservedAtUtc = DateTime.UtcNow,
+            Status = canAccessText ? "available" : "restricted",
+            IsPassword = control.IsPassword,
+            IsEnabled = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowEnabled(control.Handle) : control.IsEnabled,
+            IsVisible = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null,
+            IsOffscreen = control.IsOffscreen,
+            IsKeyboardFocusable = control.IsKeyboardFocusable
+        };
+        IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
+        observation.IsFocused = focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero ? focusedHandle == control.Handle : null;
+        return observation;
+    }
+
+    private static DesktopControlObservation CreateUnavailableControlObservation(
+        WindowInfo window,
+        WindowControlInfo control,
+        string source) {
+        var identity = new DesktopControlIdentity {
+            ProcessId = window.ProcessId,
+            WindowHandle = window.Handle,
+            ControlHandle = control.Handle,
+            RuntimeId = control.RuntimeId,
+            AutomationId = control.AutomationId,
+            ControlType = control.ControlType,
+            FrameworkId = control.FrameworkId,
+            ClassName = control.ClassName,
+            Left = control.Left,
+            Top = control.Top,
+            Width = control.Width,
+            Height = control.Height
+        };
+        identity.SessionKey = UiAutomationControlService.CreateObservationSessionKey(identity);
+        return new DesktopControlObservation {
+            Identity = identity,
+            Capabilities = new DesktopControlCapabilities {
+                SupportsBackgroundClick = control.SupportsBackgroundClick,
+                SupportsBackgroundText = false,
+                SupportsBackgroundKeys = control.SupportsBackgroundKeys,
+                SupportsForegroundInputFallback = control.SupportsForegroundInputFallback
+            },
+            Text = DesktopTextObservationBuilder.CreateRestricted(source),
+            Source = source,
+            ObservedAtUtc = DateTime.UtcNow,
+            Status = "partial",
+            IsPassword = control.IsPassword,
+            IsEnabled = control.IsEnabled,
+            IsOffscreen = control.IsOffscreen,
+            IsKeyboardFocusable = control.IsKeyboardFocusable
+        };
+    }
+
+    private static void MergeNativeObservationState(
+        DesktopControlObservation observation,
+        WindowInfo window,
+        WindowControlInfo control,
+        DesktopControlObservationOptions settings) {
+        if (observation.IsPassword != false) {
+            observation.Text = DesktopTextObservationBuilder.CreateRestricted(
+                observation.IsPassword == true ? "password" : "passwordStateUnavailable");
+            observation.Capabilities.CanReadText = false;
+            observation.Capabilities.CanReadTextSelection = false;
+            observation.Capabilities.CanSetValue = false;
+            observation.Capabilities.SupportsBackgroundText = false;
+            return;
+        }
+
+        if (settings.IncludeNativeFallback && string.IsNullOrEmpty(observation.Text.Value) && control.Handle != IntPtr.Zero) {
+            string nativeValue = WindowTextHelper.GetWindowText(control.Handle, settings.MaxTextLength, out bool isTruncated);
+            if (!string.IsNullOrEmpty(nativeValue)) {
+                observation.Text = DesktopTextObservationBuilder.Create(
+                    nativeValue,
+                    "native.windowText",
+                    isTruncated,
+                    settings.ExpectedText,
+                    settings.IgnoreCase,
+                    settings.MaxMatches,
+                    settings.MatchContextLength,
+                    observation.Text.ContainsExpected);
+            }
+        }
+
+        observation.IsEnabled ??= control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowEnabled(control.Handle) : control.IsEnabled;
+        observation.IsVisible ??= control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null;
+        observation.IsOffscreen ??= control.IsOffscreen;
+        observation.IsKeyboardFocusable ??= control.IsKeyboardFocusable;
+        if (!observation.IsFocused.HasValue && control.Handle != IntPtr.Zero) {
+            IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
+            observation.IsFocused = focusedHandle != IntPtr.Zero ? focusedHandle == control.Handle : null;
+        }
+    }
+}

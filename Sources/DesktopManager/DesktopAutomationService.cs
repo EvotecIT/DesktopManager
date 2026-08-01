@@ -14,7 +14,7 @@ namespace DesktopManager;
 /// <summary>
 /// Provides higher-level desktop automation orchestration on top of WindowManager and related services.
 /// </summary>
-public sealed class DesktopAutomationService {
+public sealed partial class DesktopAutomationService {
     private const int PreferredWindowRediscoveryMilliseconds = 1000;
     private readonly WindowManager _windowManager;
     private readonly Monitors _monitors;
@@ -2869,25 +2869,21 @@ public sealed class DesktopAutomationService {
     }
 
     private void SetControlText(WindowInfo window, WindowControlInfo control, string text, bool ensureForegroundWindow, bool allowForegroundInputFallback) {
-        var uiAutomation = new UiAutomationControlService();
-        if (control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero) {
-            if (uiAutomation.TrySetValue(window, control, text)) {
-                return;
-            }
-
-            string? validationError = ValidateUiAutomationTextFallback(control, allowForegroundInputFallback);
-            if (validationError != null) {
-                throw new InvalidOperationException(validationError);
-            }
-
-            if (!uiAutomation.TrySetText(window, control, text, ensureForegroundWindow)) {
-                throw new InvalidOperationException("The UI Automation control text could not be set even with foreground input fallback enabled.");
-            }
-
-            return;
+        DesktopTextEditResult result = EditResolvedControlText(
+            window,
+            control,
+            new DesktopTextEditRequest {
+                Text = text,
+                Mode = DesktopTextEditMode.ReplaceDocument,
+                EnsureForegroundWindow = ensureForegroundWindow,
+                AllowForegroundInputFallback = allowForegroundInputFallback,
+                VerifyAfterEdit = false
+            },
+            CreateTextEditObservationOptions(null, text.Length),
+            priorEditContextFingerprint: null);
+        if (!result.Success) {
+            throw new InvalidOperationException(result.FailureReason);
         }
-
-        _windowManager.SetControlText(control, text);
     }
 
     private void SendControlKeys(WindowInfo window, WindowControlInfo control, IReadOnlyList<VirtualKey> keys, bool ensureForegroundWindow, bool allowForegroundInputFallback) {
@@ -2968,7 +2964,7 @@ public sealed class DesktopAutomationService {
                 };
             }
 
-            Thread.Sleep(intervalMilliseconds);
+            UiAutomationControlService.WaitWithCurrentUiMessagePump(intervalMilliseconds);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching window.");
@@ -3003,7 +2999,7 @@ public sealed class DesktopAutomationService {
                 };
             }
 
-            Thread.Sleep(intervalMilliseconds);
+            UiAutomationControlService.WaitWithCurrentUiMessagePump(intervalMilliseconds);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching window to close.");
@@ -3039,7 +3035,7 @@ public sealed class DesktopAutomationService {
                 };
             }
 
-            Thread.Sleep(intervalMilliseconds);
+            UiAutomationControlService.WaitWithCurrentUiMessagePump(intervalMilliseconds);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching window to lose focus.");
@@ -3073,7 +3069,7 @@ public sealed class DesktopAutomationService {
                     }
 
                     if (stopwatch.ElapsedMilliseconds < nextWindowRediscoveryAtMilliseconds) {
-                        Thread.Sleep(intervalMilliseconds);
+                        UiAutomationControlService.WaitWithCurrentUiMessagePump(intervalMilliseconds);
                         continue;
                     }
                 } else {
@@ -3096,7 +3092,7 @@ public sealed class DesktopAutomationService {
                 };
             }
 
-            Thread.Sleep(intervalMilliseconds);
+            UiAutomationControlService.WaitWithCurrentUiMessagePump(intervalMilliseconds);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching control.");
@@ -3128,14 +3124,23 @@ public sealed class DesktopAutomationService {
         ValidateTextObservationOptions(settings);
         ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
 
+        using var signal = new AutoResetEvent(false);
+        IDisposable? subscription = TryCreateAutomationChangeSubscription(options, signal);
         Stopwatch stopwatch = Stopwatch.StartNew();
-        while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
-            DesktopWindowTextObservation? observation = ObserveWindowText(options, expectedText, settings);
-            if (observation?.ContainsExpected == true) {
-                return observation;
-            }
+        try {
+            while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
+                DesktopWindowTextObservation? observation = ObserveWindowText(options, expectedText, settings);
+                if (observation?.ContainsExpected == true) {
+                    return observation;
+                }
 
-            Thread.Sleep(intervalMilliseconds);
+                subscription ??= TryCreateAutomationChangeSubscription(options, signal);
+                UiAutomationControlService.WaitForSignalWithCurrentUiMessagePump(
+                    signal,
+                    GetRemainingWaitInterval(stopwatch, timeoutMilliseconds, intervalMilliseconds));
+            }
+        } finally {
+            subscription?.Dispose();
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for observed text '{expectedText}'.");
@@ -3178,14 +3183,23 @@ public sealed class DesktopAutomationService {
 
         ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
 
+        using var signal = new AutoResetEvent(false);
+        IDisposable? subscription = TryCreateAutomationChangeSubscription(options, signal);
         Stopwatch stopwatch = Stopwatch.StartNew();
-        while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
-            DesktopFocusedControlObservation? observation = GetFocusedControlObservation(options);
-            if (observation != null) {
-                return observation;
-            }
+        try {
+            while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
+                DesktopFocusedControlObservation? observation = GetFocusedControlObservation(options);
+                if (observation != null) {
+                    return observation;
+                }
 
-            Thread.Sleep(intervalMilliseconds);
+                subscription ??= TryCreateAutomationChangeSubscription(options, signal);
+                UiAutomationControlService.WaitForSignalWithCurrentUiMessagePump(
+                    signal,
+                    GetRemainingWaitInterval(stopwatch, timeoutMilliseconds, intervalMilliseconds));
+            }
+        } finally {
+            subscription?.Dispose();
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a focused control.");
@@ -3298,7 +3312,7 @@ public sealed class DesktopAutomationService {
                 };
             }
 
-            Thread.Sleep(intervalMilliseconds);
+            UiAutomationControlService.WaitWithCurrentUiMessagePump(intervalMilliseconds);
         }
 
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a visible change in the matching window.");

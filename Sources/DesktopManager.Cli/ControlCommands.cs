@@ -9,15 +9,72 @@ internal static class ControlCommands {
     public static int Run(string action, CommandLineArguments arguments) {
         return action switch {
             "list" => List(arguments),
+            "observe" => Observe(arguments),
+            "wait-observation" => WaitObservation(arguments),
             "diagnose" => Diagnose(arguments),
             "exists" => Exists(arguments),
             "assert-value" => AssertValue(arguments),
             "wait" => Wait(arguments),
             "click" => Click(arguments),
             "set-text" => SetText(arguments),
+            "edit-text" => EditText(arguments),
             "send-keys" => SendKeys(arguments),
             _ => throw new CommandLineException($"Unknown control command '{action}'.")
         };
+    }
+
+    private static int Observe(CommandLineArguments arguments) {
+        IReadOnlyList<DesktopControlObservation> observations = DesktopOperations.ObserveControls(
+            CreateWindowCriteria(arguments),
+            CreateControlCriteria(arguments),
+            arguments.GetIntOption("max-text-length") ?? 4096,
+            arguments.GetOption("expected-text"),
+            arguments.GetBoolFlag("ignore-case"),
+            arguments.GetBoolFlag("include-text-ranges"),
+            arguments.GetBoolFlag("realize-virtualized-item"),
+            arguments.GetBoolFlag("all-windows"));
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(observations);
+            return 0;
+        }
+
+        foreach (DesktopControlObservation observation in observations) {
+            Console.Out.WriteLine($"{observation.Identity.ControlHandleHex} {observation.Identity.ControlType} status={observation.Status} source={observation.Source} patterns={string.Join(',', observation.Capabilities.Patterns)}");
+            Console.Out.WriteLine($"text-source={observation.Text.Source} complete={observation.Text.IsComplete} fingerprint={observation.Text.ContentFingerprint} text={observation.Text.EscapedValue}");
+        }
+
+        return 0;
+    }
+
+    private static int WaitObservation(CommandLineArguments arguments) {
+        var condition = new DesktopControlObservationCondition {
+            ExpectedText = arguments.GetOption("expected-text"),
+            IgnoreCase = arguments.GetBoolFlag("ignore-case"),
+            IsTextComplete = arguments.GetBoolFlag("complete-text") ? true : arguments.GetBoolFlag("truncated-text") ? false : null,
+            IsEnabled = arguments.GetBoolFlag("enabled") ? true : arguments.GetBoolFlag("disabled") ? false : null,
+            IsFocused = arguments.GetBoolFlag("focused") ? true : arguments.GetBoolFlag("not-focused") ? false : null,
+            IsChecked = arguments.GetBoolFlag("checked") ? true : arguments.GetBoolFlag("unchecked") ? false : null,
+            IsSelected = arguments.GetBoolFlag("selected") ? true : arguments.GetBoolFlag("not-selected") ? false : null,
+            ExpandCollapseState = arguments.GetOption("expand-collapse-state"),
+            MinimumRangeValue = arguments.GetDoubleOption("minimum-range-value"),
+            MaximumRangeValue = arguments.GetDoubleOption("maximum-range-value")
+        };
+        DesktopControlObservation observation = DesktopOperations.WaitForControlObservation(
+            CreateWindowCriteria(arguments),
+            CreateControlCriteria(arguments),
+            condition,
+            arguments.GetIntOption("max-text-length") ?? 4096,
+            !arguments.HasFlag("include-text-ranges") || arguments.GetBoolFlag("include-text-ranges"),
+            arguments.GetBoolFlag("realize-virtualized-item"),
+            arguments.GetIntOption("timeout-ms") ?? 10000,
+            arguments.GetIntOption("interval-ms") ?? 200);
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(observation);
+        } else {
+            Console.Out.WriteLine($"matched {observation.Identity.SessionKey} strategy={observation.WaitStrategy} status={observation.Status}");
+        }
+
+        return 0;
     }
 
     private static int List(CommandLineArguments arguments) {
@@ -229,6 +286,30 @@ internal static class ControlCommands {
                 arguments.GetBoolFlag("all-windows"),
                 CreateArtifactOptions(arguments));
         return WriteAction(arguments, result);
+    }
+
+    private static int EditText(CommandLineArguments arguments) {
+        DesktopTextEditResult result = DesktopOperations.EditControlText(
+            CreateWindowCriteria(arguments),
+            CreateControlCriteria(arguments),
+            arguments.GetRequiredOption("text"),
+            arguments.GetOption("mode") ?? nameof(DesktopTextEditMode.ReplaceDocument),
+            arguments.GetOption("expected-fingerprint"),
+            arguments.GetOption("expected-edit-context-fingerprint"),
+            arguments.GetBoolFlag("ensure-foreground"),
+            arguments.GetBoolFlag("allow-foreground-input"),
+            !arguments.GetBoolFlag("no-verify"),
+            arguments.GetIntOption("max-text-length") ?? DesktopTextObservationOptions.MaximumTextLength);
+        if (arguments.GetBoolFlag("json")) {
+            OutputFormatter.WriteJson(result);
+        } else {
+            Console.Out.WriteLine($"edit-text success={result.Success} applied={result.Applied} method={result.Method} failure={result.FailureCode}");
+            if (!string.IsNullOrWhiteSpace(result.FailureReason)) {
+                Console.Out.WriteLine(result.FailureReason);
+            }
+        }
+
+        return result.Success ? 0 : 2;
     }
 
     private static int SendKeys(CommandLineArguments arguments) {

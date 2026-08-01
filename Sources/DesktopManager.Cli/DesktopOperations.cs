@@ -1058,6 +1058,89 @@ internal static partial class DesktopOperations {
             .ToArray());
     }
 
+    public static IReadOnlyList<DesktopControlObservation> ObserveControls(
+        WindowSelectionCriteria windowCriteria,
+        ControlSelectionCriteria controlCriteria,
+        int maxTextLength,
+        string? expectedText,
+        bool ignoreCase,
+        bool includeTextRanges,
+        bool realizeVirtualizedItem,
+        bool allWindows) {
+        return ExecuteCore(() => new DesktopAutomationService().ObserveControls(
+            CreateWindowQuery(windowCriteria),
+            CreateControlQuery(controlCriteria),
+            new DesktopControlObservationOptions {
+                MaxTextLength = maxTextLength,
+                ExpectedText = expectedText,
+                IgnoreCase = ignoreCase,
+                IncludeTextRanges = includeTextRanges,
+                IncludeSemanticState = true,
+                RealizeVirtualizedItem = realizeVirtualizedItem
+            },
+            allWindows,
+            controlCriteria.All));
+    }
+
+    public static DesktopControlObservation WaitForControlObservation(
+        WindowSelectionCriteria windowCriteria,
+        ControlSelectionCriteria controlCriteria,
+        DesktopControlObservationCondition condition,
+        int maxTextLength,
+        bool includeTextRanges,
+        bool realizeVirtualizedItem,
+        int timeoutMilliseconds,
+        int intervalMilliseconds) {
+        return ExecuteCore(() => new DesktopAutomationService().WaitForControlObservation(
+            CreateWindowQuery(windowCriteria),
+            CreateControlQuery(controlCriteria),
+            condition,
+            timeoutMilliseconds,
+            intervalMilliseconds,
+            new DesktopControlObservationOptions {
+                MaxTextLength = maxTextLength,
+                ExpectedText = condition.ExpectedText,
+                IgnoreCase = condition.IgnoreCase,
+                IncludeTextRanges = includeTextRanges,
+                IncludeSemanticState = true,
+                RealizeVirtualizedItem = realizeVirtualizedItem
+            }));
+    }
+
+    public static DesktopTextEditResult EditControlText(
+        WindowSelectionCriteria windowCriteria,
+        ControlSelectionCriteria controlCriteria,
+        string text,
+        string mode,
+        string? expectedFingerprint,
+        string? expectedEditContextFingerprint,
+        bool ensureForegroundWindow,
+        bool allowForegroundInputFallback,
+        bool verifyAfterEdit,
+        int maxTextLength) {
+        if (!Enum.TryParse(mode, ignoreCase: true, out DesktopTextEditMode editMode)) {
+            throw new CommandLineException("Text edit mode must be ReplaceDocument, ReplaceSelection, or InsertAtCaret.");
+        }
+
+        return ExecuteCore(() => new DesktopAutomationService().EditControlText(
+            CreateWindowQuery(windowCriteria),
+            CreateControlQuery(controlCriteria),
+            new DesktopTextEditRequest {
+                Text = text,
+                Mode = editMode,
+                ExpectedFingerprint = expectedFingerprint,
+                ExpectedEditContextFingerprint = expectedEditContextFingerprint,
+                EnsureForegroundWindow = ensureForegroundWindow,
+                AllowForegroundInputFallback = allowForegroundInputFallback,
+                VerifyAfterEdit = verifyAfterEdit
+            },
+            new DesktopControlObservationOptions {
+                MaxTextLength = maxTextLength,
+                IncludeTextRanges = true,
+                IncludeSemanticState = true
+            }));
+    }
+
     public static IReadOnlyList<ControlResult> ListControlTargets(WindowSelectionCriteria windowCriteria, string targetName, bool allWindows, bool allControls) {
         return ExecuteCore(() => new DesktopAutomationService()
             .GetControlTargets(CreateWindowQuery(windowCriteria), targetName, allWindows, allControls)

@@ -228,6 +228,12 @@ public partial class WindowManager {
     }
 
     internal static bool AreEquivalentControls(WindowControlInfo existing, WindowControlInfo candidate) {
+        if (!string.IsNullOrWhiteSpace(existing.RuntimeId) &&
+            !string.IsNullOrWhiteSpace(candidate.RuntimeId) &&
+            string.Equals(existing.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal)) {
+            return true;
+        }
+
         if (existing.Handle != IntPtr.Zero &&
             candidate.Handle != IntPtr.Zero &&
             existing.Handle == candidate.Handle) {
@@ -269,6 +275,10 @@ public partial class WindowManager {
 
         if (string.IsNullOrWhiteSpace(target.AutomationId)) {
             target.AutomationId = source.AutomationId;
+        }
+
+        if (string.IsNullOrWhiteSpace(target.RuntimeId)) {
+            target.RuntimeId = source.RuntimeId;
         }
 
         if (string.IsNullOrWhiteSpace(target.ControlType)) {

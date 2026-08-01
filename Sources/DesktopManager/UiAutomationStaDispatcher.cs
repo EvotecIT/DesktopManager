@@ -9,6 +9,7 @@ namespace DesktopManager;
 /// Serializes UI Automation work on one reusable STA thread.
 /// </summary>
 internal sealed class UiAutomationStaDispatcher : IDisposable {
+    internal const int DefaultInvocationTimeoutMilliseconds = 15000;
     private readonly BlockingCollection<IWorkItem> _queue = new();
     private readonly Thread _thread;
     private bool _disposed;
@@ -22,9 +23,18 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
         _thread.Start();
     }
 
+    internal bool IsCurrentThread => Thread.CurrentThread == _thread;
+
     internal T Invoke<T>(Func<UiAutomationControlService, T> operation) {
+        return Invoke(operation, DefaultInvocationTimeoutMilliseconds);
+    }
+
+    internal T Invoke<T>(Func<UiAutomationControlService, T> operation, int timeoutMilliseconds) {
         if (operation == null) {
             throw new ArgumentNullException(nameof(operation));
+        }
+        if (timeoutMilliseconds <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds));
         }
         if (_disposed) {
             throw new ObjectDisposedException(nameof(UiAutomationStaDispatcher));
@@ -32,7 +42,7 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
 
         var workItem = new WorkItem<T>(operation);
         _queue.Add(workItem);
-        return workItem.GetResult();
+        return workItem.GetResult(timeoutMilliseconds);
     }
 
     public void Dispose() {
@@ -79,9 +89,12 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
             }
         }
 
-        internal T GetResult() {
+        internal T GetResult(int timeoutMilliseconds) {
+            if (!_completed.Wait(timeoutMilliseconds)) {
+                throw new TimeoutException($"UI Automation did not complete within {timeoutMilliseconds}ms.");
+            }
+
             try {
-                _completed.Wait();
                 _exception?.Throw();
                 return _result;
             } finally {

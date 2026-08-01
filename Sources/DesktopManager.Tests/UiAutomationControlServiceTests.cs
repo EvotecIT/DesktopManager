@@ -8,6 +8,15 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class UiAutomationControlServiceTests {
     [TestMethod]
+    public void UiAutomationControlService_WindowsRuntime_LoadsClientAndTypesAssemblies() {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        Assert.IsTrue(new UiAutomationControlService().IsAvailable);
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures Chromium render widget roots are prioritized for fallback probing.
     /// </summary>
@@ -344,5 +353,49 @@ public class UiAutomationControlServiceTests {
 
         Assert.AreEqual(0, UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, offscreenCandidate));
         Assert.AreEqual(0, UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, nonIntersectingCandidate));
+    }
+
+    [TestMethod]
+    public void UiAutomationStaDispatcher_TimedOutProviderCall_DoesNotPermanentlyBlockQueue() {
+        using var dispatcher = new UiAutomationStaDispatcher();
+
+        Assert.ThrowsExactly<TimeoutException>(() => dispatcher.Invoke(
+            _ => {
+                Thread.Sleep(150);
+                return true;
+            },
+            timeoutMilliseconds: 20));
+
+        Thread.Sleep(175);
+        int result = dispatcher.Invoke(_ => 42, timeoutMilliseconds: 1000);
+        Assert.AreEqual(42, result);
+    }
+
+    [TestMethod]
+    public void TryReadPasswordState_NullProviderValue_ReturnsUnavailable() {
+        bool available = UiAutomationControlService.TryReadPasswordState(
+            new UnknownPasswordState(),
+            out bool? isPassword);
+
+        Assert.IsFalse(available);
+        Assert.IsNull(isPassword);
+    }
+
+    [TestMethod]
+    public void CreateGuardedEventSignal_AfterDisposal_IgnoresLateCallback() {
+        int signalCount = 0;
+        IDisposable guard = UiAutomationControlService.CreateGuardedEventSignal(
+            () => signalCount++,
+            out Action guardedSignal);
+
+        guardedSignal();
+        guard.Dispose();
+        guardedSignal();
+
+        Assert.AreEqual(1, signalCount);
+    }
+
+    private sealed class UnknownPasswordState {
+        public bool? IsPassword => null;
     }
 }

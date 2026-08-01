@@ -20,6 +20,7 @@ internal static partial class McpCatalog {
         "set_matching_control_selected_value",
         "set_control_visibility",
         "set_control_text",
+        "edit_control_text",
         "send_control_keys",
         "move_window",
         "place_window",
@@ -75,6 +76,7 @@ internal static partial class McpCatalog {
 
     private static readonly HashSet<string> ForegroundInputFallbackToolNames = new(StringComparer.Ordinal) {
         "set_control_text",
+        "edit_control_text",
         "send_control_keys"
     };
 
@@ -118,6 +120,7 @@ internal static partial class McpCatalog {
             case "set_matching_control_selected_value":
             case "save_visual_baseline":
             case "set_control_text":
+            case "edit_control_text":
             case "send_control_keys":
             case "move_window":
             case "place_window":

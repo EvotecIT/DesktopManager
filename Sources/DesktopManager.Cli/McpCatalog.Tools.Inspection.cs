@@ -180,6 +180,10 @@ internal static partial class McpCatalog {
                     ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
                     ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
                 }), readOnly: true),
+            CreateTool("observe_control", "Observe Control", "Return provider-neutral identity, capabilities, bounded text, selection, caret, range, grid, table, and scroll state for matching controls. Password text is never read.", CreateObjectSchema(
+                CreateSemanticControlProperties()), readOnly: true),
+            CreateTool("wait_for_control_observation", "Wait For Control Observation", "Wait for semantic control text or state using UI Automation events with bounded polling fallback.", CreateObjectSchema(
+                CreateSemanticWaitProperties()), readOnly: true),
             CreateTool("get_control_state", "Get Control State", "Return the observable state for a specific control handle.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
@@ -482,6 +486,8 @@ internal static partial class McpCatalog {
                     ["all"] = CreateBooleanSchema("Apply to all matching controls."),
                     ["allWindows"] = CreateBooleanSchema("Target controls in all matching windows.")
                 }), new[] { "text" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("edit_control_text", "Edit Control Text", "Safely replace a document, replace the current selection, or insert at the caret with optional content-fingerprint concurrency protection and post-edit verification.", CreateObjectSchema(
+                CreateSemanticEditProperties(), new[] { "text" }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("send_control_keys", "Send Control Keys", "Send keys to a matching child control.", CreateObjectSchema(
                 AddMutationArtifactProperties(new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),

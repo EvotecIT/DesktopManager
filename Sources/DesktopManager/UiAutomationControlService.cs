@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 
 namespace DesktopManager;
 
@@ -26,6 +25,8 @@ internal sealed partial class UiAutomationControlService {
     private readonly Type? _automationElementCollectionType;
     private readonly Type? _conditionType;
     private readonly Type? _treeScopeType;
+
+    internal bool LastOperationTimedOut { get; private set; }
 
     public UiAutomationControlService() {
         _automationClientAssembly = AppDomain.CurrentDomain.GetAssemblies()
@@ -53,7 +54,7 @@ internal sealed partial class UiAutomationControlService {
             return new List<WindowControlInfo>();
         }
 
-        return RunInSta(service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles));
+        return RunInSta(service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles), windowHandle);
     }
 
     internal static IReadOnlyList<IntPtr> GetFallbackRootHandles(IntPtr windowHandle, IEnumerable<WindowControlInfo>? win32Controls) {
@@ -129,7 +130,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryInvokeCore(window, control));
+        return RunInSta(service => service.TryInvokeCore(window, control), window.Handle);
     }
 
     public bool TrySetValue(WindowInfo window, WindowControlInfo control, string value) {
@@ -145,7 +146,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(value));
         }
 
-        return RunInSta(service => service.TrySetValueCore(window, control, value));
+        return RunInSta(service => service.TrySetValueCore(window, control, value), window.Handle);
     }
 
     public bool TrySetText(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
@@ -161,7 +162,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(value));
         }
 
-        return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow));
+        return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow), window.Handle);
     }
 
     public bool TrySetCheckState(WindowInfo window, WindowControlInfo control, bool check) {
@@ -173,7 +174,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TrySetCheckStateCore(window, control, check));
+        return RunInSta(service => service.TrySetCheckStateCore(window, control, check), window.Handle);
     }
 
     public bool TrySetSelectedValue(WindowInfo window, WindowControlInfo control, string selectedValue) {
@@ -189,7 +190,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(selectedValue));
         }
 
-        return RunInSta(service => service.TrySetSelectedValueCore(window, control, selectedValue));
+        return RunInSta(service => service.TrySetSelectedValueCore(window, control, selectedValue), window.Handle);
     }
 
     public bool TrySendKeys(WindowInfo window, WindowControlInfo control, IReadOnlyList<VirtualKey> keys, bool ensureForegroundWindow) {
@@ -205,7 +206,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentException("At least one key is required.", nameof(keys));
         }
 
-        return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow));
+        return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow), window.Handle);
     }
 
     public bool? TryReadCheckState(WindowInfo window, WindowControlInfo control) {
@@ -217,7 +218,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryReadCheckStateCore(window, control));
+        return RunInSta(service => service.TryReadCheckStateCore(window, control), window.Handle);
     }
 
     public string? TryReadSelectedValue(WindowInfo window, WindowControlInfo control) {
@@ -229,7 +230,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryReadSelectedValueCore(window, control));
+        return RunInSta(service => service.TryReadSelectedValueCore(window, control), window.Handle);
     }
 
     public bool TryFocus(WindowInfo window, WindowControlInfo control, bool ensureForegroundWindow) {
@@ -241,7 +242,7 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryFocusCore(window, control, ensureForegroundWindow));
+        return RunInSta(service => service.TryFocusCore(window, control, ensureForegroundWindow), window.Handle);
     }
 
     public IReadOnlyList<DesktopUiAutomationRootDiagnostic> DiagnoseRoots(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles = null, int sampleLimit = 3) {
@@ -253,7 +254,8 @@ internal sealed partial class UiAutomationControlService {
             return Array.Empty<DesktopUiAutomationRootDiagnostic>();
         }
 
-        return RunInSta(service => service.DiagnoseRootsCore(windowHandle, fallbackRootHandles, sampleLimit));
+        return RunInSta(service => service.DiagnoseRootsCore(windowHandle, fallbackRootHandles, sampleLimit), windowHandle)
+            ?? Array.Empty<DesktopUiAutomationRootDiagnostic>();
     }
 
     public DesktopUiAutomationActionDiagnostic ProbeActionResolution(WindowInfo window, WindowControlInfo control) {
@@ -265,19 +267,47 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.ProbeActionResolutionCore(window, control));
+        return RunInSta(service => service.ProbeActionResolutionCore(window, control), window.Handle);
     }
 
-    private T RunInSta<T>(Func<UiAutomationControlService, T> operation) {
+    private T RunInSta<T>(Func<UiAutomationControlService, T> operation, IntPtr targetWindowHandle = default) {
         if (!IsAvailable) {
             return default!;
         }
 
-        if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA) {
+        LastOperationTimedOut = false;
+        if (StaDispatcher.Value.IsCurrentThread || IsWindowOwnedByCurrentThread(targetWindowHandle)) {
             return operation(this);
         }
 
-        return StaDispatcher.Value.Invoke(operation);
+        try {
+            if (TryRunWithCurrentUiMessagePump(() => StaDispatcher.Value.Invoke(operation), out T pumpedResult)) {
+                return pumpedResult;
+            }
+
+            return StaDispatcher.Value.Invoke(operation);
+        } catch (TimeoutException) {
+            LastOperationTimedOut = true;
+            return CreateTimedOutOperationFallback<T>();
+        }
+    }
+
+    private static bool IsWindowOwnedByCurrentThread(IntPtr windowHandle) {
+        return windowHandle != IntPtr.Zero &&
+            MonitorNativeMethods.GetWindowThreadProcessId(windowHandle, out _) == MonitorNativeMethods.GetCurrentThreadId();
+    }
+
+    private static T CreateTimedOutOperationFallback<T>() {
+        Type resultType = typeof(T);
+        if (resultType.IsArray) {
+            return (T)(object)Array.CreateInstance(resultType.GetElementType()!, 0);
+        }
+
+        if (!resultType.IsAbstract && !resultType.IsInterface && resultType.GetConstructor(Type.EmptyTypes) != null) {
+            return (T)Activator.CreateInstance(resultType)!;
+        }
+
+        return default!;
     }
 
     private List<WindowControlInfo> EnumerateControlsCore(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles) {
@@ -514,7 +544,7 @@ internal sealed partial class UiAutomationControlService {
 
         bool expanded = TryPatternAction(element, "System.Windows.Automation.ExpandCollapsePattern", "Expand");
         if (expanded) {
-            Thread.Sleep(ForegroundInputSettleMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
         }
 
         try {
@@ -575,7 +605,7 @@ internal sealed partial class UiAutomationControlService {
         }
 
         KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
-        Thread.Sleep(ForegroundInputSettleMilliseconds);
+        WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
         if (value.Length == 0) {
             KeyboardInputService.SendToForeground(VirtualKey.VK_DELETE);
         } else {
@@ -620,6 +650,7 @@ internal sealed partial class UiAutomationControlService {
         }
 
         KeyboardInputService.SendToForeground(keys.ToArray());
+        WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
         return true;
     }
 
@@ -914,6 +945,7 @@ internal sealed partial class UiAutomationControlService {
         return string.Join("|", new[] {
             windowHandle.ToInt64().ToString("X"),
             control.Handle.ToInt64().ToString("X"),
+            control.RuntimeId ?? string.Empty,
             control.AutomationId ?? string.Empty,
             control.ControlType ?? string.Empty,
             control.ClassName ?? string.Empty,
@@ -967,6 +999,11 @@ internal sealed partial class UiAutomationControlService {
     }
 
     internal static bool IsStrongCachedMatch(WindowControlInfo expected, WindowControlInfo candidate) {
+        if (!string.IsNullOrWhiteSpace(expected.RuntimeId) || !string.IsNullOrWhiteSpace(candidate.RuntimeId)) {
+            return !string.IsNullOrWhiteSpace(expected.RuntimeId) &&
+                string.Equals(expected.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal);
+        }
+
         if (expected.Handle != IntPtr.Zero || candidate.Handle != IntPtr.Zero) {
             return expected.Handle != IntPtr.Zero && expected.Handle == candidate.Handle;
         }
@@ -1106,6 +1143,8 @@ internal sealed partial class UiAutomationControlService {
             Text = control.Text,
             Value = control.Value,
             Source = control.Source,
+            HasUiAutomationIdentity = control.HasUiAutomationIdentity,
+            RuntimeId = control.RuntimeId,
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
             FrameworkId = control.FrameworkId,
@@ -1200,7 +1239,12 @@ internal sealed partial class UiAutomationControlService {
         try {
             return Assembly.Load(name);
         } catch {
-            return null;
+            try {
+                string frameworkName = $"{name}, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35";
+                return Assembly.Load(frameworkName);
+            } catch {
+                return null;
+            }
         }
     }
 
@@ -1397,7 +1441,9 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        string name = ReadString(current, "Name");
+        bool? isPassword = ReadNullableBoolean(current, "IsPassword");
+        bool canAccessText = isPassword == false;
+        string name = canAccessText ? ReadString(current, "Name") : string.Empty;
         string className = ReadString(current, "ClassName");
         string automationId = ReadString(current, "AutomationId");
         string frameworkId = ReadString(current, "FrameworkId");
@@ -1405,9 +1451,8 @@ internal sealed partial class UiAutomationControlService {
         bool? isKeyboardFocusable = ReadNullableBoolean(current, "IsKeyboardFocusable");
         bool? isEnabled = ReadNullableBoolean(current, "IsEnabled");
         bool? isOffscreen = ReadNullableBoolean(current, "IsOffscreen");
-        bool? isPassword = ReadNullableBoolean(current, "IsPassword");
         string controlType = ReadControlTypeName(current);
-        string value = isPassword == true || !readValue ? string.Empty : ReadValue(element);
+        string value = canAccessText && readValue ? ReadValue(element) : string.Empty;
         bool hasInvokeAction = HasPattern(element, "System.Windows.Automation.InvokePattern") ||
             HasPattern(element, "System.Windows.Automation.SelectionItemPattern") ||
             HasPattern(element, "System.Windows.Automation.ExpandCollapsePattern") ||
@@ -1422,10 +1467,11 @@ internal sealed partial class UiAutomationControlService {
             Handle = nativeWindowHandle == 0 ? IntPtr.Zero : new IntPtr(nativeWindowHandle),
             ClassName = className,
             Id = 0,
-            Text = isPassword == true ? string.Empty : name,
+            Text = name,
             Value = value,
             Source = WindowControlSource.UiAutomation,
             HasUiAutomationIdentity = true,
+            RuntimeId = ReadRuntimeId(element, errors: null),
             AutomationId = automationId,
             ControlType = controlType,
             FrameworkId = frameworkId,
@@ -1433,7 +1479,7 @@ internal sealed partial class UiAutomationControlService {
             IsEnabled = isEnabled,
             IsPassword = isPassword,
             SupportsBackgroundClick = hasNativeHandle || hasInvokeAction,
-            SupportsBackgroundText = hasNativeHandle || hasDirectTextAction,
+            SupportsBackgroundText = canAccessText && (hasNativeHandle || hasDirectTextAction),
             SupportsBackgroundKeys = hasNativeHandle,
             SupportsForegroundInputFallback = SupportsForegroundFallback(hasNativeHandle, isKeyboardFocusable, isEnabled, controlType, className),
             Left = left,
@@ -1464,7 +1510,7 @@ internal sealed partial class UiAutomationControlService {
 
         try {
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
-            Thread.Sleep(ForegroundInputSettleMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
             KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
             return WaitForResolvedValue(window, control, value);
         } finally {
@@ -1491,7 +1537,7 @@ internal sealed partial class UiAutomationControlService {
                 return true;
             }
 
-            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundTextVerificationIntervalMilliseconds);
         }
 
         return false;
@@ -1518,7 +1564,7 @@ internal sealed partial class UiAutomationControlService {
                 return true;
             }
 
-            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundTextVerificationIntervalMilliseconds);
         }
 
         return false;
@@ -1537,7 +1583,7 @@ internal sealed partial class UiAutomationControlService {
                 return true;
             }
 
-            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundTextVerificationIntervalMilliseconds);
         }
 
         return false;

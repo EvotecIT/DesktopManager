@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using System.Threading;
 
 namespace DesktopManager;
 
@@ -21,7 +20,7 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return RunInSta(service => service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText));
+        return RunInSta(service => service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText), windowHandle);
     }
 
     /// <summary>
@@ -37,9 +36,7 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return TryRunWithWpfDispatcherPump(windowHandle, focusedHandle, maxLength, expectedText, out UiAutomationFocusedControlResult? result)
-            ? result
-            : TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText);
+        return RunInSta(service => service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText), windowHandle);
     }
 
     /// <summary>
@@ -59,7 +56,7 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return RunInSta(service => service.TryReadTextCore(window, control, maxLength, expectedText));
+        return RunInSta(service => service.TryReadTextCore(window, control, maxLength, expectedText), window.Handle);
     }
 
     internal static UiAutomationTextReadResult CreateBoundedTextResult(string value, string source, int maxLength, string? expectedText, bool? containsExpected = null) {
@@ -225,7 +222,7 @@ internal sealed partial class UiAutomationControlService {
     internal static bool TryReadPasswordState(object current, out bool? isPassword) {
         try {
             isPassword = ReadNullableBoolean(current, "IsPassword");
-            return true;
+            return isPassword.HasValue;
         } catch {
             isPassword = null;
             return false;
@@ -249,72 +246,6 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return null;
         }
-    }
-
-    private static bool TryRunWithWpfDispatcherPump(
-        IntPtr windowHandle,
-        IntPtr focusedHandle,
-        int maxLength,
-        string? expectedText,
-        out UiAutomationFocusedControlResult? result) {
-        result = null;
-        Type? dispatcherType = Type.GetType("System.Windows.Threading.Dispatcher, WindowsBase", throwOnError: false);
-        Type? dispatcherFrameType = Type.GetType("System.Windows.Threading.DispatcherFrame, WindowsBase", throwOnError: false);
-        MethodInfo? fromThreadMethod = dispatcherType?.GetMethod("FromThread", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(Thread) }, null);
-        object? dispatcher = fromThreadMethod?.Invoke(null, new object[] { Thread.CurrentThread });
-        object? frame = dispatcherFrameType == null ? null : Activator.CreateInstance(dispatcherFrameType);
-        PropertyInfo? continueProperty = dispatcherFrameType?.GetProperty("Continue", BindingFlags.Public | BindingFlags.Instance);
-        MethodInfo? pushFrameMethod = dispatcherType == null || dispatcherFrameType == null
-            ? null
-            : dispatcherType.GetMethod("PushFrame", BindingFlags.Public | BindingFlags.Static, null, new[] { dispatcherFrameType }, null);
-        MethodInfo? beginInvokeMethod = FindDispatcherBeginInvoke(dispatcherType);
-        if (dispatcher == null || frame == null || continueProperty == null || pushFrameMethod == null || beginInvokeMethod == null) {
-            return false;
-        }
-
-        UiAutomationFocusedControlResult? workerResult = null;
-        var worker = new Thread(() => {
-            try {
-                var service = new UiAutomationControlService();
-                workerResult = service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText);
-            } catch {
-                workerResult = null;
-            } finally {
-                var stopFrame = new Action(() => continueProperty.SetValue(frame, false));
-                try {
-                    beginInvokeMethod.Invoke(dispatcher, new object[] { stopFrame, Array.Empty<object>() });
-                } catch {
-                    continueProperty.SetValue(frame, false);
-                }
-            }
-        }) {
-            IsBackground = true,
-            Name = "DesktopManager UI Automation focus reader"
-        };
-        worker.SetApartmentState(ApartmentState.STA);
-        worker.Start();
-        pushFrameMethod.Invoke(null, new[] { frame });
-        worker.Join();
-        result = workerResult;
-        return true;
-    }
-
-    private static MethodInfo? FindDispatcherBeginInvoke(Type? dispatcherType) {
-        if (dispatcherType == null) {
-            return null;
-        }
-
-        foreach (MethodInfo method in dispatcherType.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
-            ParameterInfo[] parameters = method.GetParameters();
-            if (method.Name == "BeginInvoke" &&
-                parameters.Length == 2 &&
-                parameters[0].ParameterType == typeof(Delegate) &&
-                parameters[1].ParameterType == typeof(object[])) {
-                return method;
-            }
-        }
-
-        return null;
     }
 
     private object? TryGetAutomationFocusedElement() {
