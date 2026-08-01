@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace DesktopManager;
 
-internal sealed class UiAutomationControlService {
+internal sealed partial class UiAutomationControlService {
     private const int EnumeratedControlsCacheMilliseconds = 750;
     private const int ActionMatchCacheMilliseconds = 5000;
     private const int ForegroundTextVerificationMilliseconds = 1000;
@@ -1081,6 +1081,7 @@ internal sealed class UiAutomationControlService {
             FrameworkId = control.FrameworkId,
             IsKeyboardFocusable = control.IsKeyboardFocusable,
             IsEnabled = control.IsEnabled,
+            IsPassword = control.IsPassword,
             SupportsBackgroundClick = control.SupportsBackgroundClick,
             SupportsBackgroundText = control.SupportsBackgroundText,
             SupportsBackgroundKeys = control.SupportsBackgroundKeys,
@@ -1367,7 +1368,7 @@ internal sealed class UiAutomationControlService {
             string.Equals(existing.ClassName, candidate.ClassName, StringComparison.OrdinalIgnoreCase)));
     }
 
-    private WindowControlInfo? CreateControlInfo(object element) {
+    private WindowControlInfo? CreateControlInfo(object element, bool readValue = true) {
         object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
         if (current == null) {
             return null;
@@ -1381,8 +1382,9 @@ internal sealed class UiAutomationControlService {
         bool? isKeyboardFocusable = ReadNullableBoolean(current, "IsKeyboardFocusable");
         bool? isEnabled = ReadNullableBoolean(current, "IsEnabled");
         bool? isOffscreen = ReadNullableBoolean(current, "IsOffscreen");
+        bool? isPassword = ReadNullableBoolean(current, "IsPassword");
         string controlType = ReadControlTypeName(current);
-        string value = ReadValue(element);
+        string value = isPassword == true || !readValue ? string.Empty : ReadValue(element);
         bool hasInvokeAction = HasPattern(element, "System.Windows.Automation.InvokePattern") ||
             HasPattern(element, "System.Windows.Automation.SelectionItemPattern") ||
             HasPattern(element, "System.Windows.Automation.ExpandCollapsePattern") ||
@@ -1405,6 +1407,7 @@ internal sealed class UiAutomationControlService {
             FrameworkId = frameworkId,
             IsKeyboardFocusable = isKeyboardFocusable,
             IsEnabled = isEnabled,
+            IsPassword = isPassword,
             SupportsBackgroundClick = hasNativeHandle || hasInvokeAction,
             SupportsBackgroundText = hasNativeHandle || hasDirectTextAction,
             SupportsBackgroundKeys = hasNativeHandle,

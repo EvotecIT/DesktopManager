@@ -89,6 +89,18 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures focused-control text observation rejects invalid max lengths before window discovery.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_InvalidMaxLength_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.GetFocusedControlObservation(
+            new WindowQueryOptions { TitlePattern = "__never__" },
+            0));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures handle-based text observation rejects invalid handles.
     /// </summary>
     public void DesktopAutomationService_ObserveWindowText_ZeroHandle_ThrowsArgumentException() {
@@ -219,6 +231,53 @@ public class DesktopAutomationObservationTests {
         Assert.IsTrue(observation.IsTruncated);
         Assert.AreEqual(new IntPtr(100), observation.WindowHandle);
         Assert.AreEqual(new IntPtr(200), observation.ControlHandle);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures UI Automation text reads preserve an expected-text match beyond the returned prefix.
+    /// </summary>
+    public void UiAutomationControlService_CreateBoundedTextResult_TracksExpectedBeyondPrefix() {
+        UiAutomationTextReadResult result = UiAutomationControlService.CreateBoundedTextResult(
+            "prefix-hidden-needle",
+            "uia.textPattern",
+            6,
+            "needle");
+
+        Assert.AreEqual("prefix", result.Value);
+        Assert.AreEqual("uia.textPattern", result.Source);
+        Assert.IsTrue(result.IsTruncated);
+        Assert.AreEqual(true, result.ContainsExpected);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures TextPattern asks the provider for only one character beyond the public observation limit.
+    /// </summary>
+    public void UiAutomationControlService_ReadTextPatternRange_BoundsProviderReadAndSearchesExpectedText() {
+        var range = new TextPatternRangeStub("prefix-hidden-needle");
+
+        UiAutomationTextReadResult result = UiAutomationControlService.ReadTextPatternRange(range, 6, "needle");
+
+        Assert.AreEqual(7, range.LastMaxLength);
+        Assert.AreEqual("prefix", result.Value);
+        Assert.IsTrue(result.IsTruncated);
+        Assert.AreEqual(true, result.ContainsExpected);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures password controls are excluded from editable text observation candidates.
+    /// </summary>
+    public void DesktopAutomationService_IsEditableTextCandidate_PasswordControl_ReturnsFalse() {
+        bool result = DesktopAutomationService.IsEditableTextCandidate(new WindowControlInfo {
+            ClassName = "Edit",
+            ControlType = "Edit",
+            IsPassword = true,
+            IsKeyboardFocusable = true
+        });
+
+        Assert.IsFalse(result);
     }
 
     [TestMethod]
@@ -424,5 +483,25 @@ public class DesktopAutomationObservationTests {
         }, 3000, 50);
 
         Assert.IsTrue(result.ElapsedMilliseconds >= 0);
+    }
+
+    private sealed class TextPatternRangeStub {
+        private readonly string _document;
+
+        public TextPatternRangeStub(string document) {
+            _document = document;
+        }
+
+        public int LastMaxLength { get; private set; }
+
+        public string GetText(int maxLength) {
+            LastMaxLength = maxLength;
+            return _document.Length > maxLength ? _document.Substring(0, maxLength) : _document;
+        }
+
+        public object? FindText(string text, bool backward, bool ignoreCase) {
+            StringComparison comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            return _document.IndexOf(text, comparison) >= 0 ? new object() : null;
+        }
     }
 }

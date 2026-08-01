@@ -72,7 +72,9 @@ public partial class WindowManager {
         UiAutomationPreparationResult preparation = PrepareWindowForUiAutomation(window, filter);
 
         var enumerator = new ControlEnumerator();
-        List<WindowControlInfo> win32Controls = enumerator.EnumerateControls(window.Handle);
+        List<WindowControlInfo> win32Controls = filter.RequiresUiAutomation()
+            ? enumerator.EnumerateControlMetadata(window.Handle)
+            : enumerator.EnumerateControls(window.Handle);
         IReadOnlyList<IntPtr> fallbackRootHandles = UiAutomationControlService.GetFallbackRootHandles(window.Handle, win32Controls);
         IntPtr preferredRootHandle = UiAutomationControlService.GetPreferredSearchRootHandle(window.Handle, fallbackRootHandles);
         var uiAutomation = new UiAutomationControlService();
@@ -87,6 +89,10 @@ public partial class WindowManager {
                 ? primaryUiAutomationControls
                 : uiAutomation.EnumerateControls(window.Handle, fallbackRootHandles)
             : new List<WindowControlInfo>();
+        if (filter.RequiresUiAutomation()) {
+            ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
+            ControlEnumerator.PopulateControlValues(win32Controls);
+        }
         List<WindowControlInfo> effectiveControls = SelectDiscoveredControls(filter, win32Controls, uiAutomationControls);
         List<WindowControlInfo> matchedControls = effectiveControls.FindAll(control => MatchesControl(control, filter));
         DesktopUiAutomationActionDiagnostic? actionProbe = null;
@@ -144,7 +150,9 @@ public partial class WindowManager {
 
     private List<WindowControlInfo> GetControlsInternal(IntPtr windowHandle, WindowControlQueryOptions filter) {
         var enumerator = new ControlEnumerator();
-        List<WindowControlInfo> win32Controls = enumerator.EnumerateControls(windowHandle);
+        List<WindowControlInfo> win32Controls = filter.RequiresUiAutomation()
+            ? enumerator.EnumerateControlMetadata(windowHandle)
+            : enumerator.EnumerateControls(windowHandle);
 
         if (!filter.RequiresUiAutomation()) {
             return win32Controls;
@@ -153,8 +161,25 @@ public partial class WindowManager {
         var uiAutomation = new UiAutomationControlService();
         IReadOnlyList<IntPtr> fallbackRootHandles = UiAutomationControlService.GetFallbackRootHandles(windowHandle, win32Controls);
         List<WindowControlInfo> uiAutomationControls = uiAutomation.EnumerateControls(windowHandle, fallbackRootHandles);
+        ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
+        ControlEnumerator.PopulateControlValues(win32Controls);
 
         return SelectDiscoveredControls(filter, win32Controls, uiAutomationControls);
+    }
+
+    private static void ApplyUiAutomationPasswordMetadata(List<WindowControlInfo> win32Controls, List<WindowControlInfo> uiAutomationControls) {
+        foreach (WindowControlInfo uiAutomationControl in uiAutomationControls) {
+            if (uiAutomationControl.IsPassword != true || uiAutomationControl.Handle == IntPtr.Zero) {
+                continue;
+            }
+
+            WindowControlInfo? nativeControl = win32Controls.FirstOrDefault(candidate => candidate.Handle == uiAutomationControl.Handle);
+            if (nativeControl != null) {
+                nativeControl.IsPassword = true;
+                nativeControl.Text = string.Empty;
+                nativeControl.Value = string.Empty;
+            }
+        }
     }
 
     private static List<WindowControlInfo> SelectDiscoveredControls(WindowControlQueryOptions filter, List<WindowControlInfo> win32Controls, List<WindowControlInfo> uiAutomationControls) {
@@ -209,7 +234,7 @@ public partial class WindowManager {
         return merged;
     }
 
-    private static void MergeControlMetadata(WindowControlInfo target, WindowControlInfo source) {
+    internal static void MergeControlMetadata(WindowControlInfo target, WindowControlInfo source) {
         if (target == null || source == null) {
             return;
         }
@@ -238,7 +263,15 @@ public partial class WindowManager {
             target.IsOffscreen = source.IsOffscreen;
         }
 
-        if (string.IsNullOrWhiteSpace(target.Value)) {
+        if (!target.IsPassword.HasValue) {
+            target.IsPassword = source.IsPassword;
+        }
+
+        if (target.IsPassword == true || source.IsPassword == true) {
+            target.IsPassword = true;
+            target.Text = string.Empty;
+            target.Value = string.Empty;
+        } else if (string.IsNullOrWhiteSpace(target.Value)) {
             target.Value = source.Value;
         }
 

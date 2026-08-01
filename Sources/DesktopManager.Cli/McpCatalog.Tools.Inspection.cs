@@ -150,7 +150,7 @@ internal static partial class McpCatalog {
                     ["retryCount"] = CreateIntegerSchema("Observation retry count."),
                     ["retryDelayMs"] = CreateIntegerSchema("Delay between observation retries in milliseconds.")
                 }, new[] { "expectedText" }), readOnly: true),
-            CreateTool("get_focused_control", "Get Focused Control", "Return focused-control metadata for a matching window.", CreateObjectSchema(
+            CreateTool("get_focused_control", "Get Focused Control", "Return focused-control metadata and bounded plain text for a matching window. UI Automation password controls are never read.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),
                     ["processName"] = CreateStringSchema("Process name filter."),
@@ -161,7 +161,9 @@ internal static partial class McpCatalog {
                     ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
                     ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
                     ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
-                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles.")
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["expectedText"] = CreateStringSchema("Optional text to search for across the complete UI Automation document range."),
+                    ["maxLength"] = CreateIntegerSchema("Maximum focused-control value length.")
                 }), readOnly: true),
             CreateTool("wait_for_focused_control", "Wait For Focused Control", "Wait until a matching window exposes a focused control.", CreateObjectSchema(
                 new Dictionary<string, object> {

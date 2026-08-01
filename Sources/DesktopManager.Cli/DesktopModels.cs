@@ -135,6 +135,7 @@ internal sealed class ControlResult {
     public string FrameworkId { get; set; } = string.Empty;
     public bool? IsKeyboardFocusable { get; set; }
     public bool? IsEnabled { get; set; }
+    public bool? IsPassword { get; set; }
     public bool? IsOffscreen { get; set; }
     public bool SupportsBackgroundClick { get; set; }
     public bool SupportsBackgroundText { get; set; }
@@ -353,6 +354,10 @@ internal sealed class FocusedControlObservationResult {
     public string ControlType { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
+    public string ValueSource { get; set; } = string.Empty;
+    public bool IsValueTruncated { get; set; }
+    public bool? ContainsExpected { get; set; }
+    public bool? IsPassword { get; set; }
     public bool? IsKeyboardFocusable { get; set; }
     public bool? IsEnabled { get; set; }
 }

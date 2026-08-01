@@ -30,6 +30,8 @@ public class WindowControlInfo {
     public bool? IsKeyboardFocusable { get; internal set; }
     /// <summary>Whether the control is enabled when available.</summary>
     public bool? IsEnabled { get; internal set; }
+    /// <summary>Whether UI Automation marks the control as password-protected.</summary>
+    public bool? IsPassword { get; internal set; }
     /// <summary>Whether the control supports background-safe click/invoke actions.</summary>
     public bool SupportsBackgroundClick { get; internal set; }
     /// <summary>Whether the control supports background-safe text updates.</summary>

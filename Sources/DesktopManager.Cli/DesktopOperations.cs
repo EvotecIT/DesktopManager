@@ -55,9 +55,12 @@ internal static partial class DesktopOperations {
         });
     }
 
-    public static FocusedControlObservationResult? GetFocusedControl(WindowSelectionCriteria criteria) {
+    public static FocusedControlObservationResult? GetFocusedControl(WindowSelectionCriteria criteria, string? expectedText = null, int? maxLength = null) {
         return ExecuteCore(() => {
-            DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(CreateWindowQuery(criteria));
+            DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(
+                CreateWindowQuery(criteria),
+                maxLength ?? 2048,
+                expectedText);
             return observation == null ? null : MapFocusedControlObservation(observation);
         });
     }
@@ -1924,6 +1927,10 @@ internal static partial class DesktopOperations {
             ControlType = observation.ControlType,
             Text = observation.Text,
             Value = observation.Value,
+            ValueSource = observation.ValueSource,
+            IsValueTruncated = observation.IsValueTruncated,
+            ContainsExpected = observation.ContainsExpected,
+            IsPassword = observation.IsPassword,
             IsKeyboardFocusable = observation.IsKeyboardFocusable,
             IsEnabled = observation.IsEnabled
         };
@@ -2367,14 +2374,25 @@ internal static partial class DesktopOperations {
             Handle = $"0x{control.Handle.ToInt64():X}",
             ClassName = control.ClassName,
             Id = control.Id,
-            Text = !string.IsNullOrWhiteSpace(control.Text) ? control.Text : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
-            Value = !string.IsNullOrWhiteSpace(control.Value) ? control.Value : !string.IsNullOrWhiteSpace(control.Text) ? control.Text : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
+            Text = control.IsPassword == true
+                ? string.Empty
+                : !string.IsNullOrWhiteSpace(control.Text)
+                    ? control.Text
+                    : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
+            Value = control.IsPassword == true
+                ? string.Empty
+                : !string.IsNullOrWhiteSpace(control.Value)
+                    ? control.Value
+                    : !string.IsNullOrWhiteSpace(control.Text)
+                        ? control.Text
+                        : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
             Source = control.Source.ToString(),
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
             FrameworkId = control.FrameworkId,
             IsKeyboardFocusable = control.IsKeyboardFocusable,
             IsEnabled = control.IsEnabled,
+            IsPassword = control.IsPassword,
             IsOffscreen = control.IsOffscreen,
             SupportsBackgroundClick = control.SupportsBackgroundClick,
             SupportsBackgroundText = control.SupportsBackgroundText,

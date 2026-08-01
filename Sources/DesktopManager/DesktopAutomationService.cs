@@ -18,6 +18,7 @@ public sealed class DesktopAutomationService {
     private const int PreferredWindowRediscoveryMilliseconds = 1000;
     private readonly WindowManager _windowManager;
     private readonly Monitors _monitors;
+    private readonly UiAutomationControlService _uiAutomationControlService;
     private static readonly JsonSerializerOptions TargetSerializerOptions = new() {
         WriteIndented = true
     };
@@ -28,6 +29,7 @@ public sealed class DesktopAutomationService {
     public DesktopAutomationService() {
         _monitors = new Monitors();
         _windowManager = new WindowManager(_monitors);
+        _uiAutomationControlService = new UiAutomationControlService();
     }
 
     /// <summary>
@@ -583,8 +585,23 @@ public sealed class DesktopAutomationService {
     /// Observes the currently focused control for the first matching window when it can be resolved.
     /// </summary>
     public DesktopFocusedControlObservation? GetFocusedControlObservation(WindowQueryOptions options) {
+        return GetFocusedControlObservation(options, 2048, null);
+    }
+
+    /// <summary>
+    /// Observes the currently focused control and bounds any UI Automation document text returned.
+    /// </summary>
+    /// <param name="options">Window selection criteria.</param>
+    /// <param name="maxObservedTextLength">Maximum number of text characters to return.</param>
+    /// <param name="expectedText">Optional text to search for across the complete provider document range.</param>
+    /// <returns>The focused-control observation when available; otherwise null.</returns>
+    public DesktopFocusedControlObservation? GetFocusedControlObservation(WindowQueryOptions options, int maxObservedTextLength, string? expectedText = null) {
         if (options == null) {
             throw new ArgumentNullException(nameof(options));
+        }
+
+        if (maxObservedTextLength < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxObservedTextLength), "maxObservedTextLength must be greater than zero.");
         }
 
         WindowInfo? window = TryResolveSingleWindow(options);
@@ -593,32 +610,60 @@ public sealed class DesktopAutomationService {
         }
 
         IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
-        if (focusedHandle == IntPtr.Zero) {
+        MonitorNativeMethods.GetWindowThreadProcessId(window.Handle, out uint windowProcessId);
+        bool isCurrentProcessWindow = windowProcessId == (uint)Process.GetCurrentProcess().Id;
+        UiAutomationFocusedControlResult? automationResult = isCurrentProcessWindow
+            ? _uiAutomationControlService.TryGetFocusedControlOnCurrentThread(
+                window.Handle,
+                focusedHandle,
+                maxObservedTextLength,
+                expectedText)
+            : _uiAutomationControlService.TryGetFocusedControl(
+                window.Handle,
+                focusedHandle,
+                maxObservedTextLength,
+                expectedText);
+        WindowControlInfo? control = automationResult?.Control;
+        if (control != null) {
+            control.ParentWindowHandle = window.Handle;
+        } else if (focusedHandle != IntPtr.Zero) {
+            control = new ControlEnumerator().GetControl(window.Handle, focusedHandle, maxObservedTextLength);
+        }
+
+        if (focusedHandle == IntPtr.Zero && control == null) {
             return null;
         }
 
-        WindowControlInfo? control = _windowManager.GetControls(
-            window,
-            new WindowControlQueryOptions {
-                Handle = focusedHandle,
-                UseUiAutomation = true,
-                IncludeUiAutomation = true
-            }).FirstOrDefault();
-
-        string liveText = WindowTextHelper.GetWindowText(focusedHandle);
+        UiAutomationTextReadResult? automationText = automationResult?.Text;
+        bool isPassword = automationText?.IsPassword == true || control?.IsPassword == true;
+        string liveText = string.Empty;
+        bool nativeTextTruncated = false;
+        if (!isPassword && automationText == null && focusedHandle != IntPtr.Zero) {
+            liveText = WindowTextHelper.GetWindowText(focusedHandle, maxObservedTextLength, out nativeTextTruncated);
+        }
         string controlText = !string.IsNullOrWhiteSpace(liveText)
             ? liveText
             : control?.Text ?? string.Empty;
+        string value = isPassword
+            ? string.Empty
+            : automationText?.Value ?? control?.Value ?? string.Empty;
+        string valueSource = isPassword
+            ? "uia.password"
+            : automationText?.Source ?? (!string.IsNullOrWhiteSpace(control?.Value) ? "native.windowText" : string.Empty);
 
         return new DesktopFocusedControlObservation {
             WindowHandle = window.Handle,
             WindowTitle = window.Title,
-            FocusedHandle = focusedHandle,
+            FocusedHandle = focusedHandle != IntPtr.Zero ? focusedHandle : control?.Handle ?? IntPtr.Zero,
             ClassName = control?.ClassName ?? string.Empty,
             AutomationId = control?.AutomationId ?? string.Empty,
             ControlType = control?.ControlType ?? string.Empty,
             Text = controlText,
-            Value = control?.Value ?? string.Empty,
+            Value = value,
+            ValueSource = valueSource,
+            IsValueTruncated = automationText?.IsTruncated == true || nativeTextTruncated,
+            ContainsExpected = automationText?.ContainsExpected,
+            IsPassword = isPassword ? true : control?.IsPassword,
             IsKeyboardFocusable = control?.IsKeyboardFocusable,
             IsEnabled = control?.IsEnabled
         };
@@ -655,6 +700,27 @@ public sealed class DesktopAutomationService {
             IncludeOwned = true,
             IncludeEmptyTitles = true
         });
+    }
+
+    /// <summary>
+    /// Observes the currently focused control for a specific window and bounds any document text returned.
+    /// </summary>
+    /// <param name="windowHandle">Window handle.</param>
+    /// <param name="maxObservedTextLength">Maximum number of text characters to return.</param>
+    /// <param name="expectedText">Optional text to search for across the complete provider document range.</param>
+    /// <returns>The focused-control observation when available; otherwise null.</returns>
+    public DesktopFocusedControlObservation? GetFocusedControlObservation(IntPtr windowHandle, int maxObservedTextLength, string? expectedText = null) {
+        if (windowHandle == IntPtr.Zero) {
+            throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
+        }
+
+        return GetFocusedControlObservation(new WindowQueryOptions {
+            Handle = windowHandle,
+            IncludeHidden = true,
+            IncludeCloaked = true,
+            IncludeOwned = true,
+            IncludeEmptyTitles = true
+        }, maxObservedTextLength, expectedText);
     }
 
     /// <summary>
@@ -3060,7 +3126,7 @@ public sealed class DesktopAutomationService {
         Stopwatch stopwatch = Stopwatch.StartNew();
         while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
             DesktopFocusedControlObservation? observation = GetFocusedControlObservation(options);
-            if (observation != null && observation.FocusedHandle != IntPtr.Zero) {
+            if (observation != null) {
                 return observation;
             }
 
@@ -3666,21 +3732,26 @@ public sealed class DesktopAutomationService {
         UiAutomationControlService? uiAutomation = control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero
             ? new UiAutomationControlService()
             : null;
-        string liveText = control.Handle != IntPtr.Zero
+        bool isPassword = control.IsPassword == true;
+        string liveText = !isPassword && control.Handle != IntPtr.Zero
             ? WindowTextHelper.GetWindowText(control.Handle)
             : string.Empty;
-        string selectedValue = control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)
+        string selectedValue = !isPassword && control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)
             ? WindowControlService.GetSelectedValue(control)
-            : uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty;
-        string uiAutomationValue = uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty;
-        string resolvedText = !string.IsNullOrWhiteSpace(liveText)
+            : !isPassword ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
+        string uiAutomationValue = !isPassword ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
+        string resolvedText = isPassword
+            ? string.Empty
+            : !string.IsNullOrWhiteSpace(liveText)
             ? liveText
             : !string.IsNullOrWhiteSpace(selectedValue)
                 ? selectedValue
                 : !string.IsNullOrWhiteSpace(control.Text)
                     ? control.Text
                     : uiAutomationValue;
-        string resolvedValue = !string.IsNullOrWhiteSpace(selectedValue)
+        string resolvedValue = isPassword
+            ? string.Empty
+            : !string.IsNullOrWhiteSpace(selectedValue)
             ? selectedValue
             : !string.IsNullOrWhiteSpace(liveText)
                 ? liveText
@@ -3915,22 +3986,25 @@ public sealed class DesktopAutomationService {
             IncludeCloaked = true,
             IncludeOwned = true,
             IncludeEmptyTitles = true
-        });
-        if (focusedControl == null || focusedControl.FocusedHandle == IntPtr.Zero) {
+        }, maxObservedTextLength, expectedText);
+        if (focusedControl == null) {
             return null;
         }
 
         if (!string.IsNullOrWhiteSpace(focusedControl.Value)) {
-            return CreateTextObservation(
+            DesktopWindowTextObservation observation = CreateTextObservation(
                 window,
                 focusedControl.FocusedHandle,
                 focusedControl.ClassName,
                 focusedControl.AutomationId,
                 focusedControl.ControlType,
                 focusedControl.Value,
-                "focused.controlValue",
+                string.IsNullOrWhiteSpace(focusedControl.ValueSource) ? "focused.controlValue" : focusedControl.ValueSource,
                 expectedText,
                 maxObservedTextLength);
+            observation.IsTruncated = focusedControl.IsValueTruncated;
+            observation.ContainsExpected = focusedControl.ContainsExpected ?? observation.ContainsExpected;
+            return observation;
         }
 
         if (!string.IsNullOrWhiteSpace(focusedControl.Text)) {
@@ -3949,23 +4023,32 @@ public sealed class DesktopAutomationService {
         return null;
     }
 
-    private static (WindowControlInfo Control, DesktopWindowTextObservation Observation)? CreateControlTextObservation(WindowInfo window, WindowControlInfo control, string? expectedText, int maxObservedTextLength) {
-        string? rawValue = !string.IsNullOrWhiteSpace(control.Value)
+    private (WindowControlInfo Control, DesktopWindowTextObservation Observation)? CreateControlTextObservation(WindowInfo window, WindowControlInfo control, string? expectedText, int maxObservedTextLength) {
+        if (control.IsPassword == true) {
+            return null;
+        }
+
+        UiAutomationTextReadResult? automationText = _uiAutomationControlService.TryReadText(window, control, maxObservedTextLength, expectedText);
+        if (automationText?.IsPassword == true) {
+            return null;
+        }
+
+        string? rawValue = automationText?.Value ?? (!string.IsNullOrWhiteSpace(control.Value)
             ? control.Value
             : !string.IsNullOrWhiteSpace(control.Text)
                 ? control.Text
                 : control.Handle != IntPtr.Zero
                     ? WindowTextHelper.GetWindowText(control.Handle)
-                    : null;
+                    : null);
         if (rawValue == null) {
             return null;
         }
 
-        string source = !string.IsNullOrWhiteSpace(control.Value)
+        string source = automationText?.Source ?? (!string.IsNullOrWhiteSpace(control.Value)
             ? "control.value"
             : !string.IsNullOrWhiteSpace(control.Text)
                 ? "control.text"
-                : "control.liveText";
+                : "control.liveText");
 
         DesktopWindowTextObservation observation = CreateTextObservation(
             window,
@@ -3977,11 +4060,19 @@ public sealed class DesktopAutomationService {
             source,
             expectedText,
             maxObservedTextLength);
+        if (automationText != null) {
+            observation.IsTruncated = automationText.IsTruncated;
+            observation.ContainsExpected = automationText.ContainsExpected ?? observation.ContainsExpected;
+        }
         return (control, observation);
     }
 
     internal static bool IsEditableTextCandidate(WindowControlInfo control) {
         if (control == null) {
+            return false;
+        }
+
+        if (control.IsPassword == true) {
             return false;
         }
 

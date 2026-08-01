@@ -34,6 +34,39 @@ public static class WindowTextHelper {
         return GetViaMessage(handle, Math.Max(length + 1, 256));
     }
 
+    /// <summary>
+    /// Gets at most the requested number of window-text characters.
+    /// </summary>
+    /// <param name="handle">Window handle.</param>
+    /// <param name="maxLength">Maximum number of characters to return.</param>
+    /// <param name="isTruncated">Whether the native text is longer than the returned value.</param>
+    /// <returns>Bounded window text or an empty string.</returns>
+    public static string GetWindowText(IntPtr handle, int maxLength, out bool isTruncated) {
+        if (maxLength < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxLength), "maxLength must be greater than zero.");
+        }
+
+        isTruncated = false;
+        if (handle == IntPtr.Zero) {
+            return string.Empty;
+        }
+
+        int reportedLength = MonitorNativeMethods.GetWindowTextLength(handle);
+        int boundedLength = reportedLength > 0 ? Math.Min(reportedLength, maxLength) : maxLength;
+        int capacity = boundedLength == int.MaxValue ? int.MaxValue : boundedLength + 1;
+        var builder = new StringBuilder(capacity);
+        int copied = MonitorNativeMethods.GetWindowText(handle, builder, builder.Capacity);
+        string value = copied > 0
+            ? builder.ToString()
+            : GetViaMessage(handle, capacity);
+        if (value.Length > maxLength) {
+            value = value.Substring(0, maxLength);
+        }
+
+        isTruncated = reportedLength > maxLength || (reportedLength <= 0 && value.Length >= maxLength);
+        return value;
+    }
+
     private static string GetViaMessage(IntPtr handle, int capacity) {
         if (capacity <= 0) {
             capacity = 256;

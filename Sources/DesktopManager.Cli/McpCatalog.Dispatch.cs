@@ -72,7 +72,10 @@ internal static partial class McpCatalog {
                     ReadInt(arguments, "maxLength"),
                     ReadInt(arguments, "retryCount"),
                     ReadInt(arguments, "retryDelayMs")),
-                "get_focused_control" => DesktopOperations.GetFocusedControl(ReadWindowCriteria(arguments, true))!,
+                "get_focused_control" => DesktopOperations.GetFocusedControl(
+                    ReadWindowCriteria(arguments, true),
+                    ReadOptionalString(arguments, "expectedText"),
+                    ReadInt(arguments, "maxLength"))!,
                 "wait_for_focused_control" => DesktopOperations.WaitForFocusedControl(
                     ReadWindowCriteria(arguments, true),
                     ReadInt(arguments, "timeoutMs") ?? 10000,
