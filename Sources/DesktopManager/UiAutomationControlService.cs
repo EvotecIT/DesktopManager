@@ -57,11 +57,22 @@ internal sealed partial class UiAutomationControlService {
         IntPtr windowHandle,
         IReadOnlyList<IntPtr>? fallbackRootHandles,
         bool readValues) {
+        return EnumerateControls(windowHandle, fallbackRootHandles, readValues, UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds);
+    }
+
+    internal List<WindowControlInfo> EnumerateControls(
+        IntPtr windowHandle,
+        IReadOnlyList<IntPtr>? fallbackRootHandles,
+        bool readValues,
+        int invocationTimeoutMilliseconds) {
         if (!IsAvailable || windowHandle == IntPtr.Zero) {
             return new List<WindowControlInfo>();
         }
 
-        return RunInSta(service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles, readValues), windowHandle);
+        return RunInSta(
+            service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles, readValues),
+            windowHandle,
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
     }
 
     internal static IReadOnlyList<IntPtr> GetFallbackRootHandles(IntPtr windowHandle, IEnumerable<WindowControlInfo>? win32Controls) {
@@ -292,22 +303,28 @@ internal sealed partial class UiAutomationControlService {
     private T RunInSta<T>(
         Func<UiAutomationControlService, T> operation,
         IntPtr targetWindowHandle = default,
-        bool isMutation = false) {
+        bool isMutation = false,
+        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
         if (!IsAvailable) {
             return default!;
         }
 
+        if (invocationTimeoutMilliseconds <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(invocationTimeoutMilliseconds));
+        }
+
         LastOperationTimedOut = false;
-        if (StaDispatcher.Value.IsCurrentThread || IsWindowOwnedByCurrentThread(targetWindowHandle)) {
+        if (StaDispatcher.Value.IsCurrentThread ||
+            invocationTimeoutMilliseconds == UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds && IsWindowOwnedByCurrentThread(targetWindowHandle)) {
             return operation(this);
         }
 
         try {
-            if (TryRunWithCurrentUiMessagePump(() => StaDispatcher.Value.Invoke(operation), out T pumpedResult)) {
+            if (TryRunWithCurrentUiMessagePump(() => StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds), out T pumpedResult)) {
                 return pumpedResult;
             }
 
-            return StaDispatcher.Value.Invoke(operation);
+            return StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds);
         } catch (UiAutomationOperationInFlightException) when (isMutation) {
             LastOperationTimedOut = true;
             throw;
@@ -673,7 +690,7 @@ internal sealed partial class UiAutomationControlService {
 
     private string? TryReadSelectedValueCore(WindowInfo window, WindowControlInfo control) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
-        return match.Element == null
+        return match.Element == null || !IsTextMutationAllowed(match.Element)
             ? null
             : ReadSelectedValue(match.Element);
     }

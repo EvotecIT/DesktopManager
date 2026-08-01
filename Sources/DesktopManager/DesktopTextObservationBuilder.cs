@@ -49,6 +49,8 @@ internal static class DesktopTextObservationBuilder {
             IsTruncated = isTruncated,
             IsComplete = !isTruncated,
             ContainsExpected = resolvedContainsExpected,
+            ExpectedText = expectedText,
+            ExpectedTextIgnoreCase = ignoreCase,
             MatchFoundBeyondObservedPrefix = containsExpected == true && !visibleContainsExpected,
             Matches = matches,
             ContentFingerprint = isTruncated ? string.Empty : CreateFingerprint(observedValue),

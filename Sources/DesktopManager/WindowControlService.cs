@@ -166,6 +166,10 @@ public static class WindowControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
+        if (control.IsPassword != false) {
+            return string.Empty;
+        }
+
         if (control.Handle == IntPtr.Zero) {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }

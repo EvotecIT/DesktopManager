@@ -277,6 +277,20 @@ public class DesktopAutomationObservationTests {
     }
 
     [TestMethod]
+    public void UiAutomationControlService_CreateBoundedTextResult_TracksCaseInsensitiveExpectedBeyondPrefix() {
+        UiAutomationTextReadResult result = UiAutomationControlService.CreateBoundedTextResult(
+            "prefix-hidden-NEEDLE",
+            "uia.valuePattern",
+            6,
+            "needle",
+            ignoreCase: true);
+
+        Assert.AreEqual("prefix", result.Value);
+        Assert.IsTrue(result.IsTruncated);
+        Assert.AreEqual(true, result.ContainsExpected);
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures TextPattern asks the provider for only one character beyond the public observation limit.
     /// </summary>

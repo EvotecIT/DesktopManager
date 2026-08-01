@@ -656,19 +656,22 @@ public sealed partial class DesktopAutomationService {
 
         UiAutomationTextReadResult? automationText = automationResult?.Text;
         bool isPassword = automationText?.IsPassword == true || control?.IsPassword == true;
+        bool canAccessText = automationText != null
+            ? !automationText.IsPassword
+            : control?.IsPassword == false;
         string liveText = string.Empty;
         bool nativeTextTruncated = false;
         IntPtr nativeTextHandle = ResolveNativeTextHandle(automationResult, focusedHandle);
-        if (!isPassword && automationText == null && nativeTextHandle != IntPtr.Zero) {
+        if (canAccessText && automationText == null && nativeTextHandle != IntPtr.Zero) {
             liveText = WindowTextHelper.GetWindowText(nativeTextHandle, maxObservedTextLength, out nativeTextTruncated);
         }
-        string controlText = isPassword
+        string controlText = !canAccessText
             ? string.Empty
             : !string.IsNullOrEmpty(liveText)
                 ? liveText
                 : control?.Text ?? string.Empty;
         string valueSource = string.Empty;
-        string value = isPassword
+        string value = !canAccessText
             ? string.Empty
             : ResolveFocusedValue(automationText, control, liveText, out valueSource);
         if (isPassword) {
@@ -686,7 +689,9 @@ public sealed partial class DesktopAutomationService {
             Value = value,
             ValueSource = valueSource,
             IsValueTruncated = automationText?.IsTruncated == true || nativeTextTruncated,
-            ContainsExpected = automationText?.ContainsExpected ?? ResolveExpectedTextMatch(expectedText, liveText, value),
+            ContainsExpected = canAccessText
+                ? automationText?.ContainsExpected ?? ResolveExpectedTextMatch(expectedText, liveText, value)
+                : null,
             IsPassword = isPassword ? true : control?.IsPassword,
             IsKeyboardFocusable = control?.IsKeyboardFocusable,
             IsEnabled = control?.IsEnabled
@@ -3821,15 +3826,15 @@ public sealed partial class DesktopAutomationService {
         UiAutomationControlService? uiAutomation = control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero
             ? new UiAutomationControlService()
             : null;
-        bool isPassword = control.IsPassword == true;
-        string liveText = !isPassword && control.Handle != IntPtr.Zero
+        bool canAccessText = control.IsPassword == false;
+        string liveText = canAccessText && control.Handle != IntPtr.Zero
             ? WindowTextHelper.GetWindowText(control.Handle)
             : string.Empty;
-        string selectedValue = !isPassword && control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)
+        string selectedValue = canAccessText && control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)
             ? WindowControlService.GetSelectedValue(control)
-            : !isPassword ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
-        string uiAutomationValue = !isPassword ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
-        string resolvedText = isPassword
+            : canAccessText ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
+        string uiAutomationValue = canAccessText ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
+        string resolvedText = !canAccessText
             ? string.Empty
             : !string.IsNullOrEmpty(liveText)
             ? liveText
@@ -3838,7 +3843,7 @@ public sealed partial class DesktopAutomationService {
                 : !string.IsNullOrEmpty(control.Text)
                     ? control.Text
                     : uiAutomationValue;
-        string resolvedValue = isPassword
+        string resolvedValue = !canAccessText
             ? string.Empty
             : !string.IsNullOrEmpty(selectedValue)
             ? selectedValue
@@ -3976,14 +3981,23 @@ public sealed partial class DesktopAutomationService {
         IReadOnlyList<WindowInfo> windows,
         WindowControlQueryOptions? controlOptions,
         bool allControls,
-        int? maxTextLength = null) {
+        int? maxTextLength = null,
+        Func<int>? getUiAutomationTimeoutMilliseconds = null) {
         if (windows == null || windows.Count == 0) {
             return Array.Empty<WindowControlTargetInfo>();
         }
 
         var results = new List<WindowControlTargetInfo>();
         foreach (WindowInfo window in windows) {
-            List<WindowControlInfo> controls = _windowManager.GetControls(window, controlOptions, maxTextLength);
+            if (getUiAutomationTimeoutMilliseconds != null && getUiAutomationTimeoutMilliseconds() <= 0) {
+                break;
+            }
+
+            List<WindowControlInfo> controls = _windowManager.GetControls(
+                window,
+                controlOptions,
+                maxTextLength,
+                getUiAutomationTimeoutMilliseconds);
             foreach (WindowControlInfo control in controls) {
                 results.Add(new WindowControlTargetInfo {
                     Window = window,
@@ -4126,11 +4140,16 @@ public sealed partial class DesktopAutomationService {
             return null;
         }
 
+        bool canAccessNativeText = control.IsPassword == false;
+        if (automationText == null && !canAccessNativeText) {
+            return null;
+        }
+
         string? rawValue = automationText?.Value ?? (!string.IsNullOrEmpty(control.Value)
             ? control.Value
             : !string.IsNullOrEmpty(control.Text)
                 ? control.Text
-                : control.Handle != IntPtr.Zero
+                : canAccessNativeText && control.Handle != IntPtr.Zero
                     ? WindowTextHelper.GetWindowText(control.Handle)
                     : null);
         if (rawValue == null) {

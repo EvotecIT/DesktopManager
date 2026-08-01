@@ -68,7 +68,7 @@ internal static partial class McpCatalog {
                ReadBool(arguments, "excludeOwned");
     }
 
-    private static ControlSelectionCriteria ReadControlCriteria(JsonElement element) {
+    private static ControlSelectionCriteria ReadControlCriteria(JsonElement element, bool allowForegroundActivation = true) {
         return new ControlSelectionCriteria {
             ClassNamePattern = ReadOptionalString(element, "controlClassName") ?? "*",
             TextPattern = ReadOptionalString(element, "controlText") ?? "*",
@@ -84,7 +84,7 @@ internal static partial class McpCatalog {
             SupportsBackgroundText = ReadNullableBool(element, "supportsBackgroundText"),
             SupportsBackgroundKeys = ReadNullableBool(element, "supportsBackgroundKeys"),
             SupportsForegroundInputFallback = ReadNullableBool(element, "supportsForegroundInputFallback"),
-            EnsureForegroundWindow = ReadBool(element, "ensureForegroundWindow"),
+            EnsureForegroundWindow = allowForegroundActivation && ReadBool(element, "ensureForegroundWindow"),
             AllowForegroundInputFallback = ReadBool(element, "allowForegroundInput"),
             UiAutomation = ReadBool(element, "uiAutomation"),
             IncludeUiAutomation = ReadBool(element, "includeUiAutomation"),
@@ -107,7 +107,7 @@ internal static partial class McpCatalog {
         };
     }
 
-    private static Dictionary<string, object> CreateSemanticControlProperties(bool includeMultiple = true) {
+    private static Dictionary<string, object> CreateSemanticControlProperties(bool includeMultiple = true, bool includeForegroundActivation = true) {
         var properties = new Dictionary<string, object> {
             ["windowTitle"] = CreateStringSchema("Window title filter."),
             ["processName"] = CreateStringSchema("Process name filter."),
@@ -127,12 +127,15 @@ internal static partial class McpCatalog {
             ["isKeyboardFocusable"] = CreateBooleanSchema("Filter by whether the control can receive keyboard focus."),
             ["uiAutomation"] = CreateBooleanSchema("Use UI Automation control discovery."),
             ["includeUiAutomation"] = CreateBooleanSchema("Combine native and UI Automation control results."),
-            ["ensureForegroundWindow"] = CreateBooleanSchema("Bring the target window to the foreground before provider queries or input."),
             ["maxTextLength"] = CreateIntegerSchema("Maximum plain-text characters returned per control."),
             ["expectedText"] = CreateStringSchema("Optional literal text to locate in the provider document."),
             ["ignoreCase"] = CreateBooleanSchema("Use ordinal case-insensitive text matching."),
             ["includeTextRanges"] = CreateBooleanSchema("Include selection, caret, and composition ranges.")
         };
+
+        if (includeForegroundActivation) {
+            properties["ensureForegroundWindow"] = CreateBooleanSchema("Bring the target window to the foreground before provider queries or input.");
+        }
 
         if (includeMultiple) {
             properties["all"] = CreateBooleanSchema("Return all matching controls.");
@@ -143,7 +146,7 @@ internal static partial class McpCatalog {
     }
 
     private static Dictionary<string, object> CreateSemanticWaitProperties() {
-        Dictionary<string, object> properties = CreateSemanticControlProperties(includeMultiple: false);
+        Dictionary<string, object> properties = CreateSemanticControlProperties(includeMultiple: false, includeForegroundActivation: false);
         properties["isTextComplete"] = CreateBooleanSchema("Required text completeness state.");
         properties["expectedEnabled"] = CreateBooleanSchema("Required enabled state.");
         properties["expectedFocused"] = CreateBooleanSchema("Required focused state.");

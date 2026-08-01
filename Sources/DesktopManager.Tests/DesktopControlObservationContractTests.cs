@@ -185,6 +185,47 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopControlObservationCondition_DoesNotReuseProviderEvidenceForDifferentLiteral() {
+        DesktopControlTextObservation text = DesktopTextObservationBuilder.Create(
+            "bounded prefix",
+            "uia.textPattern",
+            isTruncated: true,
+            expectedText: "bar",
+            ignoreCase: false,
+            maxMatches: 0,
+            contextLength: 0,
+            containsExpected: true);
+        var observation = new DesktopControlObservation { Text = text };
+
+        Assert.IsTrue(new DesktopControlObservationCondition { ExpectedText = "bar" }.Matches(observation));
+        Assert.IsFalse(new DesktopControlObservationCondition { ExpectedText = "foo" }.Matches(observation));
+        Assert.IsFalse(new DesktopControlObservationCondition { ExpectedText = "BAR", IgnoreCase = true }.Matches(observation));
+    }
+
+    [TestMethod]
+    public void ControlEnumerator_PopulateControlValues_UnknownPasswordStateFailsClosed() {
+        var control = new WindowControlInfo {
+            Handle = new IntPtr(123),
+            IsPassword = null,
+            Text = "stale text",
+            Value = "stale value"
+        };
+
+        ControlEnumerator.PopulateControlValues(new[] { control });
+
+        Assert.AreEqual(string.Empty, control.Text);
+        Assert.AreEqual(string.Empty, control.Value);
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_GetProviderInvocationTimeout_UsesRemainingOverallWaitBudget() {
+        Assert.AreEqual(75, DesktopAutomationService.GetProviderInvocationTimeout(100, 25));
+        Assert.AreEqual(0, DesktopAutomationService.GetProviderInvocationTimeout(100, 100));
+        Assert.AreEqual(UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds, DesktopAutomationService.GetProviderInvocationTimeout(0, 50000));
+        Assert.AreEqual(UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds, DesktopAutomationService.GetProviderInvocationTimeout(30000, 0));
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_TryCalculateExpectedEditedText_ReplacesExactSelection() {
         var before = new DesktopControlTextObservation {
             Value = "alpha beta gamma",

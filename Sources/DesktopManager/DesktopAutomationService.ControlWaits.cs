@@ -27,8 +27,9 @@ public sealed partial class DesktopAutomationService {
         ValidateWaitArguments(timeoutMilliseconds, intervalMilliseconds);
         DesktopControlObservationOptions settings = CloneWaitObservationOptions(observationOptions, condition);
         using var signal = new AutoResetEvent(false);
-        IDisposable? subscription = TryCreateAutomationChangeSubscription(windowOptions, signal);
         Stopwatch stopwatch = Stopwatch.StartNew();
+        Func<int> getProviderTimeout = () => GetRemainingProviderTimeout(stopwatch, timeoutMilliseconds);
+        IDisposable? subscription = TryCreateAutomationChangeSubscription(windowOptions, signal, getProviderTimeout);
         try {
             while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
                 DesktopControlObservation? observation = ObserveControls(
@@ -36,14 +37,20 @@ public sealed partial class DesktopAutomationService {
                         controlOptions,
                         settings,
                         allWindows: false,
-                        allControls: true)
+                        allControls: true,
+                        getUiAutomationTimeoutMilliseconds: getProviderTimeout)
                     .FirstOrDefault(condition.Matches);
                 if (observation != null) {
                     observation.WaitStrategy = subscription == null ? "polling" : "uia.events+polling";
                     return observation;
                 }
 
-                subscription ??= TryCreateAutomationChangeSubscription(windowOptions, signal);
+                int providerTimeout = getProviderTimeout();
+                if (providerTimeout <= 0) {
+                    break;
+                }
+
+                subscription ??= TryCreateAutomationChangeSubscription(windowOptions, signal, getProviderTimeout);
                 UiAutomationControlService.WaitForSignalWithCurrentUiMessagePump(
                     signal,
                     GetRemainingWaitInterval(stopwatch, timeoutMilliseconds, intervalMilliseconds));
@@ -55,11 +62,32 @@ public sealed partial class DesktopAutomationService {
         throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching control observation.");
     }
 
-    internal IDisposable? TryCreateAutomationChangeSubscription(WindowQueryOptions options, EventWaitHandle signal) {
+    internal IDisposable? TryCreateAutomationChangeSubscription(
+        WindowQueryOptions options,
+        EventWaitHandle signal,
+        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
+        return TryCreateAutomationChangeSubscription(options, signal, () => invocationTimeoutMilliseconds);
+    }
+
+    internal IDisposable? TryCreateAutomationChangeSubscription(
+        WindowQueryOptions options,
+        EventWaitHandle signal,
+        Func<int> getInvocationTimeoutMilliseconds) {
+        if (getInvocationTimeoutMilliseconds == null) {
+            throw new ArgumentNullException(nameof(getInvocationTimeoutMilliseconds));
+        }
+
+        int invocationTimeoutMilliseconds = getInvocationTimeoutMilliseconds();
+        if (invocationTimeoutMilliseconds <= 0) {
+            return null;
+        }
+
         WindowInfo? window = GetMatchingWindows(options, all: false).FirstOrDefault();
+        invocationTimeoutMilliseconds = getInvocationTimeoutMilliseconds();
         return window == null
+            || invocationTimeoutMilliseconds <= 0
             ? null
-            : new UiAutomationControlService().TrySubscribeToChanges(window.Handle, () => signal.Set());
+            : new UiAutomationControlService().TrySubscribeToChanges(window.Handle, () => signal.Set(), invocationTimeoutMilliseconds);
     }
 
     internal static int GetRemainingWaitInterval(Stopwatch stopwatch, int timeoutMilliseconds, int intervalMilliseconds) {
@@ -69,6 +97,21 @@ public sealed partial class DesktopAutomationService {
 
         long remaining = timeoutMilliseconds - stopwatch.ElapsedMilliseconds;
         return (int)Math.Max(1, Math.Min(intervalMilliseconds, remaining));
+    }
+
+    internal static int GetRemainingProviderTimeout(Stopwatch stopwatch, int timeoutMilliseconds) {
+        return GetProviderInvocationTimeout(timeoutMilliseconds, stopwatch.ElapsedMilliseconds);
+    }
+
+    internal static int GetProviderInvocationTimeout(int timeoutMilliseconds, long elapsedMilliseconds) {
+        if (timeoutMilliseconds == 0) {
+            return UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+        }
+
+        long remaining = timeoutMilliseconds - elapsedMilliseconds;
+        return remaining <= 0
+            ? 0
+            : (int)Math.Min(UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds, remaining);
     }
 
     private static DesktopControlObservationOptions CloneWaitObservationOptions(

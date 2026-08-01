@@ -20,6 +20,22 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservationOptions? observationOptions = null,
         bool allWindows = false,
         bool allControls = true) {
+        return ObserveControls(
+            windowOptions,
+            controlOptions,
+            observationOptions,
+            allWindows,
+            allControls,
+            getUiAutomationTimeoutMilliseconds: null);
+    }
+
+    internal IReadOnlyList<DesktopControlObservation> ObserveControls(
+        WindowQueryOptions windowOptions,
+        WindowControlQueryOptions? controlOptions,
+        DesktopControlObservationOptions? observationOptions,
+        bool allWindows,
+        bool allControls,
+        Func<int>? getUiAutomationTimeoutMilliseconds) {
         if (windowOptions == null) {
             throw new ArgumentNullException(nameof(windowOptions));
         }
@@ -31,10 +47,20 @@ public sealed partial class DesktopAutomationService {
             controlOptions,
             settings,
             allWindows,
-            allControls);
+            allControls,
+            getUiAutomationTimeoutMilliseconds);
         var observations = new List<DesktopControlObservation>(targets.Count);
         foreach (WindowControlTargetInfo target in targets) {
-            DesktopControlObservation? observation = ObserveResolvedControl(target.Window, target.Control, settings);
+            int providerTimeout = getUiAutomationTimeoutMilliseconds?.Invoke() ?? UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+            if (providerTimeout <= 0) {
+                break;
+            }
+
+            DesktopControlObservation? observation = ObserveResolvedControl(target.Window, target.Control, settings, providerTimeout);
+            if (getUiAutomationTimeoutMilliseconds != null && getUiAutomationTimeoutMilliseconds() <= 0) {
+                break;
+            }
+
             if (observation != null) {
                 observations.Add(observation);
             }
@@ -132,17 +158,18 @@ public sealed partial class DesktopAutomationService {
     internal DesktopControlObservation? ObserveResolvedControl(
         WindowInfo window,
         WindowControlInfo control,
-        DesktopControlObservationOptions settings) {
+        DesktopControlObservationOptions settings,
+        int uiAutomationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
         DesktopControlObservation? observation = null;
         if (settings.UseUiAutomation) {
             var uiAutomation = new UiAutomationControlService();
-            observation = uiAutomation.TryObserveControl(window, control, settings);
+            observation = uiAutomation.TryObserveControl(window, control, settings, uiAutomationTimeoutMilliseconds);
             if (observation == null && uiAutomation.LastOperationTimedOut) {
                 observation = settings.IncludeNativeFallback && control.IsPassword == false
                     ? CreateNativeControlObservation(window, control, settings)
                     : CreateUnavailableControlObservation(window, control, "uia.timeout");
                 observation.Status = "partial";
-                observation.FailureReason = $"UI Automation did not complete within {UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds}ms.";
+                observation.FailureReason = $"UI Automation did not complete within {uiAutomationTimeoutMilliseconds}ms.";
             }
         }
 
@@ -325,7 +352,8 @@ public sealed partial class DesktopAutomationService {
         WindowControlQueryOptions? controlOptions,
         DesktopControlObservationOptions settings,
         bool allWindows,
-        bool allControls) {
+        bool allControls,
+        Func<int>? getUiAutomationTimeoutMilliseconds = null) {
         WindowControlQueryOptions discoveryOptions = controlOptions ?? new WindowControlQueryOptions {
             UseUiAutomation = settings.UseUiAutomation,
             IncludeUiAutomation = settings.UseUiAutomation
@@ -335,7 +363,8 @@ public sealed partial class DesktopAutomationService {
             windows,
             discoveryOptions,
             allControls: true,
-            maxTextLength: settings.MaxTextLength);
+            maxTextLength: settings.MaxTextLength,
+            getUiAutomationTimeoutMilliseconds: getUiAutomationTimeoutMilliseconds);
         if (allControls || targets.Count == 0) {
             return targets;
         }

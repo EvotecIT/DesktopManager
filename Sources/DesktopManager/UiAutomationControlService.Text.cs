@@ -60,6 +60,16 @@ internal sealed partial class UiAutomationControlService {
     }
 
     internal static UiAutomationTextReadResult CreateBoundedTextResult(string value, string source, int maxLength, string? expectedText, bool? containsExpected = null) {
+        return CreateBoundedTextResult(value, source, maxLength, expectedText, ignoreCase: false, containsExpected: containsExpected);
+    }
+
+    internal static UiAutomationTextReadResult CreateBoundedTextResult(
+        string value,
+        string source,
+        int maxLength,
+        string? expectedText,
+        bool ignoreCase,
+        bool? containsExpected = null) {
         if (value == null) {
             throw new ArgumentNullException(nameof(value));
         }
@@ -73,7 +83,7 @@ internal sealed partial class UiAutomationControlService {
         string observedValue = isTruncated ? value.Substring(0, maxLength) : value;
         bool? observedContainsExpected = string.IsNullOrEmpty(expectedText)
             ? null
-            : containsExpected == true || value.IndexOf(expectedText, StringComparison.Ordinal) >= 0
+            : containsExpected == true || value.IndexOf(expectedText, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) >= 0
                 ? true
                 : null;
 
@@ -86,6 +96,10 @@ internal sealed partial class UiAutomationControlService {
     }
 
     internal static UiAutomationTextReadResult ReadTextPatternRange(object documentRange, int maxLength, string? expectedText) {
+        return ReadTextPatternRange(documentRange, maxLength, expectedText, ignoreCase: false);
+    }
+
+    internal static UiAutomationTextReadResult ReadTextPatternRange(object documentRange, int maxLength, string? expectedText, bool ignoreCase) {
         if (documentRange == null) {
             throw new ArgumentNullException(nameof(documentRange));
         }
@@ -96,17 +110,17 @@ internal sealed partial class UiAutomationControlService {
         string value = getTextMethod?.Invoke(documentRange, new object[] { providerLimit }) as string ?? string.Empty;
         bool? containsExpected = null;
         if (!string.IsNullOrEmpty(expectedText)) {
-            if (value.IndexOf(expectedText, StringComparison.Ordinal) >= 0) {
+            if (value.IndexOf(expectedText, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) >= 0) {
                 containsExpected = true;
             } else {
                 MethodInfo? findTextMethod = documentRange.GetType().GetMethod("FindText", new[] { typeof(string), typeof(bool), typeof(bool) });
-                containsExpected = findTextMethod?.Invoke(documentRange, new object[] { expectedText!, false, false }) != null
+                containsExpected = findTextMethod?.Invoke(documentRange, new object[] { expectedText!, false, ignoreCase }) != null
                     ? true
                     : null;
             }
         }
 
-        return CreateBoundedTextResult(value, "uia.textPattern", maxLength, expectedText, containsExpected);
+        return CreateBoundedTextResult(value, "uia.textPattern", maxLength, expectedText, ignoreCase, containsExpected);
     }
 
     private UiAutomationFocusedControlResult? TryGetFocusedControlCore(IntPtr windowHandle, IntPtr focusedHandle, int maxLength, string? expectedText) {
@@ -169,7 +183,7 @@ internal sealed partial class UiAutomationControlService {
         return match.Element == null ? null : ReadElementText(match.Element, maxLength, expectedText);
     }
 
-    private UiAutomationTextReadResult? ReadElementText(object element, int maxLength, string? expectedText) {
+    private UiAutomationTextReadResult? ReadElementText(object element, int maxLength, string? expectedText, bool ignoreCase = false) {
         object? current;
         try {
             current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
@@ -192,24 +206,24 @@ internal sealed partial class UiAutomationControlService {
             };
         }
 
-        UiAutomationTextReadResult? textPatternValue = ReadTextPatternValue(element, maxLength, expectedText);
+        UiAutomationTextReadResult? textPatternValue = ReadTextPatternValue(element, maxLength, expectedText, ignoreCase);
         if (textPatternValue != null) {
             return textPatternValue;
         }
 
         string? valuePatternValue = ReadPatternValue(element, "System.Windows.Automation.ValuePattern");
         if (IsPatternResultAvailable(valuePatternValue)) {
-            return CreateBoundedTextResult(valuePatternValue!, "uia.valuePattern", maxLength, expectedText);
+            return CreateBoundedTextResult(valuePatternValue!, "uia.valuePattern", maxLength, expectedText, ignoreCase);
         }
 
         string? rangeValue = ReadPatternValue(element, "System.Windows.Automation.RangeValuePattern");
         if (rangeValue != null) {
-            return CreateBoundedTextResult(rangeValue, "uia.rangeValuePattern", maxLength, expectedText);
+            return CreateBoundedTextResult(rangeValue, "uia.rangeValuePattern", maxLength, expectedText, ignoreCase);
         }
 
         string? legacyValue = ReadPatternValue(element, "System.Windows.Automation.LegacyIAccessiblePattern");
         if (legacyValue != null) {
-            return CreateBoundedTextResult(legacyValue, "uia.legacyValuePattern", maxLength, expectedText);
+            return CreateBoundedTextResult(legacyValue, "uia.legacyValuePattern", maxLength, expectedText, ignoreCase);
         }
 
         return null;
@@ -229,7 +243,7 @@ internal sealed partial class UiAutomationControlService {
         }
     }
 
-    private UiAutomationTextReadResult? ReadTextPatternValue(object element, int maxLength, string? expectedText) {
+    private UiAutomationTextReadResult? ReadTextPatternValue(object element, int maxLength, string? expectedText, bool ignoreCase) {
         try {
             Type? textPatternType = _automationClientAssembly?.GetType("System.Windows.Automation.TextPattern", throwOnError: false);
             if (textPatternType == null) {
@@ -242,7 +256,7 @@ internal sealed partial class UiAutomationControlService {
                 return null;
             }
 
-            return ReadTextPatternRange(documentRange, maxLength, expectedText);
+            return ReadTextPatternRange(documentRange, maxLength, expectedText, ignoreCase);
         } catch {
             return null;
         }

@@ -44,7 +44,7 @@ public class ControlEnumerator {
         }
 
         foreach (WindowControlInfo control in controls) {
-            if (control.IsPassword == true) {
+            if (control.IsPassword != false) {
                 control.Text = string.Empty;
                 control.Value = string.Empty;
                 continue;
@@ -109,7 +109,7 @@ public class ControlEnumerator {
         info.ClassName = classBuilder.ToString();
         long style = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE).ToInt64();
         info.IsPassword = classNameLength > 0 ? IsPasswordStyle(info.ClassName, style) : null;
-        if (info.IsPassword != true && readValue) {
+        if (info.IsPassword == false && readValue) {
             info.Text = maxTextLength.HasValue
                 ? WindowTextHelper.GetWindowText(handle, maxTextLength.Value, out _)
                 : WindowTextHelper.GetWindowText(handle);

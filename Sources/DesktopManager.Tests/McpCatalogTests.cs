@@ -23,7 +23,10 @@ public class McpCatalogTests {
         Assert.IsTrue(waitProperties.TryGetProperty("includeTextRanges", out _));
         Assert.IsFalse(observe.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("realizeVirtualizedItem", out _));
         Assert.IsFalse(waitProperties.TryGetProperty("realizeVirtualizedItem", out _));
+        Assert.IsFalse(observe.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("ensureForegroundWindow", out _));
+        Assert.IsFalse(waitProperties.TryGetProperty("ensureForegroundWindow", out _));
         JsonElement editProperties = edit.GetProperty("inputSchema").GetProperty("properties");
+        Assert.IsTrue(editProperties.TryGetProperty("ensureForegroundWindow", out _));
         Assert.IsTrue(editProperties.TryGetProperty("expectedFingerprint", out _));
         Assert.IsTrue(editProperties.TryGetProperty("expectedEditContextFingerprint", out _));
         Assert.IsFalse(editProperties.TryGetProperty("expectedText", out _));

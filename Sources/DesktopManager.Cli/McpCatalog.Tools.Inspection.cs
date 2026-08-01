@@ -181,7 +181,7 @@ internal static partial class McpCatalog {
                     ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
                 }), readOnly: true),
             CreateTool("observe_control", "Observe Control", "Return provider-neutral identity, capabilities, bounded text, selection, caret, range, grid, table, and scroll state for matching controls. Password text is never read.", CreateObjectSchema(
-                CreateSemanticControlProperties()), readOnly: true),
+                CreateSemanticControlProperties(includeForegroundActivation: false)), readOnly: true),
             CreateTool("wait_for_control_observation", "Wait For Control Observation", "Wait for semantic control text or state using UI Automation events with bounded polling fallback.", CreateObjectSchema(
                 CreateSemanticWaitProperties()), readOnly: true),
             CreateTool("get_control_state", "Get Control State", "Return the observable state for a specific control handle.", CreateObjectSchema(

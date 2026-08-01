@@ -41,13 +41,14 @@ public partial class WindowManager {
     /// <param name="options">Optional control filter options.</param>
     /// <returns>A list of matching controls.</returns>
     public List<WindowControlInfo> GetControls(WindowInfo window, WindowControlQueryOptions? options = null) {
-        return GetControls(window, options, maxTextLength: null);
+        return GetControls(window, options, maxTextLength: null, getUiAutomationTimeoutMilliseconds: null);
     }
 
     internal List<WindowControlInfo> GetControls(
         WindowInfo window,
         WindowControlQueryOptions? options,
-        int? maxTextLength) {
+        int? maxTextLength,
+        Func<int>? getUiAutomationTimeoutMilliseconds = null) {
         ValidateWindowInfo(window);
 
         if (maxTextLength.HasValue && maxTextLength.Value < 1) {
@@ -56,13 +57,13 @@ public partial class WindowManager {
 
         WindowControlQueryOptions filter = options ?? new WindowControlQueryOptions();
         PrepareWindowForUiAutomation(window, filter);
-        List<WindowControlInfo> controls = GetControlsInternal(window.Handle, filter, maxTextLength);
+        List<WindowControlInfo> controls = GetControlsInternal(window.Handle, filter, maxTextLength, getUiAutomationTimeoutMilliseconds);
         foreach (WindowControlInfo control in controls) {
             control.ParentWindowHandle = window.Handle;
         }
 
         if (maxTextLength.HasValue && !IsWildcardFilter(filter.ValuePattern)) {
-            PopulateBoundedUiAutomationValues(window, controls, maxTextLength.Value);
+            PopulateBoundedUiAutomationValues(window, controls, maxTextLength.Value, getUiAutomationTimeoutMilliseconds);
         }
 
         return controls.FindAll(control => MatchesControl(control, filter));
@@ -166,7 +167,8 @@ public partial class WindowManager {
     private List<WindowControlInfo> GetControlsInternal(
         IntPtr windowHandle,
         WindowControlQueryOptions filter,
-        int? maxTextLength) {
+        int? maxTextLength,
+        Func<int>? getUiAutomationTimeoutMilliseconds) {
         var enumerator = new ControlEnumerator();
         List<WindowControlInfo> win32Controls = filter.RequiresUiAutomation()
             ? enumerator.EnumerateControlMetadata(windowHandle)
@@ -180,10 +182,14 @@ public partial class WindowManager {
 
         var uiAutomation = new UiAutomationControlService();
         IReadOnlyList<IntPtr> fallbackRootHandles = UiAutomationControlService.GetFallbackRootHandles(windowHandle, win32Controls);
-        List<WindowControlInfo> uiAutomationControls = uiAutomation.EnumerateControls(
-            windowHandle,
-            fallbackRootHandles,
-            readValues: !maxTextLength.HasValue);
+        int providerTimeout = getUiAutomationTimeoutMilliseconds?.Invoke() ?? UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+        List<WindowControlInfo> uiAutomationControls = providerTimeout <= 0
+            ? new List<WindowControlInfo>()
+            : uiAutomation.EnumerateControls(
+                windowHandle,
+                fallbackRootHandles,
+                readValues: !maxTextLength.HasValue,
+                invocationTimeoutMilliseconds: providerTimeout);
         ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
         ControlEnumerator.PopulateControlValues(win32Controls, maxTextLength);
 
@@ -209,7 +215,8 @@ public partial class WindowManager {
     private static void PopulateBoundedUiAutomationValues(
         WindowInfo window,
         IEnumerable<WindowControlInfo> controls,
-        int maxTextLength) {
+        int maxTextLength,
+        Func<int>? getUiAutomationTimeoutMilliseconds) {
         var uiAutomation = new UiAutomationControlService();
         var options = new DesktopControlObservationOptions {
             MaxTextLength = maxTextLength,
@@ -221,7 +228,12 @@ public partial class WindowManager {
                 continue;
             }
 
-            DesktopControlObservation? observation = uiAutomation.TryObserveControl(window, control, options);
+            int providerTimeout = getUiAutomationTimeoutMilliseconds?.Invoke() ?? UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+            if (providerTimeout <= 0) {
+                break;
+            }
+
+            DesktopControlObservation? observation = uiAutomation.TryObserveControl(window, control, options, providerTimeout);
             if (observation?.IsPassword != false) {
                 control.Value = string.Empty;
                 control.ValueIsTruncated = false;

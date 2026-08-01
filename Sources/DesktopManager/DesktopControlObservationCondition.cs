@@ -42,10 +42,15 @@ public sealed class DesktopControlObservationCondition {
             throw new ArgumentNullException(nameof(observation));
         }
 
-        if (!string.IsNullOrEmpty(ExpectedText) &&
-            observation.Text.Value.IndexOf(ExpectedText!, IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) < 0 &&
-            observation.Text.ContainsExpected != true) {
-            return false;
+        if (!string.IsNullOrEmpty(ExpectedText)) {
+            StringComparison comparison = IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            bool visibleMatch = observation.Text.Value.IndexOf(ExpectedText!, comparison) >= 0;
+            bool matchingProviderEvidence = observation.Text.ContainsExpected == true &&
+                observation.Text.ExpectedTextIgnoreCase == IgnoreCase &&
+                string.Equals(observation.Text.ExpectedText, ExpectedText, comparison);
+            if (!visibleMatch && !matchingProviderEvidence) {
+                return false;
+            }
         }
 
         return Matches(IsTextComplete, observation.Text.IsComplete) &&

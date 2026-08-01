@@ -13,6 +13,14 @@ internal sealed partial class UiAutomationControlService {
         WindowInfo window,
         WindowControlInfo control,
         DesktopControlObservationOptions? options = null) {
+        return TryObserveControl(window, control, options, UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds);
+    }
+
+    internal DesktopControlObservation? TryObserveControl(
+        WindowInfo window,
+        WindowControlInfo control,
+        DesktopControlObservationOptions? options,
+        int invocationTimeoutMilliseconds) {
         if (window == null) {
             throw new ArgumentNullException(nameof(window));
         }
@@ -27,7 +35,10 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return RunInSta(service => service.TryObserveControlCore(window, control, settings), window.Handle);
+        return RunInSta(
+            service => service.TryObserveControlCore(window, control, settings),
+            window.Handle,
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
     }
 
     private DesktopControlObservation? TryObserveControlCore(
@@ -120,7 +131,7 @@ internal sealed partial class UiAutomationControlService {
         Dictionary<string, object> patterns,
         DesktopControlObservationOptions options,
         List<string> errors) {
-        UiAutomationTextReadResult? textResult = ReadElementText(element, options.MaxTextLength, options.IgnoreCase ? null : options.ExpectedText);
+        UiAutomationTextReadResult? textResult = ReadElementText(element, options.MaxTextLength, options.ExpectedText, options.IgnoreCase);
         string value = textResult?.Value ?? string.Empty;
         bool providerContains = textResult?.ContainsExpected == true;
         if (!string.IsNullOrEmpty(options.ExpectedText) && !providerContains) {

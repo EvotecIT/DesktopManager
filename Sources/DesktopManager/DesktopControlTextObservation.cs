@@ -28,6 +28,12 @@ public sealed class DesktopControlTextObservation {
     /// <summary>Gets or sets whether the requested literal was found.</summary>
     public bool? ContainsExpected { get; set; }
 
+    /// <summary>Gets or sets the literal associated with provider-side containment evidence.</summary>
+    public string? ExpectedText { get; set; }
+
+    /// <summary>Gets or sets whether provider-side containment evidence used case-insensitive matching.</summary>
+    public bool ExpectedTextIgnoreCase { get; set; }
+
     /// <summary>Gets or sets whether the provider found the literal outside the returned prefix.</summary>
     public bool MatchFoundBeyondObservedPrefix { get; set; }
 

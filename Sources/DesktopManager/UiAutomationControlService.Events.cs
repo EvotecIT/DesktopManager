@@ -12,6 +12,10 @@ internal sealed partial class UiAutomationControlService {
     /// Subscribes to text, property, and structure changes under a window when UI Automation supports events.
     /// </summary>
     public IDisposable? TrySubscribeToChanges(IntPtr windowHandle, Action signal) {
+        return TrySubscribeToChanges(windowHandle, signal, UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds);
+    }
+
+    internal IDisposable? TrySubscribeToChanges(IntPtr windowHandle, Action signal, int invocationTimeoutMilliseconds) {
         if (signal == null) {
             throw new ArgumentNullException(nameof(signal));
         }
@@ -20,7 +24,10 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return RunInSta(service => service.TrySubscribeToChangesCore(windowHandle, signal), windowHandle);
+        return RunInSta(
+            service => service.TrySubscribeToChangesCore(windowHandle, signal),
+            windowHandle,
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
     }
 
     private IDisposable? TrySubscribeToChangesCore(IntPtr windowHandle, Action signal) {
