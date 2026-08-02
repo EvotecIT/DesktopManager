@@ -115,7 +115,15 @@ public static partial class WindowControlService {
 
         return selectedIndex < 0
             ? TryGetControlText(control.Handle, maxTextLength, stopwatch, timeoutMilliseconds, out value, out isTruncated)
-            : TryGetComboBoxItemText(control.Handle, selectedIndex, maxTextLength, stopwatch, timeoutMilliseconds, out value, out isTruncated);
+            : TryGetComboBoxItemText(
+                control.Handle,
+                selectedIndex,
+                maxTextLength,
+                stopwatch,
+                timeoutMilliseconds,
+                out value,
+                out isTruncated,
+                out _);
     }
 
     internal static bool TryGetControlText(
@@ -143,9 +151,19 @@ public static partial class WindowControlService {
 
     /// <summary>Selects a combo-box-style item by its displayed text.</summary>
     public static void SetSelectedValue(WindowControlInfo control, string value) {
+        SetSelectedValue(control, value, DesktopTextObservationOptions.MaximumTextLength);
+    }
+
+    internal static void SetSelectedValue(WindowControlInfo control, string value, int maxItemTextLength) {
         ValidateSelectionControl(control);
         if (value == null) {
             throw new ArgumentNullException(nameof(value));
+        }
+        ValidateTextLength(maxItemTextLength);
+        if (value.Length > maxItemTextLength) {
+            throw new ArgumentOutOfRangeException(
+                nameof(value),
+                $"Selected values are limited to {maxItemTextLength} characters for this lookup.");
         }
         if (control.IsPassword != false) {
             throw new InvalidOperationException("The combo box text cannot be read because its password state is not known to be safe.");
@@ -171,11 +189,16 @@ public static partial class WindowControlService {
             if (!TryGetComboBoxItemText(
                     control.Handle,
                     index,
-                    DesktopTextObservationOptions.MaximumTextLength,
+                    maxItemTextLength,
                     stopwatch,
                     (int)MessageTimeoutMilliseconds,
                     out string itemText,
-                    out _)) {
+                    out _,
+                    out bool isOversized)) {
+                if (isOversized) {
+                    continue;
+                }
+
                 throw new TimeoutException($"The combo box items did not respond within {MessageTimeoutMilliseconds}ms.");
             }
             if (!string.Equals(itemText, value, StringComparison.OrdinalIgnoreCase)) {
@@ -272,9 +295,11 @@ public static partial class WindowControlService {
         Stopwatch stopwatch,
         int timeoutMilliseconds,
         out string value,
-        out bool isTruncated) {
+        out bool isTruncated,
+        out bool isOversized) {
         value = string.Empty;
         isTruncated = false;
+        isOversized = false;
         if (!TrySendMessageForResult(
                 handle,
                 CbGetLbTextLen,
@@ -286,7 +311,11 @@ public static partial class WindowControlService {
         }
 
         int itemTextLength = unchecked((int)lengthResult.ToInt64());
-        if (!CanReadComboBoxItemText(itemTextLength, maxTextLength)) {
+        if (itemTextLength < 0) {
+            return false;
+        }
+        if (itemTextLength > maxTextLength) {
+            isOversized = true;
             return false;
         }
 
@@ -319,10 +348,6 @@ public static partial class WindowControlService {
         }
 
         return true;
-    }
-
-    internal static bool CanReadComboBoxItemText(int itemTextLength, int maxTextLength) {
-        return itemTextLength >= 0 && itemTextLength <= maxTextLength;
     }
 
     private static int GetRemainingTimeout(Stopwatch stopwatch, int timeoutMilliseconds) {

@@ -2527,6 +2527,7 @@ internal static partial class DesktopOperations {
             }).ToArray(),
             UiAutomationActionProbe = diagnostics.UiAutomationActionProbe == null ? null : new UiAutomationActionDiagnosticResult {
                 Attempted = diagnostics.UiAutomationActionProbe.Attempted,
+                TimedOut = diagnostics.UiAutomationActionProbe.TimedOut,
                 Resolved = diagnostics.UiAutomationActionProbe.Resolved,
                 UsedCachedActionMatch = diagnostics.UiAutomationActionProbe.UsedCachedActionMatch,
                 UsedPreferredRoot = diagnostics.UiAutomationActionProbe.UsedPreferredRoot,

@@ -1010,6 +1010,11 @@ public sealed class DesktopUiAutomationActionDiagnostic {
     public bool Attempted { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the action-resolution probe exceeded the bounded UI Automation dispatch timeout.
+    /// </summary>
+    public bool TimedOut { get; set; }
+
+    /// <summary>
     /// Gets or sets whether the action target could be resolved.
     /// </summary>
     public bool Resolved { get; set; }

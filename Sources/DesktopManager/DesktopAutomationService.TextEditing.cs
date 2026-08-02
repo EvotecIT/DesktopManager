@@ -192,6 +192,7 @@ public sealed partial class DesktopAutomationService {
             invalid.Before = before;
             return invalid;
         }
+        settings.MaxTextLength = GetRequiredEditObservationLength(settings.MaxTextLength, expectedText.Length);
 
         string expectedEditContextFingerprint = !string.IsNullOrWhiteSpace(request.ExpectedEditContextFingerprint)
             ? request.ExpectedEditContextFingerprint!
@@ -624,6 +625,17 @@ public sealed partial class DesktopAutomationService {
         };
         UiAutomationControlService.ValidateObservationOptions(settings);
         return settings;
+    }
+
+    internal static int GetRequiredEditObservationLength(int currentMaxTextLength, int expectedTextLength) {
+        if (currentMaxTextLength < 1 || currentMaxTextLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(currentMaxTextLength));
+        }
+        if (expectedTextLength < 0 || expectedTextLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(expectedTextLength));
+        }
+
+        return Math.Max(currentMaxTextLength, expectedTextLength);
     }
 
     private static void ValidateTextEditRequest(DesktopTextEditRequest request) {

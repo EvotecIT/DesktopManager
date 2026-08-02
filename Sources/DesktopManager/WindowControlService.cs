@@ -202,6 +202,11 @@ public static partial class WindowControlService {
         if (text == null) {
             throw new ArgumentNullException(nameof(text));
         }
+        if (text.Length > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(
+                nameof(text),
+                $"Native text edits are limited to {DesktopTextObservationOptions.MaximumTextLength} characters.");
+        }
 
         if (control.Handle == IntPtr.Zero) {
             throw new ArgumentException("Invalid control handle", nameof(control));
@@ -444,7 +449,7 @@ public static partial class WindowControlService {
         };
         if (!TryGetControlText(
                 control,
-                DesktopTextObservationOptions.MaximumTextLength,
+                Math.Max(1, expectedText.Length),
                 (int)MessageTimeoutMilliseconds,
                 out string currentText,
                 out bool isTruncated)) {

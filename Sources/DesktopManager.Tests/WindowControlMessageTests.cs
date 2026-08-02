@@ -113,6 +113,33 @@ public class WindowControlMessageTests {
 
     [TestMethod]
     [TestCategory("UITest")]
+    public void WindowControlService_SetText_ValueBeyondDefaultObservationLimitReportsSuccess() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Long SetText Test Form", ShowInTaskbar = false };
+        using var textBox = new TextBox();
+        form.Controls.Add(textBox);
+        form.Show();
+        textBox.CreateControl();
+        Application.DoEvents();
+        var control = new WindowControlInfo {
+            ParentWindowHandle = form.Handle,
+            Handle = textBox.Handle,
+            ClassName = "Edit",
+            IsPassword = false
+        };
+        string expected = new('x', 5000);
+
+        WindowControlService.SetText(control, expected);
+
+        Assert.AreEqual(expected, textBox.Text);
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
     public void DesktopAutomationService_LiveMutationTarget_RejectsControlFromDifferentSameProcessWindow() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -364,6 +391,37 @@ public class WindowControlMessageTests {
 
         Assert.AreEqual("Beta", comboBox.Text);
         Assert.AreEqual("Beta", WindowControlService.GetSelectedValue(control));
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void WindowControlService_SetSelectedValue_SkipsResponsiveOversizedItems() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Oversized Combo Lookup Test Form", ShowInTaskbar = false };
+        using ComboBox comboBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+        comboBox.Items.AddRange(["oversized", "Beta"]);
+        comboBox.SelectedIndex = 0;
+        form.Controls.Add(comboBox);
+        form.Show();
+        comboBox.CreateControl();
+        Application.DoEvents();
+        WindowControlInfo control = new() {
+            ParentWindowHandle = form.Handle,
+            Handle = comboBox.Handle,
+            ClassName = "ComboBox",
+            Id = MonitorNativeMethods.GetDlgCtrlID(comboBox.Handle),
+            Text = comboBox.Text,
+            IsPassword = false
+        };
+
+        WindowControlService.SetSelectedValue(control, "Beta", maxItemTextLength: 4);
+        Application.DoEvents();
+
+        Assert.AreEqual("Beta", comboBox.Text);
     }
 
     [TestMethod]

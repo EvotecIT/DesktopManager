@@ -9,21 +9,61 @@ namespace DesktopManager.Tests;
 /// <summary>Protects deadline, input-delivery, retry-quality, and live password-safety regressions.</summary>
 public class DesktopSemanticSafetyRegressionTests {
     [TestMethod]
-    public void WindowControlService_ComboItemLength_FailedOrOversizedReadIsUnavailable() {
-        Assert.IsFalse(WindowControlService.CanReadComboBoxItemText(-1, 4));
-        Assert.IsFalse(WindowControlService.CanReadComboBoxItemText(5, 4));
-        Assert.IsTrue(WindowControlService.CanReadComboBoxItemText(4, 4));
+    public void DesktopAutomationService_HandlelessMetadataText_RemainsUnavailable() {
+        DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
+            new WindowInfo { Handle = new IntPtr(10), ProcessId = 20 },
+            new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                Text = "accessible name",
+                Value = "cached value",
+                IsPassword = false,
+                Source = WindowControlSource.UiAutomation
+            },
+            new DesktopControlObservationOptions { ExpectedText = "accessible name" });
+
+        Assert.AreEqual("partial", observation.Status);
+        Assert.AreEqual("native.windowText.unavailable", observation.Text.Source);
+        Assert.AreEqual(string.Empty, observation.Text.Value);
+        Assert.IsFalse(observation.Text.IsComplete);
+        Assert.AreEqual(string.Empty, observation.Text.ContentFingerprint);
+        Assert.AreEqual(null, observation.Text.ContainsExpected);
+        Assert.IsFalse(observation.Capabilities.CanReadText);
     }
 
     [TestMethod]
-    public void UiAutomationControlService_TimedOutFallback_OnlyConstructsCollectionResults() {
+    public void UiAutomationControlService_TimedOutFallback_PreservesExplicitResultContracts() {
         DesktopControlObservation? semantic = UiAutomationControlService.CreateTimedOutOperationFallback<DesktopControlObservation?>();
         List<WindowControlInfo> controls = UiAutomationControlService.CreateTimedOutOperationFallback<List<WindowControlInfo>>();
         WindowControlInfo[] controlArray = UiAutomationControlService.CreateTimedOutOperationFallback<WindowControlInfo[]>();
+        DesktopUiAutomationActionDiagnostic action = UiAutomationControlService.CreateTimedOutOperationFallback<DesktopUiAutomationActionDiagnostic>();
+        UiAutomationTextEditAttempt edit = UiAutomationControlService.CreateTimedOutOperationFallback<UiAutomationTextEditAttempt>();
 
         Assert.IsNull(semantic);
         Assert.AreEqual(0, controls.Count);
         Assert.AreEqual(0, controlArray.Length);
+        Assert.IsTrue(action.Attempted);
+        Assert.IsTrue(action.TimedOut);
+        Assert.AreEqual("timeout", action.SearchMode);
+        Assert.IsFalse(edit.Applied);
+        Assert.AreEqual("provider-timeout", edit.FailureCode);
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_EditObservationLength_CoversExpectedDocument() {
+        Assert.AreEqual(8, DesktopAutomationService.GetRequiredEditObservationLength(4, 8));
+        Assert.AreEqual(8, DesktopAutomationService.GetRequiredEditObservationLength(8, 4));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            DesktopAutomationService.GetRequiredEditObservationLength(
+                4,
+                DesktopTextObservationOptions.MaximumTextLength + 1));
+    }
+
+    [TestMethod]
+    public void WindowControlService_SetText_RejectsOversizedInputBeforeMutation() {
+        string oversized = new('x', DesktopTextObservationOptions.MaximumTextLength + 1);
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            WindowControlService.SetText(new WindowControlInfo { Handle = new IntPtr(123) }, oversized));
     }
 
     [TestMethod]

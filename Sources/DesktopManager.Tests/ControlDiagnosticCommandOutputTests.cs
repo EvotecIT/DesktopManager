@@ -53,6 +53,7 @@ public class ControlDiagnosticCommandOutputTests {
                 MatchedControlCount = 2,
                 UiAutomationActionProbe = new global::DesktopManager.Cli.UiAutomationActionDiagnosticResult {
                     Attempted = true,
+                    TimedOut = false,
                     Resolved = true,
                     UsedCachedActionMatch = false,
                     UsedPreferredRoot = true,
@@ -111,7 +112,7 @@ public class ControlDiagnosticCommandOutputTests {
         StringAssert.Contains(output, "preparation: attempted=True succeeded=True ensureForeground=False");
         StringAssert.Contains(output, "fallback-roots: count=2 used=True cached=False preferred=0x00ABCDEF reused=True");
         StringAssert.Contains(output, "counts: win32=1 uia=4 effective=4 matched=2");
-        StringAssert.Contains(output, "action-probe: attempted=True resolved=True cached=False preferred=True root=0x00ABCDEF score=92 mode=preferred-root elapsed-ms=12");
+        StringAssert.Contains(output, "action-probe: attempted=True timed-out=False resolved=True cached=False preferred=True root=0x00ABCDEF score=92 mode=preferred-root elapsed-ms=12");
         StringAssert.Contains(output, "root[0]: handle=0x00ABCDEF class=Chrome_RenderWidgetHostHWND primary=True preferred=True cached=False includeRoot=True elementResolved=True count=4 error=");
         StringAssert.Contains(output, "  * uia Edit EditorTextBox DesktopManager");
         StringAssert.Contains(output, "- uia Edit EditorTextBox DesktopManager");

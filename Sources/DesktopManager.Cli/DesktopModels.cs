@@ -248,6 +248,7 @@ internal sealed class UiAutomationRootDiagnosticResult {
 
 internal sealed class UiAutomationActionDiagnosticResult {
     public bool Attempted { get; set; }
+    public bool TimedOut { get; set; }
     public bool Resolved { get; set; }
     public bool UsedCachedActionMatch { get; set; }
     public bool UsedPreferredRoot { get; set; }

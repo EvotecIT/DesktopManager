@@ -218,13 +218,11 @@ public sealed partial class DesktopAutomationService {
             : WindowControlService.RefreshNativeTextSafety(control);
         string value = string.Empty;
         bool isTruncated = false;
-        bool nativeTextAvailable = true;
-        bool nativeTextReadAttempted = false;
+        bool nativeTextAvailable = control.Handle != IntPtr.Zero;
         string textSource = "native.windowText";
         if (canAccessText) {
             int textTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
             if (control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)) {
-                nativeTextReadAttempted = true;
                 nativeTextAvailable = WindowControlService.TryGetSelectedValue(
                     control,
                     settings.MaxTextLength,
@@ -233,21 +231,12 @@ public sealed partial class DesktopAutomationService {
                     out isTruncated);
                 textSource = "native.selection";
             } else if (control.Handle != IntPtr.Zero) {
-                nativeTextReadAttempted = true;
                 nativeTextAvailable = WindowControlService.TryGetControlText(
                     control,
                     settings.MaxTextLength,
                     textTimeoutMilliseconds,
                     out value,
                     out isTruncated);
-            }
-
-            if (!nativeTextReadAttempted && nativeTextAvailable && string.IsNullOrEmpty(value) && !isTruncated) {
-                string candidate = !string.IsNullOrEmpty(control.Value) ? control.Value : control.Text;
-                isTruncated = control.ValueIsTruncated || candidate.Length > settings.MaxTextLength;
-                value = candidate.Length > settings.MaxTextLength
-                    ? candidate.Substring(0, settings.MaxTextLength)
-                    : candidate;
             }
         }
 

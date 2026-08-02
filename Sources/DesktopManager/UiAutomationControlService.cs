@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -325,74 +324,13 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.ProbeActionResolutionCore(window, control), window.Handle);
-    }
-
-    private T RunInSta<T>(
-        Func<UiAutomationControlService, T> operation,
-        IntPtr targetWindowHandle = default,
-        bool isMutation = false,
-        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
-        Action<T>? abandonedResultHandler = null) {
-        if (!IsAvailable) {
-            return default!;
-        }
-
-        if (invocationTimeoutMilliseconds <= 0) {
-            throw new ArgumentOutOfRangeException(nameof(invocationTimeoutMilliseconds));
-        }
-
-        LastOperationTimedOut = false;
-        if (ShouldRunProviderOperationInline(
-            StaDispatcher.Value.IsCurrentThread,
-            IsWindowOwnedByCurrentThread(targetWindowHandle),
-            isMutation)) {
-            return operation(this);
-        }
-
-        try {
-            if (TryRunWithCurrentUiMessagePump(
-                    () => StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds, abandonedResultHandler),
-                    out T pumpedResult)) {
-                return pumpedResult;
-            }
-
-            return StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds, abandonedResultHandler);
-        } catch (UiAutomationOperationInFlightException) when (isMutation) {
-            LastOperationTimedOut = true;
-            throw;
-        } catch (TimeoutException) {
-            LastOperationTimedOut = true;
-            return CreateTimedOutOperationFallback<T>();
-        }
-    }
-
-    internal static bool ShouldRunProviderOperationInline(
-        bool isDispatcherThread,
-        bool isWindowOwnedByCallingThread,
-        bool isMutation) {
-        return isDispatcherThread || isMutation && isWindowOwnedByCallingThread;
-    }
-
-    private static bool IsWindowOwnedByCurrentThread(IntPtr windowHandle) {
-        return windowHandle != IntPtr.Zero &&
-            MonitorNativeMethods.GetWindowThreadProcessId(windowHandle, out _) == MonitorNativeMethods.GetCurrentThreadId();
-    }
-
-    internal static T CreateTimedOutOperationFallback<T>() {
-        Type resultType = typeof(T);
-        if (resultType.IsArray) {
-            return (T)(object)Array.CreateInstance(resultType.GetElementType()!, 0);
-        }
-
-        if (typeof(IList).IsAssignableFrom(resultType) &&
-            !resultType.IsAbstract &&
-            !resultType.IsInterface &&
-            resultType.GetConstructor(Type.EmptyTypes) != null) {
-            return (T)Activator.CreateInstance(resultType)!;
-        }
-
-        return default!;
+        DesktopUiAutomationActionDiagnostic? diagnostic = RunInSta(
+            service => service.ProbeActionResolutionCore(window, control),
+            window.Handle);
+        return diagnostic ?? new DesktopUiAutomationActionDiagnostic {
+            Attempted = IsAvailable,
+            SearchMode = IsAvailable ? "unavailable" : "uia-unavailable"
+        };
     }
 
     private List<WindowControlInfo> EnumerateControlsCore(
