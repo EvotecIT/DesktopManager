@@ -494,11 +494,11 @@ internal sealed partial class UiAutomationControlService {
             return false;
         }
 
-        return TryPatternAction(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
-            TryPatternAction(element, "System.Windows.Automation.SelectionItemPattern", "Select") ||
-            TryPatternAction(element, "System.Windows.Automation.ExpandCollapsePattern", "Expand") ||
-            TryPatternAction(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+        return TryPatternMutation(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
+            TryPatternMutation(element, "System.Windows.Automation.SelectionItemPattern", "Select") ||
+            TryPatternMutation(element, "System.Windows.Automation.ExpandCollapsePattern", "Expand") ||
+            TryPatternMutation(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
+            TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
     }
 
     private bool TrySetCheckStateCore(WindowInfo window, WindowControlInfo control, bool check) {
@@ -515,9 +515,9 @@ internal sealed partial class UiAutomationControlService {
             }
 
             bool actionApplied =
-                TryPatternAction(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
-                TryPatternAction(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
-                TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+                TryPatternMutation(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
+                TryPatternMutation(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
+                TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
             if (!actionApplied) {
                 return false;
             }
@@ -557,9 +557,9 @@ internal sealed partial class UiAutomationControlService {
             return precondition;
         }
 
-        bool patternApplied = TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
+        bool patternApplied = TryPatternMutation(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
         if (!patternApplied && IsTextMutationAllowed(element)) {
-            patternApplied = TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+            patternApplied = TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
         }
         if (!patternApplied) {
             return UiAutomationTextEditAttempt.Failed("provider-unavailable");
@@ -581,8 +581,8 @@ internal sealed partial class UiAutomationControlService {
         }
 
         bool patternApplied =
-            TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", selectedValue) ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", selectedValue);
+            TryPatternMutation(element, "System.Windows.Automation.ValuePattern", "SetValue", selectedValue) ||
+            TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", selectedValue);
         if (patternApplied && WaitForResolvedSelectedValue(window, control, selectedValue)) {
             return true;
         }
@@ -603,9 +603,9 @@ internal sealed partial class UiAutomationControlService {
             }
 
             bool itemApplied =
-                TryPatternAction(candidate, "System.Windows.Automation.SelectionItemPattern", "Select") ||
-                TryPatternAction(candidate, "System.Windows.Automation.InvokePattern", "Invoke") ||
-                TryPatternAction(candidate, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+                TryPatternMutation(candidate, "System.Windows.Automation.SelectionItemPattern", "Select") ||
+                TryPatternMutation(candidate, "System.Windows.Automation.InvokePattern", "Invoke") ||
+                TryPatternMutation(candidate, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
             if (!itemApplied) {
                 return false;
             }
@@ -642,9 +642,9 @@ internal sealed partial class UiAutomationControlService {
             return precondition;
         }
 
-        bool patternApplied = TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
+        bool patternApplied = TryPatternMutation(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
         if (!patternApplied && IsTextMutationAllowed(element)) {
-            patternApplied = TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+            patternApplied = TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
         }
 
         if (patternApplied) {
@@ -1321,30 +1321,6 @@ internal sealed partial class UiAutomationControlService {
         public IntPtr RootHandle { get; set; }
         public int Score { get; set; }
         public string SearchMode { get; set; } = string.Empty;
-    }
-
-    private bool TryPatternAction(object element, string patternTypeName, string methodName, params object[] parameters) {
-        Type? patternType = _automationClientAssembly?.GetType(patternTypeName, throwOnError: false);
-        if (patternType == null) {
-            return false;
-        }
-
-        object? pattern = GetCurrentPattern(element, patternType);
-        if (pattern == null) {
-            return false;
-        }
-
-        MethodInfo? method = pattern.GetType().GetMethod(methodName, parameters.Select(parameter => parameter.GetType()).ToArray());
-        if (method == null) {
-            return false;
-        }
-
-        try {
-            method.Invoke(pattern, parameters);
-            return true;
-        } catch {
-            return false;
-        }
     }
 
     private static bool TrySetFocus(object element) {

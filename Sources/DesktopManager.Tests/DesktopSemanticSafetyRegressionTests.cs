@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -8,6 +9,25 @@ namespace DesktopManager.Tests;
 [DoNotParallelize]
 /// <summary>Protects deadline, input-delivery, retry-quality, and live password-safety regressions.</summary>
 public class DesktopSemanticSafetyRegressionTests {
+    [TestMethod]
+    public void UiAutomationControlService_ProviderMutationException_PreservesUnknownOutcome() {
+        var provider = new ThrowingMutationPattern();
+        MethodInfo? method = provider.GetType().GetMethod(nameof(ThrowingMutationPattern.SetValue));
+        Assert.IsNotNull(method);
+
+        UiAutomationMutationOutcomeUnknownException exception = Assert.ThrowsExactly<UiAutomationMutationOutcomeUnknownException>(() =>
+            UiAutomationControlService.InvokeProviderMutation(
+                provider,
+                method,
+                new object[] { "changed" },
+                "System.Windows.Automation.ValuePattern",
+                nameof(ThrowingMutationPattern.SetValue)));
+
+        Assert.AreEqual("changed", provider.Value);
+        Assert.IsInstanceOfType<InvalidOperationException>(exception.InnerException);
+        StringAssert.Contains(exception.Message, "outcome is unknown");
+    }
+
     [TestMethod]
     public void DesktopAutomationService_FocusedEmptyProviderValue_RemainsAuthoritative() {
         Assert.IsTrue(DesktopAutomationService.HasAuthoritativeFocusedValue(new DesktopFocusedControlObservation {
@@ -419,6 +439,15 @@ public class DesktopSemanticSafetyRegressionTests {
 
         public object[] GetSelection() {
             return _ranges;
+        }
+    }
+
+    private sealed class ThrowingMutationPattern {
+        internal string Value { get; private set; } = string.Empty;
+
+        public void SetValue(string value) {
+            Value = value;
+            throw new InvalidOperationException("Provider failed after applying the mutation.");
         }
     }
 
