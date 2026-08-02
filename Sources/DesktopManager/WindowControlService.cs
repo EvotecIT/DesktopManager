@@ -8,7 +8,7 @@ namespace DesktopManager;
 /// Provides helper methods for interacting with window controls.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public static class WindowControlService {
+public static partial class WindowControlService {
     private const uint MessageTimeoutMilliseconds = 1000;
     private const uint WmCommand = 0x0111;
     private const long ButtonStyleMask = 0x0000000F;
@@ -18,13 +18,57 @@ public static class WindowControlService {
     private const long ButtonStyleThreeState = 0x00000005;
     private const long ButtonStyleAutoThreeState = 0x00000006;
     private const long ButtonStyleAutoRadioButton = 0x00000009;
-    private const int ComboBoxError = -1;
-    private const uint CbGetCount = 0x0146;
-    private const uint CbGetCurSel = 0x0147;
-    private const uint CbGetLbText = 0x0148;
-    private const uint CbGetLbTextLen = 0x0149;
-    private const uint CbSetCurSel = 0x014E;
-    private const int CbnSelChange = 1;
+
+    /// <summary>Refreshes native class/style metadata immediately before a text read and clears stale values unless safety is explicit.</summary>
+    internal static bool RefreshNativeTextSafety(WindowControlInfo control) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        if (control.Handle == IntPtr.Zero) {
+            control.IsPassword = null;
+            control.Text = string.Empty;
+            control.Value = string.Empty;
+            return false;
+        }
+
+        if (control.ParentWindowHandle != IntPtr.Zero) {
+            MonitorNativeMethods.GetWindowThreadProcessId(control.ParentWindowHandle, out uint parentProcessId);
+            MonitorNativeMethods.GetWindowThreadProcessId(control.Handle, out uint controlProcessId);
+            if (parentProcessId == 0 ||
+                controlProcessId == 0 ||
+                parentProcessId != controlProcessId ||
+                MonitorNativeMethods.GetAncestor(control.Handle, MonitorNativeMethods.GA_ROOT) != control.ParentWindowHandle) {
+                control.IsPassword = null;
+                control.Text = string.Empty;
+                control.Value = string.Empty;
+                return false;
+            }
+        }
+
+        StringBuilder classBuilder = new(256);
+        int classNameLength = MonitorNativeMethods.GetClassName(
+            control.Handle,
+            classBuilder,
+            classBuilder.Capacity);
+        bool styleAvailable = MonitorNativeMethods.TryGetWindowLongPtr(
+            control.Handle,
+            MonitorNativeMethods.GWL_STYLE,
+            out IntPtr stylePointer);
+        control.ClassName = classBuilder.ToString();
+        control.IsPassword = ControlEnumerator.ResolvePasswordState(
+            control.ClassName,
+            classNameLength,
+            styleAvailable,
+            stylePointer.ToInt64());
+        if (control.IsPassword != false) {
+            control.Text = string.Empty;
+            control.Value = string.Empty;
+            return false;
+        }
+
+        return true;
+    }
 
     /// <summary>
     /// Clicks the specified control.
@@ -56,17 +100,48 @@ public static class WindowControlService {
     /// Retrieves the check state of a button control.
     /// </summary>
     /// <param name="control">Control to query.</param>
-    /// <returns><c>true</c> if checked; otherwise <c>false</c>.</returns>
-    public static bool GetCheckState(WindowControlInfo control) {
+    /// <returns><c>true</c> if checked, <c>false</c> if unchecked, or null when indeterminate.</returns>
+    public static bool? GetCheckState(WindowControlInfo control) {
+        if (!TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool? isChecked)) {
+            throw new TimeoutException($"The check state did not respond within {MessageTimeoutMilliseconds}ms.");
+        }
+
+        return isChecked;
+    }
+
+    internal static bool TryGetCheckState(WindowControlInfo control, int timeoutMilliseconds, out bool? isChecked) {
         if (control == null) {
             throw new ArgumentNullException(nameof(control));
         }
         if (control.Handle == IntPtr.Zero) {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
+        if (timeoutMilliseconds <= 0) {
+            isChecked = null;
+            return false;
+        }
 
-        int state = (int)MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.BM_GETCHECK, 0u, 0u);
-        return state != 0;
+        uint boundedTimeout = (uint)Math.Min(timeoutMilliseconds, (int)MessageTimeoutMilliseconds);
+        IntPtr sendResult = MonitorNativeMethods.SendMessageTimeout(
+            control.Handle,
+            MonitorNativeMethods.BM_GETCHECK,
+            IntPtr.Zero,
+            IntPtr.Zero,
+            MonitorNativeMethods.SMTO_ABORTIFHUNG,
+            boundedTimeout,
+            out IntPtr state);
+        if (sendResult == IntPtr.Zero) {
+            isChecked = null;
+            return false;
+        }
+
+        long nativeState = state.ToInt64();
+        isChecked = nativeState == 0
+            ? false
+            : nativeState == 1
+                ? true
+                : (bool?)null;
+        return nativeState >= 0 && nativeState <= 2;
     }
 
     /// <summary>
@@ -100,100 +175,6 @@ public static class WindowControlService {
     }
 
     /// <summary>
-    /// Returns whether the control exposes a native single-selection list such as a combo box.
-    /// </summary>
-    /// <param name="control">Control to inspect.</param>
-    /// <returns><c>true</c> when the control supports native combo-box selection messages; otherwise <c>false</c>.</returns>
-    public static bool SupportsSelection(WindowControlInfo control) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            return false;
-        }
-
-        return control.ClassName.IndexOf("combobox", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            string.Equals(control.ControlType, "ComboBox", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Retrieves the selected index for a combo-box-style control.
-    /// </summary>
-    /// <param name="control">Control to query.</param>
-    /// <returns>The selected index, or <c>-1</c> when no selection exists.</returns>
-    public static int GetSelectedIndex(WindowControlInfo control) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        int selectedIndex = unchecked((int)MonitorNativeMethods.SendMessage(control.Handle, CbGetCurSel, 0u, 0u));
-        return selectedIndex == ComboBoxError ? -1 : selectedIndex;
-    }
-
-    /// <summary>
-    /// Retrieves the selected value for a combo-box-style control.
-    /// </summary>
-    /// <param name="control">Control to query.</param>
-    /// <returns>The selected item text when available; otherwise the live control text.</returns>
-    public static string GetSelectedValue(WindowControlInfo control) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        int selectedIndex = GetSelectedIndex(control);
-        if (selectedIndex < 0) {
-            return WindowTextHelper.GetWindowText(control.Handle);
-        }
-
-        return GetComboBoxItemText(control.Handle, selectedIndex);
-    }
-
-    /// <summary>
-    /// Selects a combo-box-style item by its displayed text.
-    /// </summary>
-    /// <param name="control">Control to update.</param>
-    /// <param name="value">Displayed item text to select.</param>
-    public static void SetSelectedValue(WindowControlInfo control, string value) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (value == null) {
-            throw new ArgumentNullException(nameof(value));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        int itemCount = unchecked((int)MonitorNativeMethods.SendMessage(control.Handle, CbGetCount, 0u, 0u));
-        if (itemCount == ComboBoxError) {
-            throw new InvalidOperationException("The combo box item count could not be resolved.");
-        }
-
-        for (int index = 0; index < itemCount; index++) {
-            string itemText = GetComboBoxItemText(control.Handle, index);
-            if (!string.Equals(itemText, value, StringComparison.OrdinalIgnoreCase)) {
-                continue;
-            }
-
-            SetSelectedIndex(control, index);
-            return;
-        }
-
-        throw new InvalidOperationException($"The combo box does not contain an item named '{value}'.");
-    }
-
-    /// <summary>
     /// Sets the check state of a button control.
     /// </summary>
     /// <param name="control">Control to modify.</param>
@@ -206,7 +187,9 @@ public static class WindowControlService {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
 
-        bool originalState = GetCheckState(control);
+        bool? originalState = TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool? currentState)
+            ? currentState
+            : throw new TimeoutException($"The check state did not respond within {MessageTimeoutMilliseconds}ms.");
         if (originalState == check) {
             return;
         }
@@ -218,32 +201,6 @@ public static class WindowControlService {
 
         // Some controls ignore BM_SETCHECK unless they are toggled through their standard click path.
         SendMessageWithTimeout(control.Handle, MonitorNativeMethods.BM_CLICK, 0u, 0u);
-    }
-
-    /// <summary>
-    /// Selects a combo-box-style item by its zero-based index.
-    /// </summary>
-    /// <param name="control">Control to update.</param>
-    /// <param name="index">Zero-based item index.</param>
-    public static void SetSelectedIndex(WindowControlInfo control, int index) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        if (control.Handle == IntPtr.Zero) {
-            throw new ArgumentException("Invalid control handle", nameof(control));
-        }
-
-        if (index < 0) {
-            throw new ArgumentOutOfRangeException(nameof(index), "The selected index must be zero or greater.");
-        }
-
-        int result = unchecked((int)MonitorNativeMethods.SendMessage(control.Handle, CbSetCurSel, unchecked((uint)index), 0u));
-        if (result == ComboBoxError) {
-            throw new InvalidOperationException($"The combo box does not expose an item at index {index}.");
-        }
-
-        NotifyParentSelectionChanged(control);
     }
 
     /// <summary>
@@ -259,20 +216,80 @@ public static class WindowControlService {
         if (text == null) {
             throw new ArgumentNullException(nameof(text));
         }
+        if (text.Length > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(
+                nameof(text),
+                $"Native text edits are limited to {DesktopTextObservationOptions.MaximumTextLength} characters.");
+        }
 
         if (control.Handle == IntPtr.Zero) {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
 
+        EnsureNativeTextMutationAllowed(control.Handle);
+
         if (!TrySendStringMessageWithTimeout(control.Handle, MonitorNativeMethods.WM_SETTEXT, IntPtr.Zero, text)) {
-            MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_SETTEXT, IntPtr.Zero, text);
+            throw new NativeTextMutationOutcomeUnknownException("WM_SETTEXT", MessageTimeoutMilliseconds);
         }
 
         if (ControlTextMatches(control.Handle, text)) {
             return;
         }
 
+        EnsureNativeTextMutationAllowed(control.Handle);
         ReplaceAllText(control.Handle, text);
+        if (!ControlTextMatches(control.Handle, text)) {
+            throw new NativeTextMutationOutcomeUnknownException(
+                "The native control accepted text mutation messages but the verified value differs from the requested value; the mutation outcome is unknown.");
+        }
+    }
+
+    internal static bool TrySetTextIfUnchanged(
+        WindowControlInfo control,
+        string text,
+        string expectedContentFingerprint,
+        int maxTextLength,
+        out string failureCode,
+        out string observedContentFingerprint) {
+        failureCode = string.Empty;
+        observedContentFingerprint = string.Empty;
+        if (control == null || control.Handle == IntPtr.Zero) {
+            failureCode = "control-unavailable";
+            return false;
+        }
+
+        EnsureNativeTextMutationAllowed(control.Handle);
+        if (string.IsNullOrWhiteSpace(expectedContentFingerprint)) {
+            SetText(control, text);
+            return true;
+        }
+
+        var liveControl = new WindowControlInfo {
+            Handle = control.Handle,
+            IsPassword = false
+        };
+        if (!TryGetControlText(
+                liveControl,
+                maxTextLength,
+                (int)MessageTimeoutMilliseconds,
+                out string current,
+                out bool isTruncated)) {
+            failureCode = "native-read-timeout";
+            return false;
+        }
+        if (isTruncated) {
+            failureCode = "incomplete-precondition";
+            return false;
+        }
+
+        observedContentFingerprint = DesktopTextObservationBuilder.CreateFingerprint(current);
+        if (!string.Equals(observedContentFingerprint, expectedContentFingerprint, StringComparison.OrdinalIgnoreCase)) {
+            failureCode = "content-changed";
+            return false;
+        }
+
+        SetText(control, text);
+        return true;
     }
 
     /// <summary>
@@ -433,47 +450,53 @@ public static class WindowControlService {
     }
 
     private static void ReplaceSelectedText(IntPtr handle, string text, bool appendToEnd) {
+        EnsureNativeTextMutationAllowed(handle);
         uint start = appendToEnd ? unchecked((uint)0xFFFFFFFF) : 0u;
         uint end = unchecked((uint)0xFFFFFFFF);
-        SendMessageWithTimeout(handle, MonitorNativeMethods.EM_SETSEL, start, end);
+        if (!TrySendMessageWithTimeout(handle, MonitorNativeMethods.EM_SETSEL, start, end)) {
+            throw new NativeTextMutationOutcomeUnknownException("EM_SETSEL", MessageTimeoutMilliseconds);
+        }
+        EnsureNativeTextMutationAllowed(handle);
         if (!TrySendStringMessageWithTimeout(handle, MonitorNativeMethods.EM_REPLACESEL, new IntPtr(1), text)) {
-            MonitorNativeMethods.SendMessage(handle, MonitorNativeMethods.EM_REPLACESEL, new IntPtr(1), text);
+            throw new NativeTextMutationOutcomeUnknownException("EM_REPLACESEL", MessageTimeoutMilliseconds);
         }
     }
 
     private static bool ControlTextMatches(IntPtr handle, string expectedText) {
-        return string.Equals(WindowTextHelper.GetWindowText(handle), expectedText, StringComparison.Ordinal);
-    }
-
-    private static string GetComboBoxItemText(IntPtr handle, int index) {
-        int itemTextLength = unchecked((int)MonitorNativeMethods.SendMessage(handle, CbGetLbTextLen, unchecked((uint)index), 0u));
-        if (itemTextLength == ComboBoxError) {
-            return string.Empty;
+        var control = new WindowControlInfo {
+            Handle = handle,
+            IsPassword = false
+        };
+        if (!TryGetControlText(
+                control,
+                Math.Max(1, expectedText.Length),
+                (int)MessageTimeoutMilliseconds,
+                out string currentText,
+                out bool isTruncated)) {
+            throw new NativeTextMutationOutcomeUnknownException("WM_GETTEXT", MessageTimeoutMilliseconds);
         }
 
-        var buffer = new StringBuilder(itemTextLength + 1);
-        MonitorNativeMethods.SendMessage(handle, CbGetLbText, new IntPtr(index), buffer);
-        return buffer.ToString();
+        return !isTruncated && string.Equals(currentText, expectedText, StringComparison.Ordinal);
     }
 
-    private static void NotifyParentSelectionChanged(WindowControlInfo control) {
-        IntPtr parentHandle = control.ParentWindowHandle != IntPtr.Zero
-            ? control.ParentWindowHandle
-            : MonitorNativeMethods.GetParent(control.Handle);
-        if (parentHandle == IntPtr.Zero) {
-            return;
+    private static void EnsureNativeTextMutationAllowed(IntPtr handle) {
+        StringBuilder classBuilder = new StringBuilder(256);
+        int classNameLength = MonitorNativeMethods.GetClassName(handle, classBuilder, classBuilder.Capacity);
+        if (classNameLength <= 0) {
+            throw new InvalidOperationException("The live native control class could not be verified before editing.");
         }
 
-        int controlId = control.Id != 0 ? control.Id : MonitorNativeMethods.GetDlgCtrlID(control.Handle);
-        int wParam = unchecked((CbnSelChange << 16) | (controlId & 0xFFFF));
-        MonitorNativeMethods.SendMessageTimeout(
-            parentHandle,
-            WmCommand,
-            new IntPtr(wParam),
-            control.Handle,
-            MonitorNativeMethods.SMTO_ABORTIFHUNG,
-            MessageTimeoutMilliseconds,
-            out _);
+        if (!MonitorNativeMethods.TryGetWindowLongPtr(
+                handle,
+                MonitorNativeMethods.GWL_STYLE,
+                out IntPtr stylePointer)) {
+            throw new InvalidOperationException("The live native control style could not be verified before editing.");
+        }
+
+        long style = stylePointer.ToInt64();
+        if (ControlEnumerator.IsPasswordStyle(classBuilder.ToString(), style)) {
+            throw new InvalidOperationException("Password controls cannot be updated through direct text messages.");
+        }
     }
 
     private static void SendMessageWithTimeout(IntPtr handle, uint message, uint wParam, uint lParam) {
@@ -481,8 +504,8 @@ public static class WindowControlService {
     }
 
     private static bool GetCheckStateForHandle(IntPtr handle) {
-        int state = (int)MonitorNativeMethods.SendMessage(handle, MonitorNativeMethods.BM_GETCHECK, 0u, 0u);
-        return state != 0;
+        var control = new WindowControlInfo { Handle = handle };
+        return TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool? isChecked) && isChecked == true;
     }
 
     private static bool TrySendMessageWithTimeout(IntPtr handle, uint message, uint wParam, uint lParam) {

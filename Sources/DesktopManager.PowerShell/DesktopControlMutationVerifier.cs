@@ -221,7 +221,7 @@ internal static class DesktopControlMutationVerifier {
     }
 
     private static string GetObservedControlText(WindowControlInfo control) {
-        if (control == null) {
+        if (control == null || control.IsPassword != false) {
             return string.Empty;
         }
 

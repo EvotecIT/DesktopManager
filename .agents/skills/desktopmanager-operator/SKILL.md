@@ -51,7 +51,7 @@ Use this skill to operate the Windows desktop through DesktopManager.
    - Use `click_control`, `set_control_text`, or `send_control_keys` for control-level work.
    - For classic handle-backed controls, prefer `set_control_text` or `send_control_keys` over foreground-dependent hacks because they now route directly to the control.
    - For zero-handle UIA controls in modern apps, foreground-based text or key fallback exists in the shared library too, but treat it as an explicit opt-in for sacrificial or tightly controlled windows.
-   - When you do opt into foreground text fallback, assume the shared library will try a focused select-all-and-paste flow before raw typed input. That is usually the safer first bet for Chromium-style editable controls.
+   - When you do opt into foreground text fallback, the shared library revalidates the exact focused target and emits Unicode input directly without changing the clipboard.
 5. Prefer named state over one-off moves.
    - Use `list_named_layouts` before manually moving windows.
    - Use `apply_named_layout` or `restore_saved_snapshot` when the desired setup already exists.

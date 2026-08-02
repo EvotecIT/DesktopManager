@@ -101,7 +101,8 @@ public class ControlQueryAndDiagnosticsMappingTests {
                     ControlType = "Edit",
                     Text = "DesktopManager",
                     Value = "DesktopManager",
-                    SupportsForegroundInputFallback = true
+                    SupportsForegroundInputFallback = true,
+                    IsPassword = false
                 }
             },
             UiAutomationRoots = new[] {
@@ -121,13 +122,15 @@ public class ControlQueryAndDiagnosticsMappingTests {
                             Handle = IntPtr.Zero,
                             AutomationId = "EditorTextBox",
                             ControlType = "Edit",
-                            Text = "DesktopManager"
+                            Text = "DesktopManager",
+                            IsPassword = false
                         }
                     }
                 }
             },
             UiAutomationActionProbe = new DesktopUiAutomationActionDiagnostic {
                 Attempted = true,
+                TimedOut = true,
                 Resolved = true,
                 UsedCachedActionMatch = false,
                 UsedPreferredRoot = true,
@@ -157,6 +160,7 @@ public class ControlQueryAndDiagnosticsMappingTests {
         Assert.AreEqual(1, result.UiAutomationRoots[0].SampleControls.Count);
         Assert.AreEqual("EditorTextBox", result.UiAutomationRoots[0].SampleControls[0].AutomationId);
         Assert.IsNotNull(result.UiAutomationActionProbe);
+        Assert.IsTrue(result.UiAutomationActionProbe.TimedOut);
         Assert.AreEqual("0xABCDEF", result.UiAutomationActionProbe.RootHandle);
         Assert.AreEqual("preferred-root", result.UiAutomationActionProbe.SearchMode);
         Assert.AreEqual(92, result.UiAutomationActionProbe.Score);

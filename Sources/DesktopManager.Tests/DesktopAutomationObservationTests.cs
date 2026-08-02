@@ -35,6 +35,20 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures text observation rejects provider requests above the shared safe limit.
+    /// </summary>
+    public void DesktopAutomationService_ObserveWindowText_ExcessiveMaxLength_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ObserveWindowText(
+            new WindowQueryOptions { TitlePattern = "__never__" },
+            observationOptions: new DesktopTextObservationOptions {
+                MaxObservedTextLength = DesktopTextObservationOptions.MaximumTextLength + 1
+            }));
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures handle-based window lookup rejects invalid handles.
     /// </summary>
     public void DesktopAutomationService_GetWindow_ZeroHandle_ThrowsArgumentException() {
@@ -85,6 +99,30 @@ public class DesktopAutomationObservationTests {
         });
 
         Assert.IsNull(observation);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures focused-control text observation rejects invalid max lengths before window discovery.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_InvalidMaxLength_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.GetFocusedControlObservation(
+            new WindowQueryOptions { TitlePattern = "__never__" },
+            0));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures focused observation rejects provider requests above the shared safe limit.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_ExcessiveMaxLength_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.GetFocusedControlObservation(
+            new WindowQueryOptions { TitlePattern = "__never__" },
+            DesktopTextObservationOptions.MaximumTextLength + 1));
     }
 
     [TestMethod]
@@ -223,6 +261,343 @@ public class DesktopAutomationObservationTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures UI Automation text reads preserve an expected-text match beyond the returned prefix.
+    /// </summary>
+    public void UiAutomationControlService_CreateBoundedTextResult_TracksExpectedBeyondPrefix() {
+        UiAutomationTextReadResult result = UiAutomationControlService.CreateBoundedTextResult(
+            "prefix-hidden-needle",
+            "uia.textPattern",
+            6,
+            "needle");
+
+        Assert.AreEqual("prefix", result.Value);
+        Assert.AreEqual("uia.textPattern", result.Source);
+        Assert.IsTrue(result.IsTruncated);
+        Assert.AreEqual(true, result.ContainsExpected);
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_CreateBoundedTextResult_TracksCaseInsensitiveExpectedBeyondPrefix() {
+        UiAutomationTextReadResult result = UiAutomationControlService.CreateBoundedTextResult(
+            "prefix-hidden-NEEDLE",
+            "uia.valuePattern",
+            6,
+            "needle",
+            ignoreCase: true);
+
+        Assert.AreEqual("prefix", result.Value);
+        Assert.IsTrue(result.IsTruncated);
+        Assert.AreEqual(true, result.ContainsExpected);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures TextPattern asks the provider for only one character beyond the public observation limit.
+    /// </summary>
+    public void UiAutomationControlService_ReadTextPatternRange_BoundsProviderReadAndSearchesExpectedText() {
+        var range = new TextPatternRangeStub("prefix-hidden-needle");
+
+        UiAutomationTextReadResult result = UiAutomationControlService.ReadTextPatternRange(range, 6, "needle");
+
+        Assert.AreEqual(7, range.LastMaxLength);
+        Assert.AreEqual("prefix", result.Value);
+        Assert.IsTrue(result.IsTruncated);
+        Assert.AreEqual(true, result.ContainsExpected);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures bounded UI Automation reads reject requests above the shared safe limit.
+    /// </summary>
+    public void UiAutomationControlService_CreateBoundedTextResult_ExcessiveMaxLength_ThrowsArgumentOutOfRangeException() {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => UiAutomationControlService.CreateBoundedTextResult(
+            "sample",
+            "uia.textPattern",
+            DesktopTextObservationOptions.MaximumTextLength + 1,
+            null));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures native fallback values report expected text present in the returned prefix.
+    /// </summary>
+    public void DesktopAutomationService_ResolveExpectedTextMatch_FindsNativePrefix() {
+        Assert.AreEqual(true, DesktopAutomationService.ResolveExpectedTextMatch("needle", "native needle value"));
+        Assert.IsNull(DesktopAutomationService.ResolveExpectedTextMatch("missing", "bounded native value"));
+        Assert.IsNull(DesktopAutomationService.ResolveExpectedTextMatch(null, "native value"));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures native text supplies both the value and source when UI Automation exposes no readable pattern.
+    /// </summary>
+    public void DesktopAutomationService_ResolveFocusedValue_NativeText_ReturnsNativeValueAndSource() {
+        string value = DesktopAutomationService.ResolveFocusedValue(null, new WindowControlInfo(), "native editor value", out string source);
+
+        Assert.AreEqual("native editor value", value);
+        Assert.AreEqual("native.windowText", source);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures whitespace-only native editor content remains observable rather than being treated as absent.
+    /// </summary>
+    public void DesktopAutomationService_ResolveFocusedValue_WhitespaceNativeText_PreservesValueAndSource() {
+        const string whitespace = " \t\r\n";
+
+        string value = DesktopAutomationService.ResolveFocusedValue(null, new WindowControlInfo(), whitespace, out string source);
+
+        Assert.AreEqual(whitespace, value);
+        Assert.AreEqual("native.windowText", source);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures a focused window root is not retained when no focused descendant exists.
+    /// </summary>
+    public void UiAutomationControlService_ResolveFocusedElementCandidate_RootWithoutDescendant_ReturnsNull() {
+        object root = new();
+
+        object? result = UiAutomationControlService.ResolveFocusedElementCandidate(root, belongsToWindow: true, isRootWindow: true, focusedDescendant: null);
+
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures UIA-only focused children do not inherit the unrelated top-level window handle.
+    /// </summary>
+    public void DesktopAutomationService_ResolveFocusedControlHandle_HandlelessUiAutomationControl_ReturnsZero() {
+        UiAutomationFocusedControlResult automationResult = new() {
+            Control = new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                AutomationId = "RichEditor",
+                ControlType = "Document"
+            }
+        };
+
+        IntPtr result = DesktopAutomationService.ResolveFocusedControlHandle(automationResult, new IntPtr(1234));
+
+        Assert.AreEqual(IntPtr.Zero, result);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures native text fallback never reads a top-level handle for a handleless UI Automation child.
+    /// </summary>
+    public void DesktopAutomationService_ResolveNativeTextHandle_HandlelessUiAutomationControl_ReturnsZero() {
+        UiAutomationFocusedControlResult automationResult = new() {
+            Control = new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                AutomationId = "RichEditor",
+                ControlType = "Document"
+            }
+        };
+
+        IntPtr result = DesktopAutomationService.ResolveNativeTextHandle(automationResult, new IntPtr(1234));
+
+        Assert.AreEqual(IntPtr.Zero, result);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures exactly bounded native text is not marked truncated when the length API is unavailable.
+    /// </summary>
+    public void WindowTextHelper_CreateBoundedTextResult_ExactUnknownLength_IsNotTruncated() {
+        string result = WindowTextHelper.CreateBoundedTextResult("123456", reportedLength: 0, maxLength: 6, out bool isTruncated);
+
+        Assert.AreEqual("123456", result);
+        Assert.IsFalse(isTruncated);
+        Assert.AreEqual(8, WindowTextHelper.GetBoundedTextCapacity(reportedLength: 0, maxLength: 6));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures the extra native probe character is removed and reports truncation.
+    /// </summary>
+    public void WindowTextHelper_CreateBoundedTextResult_ProbeCharacter_IsTruncated() {
+        string result = WindowTextHelper.CreateBoundedTextResult("1234567", reportedLength: 0, maxLength: 6, out bool isTruncated);
+
+        Assert.AreEqual("123456", result);
+        Assert.IsTrue(isTruncated);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures a changing native value that fills the growth probe is never reported as complete.
+    /// </summary>
+    public void WindowTextHelper_CreateBoundedTextResult_StalePositiveLength_IsTruncated() {
+        string result = WindowTextHelper.CreateBoundedTextResult("123456", reportedLength: 5, maxLength: 10, out bool isTruncated);
+
+        Assert.AreEqual("123456", result);
+        Assert.IsTrue(isTruncated);
+        Assert.AreEqual(7, WindowTextHelper.GetBoundedTextCapacity(reportedLength: 5, maxLength: 10));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures privacy-safe bounds keep distinct handleless password controls separate.
+    /// </summary>
+    public void WindowManager_AreEquivalentControls_DistinctPasswordBounds_ReturnsFalse() {
+        WindowControlInfo first = CreatePasswordControl(left: 10);
+        WindowControlInfo second = CreatePasswordControl(left: 40);
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, CreatePasswordControl(left: 10)));
+    }
+
+    [TestMethod]
+    public void WindowManager_AreEquivalentControls_WeakHandlelessSiblingsRemainDistinct() {
+        var first = new WindowControlInfo {
+            AutomationId = "editor",
+            ControlType = "Document",
+            FrameworkId = "WPF",
+            ClassName = "RichTextBox",
+            Text = "same",
+            Left = 10,
+            Top = 20,
+            Width = 300,
+            Height = 200
+        };
+        var second = new WindowControlInfo {
+            AutomationId = first.AutomationId,
+            ControlType = first.ControlType,
+            FrameworkId = first.FrameworkId,
+            ClassName = first.ClassName,
+            Text = first.Text,
+            Left = first.Left,
+            Top = first.Top,
+            Width = first.Width,
+            Height = first.Height
+        };
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        first.RuntimeId = "1.2.3";
+        second.RuntimeId = first.RuntimeId;
+        Assert.IsTrue(WindowManager.AreEquivalentControls(first, second));
+    }
+
+    [TestMethod]
+    public void WindowManager_AreEquivalentControls_DifferentRuntimeIds_ReturnsFalse() {
+        var first = new WindowControlInfo {
+            RuntimeId = "1.2.3",
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same",
+            ClassName = "same"
+        };
+        var second = new WindowControlInfo {
+            RuntimeId = "1.2.4",
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same",
+            ClassName = "same"
+        };
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        first.Handle = new IntPtr(100);
+        second.Handle = first.Handle;
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        second.RuntimeId = first.RuntimeId;
+        Assert.IsTrue(WindowManager.AreEquivalentControls(first, second));
+    }
+
+    [TestMethod]
+    public void WindowManager_AreEquivalentControls_DifferentKnownHandles_ReturnsFalse() {
+        var first = new WindowControlInfo {
+            Handle = new IntPtr(100),
+            AutomationId = "duplicate",
+            ControlType = "Button",
+            Text = "same",
+            ClassName = "Button"
+        };
+        var second = new WindowControlInfo {
+            Handle = new IntPtr(200),
+            AutomationId = "duplicate",
+            ControlType = "Button",
+            Text = "same",
+            ClassName = "Button"
+        };
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        second.Handle = first.Handle;
+        Assert.IsTrue(WindowManager.AreEquivalentControls(first, second));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures merged native controls retain explicit UI Automation provenance for TextPattern reads.
+    /// </summary>
+    public void WindowManager_MergeControlMetadata_UiAutomationSource_PreservesUiAutomationIdentity() {
+        WindowControlInfo native = new() { Source = WindowControlSource.Win32 };
+        WindowControlInfo automation = new() {
+            Source = WindowControlSource.UiAutomation,
+            ControlType = "Document"
+        };
+
+        WindowManager.MergeControlMetadata(native, automation);
+
+        Assert.IsTrue(native.HasUiAutomationIdentity);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures cached UI Automation lookup rejects a duplicate automation ID at different bounds.
+    /// </summary>
+    public void UiAutomationControlService_IsStrongCachedMatch_DuplicateIdDifferentBounds_ReturnsFalse() {
+        WindowControlInfo expected = CreateDocumentControl(left: 10);
+        WindowControlInfo wrongCandidate = CreateDocumentControl(left: 210);
+
+        Assert.IsFalse(UiAutomationControlService.IsStrongCachedMatch(expected, wrongCandidate));
+        Assert.IsTrue(UiAutomationControlService.IsStrongCachedMatch(expected, CreateDocumentControl(left: 10)));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures an empty ValuePattern result remains authoritative over legacy fallbacks.
+    /// </summary>
+    public void UiAutomationControlService_IsPatternResultAvailable_EmptyValue_ReturnsTrue() {
+        Assert.IsTrue(UiAutomationControlService.IsPatternResultAvailable(string.Empty));
+        Assert.IsFalse(UiAutomationControlService.IsPatternResultAvailable(null));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures provider exceptions while reading IsPassword are contained.
+    /// </summary>
+    public void UiAutomationControlService_TryReadPasswordState_ThrowingProvider_ReturnsFalse() {
+        bool result = UiAutomationControlService.TryReadPasswordState(new ThrowingPasswordState(), out bool? isPassword);
+
+        Assert.IsFalse(result);
+        Assert.IsNull(isPassword);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures selected native values remain available and bounded.
+    /// </summary>
+    public void ControlEnumerator_BoundValue_SelectedValue_ReturnsBoundedPrefix() {
+        Assert.AreEqual("Sele", ControlEnumerator.BoundValue("SelectionValue", 4));
+        Assert.AreEqual("SelectionValue", ControlEnumerator.BoundValue("SelectionValue", null));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures password controls are excluded from editable text observation candidates.
+    /// </summary>
+    public void DesktopAutomationService_IsEditableTextCandidate_PasswordControl_ReturnsFalse() {
+        bool result = DesktopAutomationService.IsEditableTextCandidate(new WindowControlInfo {
+            ClassName = "Edit",
+            ControlType = "Edit",
+            IsPassword = true,
+            IsKeyboardFocusable = true
+        });
+
+        Assert.IsFalse(result);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures editable-text scoring prefers classic edit surfaces over plain labels.
     /// </summary>
     public void DesktopAutomationService_GetEditableTextCandidateScore_PrefersEditableControls() {
@@ -256,6 +631,73 @@ public class DesktopAutomationObservationTests {
 
         Assert.IsNotNull(window);
         Assert.AreEqual(harness.Window.Handle, window.Handle);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures focused password controls expose neither text nor value.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_PasswordControl_ClearsTextAndValue() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireForegroundWindowUiTests();
+
+        TextBox? passwordBox = null;
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create(
+            "DesktopManager Password Observation Harness",
+            form => {
+                passwordBox = new TextBox {
+                    Name = "ProtectedEditor",
+                    Left = 12,
+                    Top = 12,
+                    Width = 220,
+                    Text = "password-sentinel-never-return",
+                    UseSystemPasswordChar = true
+                };
+                form.Controls.Add(passwordBox);
+                form.Shown += (_, _) => passwordBox.Focus();
+            });
+
+        Assert.IsNotNull(passwordBox);
+        new WindowManager().ActivateWindow(harness.Window);
+        passwordBox.Focus();
+        Application.DoEvents();
+        Task.Delay(150).Wait();
+
+        DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(harness.Window.Handle);
+
+        Assert.IsNotNull(observation);
+        Assert.AreEqual(true, observation.IsPassword);
+        Assert.AreEqual(string.Empty, observation.Text);
+        Assert.AreEqual(string.Empty, observation.Value);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures a window root is not reported as its own focused child when no control has focus.
+    /// </summary>
+    public void DesktopAutomationService_GetFocusedControlObservation_WindowRootOnly_ReturnsNull() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireForegroundWindowUiTests();
+
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create(
+            "DesktopManager Root Focus Harness",
+            form => {
+                form.FormBorderStyle = FormBorderStyle.None;
+                form.ControlBox = false;
+            });
+        new WindowManager().ActivateWindow(harness.Window);
+        Application.DoEvents();
+        Task.Delay(150).Wait();
+
+        DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(harness.Window.Handle);
+
+        Assert.IsNull(observation);
     }
 
     [TestMethod]
@@ -424,5 +866,57 @@ public class DesktopAutomationObservationTests {
         }, 3000, 50);
 
         Assert.IsTrue(result.ElapsedMilliseconds >= 0);
+    }
+
+    private static WindowControlInfo CreatePasswordControl(int left) {
+        return new WindowControlInfo {
+            Handle = IntPtr.Zero,
+            AutomationId = string.Empty,
+            ClassName = string.Empty,
+            ControlType = "Edit",
+            Text = string.Empty,
+            IsPassword = true,
+            Left = left,
+            Top = 10,
+            Width = 20,
+            Height = 20
+        };
+    }
+
+    private static WindowControlInfo CreateDocumentControl(int left) {
+        return new WindowControlInfo {
+            Handle = IntPtr.Zero,
+            AutomationId = "Editor",
+            ClassName = "RichEdit",
+            ControlType = "Document",
+            Left = left,
+            Top = 10,
+            Width = 100,
+            Height = 40
+        };
+    }
+
+    private sealed class ThrowingPasswordState {
+        public bool IsPassword => throw new InvalidOperationException("Provider unavailable");
+    }
+
+    private sealed class TextPatternRangeStub {
+        private readonly string _document;
+
+        public TextPatternRangeStub(string document) {
+            _document = document;
+        }
+
+        public int LastMaxLength { get; private set; }
+
+        public string GetText(int maxLength) {
+            LastMaxLength = maxLength;
+            return _document.Length > maxLength ? _document.Substring(0, maxLength) : _document;
+        }
+
+        public object? FindText(string text, bool backward, bool ignoreCase) {
+            StringComparison comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            return _document.IndexOf(text, comparison) >= 0 ? new object() : null;
+        }
     }
 }

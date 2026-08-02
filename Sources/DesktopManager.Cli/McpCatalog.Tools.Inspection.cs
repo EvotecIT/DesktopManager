@@ -150,7 +150,7 @@ internal static partial class McpCatalog {
                     ["retryCount"] = CreateIntegerSchema("Observation retry count."),
                     ["retryDelayMs"] = CreateIntegerSchema("Delay between observation retries in milliseconds.")
                 }, new[] { "expectedText" }), readOnly: true),
-            CreateTool("get_focused_control", "Get Focused Control", "Return focused-control metadata for a matching window.", CreateObjectSchema(
+            CreateTool("get_focused_control", "Get Focused Control", "Return focused-control metadata and bounded plain text for a matching window. UI Automation password controls are never read.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),
                     ["processName"] = CreateStringSchema("Process name filter."),
@@ -161,7 +161,9 @@ internal static partial class McpCatalog {
                     ["includeHidden"] = CreateBooleanSchema("Include hidden windows."),
                     ["excludeCloaked"] = CreateBooleanSchema("Exclude DWM-cloaked windows."),
                     ["excludeOwned"] = CreateBooleanSchema("Exclude owned windows."),
-                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles.")
+                    ["includeEmpty"] = CreateBooleanSchema("Include windows with empty titles."),
+                    ["expectedText"] = CreateStringSchema("Optional text to search for across the complete UI Automation document range."),
+                    ["maxLength"] = CreateIntegerSchema("Maximum focused-control value length.")
                 }), readOnly: true),
             CreateTool("wait_for_focused_control", "Wait For Focused Control", "Wait until a matching window exposes a focused control.", CreateObjectSchema(
                 new Dictionary<string, object> {
@@ -178,6 +180,10 @@ internal static partial class McpCatalog {
                     ["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds."),
                     ["intervalMs"] = CreateIntegerSchema("Polling interval in milliseconds.")
                 }), readOnly: true),
+            CreateTool("observe_control", "Observe Control", "Return provider-neutral identity, capabilities, bounded text, selection, caret, range, grid, table, and scroll state for matching controls. Password text is never read.", CreateObjectSchema(
+                CreateSemanticControlProperties(includeForegroundActivation: false)), readOnly: true),
+            CreateTool("wait_for_control_observation", "Wait For Control Observation", "Wait for semantic control text or state using UI Automation events with bounded polling fallback.", CreateObjectSchema(
+                CreateSemanticWaitProperties()), readOnly: true),
             CreateTool("get_control_state", "Get Control State", "Return the observable state for a specific control handle.", CreateObjectSchema(
                 new Dictionary<string, object> {
                     ["windowHandle"] = CreateStringSchema("Parent window handle in decimal or hexadecimal format."),
@@ -480,6 +486,8 @@ internal static partial class McpCatalog {
                     ["all"] = CreateBooleanSchema("Apply to all matching controls."),
                     ["allWindows"] = CreateBooleanSchema("Target controls in all matching windows.")
                 }), new[] { "text" }), readOnly: false, destructive: false, idempotent: true),
+            CreateTool("edit_control_text", "Edit Control Text", "Safely replace a document, replace the current selection, or insert at the caret with optional content-fingerprint concurrency protection and post-edit verification.", CreateObjectSchema(
+                CreateSemanticEditProperties(), new[] { "text" }), readOnly: false, destructive: false, idempotent: false),
             CreateTool("send_control_keys", "Send Control Keys", "Send keys to a matching child control.", CreateObjectSchema(
                 AddMutationArtifactProperties(new Dictionary<string, object> {
                     ["windowTitle"] = CreateStringSchema("Window title filter."),

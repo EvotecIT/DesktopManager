@@ -166,7 +166,7 @@ The stdio transport follows MCP revision `2025-06-18`: each UTF-8 JSON-RPC messa
 - The same saved control target can now drive read-only discovery too, not just actions, so agents can `list`, `exists`, and `wait` against one reusable selector profile.
    - For classic handle-backed controls, `set_control_text` and `send_control_keys` now route directly to the target control instead of depending on foreground focus.
    - For zero-handle UIA controls in modern apps, foreground-based text or key fallback is now shared too, but should be treated as an explicit opt-in because it can affect the live focused app.
-   - When foreground text fallback is enabled for those controls, the shared library now prefers a focused select-all-and-paste path with verification before it falls back to raw typed characters, which is usually more reliable for Chromium-style editors and address bars.
+   - When foreground text fallback is enabled for those controls, the shared library revalidates the exact focused target and emits Unicode input directly without changing the clipboard.
 5. Prefer named state when available.
    - Use `list_named_layouts` before moving windows one by one.
    - Use `apply_named_layout` or `restore_saved_snapshot` when a saved state exists.
@@ -303,7 +303,7 @@ That keeps screenshot-assisted targeting in the shared core instead of forcing t
 - Handle-backed control text and key actions now use shared direct message routing, which is safer for background automation than stealing focus first.
 - UIA control actions now reuse the same shared fallback-root search strategy as UIA discovery, which reduces action mismatches when controls live under Chromium-style child roots.
 - Zero-handle UIA controls now also support shared foreground-based text and key fallback paths, but they should only be enabled intentionally for sacrificial or tightly controlled windows.
-- Shared zero-handle UIA text fallback now prefers focused paste-with-verification before raw typed characters, which should improve reliability for modern edit fields without changing the explicit opt-in safety boundary.
+- Shared zero-handle UIA text fallback revalidates the exact focused target and emits Unicode input directly without changing the clipboard or the explicit opt-in safety boundary.
 - Mutating MCP tools can now return best-effort before/after screenshot artifacts plus safety/timing metadata, which makes it easier to verify what actually happened without building custom wrappers around each action.
 - The MCP server now enforces its safety posture instead of documenting it only: default read-only inspection, explicit mutation opt-in through `--allow-mutations`, explicit risky foreground-input opt-in through `--allow-foreground-input`, and side-effect-free mutation previews through `--dry-run`.
 - MCP process filters constrain live mutations to allowed or denied process patterns. Global desktop mutations such as monitor, wallpaper, slideshow, taskbar, background-color, clipboard, audio, power/session, personalization, workstation-profile application, and radio changes are blocked while process filters are active because those operations cannot be made process-local.

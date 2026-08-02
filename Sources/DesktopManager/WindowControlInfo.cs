@@ -18,8 +18,15 @@ public class WindowControlInfo {
     public string Text { get; internal set; } = string.Empty;
     /// <summary>Current control value when available.</summary>
     public string Value { get; internal set; } = string.Empty;
+    internal bool ValueIsTruncated { get; set; }
+    internal string ValueMatchPattern { get; set; } = string.Empty;
+    internal bool ValueMatchIgnoreCase { get; set; }
+    internal bool? ValuePatternMatched { get; set; }
     /// <summary>Origin of the control metadata.</summary>
     public WindowControlSource Source { get; internal set; } = WindowControlSource.Win32;
+    internal bool HasUiAutomationIdentity { get; set; }
+    /// <summary>UI Automation runtime identifier scoped to the current provider session.</summary>
+    public string RuntimeId { get; internal set; } = string.Empty;
     /// <summary>UI Automation automation identifier when available.</summary>
     public string AutomationId { get; internal set; } = string.Empty;
     /// <summary>UI Automation control type when available.</summary>
@@ -30,6 +37,8 @@ public class WindowControlInfo {
     public bool? IsKeyboardFocusable { get; internal set; }
     /// <summary>Whether the control is enabled when available.</summary>
     public bool? IsEnabled { get; internal set; }
+    /// <summary>Whether UI Automation marks the control as password-protected.</summary>
+    public bool? IsPassword { get; internal set; }
     /// <summary>Whether the control supports background-safe click/invoke actions.</summary>
     public bool SupportsBackgroundClick { get; internal set; }
     /// <summary>Whether the control supports background-safe text updates.</summary>

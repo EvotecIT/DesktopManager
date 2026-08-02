@@ -1,9 +1,17 @@
 using System;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
 
 namespace DesktopManager;
+
+/// <summary>Indicates that only part of a requested input sequence was accepted and the mutation outcome is unknown.</summary>
+internal sealed class KeyboardInputDeliveryException : InvalidOperationException {
+    internal KeyboardInputDeliveryException(string operation, uint requested, uint delivered)
+        : base($"{operation} accepted {delivered} of {requested} input events; the mutation outcome is unknown.") {
+    }
+}
 
 /// <summary>
 /// Provides methods for simulating keyboard input.
@@ -37,8 +45,7 @@ public static class KeyboardInputService {
     /// </summary>
     /// <param name="key">Key to press.</param>
     public static void PressKey(VirtualKey key) {
-        KeyDown(key);
-        KeyUp(key);
+        ExecuteKeySequence([key], 0, KeyDown, KeyUp);
     }
 
     /// <summary>
@@ -55,7 +62,7 @@ public static class KeyboardInputService {
             Time = 0,
             ExtraInfo = IntPtr.Zero
         };
-        MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        SendInputOrThrow([input], "KeyDown");
     }
 
     /// <summary>
@@ -72,7 +79,7 @@ public static class KeyboardInputService {
             Time = 0,
             ExtraInfo = IntPtr.Zero
         };
-        MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        SendInputOrThrow([input], "KeyUp");
     }
 
     /// <summary>
@@ -85,19 +92,7 @@ public static class KeyboardInputService {
             throw new ArgumentException("No keys specified", nameof(keys));
         }
 
-        foreach (VirtualKey key in keys) {
-            KeyDown(key);
-            if (delay > 0) {
-                Thread.Sleep(delay);
-            }
-        }
-
-        for (int i = keys.Length - 1; i >= 0; i--) {
-            KeyUp(keys[i]);
-            if (delay > 0) {
-                Thread.Sleep(delay);
-            }
-        }
+        ExecuteKeySequence(keys, delay, KeyDown, KeyUp);
     }
 
     /// <summary>
@@ -109,21 +104,19 @@ public static class KeyboardInputService {
             throw new ArgumentException("No keys specified", nameof(keys));
         }
 
-        var heldModifiers = new List<VirtualKey>();
+        var chord = new List<VirtualKey>();
         for (int index = 0; index < keys.Length; index++) {
             VirtualKey key = keys[index];
             bool hasTrailingKey = index < keys.Length - 1;
             if (IsModifierKey(key) && hasTrailingKey) {
-                KeyDown(key);
-                heldModifiers.Add(key);
+                chord.Add(key);
                 continue;
             }
 
-            PressKey(key);
-            ReleaseHeldModifiers(heldModifiers);
+            chord.Add(key);
+            PressShortcut(0, chord.ToArray());
+            chord.Clear();
         }
-
-        ReleaseHeldModifiers(heldModifiers);
     }
 
     /// <summary>
@@ -312,7 +305,12 @@ public static class KeyboardInputService {
             ExtraInfo = IntPtr.Zero
         };
 
-        MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        try {
+            SendInputOrThrow(inputs, "Unicode text input");
+        } catch (KeyboardInputDeliveryException) {
+            TryReleaseUnicodeCharacter(character);
+            throw;
+        }
         if (delayMilliseconds > 0) {
             Thread.Sleep(delayMilliseconds);
         }
@@ -391,15 +389,10 @@ public static class KeyboardInputService {
     }
 
     private static void SendKeyboardLayoutStroke(KeyboardLayoutStroke stroke, int delayMilliseconds) {
-        foreach (VirtualKey modifier in stroke.Modifiers) {
-            KeyDown(modifier);
-        }
-
-        PressKey(stroke.Key);
-
-        for (int index = stroke.Modifiers.Count - 1; index >= 0; index--) {
-            KeyUp(stroke.Modifiers[index]);
-        }
+        var keys = new List<VirtualKey>(stroke.Modifiers.Count + 1);
+        keys.AddRange(stroke.Modifiers);
+        keys.Add(stroke.Key);
+        ExecuteKeySequence(keys, 0, KeyDown, KeyUp);
 
         if (delayMilliseconds > 0) {
             Thread.Sleep(delayMilliseconds);
@@ -421,16 +414,13 @@ public static class KeyboardInputService {
     }
 
     private static void SendScanCodeStroke(ScanCodeStroke stroke, int delayMilliseconds) {
+        var scanCodes = new List<ushort>(2);
         if (stroke.ShiftRequired) {
-            SendScanCodeKey(LeftShiftScanCode, keyUp: false);
+            scanCodes.Add(LeftShiftScanCode);
         }
 
-        SendScanCodeKey(stroke.ScanCode, keyUp: false);
-        SendScanCodeKey(stroke.ScanCode, keyUp: true);
-
-        if (stroke.ShiftRequired) {
-            SendScanCodeKey(LeftShiftScanCode, keyUp: true);
-        }
+        scanCodes.Add(stroke.ScanCode);
+        ExecuteScanCodeSequence(scanCodes);
 
         if (delayMilliseconds > 0) {
             Thread.Sleep(delayMilliseconds);
@@ -448,14 +438,95 @@ public static class KeyboardInputService {
             ExtraInfo = IntPtr.Zero
         };
 
+        SendInputOrThrow([input], "Keyboard input");
+    }
+
+    private static void SendInputOrThrow(MonitorNativeMethods.INPUT[] inputs, string operation) {
+        uint requested = (uint)inputs.Length;
+        uint delivered = MonitorNativeMethods.SendInput(
+            requested,
+            inputs,
+            Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        EnsureInputDelivery(requested, delivered, operation);
+    }
+
+    internal static void EnsureInputDelivery(uint requested, uint delivered, string operation) {
+        if (delivered != requested) {
+            throw new KeyboardInputDeliveryException(operation, requested, delivered);
+        }
+    }
+
+    internal static void ExecuteKeySequence(
+        IReadOnlyList<VirtualKey> keys,
+        int delayMilliseconds,
+        Action<VirtualKey> keyDown,
+        Action<VirtualKey> keyUp) {
+        var pressedKeys = new List<VirtualKey>(keys.Count);
+        Exception? failure = null;
+        try {
+            foreach (VirtualKey key in keys) {
+                keyDown(key);
+                pressedKeys.Add(key);
+                if (delayMilliseconds > 0) {
+                    Thread.Sleep(delayMilliseconds);
+                }
+            }
+        } catch (Exception ex) {
+            failure = ex;
+        }
+
+        for (int index = pressedKeys.Count - 1; index >= 0; index--) {
+            try {
+                keyUp(pressedKeys[index]);
+                if (delayMilliseconds > 0) {
+                    Thread.Sleep(delayMilliseconds);
+                }
+            } catch (Exception ex) {
+                failure ??= ex;
+            }
+        }
+
+        if (failure != null) {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+    }
+
+    internal static void TryReleaseUnicodeCharacter(char character) {
+        MonitorNativeMethods.INPUT input = new();
+        input.Type = MonitorNativeMethods.INPUT_KEYBOARD;
+        input.Data.Keyboard = new MonitorNativeMethods.KEYBDINPUT {
+            Vk = 0,
+            Scan = character,
+            Flags = MonitorNativeMethods.KEYEVENTF_UNICODE | MonitorNativeMethods.KEYEVENTF_KEYUP,
+            Time = 0,
+            ExtraInfo = IntPtr.Zero
+        };
+
         MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
     }
 
-    private static void ReleaseHeldModifiers(List<VirtualKey> heldModifiers) {
-        for (int index = heldModifiers.Count - 1; index >= 0; index--) {
-            KeyUp(heldModifiers[index]);
+    private static void ExecuteScanCodeSequence(IReadOnlyList<ushort> scanCodes) {
+        var pressedScanCodes = new List<ushort>(scanCodes.Count);
+        Exception? failure = null;
+        try {
+            foreach (ushort scanCode in scanCodes) {
+                SendScanCodeKey(scanCode, keyUp: false);
+                pressedScanCodes.Add(scanCode);
+            }
+        } catch (Exception ex) {
+            failure = ex;
         }
 
-        heldModifiers.Clear();
+        for (int index = pressedScanCodes.Count - 1; index >= 0; index--) {
+            try {
+                SendScanCodeKey(pressedScanCodes[index], keyUp: true);
+            } catch (Exception ex) {
+                failure ??= ex;
+            }
+        }
+
+        if (failure != null) {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
     }
 }

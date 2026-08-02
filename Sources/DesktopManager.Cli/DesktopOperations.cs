@@ -55,9 +55,12 @@ internal static partial class DesktopOperations {
         });
     }
 
-    public static FocusedControlObservationResult? GetFocusedControl(WindowSelectionCriteria criteria) {
+    public static FocusedControlObservationResult? GetFocusedControl(WindowSelectionCriteria criteria, string? expectedText = null, int? maxLength = null) {
         return ExecuteCore(() => {
-            DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(CreateWindowQuery(criteria));
+            DesktopFocusedControlObservation? observation = new DesktopAutomationService().GetFocusedControlObservation(
+                CreateWindowQuery(criteria),
+                maxLength ?? 2048,
+                expectedText);
             return observation == null ? null : MapFocusedControlObservation(observation);
         });
     }
@@ -1055,6 +1058,90 @@ internal static partial class DesktopOperations {
             .ToArray());
     }
 
+    public static IReadOnlyList<DesktopControlObservation> ObserveControls(
+        WindowSelectionCriteria windowCriteria,
+        ControlSelectionCriteria controlCriteria,
+        int maxTextLength,
+        string? expectedText,
+        bool ignoreCase,
+        bool includeTextRanges,
+        bool realizeVirtualizedItem,
+        bool allWindows) {
+        return ExecuteCore(() => new DesktopAutomationService().ObserveControls(
+            CreateWindowQuery(windowCriteria),
+            CreateControlQuery(controlCriteria),
+            new DesktopControlObservationOptions {
+                MaxTextLength = maxTextLength,
+                ExpectedText = expectedText,
+                IgnoreCase = ignoreCase,
+                IncludeTextRanges = includeTextRanges,
+                IncludeSemanticState = true,
+                RealizeVirtualizedItem = realizeVirtualizedItem
+            },
+            allWindows,
+            controlCriteria.All));
+    }
+
+    public static DesktopControlObservation WaitForControlObservation(
+        WindowSelectionCriteria windowCriteria,
+        ControlSelectionCriteria controlCriteria,
+        DesktopControlObservationCondition condition,
+        int maxTextLength,
+        bool includeTextRanges,
+        bool realizeVirtualizedItem,
+        int timeoutMilliseconds,
+        int intervalMilliseconds) {
+        return ExecuteCore(() => new DesktopAutomationService().WaitForControlObservation(
+            CreateWindowQuery(windowCriteria),
+            CreateControlQuery(controlCriteria),
+            condition,
+            timeoutMilliseconds,
+            intervalMilliseconds,
+            new DesktopControlObservationOptions {
+                MaxTextLength = maxTextLength,
+                ExpectedText = condition.ExpectedText,
+                IgnoreCase = condition.IgnoreCase,
+                IncludeTextRanges = includeTextRanges,
+                IncludeSemanticState = true,
+                RealizeVirtualizedItem = realizeVirtualizedItem
+            }));
+    }
+
+    public static DesktopTextEditResult EditControlText(
+        WindowSelectionCriteria windowCriteria,
+        ControlSelectionCriteria controlCriteria,
+        string text,
+        string mode,
+        string? expectedFingerprint,
+        string? expectedEditContextFingerprint,
+        bool ensureForegroundWindow,
+        bool allowForegroundInputFallback,
+        bool verifyAfterEdit,
+        int maxTextLength) {
+        if (!Enum.TryParse(mode, ignoreCase: true, out DesktopTextEditMode editMode) ||
+            !Enum.IsDefined(typeof(DesktopTextEditMode), editMode)) {
+            throw new CommandLineException("Text edit mode must be ReplaceDocument, ReplaceSelection, or InsertAtCaret.");
+        }
+
+        return ExecuteCore(() => new DesktopAutomationService().EditControlText(
+            CreateWindowQuery(windowCriteria),
+            CreateControlQuery(controlCriteria),
+            new DesktopTextEditRequest {
+                Text = text,
+                Mode = editMode,
+                ExpectedFingerprint = expectedFingerprint,
+                ExpectedEditContextFingerprint = expectedEditContextFingerprint,
+                EnsureForegroundWindow = ensureForegroundWindow,
+                AllowForegroundInputFallback = allowForegroundInputFallback,
+                VerifyAfterEdit = verifyAfterEdit
+            },
+            new DesktopControlObservationOptions {
+                MaxTextLength = maxTextLength,
+                IncludeTextRanges = true,
+                IncludeSemanticState = true
+            }));
+    }
+
     public static IReadOnlyList<ControlResult> ListControlTargets(WindowSelectionCriteria windowCriteria, string targetName, bool allWindows, bool allControls) {
         return ExecuteCore(() => new DesktopAutomationService()
             .GetControlTargets(CreateWindowQuery(windowCriteria), targetName, allWindows, allControls)
@@ -1924,6 +2011,10 @@ internal static partial class DesktopOperations {
             ControlType = observation.ControlType,
             Text = observation.Text,
             Value = observation.Value,
+            ValueSource = observation.ValueSource,
+            IsValueTruncated = observation.IsValueTruncated,
+            ContainsExpected = observation.ContainsExpected,
+            IsPassword = observation.IsPassword,
             IsKeyboardFocusable = observation.IsKeyboardFocusable,
             IsEnabled = observation.IsEnabled
         };
@@ -2367,14 +2458,25 @@ internal static partial class DesktopOperations {
             Handle = $"0x{control.Handle.ToInt64():X}",
             ClassName = control.ClassName,
             Id = control.Id,
-            Text = !string.IsNullOrWhiteSpace(control.Text) ? control.Text : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
-            Value = !string.IsNullOrWhiteSpace(control.Value) ? control.Value : !string.IsNullOrWhiteSpace(control.Text) ? control.Text : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty,
+            Text = control.IsPassword == false
+                ? !string.IsNullOrEmpty(control.Text)
+                    ? control.Text
+                    : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty
+                : string.Empty,
+            Value = control.IsPassword == false
+                ? !string.IsNullOrEmpty(control.Value)
+                    ? control.Value
+                    : !string.IsNullOrEmpty(control.Text)
+                        ? control.Text
+                        : control.Handle != IntPtr.Zero ? WindowTextHelper.GetWindowText(control.Handle) : string.Empty
+                : string.Empty,
             Source = control.Source.ToString(),
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
             FrameworkId = control.FrameworkId,
             IsKeyboardFocusable = control.IsKeyboardFocusable,
             IsEnabled = control.IsEnabled,
+            IsPassword = control.IsPassword,
             IsOffscreen = control.IsOffscreen,
             SupportsBackgroundClick = control.SupportsBackgroundClick,
             SupportsBackgroundText = control.SupportsBackgroundText,
@@ -2425,6 +2527,7 @@ internal static partial class DesktopOperations {
             }).ToArray(),
             UiAutomationActionProbe = diagnostics.UiAutomationActionProbe == null ? null : new UiAutomationActionDiagnosticResult {
                 Attempted = diagnostics.UiAutomationActionProbe.Attempted,
+                TimedOut = diagnostics.UiAutomationActionProbe.TimedOut,
                 Resolved = diagnostics.UiAutomationActionProbe.Resolved,
                 UsedCachedActionMatch = diagnostics.UiAutomationActionProbe.UsedCachedActionMatch,
                 UsedPreferredRoot = diagnostics.UiAutomationActionProbe.UsedPreferredRoot,

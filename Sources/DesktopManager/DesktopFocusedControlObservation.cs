@@ -46,6 +46,26 @@ public sealed class DesktopFocusedControlObservation
     public string Value { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the source used to read <see cref="Value"/>.
+    /// </summary>
+    public string ValueSource { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the returned value was truncated at the requested observation limit.
+    /// </summary>
+    public bool IsValueTruncated { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the complete provider range contained the expected text.
+    /// </summary>
+    public bool? ContainsExpected { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether UI Automation marks the focused control as password-protected.
+    /// </summary>
+    public bool? IsPassword { get; set; }
+
+    /// <summary>
     /// Gets or sets whether the focused control can receive keyboard focus.
     /// </summary>
     public bool? IsKeyboardFocusable { get; set; }

@@ -34,6 +34,45 @@ public static class WindowTextHelper {
         return GetViaMessage(handle, Math.Max(length + 1, 256));
     }
 
+    /// <summary>
+    /// Gets at most the requested number of window-text characters.
+    /// </summary>
+    /// <param name="handle">Window handle.</param>
+    /// <param name="maxLength">Maximum number of characters to return.</param>
+    /// <param name="isTruncated">Whether the native text is longer than the returned value.</param>
+    /// <returns>Bounded window text or an empty string.</returns>
+    public static string GetWindowText(IntPtr handle, int maxLength, out bool isTruncated) {
+        if (maxLength < 1 || maxLength > DesktopTextObservationOptions.MaximumTextLength) {
+            throw new ArgumentOutOfRangeException(nameof(maxLength), $"maxLength must be between 1 and {DesktopTextObservationOptions.MaximumTextLength}.");
+        }
+
+        isTruncated = false;
+        if (handle == IntPtr.Zero) {
+            return string.Empty;
+        }
+
+        int reportedLength = MonitorNativeMethods.GetWindowTextLength(handle);
+        int capacity = GetBoundedTextCapacity(reportedLength, maxLength);
+        var builder = new StringBuilder(capacity);
+        int copied = MonitorNativeMethods.GetWindowText(handle, builder, builder.Capacity);
+        string value = copied > 0
+            ? builder.ToString()
+            : GetViaMessage(handle, capacity);
+        return CreateBoundedTextResult(value, reportedLength, maxLength, out isTruncated);
+    }
+
+    internal static int GetBoundedTextCapacity(int reportedLength, int maxLength) {
+        return reportedLength > 0 && reportedLength < maxLength
+            ? reportedLength + 2
+            : maxLength + 2;
+    }
+
+    internal static string CreateBoundedTextResult(string value, int reportedLength, int maxLength, out bool isTruncated) {
+        bool filledGrowthProbe = reportedLength > 0 && reportedLength < maxLength && value.Length > reportedLength;
+        isTruncated = reportedLength > maxLength || value.Length > maxLength || filledGrowthProbe;
+        return value.Length > maxLength ? value.Substring(0, maxLength) : value;
+    }
+
     private static string GetViaMessage(IntPtr handle, int capacity) {
         if (capacity <= 0) {
             capacity = 256;

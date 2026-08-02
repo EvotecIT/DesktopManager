@@ -13,6 +13,8 @@ namespace DesktopManager;
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class WindowInputService {
+    private const int NativeTextVerificationTimeoutMilliseconds = 1000;
+
     internal enum WindowTextDeliveryMode {
         ForegroundInput,
         WindowMessage
@@ -441,14 +443,22 @@ public static class WindowInputService {
             ExtraInfo = IntPtr.Zero
         };
 
+        uint sent = 0;
         for (int attempt = 0; attempt < options.InputRetryCount; attempt++) {
-            uint sent = MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+            sent = MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
             if (sent == inputs.Length) {
                 break;
             }
             if (attempt < options.InputRetryCount - 1 && options.ActivationRetryDelayMilliseconds > 0) {
                 Thread.Sleep(options.ActivationRetryDelayMilliseconds);
             }
+        }
+
+        try {
+            KeyboardInputService.EnsureInputDelivery((uint)inputs.Length, sent, "Unicode text input");
+        } catch (KeyboardInputDeliveryException) {
+            KeyboardInputService.TryReleaseUnicodeCharacter(character);
+            throw;
         }
 
         if (options.KeyDelayMilliseconds > 0) {
@@ -505,22 +515,35 @@ public static class WindowInputService {
             return;
         }
 
-        string current = WindowTextHelper.GetWindowText(editable.Handle);
+        if (!WindowControlService.TryGetControlText(
+                editable,
+                DesktopTextObservationOptions.MaximumTextLength,
+                NativeTextVerificationTimeoutMilliseconds,
+                out string current,
+                out bool isTruncated)) {
+            throw new NativeTextMutationOutcomeUnknownException(
+                "WM_GETTEXT",
+                NativeTextVerificationTimeoutMilliseconds);
+        }
+        if (isTruncated) {
+            throw new InvalidOperationException("The editable control text was too large to verify before applying the fallback text.");
+        }
+
         if (string.Equals(current, text, StringComparison.Ordinal)) {
             return;
         }
 
-        MonitorNativeMethods.SendMessage(editable.Handle, MonitorNativeMethods.WM_SETTEXT, IntPtr.Zero, text);
+        WindowControlService.SetText(editable, text);
     }
 
     private static WindowControlInfo? FindPreferredEditableControl(IntPtr windowHandle) {
         var enumerator = new ControlEnumerator();
         List<WindowControlInfo> controls = enumerator.EnumerateControls(windowHandle);
 
-        return controls.Find(control => control.ClassName.Equals("RichEditD2DPT", StringComparison.OrdinalIgnoreCase))
-            ?? controls.Find(control => control.ClassName.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase))
-            ?? controls.Find(control => control.ClassName.IndexOf("RichEdit", StringComparison.OrdinalIgnoreCase) >= 0)
-            ?? controls.Find(control => control.ClassName.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0);
+        return controls.Find(control => control.IsPassword == false && control.ClassName.Equals("RichEditD2DPT", StringComparison.OrdinalIgnoreCase))
+            ?? controls.Find(control => control.IsPassword == false && control.ClassName.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase))
+            ?? controls.Find(control => control.IsPassword == false && control.ClassName.IndexOf("RichEdit", StringComparison.OrdinalIgnoreCase) >= 0)
+            ?? controls.Find(control => control.IsPassword == false && control.ClassName.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
     private static IntPtr ResolvePreferredTextHandle(IntPtr windowHandle) {

@@ -3,11 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 
 namespace DesktopManager;
 
-internal sealed class UiAutomationControlService {
+internal sealed partial class UiAutomationControlService {
     private const int EnumeratedControlsCacheMilliseconds = 750;
     private const int ActionMatchCacheMilliseconds = 5000;
     private const int ForegroundTextVerificationMilliseconds = 1000;
@@ -26,6 +25,8 @@ internal sealed class UiAutomationControlService {
     private readonly Type? _automationElementCollectionType;
     private readonly Type? _conditionType;
     private readonly Type? _treeScopeType;
+
+    internal bool LastOperationTimedOut { get; private set; }
 
     public UiAutomationControlService() {
         _automationClientAssembly = AppDomain.CurrentDomain.GetAssemblies()
@@ -49,11 +50,29 @@ internal sealed class UiAutomationControlService {
         _treeScopeType != null;
 
     public List<WindowControlInfo> EnumerateControls(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles = null) {
+        return EnumerateControls(windowHandle, fallbackRootHandles, readValues: true);
+    }
+
+    internal List<WindowControlInfo> EnumerateControls(
+        IntPtr windowHandle,
+        IReadOnlyList<IntPtr>? fallbackRootHandles,
+        bool readValues) {
+        return EnumerateControls(windowHandle, fallbackRootHandles, readValues, UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds);
+    }
+
+    internal List<WindowControlInfo> EnumerateControls(
+        IntPtr windowHandle,
+        IReadOnlyList<IntPtr>? fallbackRootHandles,
+        bool readValues,
+        int invocationTimeoutMilliseconds) {
         if (!IsAvailable || windowHandle == IntPtr.Zero) {
             return new List<WindowControlInfo>();
         }
 
-        return RunInSta(service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles));
+        return RunInSta(
+            service => service.EnumerateControlsCore(windowHandle, fallbackRootHandles, readValues),
+            windowHandle,
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
     }
 
     internal static IReadOnlyList<IntPtr> GetFallbackRootHandles(IntPtr windowHandle, IEnumerable<WindowControlInfo>? win32Controls) {
@@ -129,7 +148,7 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryInvokeCore(window, control));
+        return RunInSta(service => service.TryInvokeCore(window, control), window.Handle, isMutation: true);
     }
 
     public bool TrySetValue(WindowInfo window, WindowControlInfo control, string value) {
@@ -145,7 +164,20 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(value));
         }
 
-        return RunInSta(service => service.TrySetValueCore(window, control, value));
+        return RunInSta(service => service.TrySetValueCore(window, control, value), window.Handle, isMutation: true);
+    }
+
+    internal UiAutomationTextEditAttempt TrySetValue(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        string expectedContentFingerprint,
+        int maxTextLength) {
+        ValidateTextReadLength(maxTextLength);
+        return RunInSta(
+            service => service.TrySetValueCore(window, control, value, expectedContentFingerprint, maxTextLength),
+            window.Handle,
+            isMutation: true);
     }
 
     public bool TrySetText(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
@@ -161,7 +193,21 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(value));
         }
 
-        return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow));
+        return RunInSta(service => service.TrySetTextCore(window, control, value, ensureForegroundWindow), window.Handle, isMutation: true);
+    }
+
+    internal UiAutomationTextEditAttempt TrySetText(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        bool ensureForegroundWindow,
+        string expectedContentFingerprint,
+        int maxTextLength) {
+        ValidateTextReadLength(maxTextLength);
+        return RunInSta(
+            service => service.TrySetTextCore(window, control, value, ensureForegroundWindow, expectedContentFingerprint, maxTextLength),
+            window.Handle,
+            isMutation: true);
     }
 
     public bool TrySetCheckState(WindowInfo window, WindowControlInfo control, bool check) {
@@ -173,7 +219,7 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TrySetCheckStateCore(window, control, check));
+        return RunInSta(service => service.TrySetCheckStateCore(window, control, check), window.Handle, isMutation: true);
     }
 
     public bool TrySetSelectedValue(WindowInfo window, WindowControlInfo control, string selectedValue) {
@@ -189,7 +235,7 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(selectedValue));
         }
 
-        return RunInSta(service => service.TrySetSelectedValueCore(window, control, selectedValue));
+        return RunInSta(service => service.TrySetSelectedValueCore(window, control, selectedValue), window.Handle, isMutation: true);
     }
 
     public bool TrySendKeys(WindowInfo window, WindowControlInfo control, IReadOnlyList<VirtualKey> keys, bool ensureForegroundWindow) {
@@ -205,7 +251,7 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentException("At least one key is required.", nameof(keys));
         }
 
-        return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow));
+        return RunInSta(service => service.TrySendKeysCore(window, control, keys, ensureForegroundWindow), window.Handle, isMutation: true);
     }
 
     public bool? TryReadCheckState(WindowInfo window, WindowControlInfo control) {
@@ -217,7 +263,19 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryReadCheckStateCore(window, control));
+        return RunInSta(service => service.TryReadCheckStateCore(window, control), window.Handle);
+    }
+
+    internal bool? TryReadResolvedPasswordState(WindowInfo window, WindowControlInfo control) {
+        if (window == null) {
+            throw new ArgumentNullException(nameof(window));
+        }
+
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        return RunInSta(service => service.TryReadResolvedPasswordStateCore(window, control), window.Handle);
     }
 
     public string? TryReadSelectedValue(WindowInfo window, WindowControlInfo control) {
@@ -229,7 +287,7 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryReadSelectedValueCore(window, control));
+        return RunInSta(service => service.TryReadSelectedValueCore(window, control), window.Handle);
     }
 
     public bool TryFocus(WindowInfo window, WindowControlInfo control, bool ensureForegroundWindow) {
@@ -241,7 +299,7 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.TryFocusCore(window, control, ensureForegroundWindow));
+        return RunInSta(service => service.TryFocusCore(window, control, ensureForegroundWindow), window.Handle, isMutation: true);
     }
 
     public IReadOnlyList<DesktopUiAutomationRootDiagnostic> DiagnoseRoots(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles = null, int sampleLimit = 3) {
@@ -253,7 +311,8 @@ internal sealed class UiAutomationControlService {
             return Array.Empty<DesktopUiAutomationRootDiagnostic>();
         }
 
-        return RunInSta(service => service.DiagnoseRootsCore(windowHandle, fallbackRootHandles, sampleLimit));
+        return RunInSta(service => service.DiagnoseRootsCore(windowHandle, fallbackRootHandles, sampleLimit), windowHandle)
+            ?? Array.Empty<DesktopUiAutomationRootDiagnostic>();
     }
 
     public DesktopUiAutomationActionDiagnostic ProbeActionResolution(WindowInfo window, WindowControlInfo control) {
@@ -265,26 +324,23 @@ internal sealed class UiAutomationControlService {
             throw new ArgumentNullException(nameof(control));
         }
 
-        return RunInSta(service => service.ProbeActionResolutionCore(window, control));
+        DesktopUiAutomationActionDiagnostic? diagnostic = RunInSta(
+            service => service.ProbeActionResolutionCore(window, control),
+            window.Handle);
+        return diagnostic ?? new DesktopUiAutomationActionDiagnostic {
+            Attempted = IsAvailable,
+            SearchMode = IsAvailable ? "unavailable" : "uia-unavailable"
+        };
     }
 
-    private T RunInSta<T>(Func<UiAutomationControlService, T> operation) {
-        if (!IsAvailable) {
-            return default!;
-        }
-
-        if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA) {
-            return operation(this);
-        }
-
-        return StaDispatcher.Value.Invoke(operation);
-    }
-
-    private List<WindowControlInfo> EnumerateControlsCore(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles) {
+    private List<WindowControlInfo> EnumerateControlsCore(
+        IntPtr windowHandle,
+        IReadOnlyList<IntPtr>? fallbackRootHandles,
+        bool readValues) {
         try {
             IntPtr preferredRootHandle = GetPreferredSearchRootHandle(windowHandle, fallbackRootHandles);
             if (preferredRootHandle != IntPtr.Zero && preferredRootHandle != windowHandle) {
-                List<WindowControlInfo> preferredControls = EnumerateControlsForRoot(preferredRootHandle, includeRoot: true, out _);
+                List<WindowControlInfo> preferredControls = EnumerateControlsForRoot(preferredRootHandle, includeRoot: true, readValues: readValues, out _);
                 if (preferredControls.Count > 0) {
                     return preferredControls;
                 }
@@ -292,7 +348,7 @@ internal sealed class UiAutomationControlService {
                 ForgetPreferredSearchRootHandle(windowHandle, preferredRootHandle);
             }
 
-            List<WindowControlInfo> primaryControls = EnumerateControlsForRoot(windowHandle, includeRoot: false, out _);
+            List<WindowControlInfo> primaryControls = EnumerateControlsForRoot(windowHandle, includeRoot: false, readValues: readValues, out _);
             if (primaryControls.Count > 0 || fallbackRootHandles == null || fallbackRootHandles.Count == 0) {
                 if (primaryControls.Count > 0) {
                     RememberPreferredSearchRootHandle(windowHandle, windowHandle);
@@ -303,7 +359,7 @@ internal sealed class UiAutomationControlService {
 
             var mergedControls = new List<WindowControlInfo>();
             foreach (IntPtr fallbackRootHandle in OrderFallbackRootHandles(fallbackRootHandles, preferredRootHandle)) {
-                List<WindowControlInfo> fallbackControls = EnumerateControlsForRoot(fallbackRootHandle, includeRoot: true, out _);
+                List<WindowControlInfo> fallbackControls = EnumerateControlsForRoot(fallbackRootHandle, includeRoot: true, readValues: readValues, out _);
                 if (fallbackControls.Count > 0) {
                     RememberPreferredSearchRootHandle(windowHandle, fallbackRootHandle);
                 }
@@ -337,7 +393,7 @@ internal sealed class UiAutomationControlService {
             try {
                 elementResolved = TryResolveRootElement(rootHandle, out _);
                 if (elementResolved) {
-                    controls = EnumerateControlsForRoot(rootHandle, includeRoot, out bool usedCache);
+                    controls = EnumerateControlsForRoot(rootHandle, includeRoot, readValues: true, out bool usedCache);
                     diagnostics.Add(new DesktopUiAutomationRootDiagnostic {
                         Order = index,
                         Handle = rootHandle,
@@ -375,8 +431,12 @@ internal sealed class UiAutomationControlService {
         return diagnostics;
     }
 
-    private List<WindowControlInfo> EnumerateControlsForRoot(IntPtr rootHandle, bool includeRoot, out bool usedCache) {
-        if (TryGetCachedEnumeratedControls(rootHandle, includeRoot, out List<WindowControlInfo> cachedControls)) {
+    private List<WindowControlInfo> EnumerateControlsForRoot(
+        IntPtr rootHandle,
+        bool includeRoot,
+        bool readValues,
+        out bool usedCache) {
+        if (TryGetCachedEnumeratedControls(rootHandle, includeRoot, readValues, out List<WindowControlInfo> cachedControls)) {
             usedCache = true;
             return cachedControls;
         }
@@ -413,7 +473,7 @@ internal sealed class UiAutomationControlService {
             }
 
             try {
-                WindowControlInfo? info = CreateControlInfo(element);
+                WindowControlInfo? info = CreateControlInfo(element, readValues);
                 if (info != null) {
                     controls.Add(info);
                 }
@@ -423,7 +483,7 @@ internal sealed class UiAutomationControlService {
             }
         }
 
-        CacheEnumeratedControls(rootHandle, includeRoot, controls);
+        CacheEnumeratedControls(rootHandle, includeRoot, readValues, controls);
         return controls;
     }
 
@@ -434,11 +494,11 @@ internal sealed class UiAutomationControlService {
             return false;
         }
 
-        return TryPatternAction(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
-            TryPatternAction(element, "System.Windows.Automation.SelectionItemPattern", "Select") ||
-            TryPatternAction(element, "System.Windows.Automation.ExpandCollapsePattern", "Expand") ||
-            TryPatternAction(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+        return TryPatternMutation(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
+            TryPatternMutation(element, "System.Windows.Automation.SelectionItemPattern", "Select") ||
+            TryPatternMutation(element, "System.Windows.Automation.ExpandCollapsePattern", "Expand") ||
+            TryPatternMutation(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
+            TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
     }
 
     private bool TrySetCheckStateCore(WindowInfo window, WindowControlInfo control, bool check) {
@@ -455,9 +515,9 @@ internal sealed class UiAutomationControlService {
             }
 
             bool actionApplied =
-                TryPatternAction(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
-                TryPatternAction(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
-                TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+                TryPatternMutation(element, "System.Windows.Automation.TogglePattern", "Toggle") ||
+                TryPatternMutation(element, "System.Windows.Automation.InvokePattern", "Invoke") ||
+                TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
             if (!actionApplied) {
                 return false;
             }
@@ -477,20 +537,35 @@ internal sealed class UiAutomationControlService {
     }
 
     private bool TrySetValueCore(WindowInfo window, WindowControlInfo control, string value) {
+        return TrySetValueCore(window, control, value, expectedContentFingerprint: null, maxTextLength: DesktopTextObservationOptions.MaximumTextLength).Applied;
+    }
+
+    private UiAutomationTextEditAttempt TrySetValueCore(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        string? expectedContentFingerprint,
+        int maxTextLength) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
-        if (element == null) {
-            return false;
+        if (element == null || !IsTextMutationAllowed(element)) {
+            return UiAutomationTextEditAttempt.Failed("control-unavailable");
         }
 
-        bool patternApplied =
-            TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value) ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+        UiAutomationTextEditAttempt precondition = ValidateContentPrecondition(element, expectedContentFingerprint, maxTextLength);
+        if (!precondition.Applied) {
+            return precondition;
+        }
+
+        bool patternApplied = TryPatternMutation(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
+        if (!patternApplied && IsTextMutationAllowed(element)) {
+            patternApplied = TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
+        }
         if (!patternApplied) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("provider-unavailable");
         }
 
-        return WaitForResolvedValue(window, control, value);
+        return UiAutomationTextEditAttempt.Succeeded();
     }
 
     private bool TrySetSelectedValueCore(WindowInfo window, WindowControlInfo control, string selectedValue) {
@@ -506,15 +581,15 @@ internal sealed class UiAutomationControlService {
         }
 
         bool patternApplied =
-            TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", selectedValue) ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", selectedValue);
+            TryPatternMutation(element, "System.Windows.Automation.ValuePattern", "SetValue", selectedValue) ||
+            TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", selectedValue);
         if (patternApplied && WaitForResolvedSelectedValue(window, control, selectedValue)) {
             return true;
         }
 
         bool expanded = TryPatternAction(element, "System.Windows.Automation.ExpandCollapsePattern", "Expand");
         if (expanded) {
-            Thread.Sleep(ForegroundInputSettleMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
         }
 
         try {
@@ -528,9 +603,9 @@ internal sealed class UiAutomationControlService {
             }
 
             bool itemApplied =
-                TryPatternAction(candidate, "System.Windows.Automation.SelectionItemPattern", "Select") ||
-                TryPatternAction(candidate, "System.Windows.Automation.InvokePattern", "Invoke") ||
-                TryPatternAction(candidate, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
+                TryPatternMutation(candidate, "System.Windows.Automation.SelectionItemPattern", "Select") ||
+                TryPatternMutation(candidate, "System.Windows.Automation.InvokePattern", "Invoke") ||
+                TryPatternMutation(candidate, "System.Windows.Automation.LegacyIAccessiblePattern", "DoDefaultAction");
             if (!itemApplied) {
                 return false;
             }
@@ -546,43 +621,102 @@ internal sealed class UiAutomationControlService {
     }
 
     private bool TrySetTextCore(WindowInfo window, WindowControlInfo control, string value, bool ensureForegroundWindow) {
+        return TrySetTextCore(window, control, value, ensureForegroundWindow, expectedContentFingerprint: null, maxTextLength: DesktopTextObservationOptions.MaximumTextLength).Applied;
+    }
+
+    private UiAutomationTextEditAttempt TrySetTextCore(
+        WindowInfo window,
+        WindowControlInfo control,
+        string value,
+        bool ensureForegroundWindow,
+        string? expectedContentFingerprint,
+        int maxTextLength) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
         object? element = match.Element;
-        if (element == null) {
-            return false;
+        if (element == null || !IsTextMutationAllowed(element)) {
+            return UiAutomationTextEditAttempt.Failed("control-unavailable");
         }
 
-        if (TryPatternAction(element, "System.Windows.Automation.ValuePattern", "SetValue", value) ||
-            TryPatternAction(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value)) {
-            return true;
+        UiAutomationTextEditAttempt precondition = ValidateContentPrecondition(element, expectedContentFingerprint, maxTextLength);
+        if (!precondition.Applied) {
+            return precondition;
         }
 
-        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
-        if (!TrySetFocus(element)) {
-            return false;
+        bool patternApplied = TryPatternMutation(element, "System.Windows.Automation.ValuePattern", "SetValue", value);
+        if (!patternApplied && IsTextMutationAllowed(element)) {
+            patternApplied = TryPatternMutation(element, "System.Windows.Automation.LegacyIAccessiblePattern", "SetValue", value);
         }
 
-        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
-            return false;
+        if (patternApplied) {
+            return UiAutomationTextEditAttempt.Succeeded();
+        }
+
+        if (!TryPrepareForegroundAndFocus(
+                ensureForegroundWindow,
+                () => WindowActivationService.TryPrepareWindowForAutomation(window.Handle),
+                () => TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView"),
+                () => TrySetFocus(element),
+                out bool foregroundPreparationFailed)) {
+            return UiAutomationTextEditAttempt.Failed(foregroundPreparationFailed ? "foreground-failed" : "focus-failed");
         }
 
         if (MonitorNativeMethods.GetForegroundWindow() != window.Handle) {
-            return false;
+            return UiAutomationTextEditAttempt.Failed("foreground-required");
         }
 
-        if (TryReplaceFocusedTextWithPaste(window, control, value)) {
-            return true;
+        if (!IsTextMutationAllowed(element)) {
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+        }
+
+        precondition = ValidateContentPrecondition(element, expectedContentFingerprint, maxTextLength);
+        if (!precondition.Applied) {
+            return precondition;
+        }
+
+        if (!IsTextMutationAllowed(element)) {
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+        }
+
+        if (!IsExpectedForegroundInputTarget(window, control, element)) {
+            return UiAutomationTextEditAttempt.Failed("input-target-changed");
         }
 
         KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
-        Thread.Sleep(ForegroundInputSettleMilliseconds);
+        WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
+        if (!IsTextMutationAllowed(element)) {
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
+        }
+
+        if (!IsExpectedForegroundInputTarget(window, control, element)) {
+            return UiAutomationTextEditAttempt.Failed("input-target-changed");
+        }
+
         if (value.Length == 0) {
             KeyboardInputService.SendToForeground(VirtualKey.VK_DELETE);
         } else {
             KeyboardInputService.SendTextToForeground(value);
         }
 
-        return WaitForResolvedValue(window, control, value);
+        return UiAutomationTextEditAttempt.Succeeded();
+    }
+
+    private UiAutomationTextEditAttempt ValidateContentPrecondition(
+        object element,
+        string? expectedContentFingerprint,
+        int maxTextLength) {
+        if (string.IsNullOrWhiteSpace(expectedContentFingerprint)) {
+            return UiAutomationTextEditAttempt.Succeeded();
+        }
+
+        UiAutomationTextReadResult? current = ReadElementText(element, maxTextLength, expectedText: null);
+        if (current == null || current.IsTruncated) {
+            return UiAutomationTextEditAttempt.Failed("incomplete-precondition");
+        }
+
+        string observedFingerprint = DesktopTextObservationBuilder.CreateFingerprint(current.Value);
+        return string.Equals(observedFingerprint, expectedContentFingerprint, StringComparison.OrdinalIgnoreCase)
+            ? UiAutomationTextEditAttempt.Succeeded()
+            : UiAutomationTextEditAttempt.Failed("content-changed", observedContentFingerprint: observedFingerprint);
     }
 
     private bool? TryReadCheckStateCore(WindowInfo window, WindowControlInfo control) {
@@ -594,7 +728,7 @@ internal sealed class UiAutomationControlService {
 
     private string? TryReadSelectedValueCore(WindowInfo window, WindowControlInfo control) {
         UiAutomationElementMatchResult match = ResolveMatchingElement(window.Handle, control);
-        return match.Element == null
+        return match.Element == null || !IsTextMutationAllowed(match.Element)
             ? null
             : ReadSelectedValue(match.Element);
     }
@@ -606,12 +740,12 @@ internal sealed class UiAutomationControlService {
             return false;
         }
 
-        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
-        if (!TrySetFocus(element)) {
-            return false;
-        }
-
-        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
+        if (!TryPrepareForegroundAndFocus(
+                ensureForegroundWindow,
+                () => WindowActivationService.TryPrepareWindowForAutomation(window.Handle),
+                () => TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView"),
+                () => TrySetFocus(element),
+                out _)) {
             return false;
         }
 
@@ -619,7 +753,12 @@ internal sealed class UiAutomationControlService {
             return false;
         }
 
+        if (!IsExpectedForegroundInputTarget(window, control, element)) {
+            return false;
+        }
+
         KeyboardInputService.SendToForeground(keys.ToArray());
+        WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
         return true;
     }
 
@@ -630,12 +769,12 @@ internal sealed class UiAutomationControlService {
             return false;
         }
 
-        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
-        if (!TrySetFocus(element)) {
-            return false;
-        }
-
-        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
+        if (!TryPrepareForegroundAndFocus(
+                ensureForegroundWindow,
+                () => WindowActivationService.TryPrepareWindowForAutomation(window.Handle),
+                () => TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView"),
+                () => TrySetFocus(element),
+                out _)) {
             return false;
         }
 
@@ -657,7 +796,7 @@ internal sealed class UiAutomationControlService {
 
     private UiAutomationElementMatchResult ResolveMatchingElement(IntPtr windowHandle, WindowControlInfo control) {
         var enumerator = new ControlEnumerator();
-        List<WindowControlInfo> win32Controls = enumerator.EnumerateControls(windowHandle);
+        List<WindowControlInfo> win32Controls = enumerator.EnumerateControlMetadata(windowHandle);
         IReadOnlyList<IntPtr> fallbackRootHandles = GetFallbackRootHandles(windowHandle, win32Controls);
         IntPtr preferredRootHandle = GetPreferredSearchRootHandle(windowHandle, fallbackRootHandles);
         IReadOnlyList<IntPtr> searchRootHandles = GetSearchRootHandles(windowHandle, win32Controls);
@@ -689,20 +828,6 @@ internal sealed class UiAutomationControlService {
         WindowControlInfo? bestControlInfo = null;
         if (preferredRootHandle != IntPtr.Zero && preferredRootHandle != windowHandle) {
             FindBestMatchInRoot(preferredRootHandle, includeRoot: true, control, ref bestMatch, ref bestScore, ref bestRootHandle, ref bestControlInfo);
-            if (bestScore > 0) {
-                RememberPreferredSearchRootHandle(windowHandle, preferredRootHandle);
-                CacheActionMatch(actionMatchCacheKey, bestRootHandle, bestControlInfo);
-                return new UiAutomationElementMatchResult {
-                    Element = bestMatch,
-                    UsedCachedActionMatch = false,
-                    UsedPreferredRoot = true,
-                    RootHandle = bestRootHandle,
-                    Score = bestScore,
-                    SearchMode = "PreferredRootSearch"
-                };
-            }
-
-            ForgetPreferredSearchRootHandle(windowHandle, preferredRootHandle);
         }
 
         for (int rootIndex = 0; rootIndex < searchRootHandles.Count; rootIndex++) {
@@ -713,9 +838,12 @@ internal sealed class UiAutomationControlService {
 
             bool includeRoot = rootHandle != windowHandle;
             FindBestMatchInRoot(rootHandle, includeRoot, control, ref bestMatch, ref bestScore, ref bestRootHandle, ref bestControlInfo);
-            if (bestScore > 0 && rootHandle != windowHandle) {
-                RememberPreferredSearchRootHandle(windowHandle, rootHandle);
-            }
+        }
+
+        if (bestScore > 0 && bestRootHandle != windowHandle) {
+            RememberPreferredSearchRootHandle(windowHandle, bestRootHandle);
+        } else if (preferredRootHandle != IntPtr.Zero) {
+            ForgetPreferredSearchRootHandle(windowHandle, preferredRootHandle);
         }
 
         CacheActionMatch(actionMatchCacheKey, bestRootHandle, bestControlInfo);
@@ -786,6 +914,18 @@ internal sealed class UiAutomationControlService {
 
     internal static int ScoreMatch(WindowControlInfo expected, WindowControlInfo candidate) {
         int score = 0;
+        if (expected.Handle != IntPtr.Zero && candidate.Handle != IntPtr.Zero && expected.Handle != candidate.Handle) {
+            return -1;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expected.RuntimeId)) {
+            if (!string.Equals(expected.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal)) {
+                return -1;
+            }
+
+            score += 200;
+        }
+
         if (expected.Handle != IntPtr.Zero && candidate.Handle == expected.Handle) {
             score += 100;
         }
@@ -841,19 +981,38 @@ internal sealed class UiAutomationControlService {
 
     private void FindBestMatchInRoot(IntPtr rootHandle, bool includeRoot, WindowControlInfo expected, ref object? bestMatch, ref int bestScore, ref IntPtr bestRootHandle, ref WindowControlInfo? bestControlInfo) {
         foreach (object candidate in EnumerateElementsForRoot(rootHandle, includeRoot)) {
-            WindowControlInfo? candidateInfo = CreateControlInfo(candidate);
+            WindowControlInfo? candidateInfo = CreateControlInfo(candidate, readValue: false);
             if (candidateInfo == null) {
                 continue;
             }
 
             int score = ScoreMatch(expected, candidateInfo);
-            if (score > bestScore) {
+            if (ShouldReplaceBestMatch(expected, candidateInfo, score, bestControlInfo, bestScore)) {
                 bestScore = score;
                 bestMatch = candidate;
                 bestRootHandle = rootHandle;
                 bestControlInfo = CloneControl(candidateInfo);
             }
         }
+    }
+
+    internal static bool ShouldReplaceBestMatch(
+        WindowControlInfo expected,
+        WindowControlInfo candidate,
+        int candidateScore,
+        WindowControlInfo? currentBest,
+        int currentBestScore) {
+        if (candidateScore <= 0) {
+            return false;
+        }
+
+        bool candidateIsStrong = IsStrongCachedMatch(expected, candidate);
+        bool currentBestIsStrong = currentBest != null && IsStrongCachedMatch(expected, currentBest);
+        if (candidateIsStrong != currentBestIsStrong) {
+            return candidateIsStrong;
+        }
+
+        return candidateScore > currentBestScore;
     }
 
     private static IReadOnlyList<IntPtr> OrderFallbackRootHandles(IReadOnlyList<IntPtr>? fallbackRootHandles, IntPtr preferredRootHandle) {
@@ -877,8 +1036,8 @@ internal sealed class UiAutomationControlService {
         return ordered;
     }
 
-    private static bool TryGetCachedEnumeratedControls(IntPtr rootHandle, bool includeRoot, out List<WindowControlInfo> controls) {
-        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot);
+    private static bool TryGetCachedEnumeratedControls(IntPtr rootHandle, bool includeRoot, bool readValues, out List<WindowControlInfo> controls) {
+        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot, readValues);
         if (EnumeratedControlsCache.TryGetValue(cacheKey, out CachedControlCollection? cached) &&
             DateTime.UtcNow <= cached.ExpiresAtUtc) {
             controls = CloneControls(cached.Controls);
@@ -893,8 +1052,8 @@ internal sealed class UiAutomationControlService {
         return false;
     }
 
-    private static void CacheEnumeratedControls(IntPtr rootHandle, bool includeRoot, List<WindowControlInfo> controls) {
-        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot);
+    private static void CacheEnumeratedControls(IntPtr rootHandle, bool includeRoot, bool readValues, List<WindowControlInfo> controls) {
+        string cacheKey = GetEnumeratedControlsCacheKey(rootHandle, includeRoot, readValues);
         EnumeratedControlsCache[cacheKey] = new CachedControlCollection {
             ExpiresAtUtc = DateTime.UtcNow.AddMilliseconds(EnumeratedControlsCacheMilliseconds),
             Controls = CloneControls(controls).ToArray()
@@ -902,8 +1061,15 @@ internal sealed class UiAutomationControlService {
         TrimExpiringCache(EnumeratedControlsCache, EnumeratedControlsCacheMaximumCount, cached => cached.ExpiresAtUtc);
     }
 
-    private static string GetEnumeratedControlsCacheKey(IntPtr rootHandle, bool includeRoot) {
-        return $"{rootHandle.ToInt64():X}:{(includeRoot ? 1 : 0)}";
+    internal static string GetEnumeratedControlsCacheKey(IntPtr rootHandle, bool includeRoot, bool readValues) {
+        return $"{rootHandle.ToInt64():X}:{(includeRoot ? 1 : 0)}:{(readValues ? 1 : 0)}";
+    }
+
+    internal static int EnumeratedControlsCacheCount => EnumeratedControlsCache.Count;
+
+    internal static void InvalidateControlCaches() {
+        EnumeratedControlsCache.Clear();
+        ActionMatchCache.Clear();
     }
 
     internal static string GetActionMatchCacheKey(IntPtr windowHandle, WindowControlInfo control) {
@@ -914,12 +1080,17 @@ internal sealed class UiAutomationControlService {
         return string.Join("|", new[] {
             windowHandle.ToInt64().ToString("X"),
             control.Handle.ToInt64().ToString("X"),
+            control.RuntimeId ?? string.Empty,
             control.AutomationId ?? string.Empty,
             control.ControlType ?? string.Empty,
             control.ClassName ?? string.Empty,
             control.Text ?? string.Empty,
             control.Value ?? string.Empty,
-            control.FrameworkId ?? string.Empty
+            control.FrameworkId ?? string.Empty,
+            control.Left.ToString("X"),
+            control.Top.ToString("X"),
+            control.Width.ToString("X"),
+            control.Height.ToString("X")
         });
     }
 
@@ -950,12 +1121,12 @@ internal sealed class UiAutomationControlService {
                     continue;
                 }
 
-                WindowControlInfo? info = CreateControlInfo(element);
+                WindowControlInfo? info = CreateControlInfo(element, readValue: false);
                 if (info == null) {
                     continue;
                 }
 
-                if (ScoreMatch(expected, info) > 0) {
+                if (IsStrongCachedMatch(expected, info)) {
                     return element;
                 }
             } catch {
@@ -964,6 +1135,41 @@ internal sealed class UiAutomationControlService {
         }
 
         return null;
+    }
+
+    internal static bool IsStrongCachedMatch(WindowControlInfo expected, WindowControlInfo candidate) {
+        if (!string.IsNullOrWhiteSpace(expected.RuntimeId) || !string.IsNullOrWhiteSpace(candidate.RuntimeId)) {
+            return !string.IsNullOrWhiteSpace(expected.RuntimeId) &&
+                string.Equals(expected.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal);
+        }
+
+        if (expected.Handle != IntPtr.Zero || candidate.Handle != IntPtr.Zero) {
+            return expected.Handle != IntPtr.Zero && expected.Handle == candidate.Handle;
+        }
+
+        bool hasExpectedBounds = expected.Width > 0 && expected.Height > 0;
+        bool hasCandidateBounds = candidate.Width > 0 && candidate.Height > 0;
+        if (hasExpectedBounds || hasCandidateBounds) {
+            if (!hasExpectedBounds || !hasCandidateBounds || ScoreBoundsMatch(expected, candidate) < 16) {
+                return false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(expected.ControlType) &&
+            !string.Equals(expected.ControlType, candidate.ControlType, StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expected.ClassName) &&
+            !string.Equals(expected.ClassName, candidate.ClassName, StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(expected.AutomationId)) {
+            return string.Equals(expected.AutomationId, candidate.AutomationId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return WindowManager.AreEquivalentControls(expected, candidate);
     }
 
     private IEnumerable<(string PropertyName, string Value)> GetFastSearchTerms(WindowControlInfo control) {
@@ -1075,12 +1281,16 @@ internal sealed class UiAutomationControlService {
             Id = control.Id,
             Text = control.Text,
             Value = control.Value,
+            ValueIsTruncated = control.ValueIsTruncated,
             Source = control.Source,
+            HasUiAutomationIdentity = control.HasUiAutomationIdentity,
+            RuntimeId = control.RuntimeId,
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
             FrameworkId = control.FrameworkId,
             IsKeyboardFocusable = control.IsKeyboardFocusable,
             IsEnabled = control.IsEnabled,
+            IsPassword = control.IsPassword,
             SupportsBackgroundClick = control.SupportsBackgroundClick,
             SupportsBackgroundText = control.SupportsBackgroundText,
             SupportsBackgroundKeys = control.SupportsBackgroundKeys,
@@ -1111,30 +1321,6 @@ internal sealed class UiAutomationControlService {
         public IntPtr RootHandle { get; set; }
         public int Score { get; set; }
         public string SearchMode { get; set; } = string.Empty;
-    }
-
-    private bool TryPatternAction(object element, string patternTypeName, string methodName, params object[] parameters) {
-        Type? patternType = _automationClientAssembly?.GetType(patternTypeName, throwOnError: false);
-        if (patternType == null) {
-            return false;
-        }
-
-        object? pattern = GetCurrentPattern(element, patternType);
-        if (pattern == null) {
-            return false;
-        }
-
-        MethodInfo? method = pattern.GetType().GetMethod(methodName, parameters.Select(parameter => parameter.GetType()).ToArray());
-        if (method == null) {
-            return false;
-        }
-
-        try {
-            method.Invoke(pattern, parameters);
-            return true;
-        } catch {
-            return false;
-        }
     }
 
     private static bool TrySetFocus(object element) {
@@ -1169,7 +1355,12 @@ internal sealed class UiAutomationControlService {
         try {
             return Assembly.Load(name);
         } catch {
-            return null;
+            try {
+                string frameworkName = $"{name}, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35";
+                return Assembly.Load(frameworkName);
+            } catch {
+                return null;
+            }
         }
     }
 
@@ -1235,7 +1426,7 @@ internal sealed class UiAutomationControlService {
 
             WindowControlInfo? info;
             try {
-                info = CreateControlInfo(candidate);
+                info = CreateControlInfo(candidate, readValue: false);
             } catch {
                 continue;
             }
@@ -1357,23 +1548,18 @@ internal sealed class UiAutomationControlService {
     }
 
     private static bool ContainsEquivalentControl(List<WindowControlInfo> controls, WindowControlInfo candidate) {
-        return controls.Any(existing =>
-            (existing.Handle != IntPtr.Zero &&
-            candidate.Handle != IntPtr.Zero &&
-            existing.Handle == candidate.Handle) ||
-            (string.Equals(existing.AutomationId, candidate.AutomationId, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.ControlType, candidate.ControlType, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.Text, candidate.Text, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.ClassName, candidate.ClassName, StringComparison.OrdinalIgnoreCase)));
+        return controls.Any(existing => WindowManager.AreEquivalentControls(existing, candidate));
     }
 
-    private WindowControlInfo? CreateControlInfo(object element) {
+    private WindowControlInfo? CreateControlInfo(object element, bool readValue = true) {
         object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
         if (current == null) {
             return null;
         }
 
-        string name = ReadString(current, "Name");
+        bool? isPassword = ReadNullableBoolean(current, "IsPassword");
+        bool canAccessText = isPassword == false;
+        string name = canAccessText ? ReadString(current, "Name") : string.Empty;
         string className = ReadString(current, "ClassName");
         string automationId = ReadString(current, "AutomationId");
         string frameworkId = ReadString(current, "FrameworkId");
@@ -1382,7 +1568,7 @@ internal sealed class UiAutomationControlService {
         bool? isEnabled = ReadNullableBoolean(current, "IsEnabled");
         bool? isOffscreen = ReadNullableBoolean(current, "IsOffscreen");
         string controlType = ReadControlTypeName(current);
-        string value = ReadValue(element);
+        string value = canAccessText && readValue ? ReadValue(element) : string.Empty;
         bool hasInvokeAction = HasPattern(element, "System.Windows.Automation.InvokePattern") ||
             HasPattern(element, "System.Windows.Automation.SelectionItemPattern") ||
             HasPattern(element, "System.Windows.Automation.ExpandCollapsePattern") ||
@@ -1400,13 +1586,16 @@ internal sealed class UiAutomationControlService {
             Text = name,
             Value = value,
             Source = WindowControlSource.UiAutomation,
+            HasUiAutomationIdentity = true,
+            RuntimeId = ReadRuntimeId(element, errors: null),
             AutomationId = automationId,
             ControlType = controlType,
             FrameworkId = frameworkId,
             IsKeyboardFocusable = isKeyboardFocusable,
             IsEnabled = isEnabled,
+            IsPassword = isPassword,
             SupportsBackgroundClick = hasNativeHandle || hasInvokeAction,
-            SupportsBackgroundText = hasNativeHandle || hasDirectTextAction,
+            SupportsBackgroundText = canAccessText && (hasNativeHandle || hasDirectTextAction),
             SupportsBackgroundKeys = hasNativeHandle,
             SupportsForegroundInputFallback = SupportsForegroundFallback(hasNativeHandle, isKeyboardFocusable, isEnabled, controlType, className),
             Left = left,
@@ -1424,65 +1613,6 @@ internal sealed class UiAutomationControlService {
             string.Empty;
     }
 
-    private bool TryReplaceFocusedTextWithPaste(WindowInfo window, WindowControlInfo control, string value) {
-        string clipboardBackup = string.Empty;
-        bool restoreClipboard = false;
-
-        try {
-            restoreClipboard = ClipboardHelper.TryGetText(out clipboardBackup);
-            ClipboardHelper.SetText(value);
-        } catch {
-            return false;
-        }
-
-        try {
-            KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
-            Thread.Sleep(ForegroundInputSettleMilliseconds);
-            KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
-            return WaitForResolvedValue(window, control, value);
-        } finally {
-            if (restoreClipboard) {
-                try {
-                    ClipboardHelper.SetText(clipboardBackup);
-                } catch {
-                    // Preserve the successful input result even if clipboard restoration fails.
-                }
-            }
-        }
-    }
-
-    private bool WaitForResolvedValue(WindowInfo window, WindowControlInfo control, string expectedValue) {
-        DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(ForegroundTextVerificationMilliseconds);
-        while (DateTime.UtcNow <= deadlineUtc) {
-            string? currentValue = TryReadResolvedValue(window, control);
-            if (currentValue != null && string.Equals(currentValue, expectedValue, StringComparison.Ordinal)) {
-                control.Value = expectedValue;
-                if (string.IsNullOrWhiteSpace(control.Text) || IsLikelyEditableControl(control.ControlType, control.ClassName)) {
-                    control.Text = expectedValue;
-                }
-
-                return true;
-            }
-
-            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
-        }
-
-        return false;
-    }
-
-    private string? TryReadResolvedValue(WindowInfo window, WindowControlInfo control) {
-        UiAutomationElementMatchResult refreshedMatch = ResolveMatchingElement(window.Handle, control);
-        if (refreshedMatch.Element == null) {
-            return null;
-        }
-
-        try {
-            return ReadValue(refreshedMatch.Element);
-        } catch {
-            return null;
-        }
-    }
-
     private bool WaitForResolvedCheckState(WindowInfo window, WindowControlInfo control, bool expectedState) {
         DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(ForegroundTextVerificationMilliseconds);
         while (DateTime.UtcNow <= deadlineUtc) {
@@ -1491,7 +1621,7 @@ internal sealed class UiAutomationControlService {
                 return true;
             }
 
-            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundTextVerificationIntervalMilliseconds);
         }
 
         return false;
@@ -1501,16 +1631,16 @@ internal sealed class UiAutomationControlService {
         DateTime deadlineUtc = DateTime.UtcNow.AddMilliseconds(ForegroundTextVerificationMilliseconds);
         while (DateTime.UtcNow <= deadlineUtc) {
             string? currentValue = TryReadResolvedSelectedValue(window, control);
-            if (!string.IsNullOrWhiteSpace(currentValue) && string.Equals(currentValue, expectedValue, StringComparison.OrdinalIgnoreCase)) {
+            if (currentValue != null && string.Equals(currentValue, expectedValue, StringComparison.OrdinalIgnoreCase)) {
                 control.Value = expectedValue;
-                if (string.IsNullOrWhiteSpace(control.Text) || string.Equals(control.ControlType, "ComboBox", StringComparison.OrdinalIgnoreCase)) {
+                if (string.IsNullOrEmpty(control.Text) || string.Equals(control.ControlType, "ComboBox", StringComparison.OrdinalIgnoreCase)) {
                     control.Text = expectedValue;
                 }
 
                 return true;
             }
 
-            Thread.Sleep(ForegroundTextVerificationIntervalMilliseconds);
+            WaitWithCurrentUiMessagePump(ForegroundTextVerificationIntervalMilliseconds);
         }
 
         return false;

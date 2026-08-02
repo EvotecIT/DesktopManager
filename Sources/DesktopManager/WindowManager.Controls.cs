@@ -41,13 +41,29 @@ public partial class WindowManager {
     /// <param name="options">Optional control filter options.</param>
     /// <returns>A list of matching controls.</returns>
     public List<WindowControlInfo> GetControls(WindowInfo window, WindowControlQueryOptions? options = null) {
+        return GetControls(window, options, maxTextLength: null, getUiAutomationTimeoutMilliseconds: null);
+    }
+
+    internal List<WindowControlInfo> GetControls(
+        WindowInfo window,
+        WindowControlQueryOptions? options,
+        int? maxTextLength,
+        Func<int>? getUiAutomationTimeoutMilliseconds = null) {
         ValidateWindowInfo(window);
 
+        if (maxTextLength.HasValue && maxTextLength.Value < 1) {
+            throw new ArgumentOutOfRangeException(nameof(maxTextLength), "maxTextLength must be greater than zero.");
+        }
+
         WindowControlQueryOptions filter = options ?? new WindowControlQueryOptions();
-        PrepareWindowForUiAutomation(window, filter);
-        List<WindowControlInfo> controls = GetControlsInternal(window.Handle, filter);
+        PrepareWindowForUiAutomation(window, filter, getUiAutomationTimeoutMilliseconds);
+        List<WindowControlInfo> controls = GetControlsInternal(window.Handle, filter, maxTextLength, getUiAutomationTimeoutMilliseconds);
         foreach (WindowControlInfo control in controls) {
             control.ParentWindowHandle = window.Handle;
+        }
+
+        if (maxTextLength.HasValue && !IsWildcardFilter(filter.ValuePattern)) {
+            PopulateBoundedUiAutomationValues(window, controls, filter.ValuePattern, maxTextLength.Value, getUiAutomationTimeoutMilliseconds);
         }
 
         return controls.FindAll(control => MatchesControl(control, filter));
@@ -72,7 +88,9 @@ public partial class WindowManager {
         UiAutomationPreparationResult preparation = PrepareWindowForUiAutomation(window, filter);
 
         var enumerator = new ControlEnumerator();
-        List<WindowControlInfo> win32Controls = enumerator.EnumerateControls(window.Handle);
+        List<WindowControlInfo> win32Controls = filter.RequiresUiAutomation()
+            ? enumerator.EnumerateControlMetadata(window.Handle)
+            : enumerator.EnumerateControls(window.Handle);
         IReadOnlyList<IntPtr> fallbackRootHandles = UiAutomationControlService.GetFallbackRootHandles(window.Handle, win32Controls);
         IntPtr preferredRootHandle = UiAutomationControlService.GetPreferredSearchRootHandle(window.Handle, fallbackRootHandles);
         var uiAutomation = new UiAutomationControlService();
@@ -87,6 +105,10 @@ public partial class WindowManager {
                 ? primaryUiAutomationControls
                 : uiAutomation.EnumerateControls(window.Handle, fallbackRootHandles)
             : new List<WindowControlInfo>();
+        if (filter.RequiresUiAutomation()) {
+            ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
+            ControlEnumerator.PopulateControlValues(win32Controls);
+        }
         List<WindowControlInfo> effectiveControls = SelectDiscoveredControls(filter, win32Controls, uiAutomationControls);
         List<WindowControlInfo> matchedControls = effectiveControls.FindAll(control => MatchesControl(control, filter));
         DesktopUiAutomationActionDiagnostic? actionProbe = null;
@@ -129,22 +151,47 @@ public partial class WindowManager {
         };
     }
 
-    private UiAutomationPreparationResult PrepareWindowForUiAutomation(WindowInfo window, WindowControlQueryOptions filter) {
+    private UiAutomationPreparationResult PrepareWindowForUiAutomation(
+        WindowInfo window,
+        WindowControlQueryOptions filter,
+        Func<int>? getRemainingTimeoutMilliseconds = null) {
         if (!filter.RequiresUiAutomation() || !filter.EnsureForegroundWindow) {
             return UiAutomationPreparationResult.None;
         }
 
-        if (WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
-            Thread.Sleep(200);
-            return UiAutomationPreparationResult.Success;
+        if (!WindowActivationService.TryPrepareWindowForAutomation(
+                window.Handle,
+                getRemainingMilliseconds: getRemainingTimeoutMilliseconds)) {
+            return UiAutomationPreparationResult.Failed;
         }
 
-        return UiAutomationPreparationResult.Failed;
+        int settleMilliseconds = 200;
+        if (getRemainingTimeoutMilliseconds != null) {
+            int remainingMilliseconds = getRemainingTimeoutMilliseconds();
+            if (remainingMilliseconds <= 0) {
+                return UiAutomationPreparationResult.Failed;
+            }
+
+            settleMilliseconds = Math.Min(settleMilliseconds, remainingMilliseconds);
+        }
+
+        Thread.Sleep(settleMilliseconds);
+        return getRemainingTimeoutMilliseconds == null || getRemainingTimeoutMilliseconds() > 0
+            ? UiAutomationPreparationResult.Success
+            : UiAutomationPreparationResult.Failed;
     }
 
-    private List<WindowControlInfo> GetControlsInternal(IntPtr windowHandle, WindowControlQueryOptions filter) {
+    private List<WindowControlInfo> GetControlsInternal(
+        IntPtr windowHandle,
+        WindowControlQueryOptions filter,
+        int? maxTextLength,
+        Func<int>? getUiAutomationTimeoutMilliseconds) {
         var enumerator = new ControlEnumerator();
-        List<WindowControlInfo> win32Controls = enumerator.EnumerateControls(windowHandle);
+        List<WindowControlInfo> win32Controls = filter.RequiresUiAutomation()
+            ? enumerator.EnumerateControlMetadata(windowHandle)
+            : maxTextLength.HasValue
+                ? enumerator.EnumerateControls(windowHandle, maxTextLength.Value)
+                : enumerator.EnumerateControls(windowHandle);
 
         if (!filter.RequiresUiAutomation()) {
             return win32Controls;
@@ -152,9 +199,78 @@ public partial class WindowManager {
 
         var uiAutomation = new UiAutomationControlService();
         IReadOnlyList<IntPtr> fallbackRootHandles = UiAutomationControlService.GetFallbackRootHandles(windowHandle, win32Controls);
-        List<WindowControlInfo> uiAutomationControls = uiAutomation.EnumerateControls(windowHandle, fallbackRootHandles);
+        int providerTimeout = getUiAutomationTimeoutMilliseconds?.Invoke() ?? UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+        List<WindowControlInfo> uiAutomationControls = providerTimeout <= 0
+            ? new List<WindowControlInfo>()
+            : uiAutomation.EnumerateControls(
+                windowHandle,
+                fallbackRootHandles,
+                readValues: !maxTextLength.HasValue,
+                invocationTimeoutMilliseconds: providerTimeout);
+        ApplyUiAutomationPasswordMetadata(win32Controls, uiAutomationControls);
+        ControlEnumerator.PopulateControlValues(win32Controls, maxTextLength, getUiAutomationTimeoutMilliseconds);
 
         return SelectDiscoveredControls(filter, win32Controls, uiAutomationControls);
+    }
+
+    private static void ApplyUiAutomationPasswordMetadata(List<WindowControlInfo> win32Controls, List<WindowControlInfo> uiAutomationControls) {
+        foreach (WindowControlInfo uiAutomationControl in uiAutomationControls) {
+            if (uiAutomationControl.IsPassword != true || uiAutomationControl.Handle == IntPtr.Zero) {
+                continue;
+            }
+
+            WindowControlInfo? nativeControl = win32Controls.FirstOrDefault(candidate => candidate.Handle == uiAutomationControl.Handle);
+            if (nativeControl != null) {
+                nativeControl.IsPassword = true;
+                nativeControl.Text = string.Empty;
+                nativeControl.Value = string.Empty;
+                nativeControl.ValueIsTruncated = false;
+            }
+        }
+    }
+
+    private static void PopulateBoundedUiAutomationValues(
+        WindowInfo window,
+        IEnumerable<WindowControlInfo> controls,
+        string valuePattern,
+        int maxTextLength,
+        Func<int>? getUiAutomationTimeoutMilliseconds) {
+        string? providerExpectedText = GetProviderContainsLiteral(valuePattern);
+        var uiAutomation = new UiAutomationControlService();
+        var options = new DesktopControlObservationOptions {
+            MaxTextLength = maxTextLength,
+            ExpectedText = providerExpectedText,
+            IgnoreCase = true,
+            IncludeTextRanges = false,
+            IncludeSemanticState = false
+        };
+        foreach (WindowControlInfo control in controls) {
+            if (!control.HasUiAutomationIdentity && control.Source != WindowControlSource.UiAutomation) {
+                continue;
+            }
+
+            int providerTimeout = getUiAutomationTimeoutMilliseconds?.Invoke() ?? UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+            if (providerTimeout <= 0) {
+                break;
+            }
+
+            DesktopControlObservation? observation = uiAutomation.TryObserveControl(window, control, options, providerTimeout);
+            if (observation?.IsPassword != false) {
+                control.Value = string.Empty;
+                control.ValueIsTruncated = false;
+                continue;
+            }
+
+            control.Value = observation.Text.Value;
+            control.ValueIsTruncated = observation.Text.IsTruncated;
+            control.ValueMatchPattern = providerExpectedText == null ? string.Empty : valuePattern;
+            control.ValueMatchIgnoreCase = true;
+            control.ValuePatternMatched = providerExpectedText == null ? null : observation.Text.ContainsExpected;
+        }
+    }
+
+    private static bool IsWildcardFilter(string? value) {
+        return string.IsNullOrWhiteSpace(value) || value == "*";
     }
 
     private static List<WindowControlInfo> SelectDiscoveredControls(WindowControlQueryOptions filter, List<WindowControlInfo> win32Controls, List<WindowControlInfo> uiAutomationControls) {
@@ -190,14 +306,7 @@ public partial class WindowManager {
         merged.AddRange(win32Controls);
 
         foreach (WindowControlInfo uiAutomationControl in uiAutomationControls) {
-            WindowControlInfo? existing = merged.FirstOrDefault(candidate =>
-                (candidate.Handle != IntPtr.Zero &&
-                uiAutomationControl.Handle != IntPtr.Zero &&
-                candidate.Handle == uiAutomationControl.Handle) ||
-                (string.Equals(candidate.AutomationId, uiAutomationControl.AutomationId, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(candidate.ControlType, uiAutomationControl.ControlType, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(candidate.Text, uiAutomationControl.Text, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(candidate.ClassName, uiAutomationControl.ClassName, StringComparison.OrdinalIgnoreCase)));
+            WindowControlInfo? existing = merged.FirstOrDefault(candidate => AreEquivalentControls(candidate, uiAutomationControl));
             if (existing == null) {
                 merged.Add(uiAutomationControl);
                 continue;
@@ -209,13 +318,37 @@ public partial class WindowManager {
         return merged;
     }
 
-    private static void MergeControlMetadata(WindowControlInfo target, WindowControlInfo source) {
+    internal static bool AreEquivalentControls(WindowControlInfo existing, WindowControlInfo candidate) {
+        bool bothHandlesKnown = existing.Handle != IntPtr.Zero && candidate.Handle != IntPtr.Zero;
+        if (bothHandlesKnown && existing.Handle != candidate.Handle) {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(existing.RuntimeId) &&
+            !string.IsNullOrWhiteSpace(candidate.RuntimeId)) {
+            return string.Equals(existing.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal);
+        }
+
+        if (bothHandlesKnown) {
+            return true;
+        }
+
+        // Metadata, text, and bounds are not unique identities. In particular,
+        // handleless UIA siblings on overlapping pages can be indistinguishable.
+        return false;
+    }
+
+    internal static void MergeControlMetadata(WindowControlInfo target, WindowControlInfo source) {
         if (target == null || source == null) {
             return;
         }
 
         if (string.IsNullOrWhiteSpace(target.AutomationId)) {
             target.AutomationId = source.AutomationId;
+        }
+
+        if (string.IsNullOrWhiteSpace(target.RuntimeId)) {
+            target.RuntimeId = source.RuntimeId;
         }
 
         if (string.IsNullOrWhiteSpace(target.ControlType)) {
@@ -225,6 +358,10 @@ public partial class WindowManager {
         if (string.IsNullOrWhiteSpace(target.FrameworkId)) {
             target.FrameworkId = source.FrameworkId;
         }
+
+        target.HasUiAutomationIdentity = target.HasUiAutomationIdentity ||
+            source.HasUiAutomationIdentity ||
+            source.Source == WindowControlSource.UiAutomation;
 
         if (!target.IsKeyboardFocusable.HasValue) {
             target.IsKeyboardFocusable = source.IsKeyboardFocusable;
@@ -238,8 +375,21 @@ public partial class WindowManager {
             target.IsOffscreen = source.IsOffscreen;
         }
 
-        if (string.IsNullOrWhiteSpace(target.Value)) {
+        if (!target.IsPassword.HasValue) {
+            target.IsPassword = source.IsPassword;
+        }
+
+        if (target.IsPassword == true || source.IsPassword == true) {
+            target.IsPassword = true;
+            target.Text = string.Empty;
+            target.Value = string.Empty;
+            target.ValueIsTruncated = false;
+        } else if (string.IsNullOrWhiteSpace(target.Value)) {
             target.Value = source.Value;
+        }
+
+        if (target.IsPassword != true) {
+            target.ValueIsTruncated = target.ValueIsTruncated || source.ValueIsTruncated;
         }
 
         if (target.Width <= 0 || target.Height <= 0) {
@@ -299,7 +449,7 @@ public partial class WindowManager {
         }
 
         if (!string.IsNullOrWhiteSpace(filter.ValuePattern) && filter.ValuePattern != "*") {
-            if (!MatchesWildcard(control.Value ?? string.Empty, filter.ValuePattern)) {
+            if (!MatchesValuePattern(control, filter.ValuePattern)) {
                 return false;
             }
         }
@@ -333,6 +483,39 @@ public partial class WindowManager {
         }
 
         return true;
+    }
+
+    internal bool MatchesValuePattern(WindowControlInfo control, string valuePattern) {
+        bool matchingProviderEvidence = GetProviderContainsLiteral(valuePattern) != null &&
+            control.ValuePatternMatched == true &&
+            control.ValueMatchIgnoreCase &&
+            string.Equals(control.ValueMatchPattern, valuePattern, StringComparison.OrdinalIgnoreCase);
+        if (matchingProviderEvidence) {
+            return true;
+        }
+
+        string value = control.Value ?? string.Empty;
+        return valuePattern.IndexOf('*') >= 0 || valuePattern.IndexOf('?') >= 0
+            ? MatchesWildcard(value, valuePattern)
+            : string.Equals(value, valuePattern, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static string? GetProviderContainsLiteral(string valuePattern) {
+        if (string.IsNullOrEmpty(valuePattern) || valuePattern.IndexOf('?') >= 0) {
+            return null;
+        }
+
+        int firstWildcard = valuePattern.IndexOf('*');
+        if (firstWildcard < 0) {
+            return null;
+        }
+
+        if (firstWildcard != 0 || valuePattern.Length < 3 || valuePattern[valuePattern.Length - 1] != '*') {
+            return null;
+        }
+
+        string literal = valuePattern.Substring(1, valuePattern.Length - 2);
+        return literal.IndexOf('*') < 0 && literal.Length > 0 ? literal : null;
     }
 
     /// <summary>

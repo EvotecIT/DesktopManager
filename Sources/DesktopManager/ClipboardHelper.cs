@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Versioning;
 using System.Threading;
 
@@ -10,6 +11,44 @@ namespace DesktopManager;
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class ClipboardHelper {
+    internal static ClipboardSnapshot CaptureSnapshot() {
+        int initializeResult = OleInitialize(IntPtr.Zero);
+        if (initializeResult < 0) {
+            Marshal.ThrowExceptionForHR(initializeResult);
+        }
+
+        int result = 0;
+        IDataObject? dataObject = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            result = OleGetClipboard(out dataObject);
+            if (result >= 0) {
+                return new ClipboardSnapshot(dataObject, oleInitialized: true);
+            }
+
+            if (attempt < 4) {
+                Thread.Sleep(50);
+            }
+        }
+
+        try {
+            try {
+                OpenClipboardWithRetry(5, 50);
+                if (CountClipboardFormats() == 0) {
+                    return new ClipboardSnapshot(dataObject: null, oleInitialized: true);
+                }
+            } finally {
+                MonitorNativeMethods.CloseClipboard();
+            }
+        } catch {
+            OleUninitialize();
+            throw;
+        }
+
+        OleUninitialize();
+        Marshal.ThrowExceptionForHR(result);
+        throw new InvalidOperationException("Unable to capture clipboard data.");
+    }
+
     /// <summary>
     /// Places Unicode text on the clipboard.
     /// </summary>
@@ -114,5 +153,65 @@ public static class ClipboardHelper {
         }
 
         throw new InvalidOperationException("Unable to open clipboard.");
+    }
+
+    [DllImport("ole32.dll")]
+    private static extern int OleGetClipboard([MarshalAs(UnmanagedType.Interface)] out IDataObject? dataObject);
+
+    [DllImport("user32.dll")]
+    private static extern int CountClipboardFormats();
+
+    [DllImport("ole32.dll")]
+    private static extern int OleInitialize(IntPtr reserved);
+
+    [DllImport("ole32.dll")]
+    private static extern int OleSetClipboard([MarshalAs(UnmanagedType.Interface)] IDataObject? dataObject);
+
+    [DllImport("ole32.dll")]
+    private static extern void OleUninitialize();
+
+    internal sealed class ClipboardSnapshot : IDisposable {
+        private IDataObject? _dataObject;
+        private bool _oleInitialized;
+        private bool _restored;
+
+        internal ClipboardSnapshot(IDataObject? dataObject, bool oleInitialized) {
+            _dataObject = dataObject;
+            _oleInitialized = oleInitialized;
+        }
+
+        internal void Restore() {
+            if (_restored) {
+                return;
+            }
+
+            int result = 0;
+            for (int attempt = 0; attempt < 5; attempt++) {
+                result = OleSetClipboard(_dataObject);
+                if (result >= 0) {
+                    _restored = true;
+                    return;
+                }
+
+                if (attempt < 4) {
+                    Thread.Sleep(50);
+                }
+            }
+
+            Marshal.ThrowExceptionForHR(result);
+        }
+
+        public void Dispose() {
+            IDataObject? dataObject = _dataObject;
+            _dataObject = null;
+            if (dataObject != null && Marshal.IsComObject(dataObject)) {
+                Marshal.FinalReleaseComObject(dataObject);
+            }
+
+            if (_oleInitialized) {
+                _oleInitialized = false;
+                OleUninitialize();
+            }
+        }
     }
 }

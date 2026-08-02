@@ -3,10 +3,20 @@ using System;
 namespace DesktopManager.Tests;
 
 [TestClass]
+[DoNotParallelize]
 /// <summary>
 /// Tests for UI Automation helper behavior.
 /// </summary>
 public class UiAutomationControlServiceTests {
+    [TestMethod]
+    public void UiAutomationControlService_WindowsRuntime_LoadsClientAndTypesAssemblies() {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        Assert.IsTrue(new UiAutomationControlService().IsAvailable);
+    }
+
     [TestMethod]
     /// <summary>
     /// Ensures Chromium render widget roots are prioritized for fallback probing.
@@ -168,6 +178,35 @@ public class UiAutomationControlServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures privacy-safe bounds distinguish handleless controls whose readable identity is intentionally empty.
+    /// </summary>
+    public void GetActionMatchCacheKey_HandlelessPasswordControlsAtDifferentBounds_ReturnsDifferentKeys() {
+        IntPtr windowHandle = new IntPtr(104);
+        var first = new WindowControlInfo {
+            ControlType = "Edit",
+            IsPassword = true,
+            Left = 10,
+            Top = 20,
+            Width = 120,
+            Height = 24
+        };
+        var second = new WindowControlInfo {
+            ControlType = "Edit",
+            IsPassword = true,
+            Left = 10,
+            Top = 64,
+            Width = 120,
+            Height = 24
+        };
+
+        string firstKey = UiAutomationControlService.GetActionMatchCacheKey(windowHandle, first);
+        string secondKey = UiAutomationControlService.GetActionMatchCacheKey(windowHandle, second);
+
+        Assert.AreNotEqual(firstKey, secondKey);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures richer UIA metadata improves match scoring.
     /// </summary>
     public void ScoreMatch_WithMetadataAndBounds_ReturnsPositiveScore() {
@@ -201,6 +240,51 @@ public class UiAutomationControlServiceTests {
         int score = UiAutomationControlService.ScoreMatch(expected, candidate);
 
         Assert.IsTrue(score >= 80, $"Expected a strong score for a near-identical control, but got {score}.");
+    }
+
+    [TestMethod]
+    public void ScoreMatch_WithRuntimeId_RejectsDifferentOrUnavailableCandidateIdentity() {
+        var expected = new WindowControlInfo {
+            RuntimeId = "1.2.3",
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+        var matching = new WindowControlInfo {
+            RuntimeId = "1.2.3",
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+        var different = new WindowControlInfo {
+            RuntimeId = "1.2.4",
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+        var unavailable = new WindowControlInfo {
+            AutomationId = "duplicate",
+            ControlType = "Edit"
+        };
+
+        Assert.IsTrue(UiAutomationControlService.ScoreMatch(expected, matching) >= 200);
+        Assert.AreEqual(-1, UiAutomationControlService.ScoreMatch(expected, different));
+        Assert.AreEqual(-1, UiAutomationControlService.ScoreMatch(expected, unavailable));
+    }
+
+    [TestMethod]
+    public void ScoreMatch_WithKnownDifferentHandles_RejectsCandidateBeforeMetadataScoring() {
+        var expected = new WindowControlInfo {
+            Handle = new IntPtr(101),
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same"
+        };
+        var candidate = new WindowControlInfo {
+            Handle = new IntPtr(202),
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same"
+        };
+
+        Assert.AreEqual(-1, UiAutomationControlService.ScoreMatch(expected, candidate));
     }
 
     [TestMethod]
@@ -344,5 +428,220 @@ public class UiAutomationControlServiceTests {
 
         Assert.AreEqual(0, UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, offscreenCandidate));
         Assert.AreEqual(0, UiAutomationControlService.ScoreDesktopSearchRootCandidate(windowRect, nonIntersectingCandidate));
+    }
+
+    [TestMethod]
+    public void UiAutomationStaDispatcher_InFlightTimeout_ReportsUnknownOutcomeAndQueueRecovers() {
+        using var dispatcher = new UiAutomationStaDispatcher();
+        using var started = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+
+        Task<Exception?> timedOutInvocation = Task.Run(() => {
+            try {
+                dispatcher.Invoke(
+                    _ => {
+                        started.Set();
+                        release.Wait();
+                        return true;
+                    },
+                    timeoutMilliseconds: 50);
+                return null;
+            } catch (Exception ex) {
+                return ex;
+            }
+        });
+
+        Assert.IsTrue(started.Wait(1000), "The dispatcher operation did not start.");
+        Assert.IsTrue(timedOutInvocation.Wait(1000), "The in-flight invocation did not time out.");
+        Assert.IsInstanceOfType<UiAutomationOperationInFlightException>(timedOutInvocation.Result);
+
+        release.Set();
+        int result = dispatcher.Invoke(_ => 42, timeoutMilliseconds: 1000);
+        Assert.AreEqual(42, result);
+    }
+
+    [TestMethod]
+    public void UiAutomationStaDispatcher_InFlightTimeout_CleansUpLateResult() {
+        using var dispatcher = new UiAutomationStaDispatcher();
+        using var started = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        using var cleaned = new ManualResetEventSlim(false);
+
+        Task<Exception?> timedOutInvocation = Task.Run(() => {
+            try {
+                dispatcher.Invoke(
+                    _ => {
+                        started.Set();
+                        release.Wait();
+                        return (Action)(() => cleaned.Set());
+                    },
+                    timeoutMilliseconds: 50,
+                    abandonedResultHandler: cleanup => cleanup());
+                return null;
+            } catch (Exception ex) {
+                return ex;
+            }
+        });
+
+        Assert.IsTrue(started.Wait(1000), "The dispatcher operation did not start.");
+        Assert.IsTrue(timedOutInvocation.Wait(1000), "The in-flight invocation did not time out.");
+        Assert.IsInstanceOfType<UiAutomationOperationInFlightException>(timedOutInvocation.Result);
+
+        release.Set();
+        Assert.IsTrue(cleaned.Wait(1000), "The abandoned result was not cleaned up when the operation completed.");
+        Assert.AreEqual(7, dispatcher.Invoke(_ => 7, timeoutMilliseconds: 1000));
+    }
+
+    [TestMethod]
+    public void UiAutomationStaDispatcher_QueuedTimeout_CancelsWorkBeforeExecution() {
+        using var dispatcher = new UiAutomationStaDispatcher();
+        using var started = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        int mutationCount = 0;
+
+        Task firstInvocation = Task.Run(() => dispatcher.Invoke(
+            _ => {
+                started.Set();
+                release.Wait();
+                return true;
+            },
+            timeoutMilliseconds: 2000));
+
+        Assert.IsTrue(started.Wait(1000), "The blocking dispatcher operation did not start.");
+        Assert.ThrowsExactly<TimeoutException>(() => dispatcher.Invoke(
+            _ => {
+                Interlocked.Increment(ref mutationCount);
+                return true;
+            },
+            timeoutMilliseconds: 50));
+
+        release.Set();
+        Assert.IsTrue(firstInvocation.Wait(1000), "The blocking dispatcher operation did not finish.");
+        dispatcher.Invoke(_ => true, timeoutMilliseconds: 1000);
+        Assert.AreEqual(0, mutationCount);
+    }
+
+    [TestMethod]
+    public void ShouldRunProviderOperationInline_CallingThreadOwnsWindow_RemainsDeadlineBound() {
+        Assert.IsFalse(UiAutomationControlService.ShouldRunProviderOperationInline(
+            isDispatcherThread: false,
+            isWindowOwnedByCallingThread: true,
+            isMutation: false));
+        Assert.IsTrue(UiAutomationControlService.ShouldRunProviderOperationInline(
+            isDispatcherThread: false,
+            isWindowOwnedByCallingThread: true,
+            isMutation: true));
+        Assert.IsTrue(UiAutomationControlService.ShouldRunProviderOperationInline(
+            isDispatcherThread: true,
+            isWindowOwnedByCallingThread: false,
+            isMutation: false));
+    }
+
+    [TestMethod]
+    public void TryReadPasswordState_NullProviderValue_ReturnsUnavailable() {
+        bool available = UiAutomationControlService.TryReadPasswordState(
+            new UnknownPasswordState(),
+            out bool? isPassword);
+
+        Assert.IsFalse(available);
+        Assert.IsNull(isPassword);
+    }
+
+    [TestMethod]
+    public void CreateGuardedEventSignal_AfterDisposal_IgnoresLateCallback() {
+        int signalCount = 0;
+        IDisposable guard = UiAutomationControlService.CreateGuardedEventSignal(
+            () => signalCount++,
+            out Action guardedSignal);
+
+        guardedSignal();
+        guard.Dispose();
+        guardedSignal();
+
+        Assert.AreEqual(1, signalCount);
+    }
+
+    [TestMethod]
+    public void GetEnumeratedControlsCacheKey_MetadataOnlyAndValueReadsDoNotShareCache() {
+        string metadataKey = UiAutomationControlService.GetEnumeratedControlsCacheKey(new IntPtr(42), includeRoot: false, readValues: false);
+        string valueKey = UiAutomationControlService.GetEnumeratedControlsCacheKey(new IntPtr(42), includeRoot: false, readValues: true);
+
+        Assert.AreNotEqual(metadataKey, valueKey);
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void EnumerateControls_MetadataOnlyDoesNotReadValuesAndStructureSignalInvalidatesCache() {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using System.Windows.Forms.Form form = new() { Text = "UIA Metadata Enumeration Harness", ShowInTaskbar = false };
+        using System.Windows.Forms.TextBox textBox = new() { Text = "value-must-not-be-read" };
+        form.Controls.Add(textBox);
+        form.Show();
+        textBox.CreateControl();
+        System.Windows.Forms.Application.DoEvents();
+
+        UiAutomationControlService.InvalidateControlCaches();
+        var service = new UiAutomationControlService();
+        WindowControlInfo? metadata = service
+            .EnumerateControls(form.Handle, fallbackRootHandles: null, readValues: false)
+            .FirstOrDefault(control => control.Handle == textBox.Handle);
+
+        Assert.IsNotNull(metadata);
+        Assert.AreEqual(string.Empty, metadata.Value);
+        Assert.IsTrue(UiAutomationControlService.EnumeratedControlsCacheCount > 0);
+
+        WindowControlInfo? boundedValueMatch = new WindowManager()
+            .GetControls(
+                new WindowInfo {
+                    Handle = form.Handle,
+                    ProcessId = unchecked((uint)System.Diagnostics.Process.GetCurrentProcess().Id)
+                },
+                new WindowControlQueryOptions {
+                    IncludeUiAutomation = true,
+                    ValuePattern = "value-must-not-be-read"
+                },
+                maxTextLength: 64)
+            .FirstOrDefault(control => control.Handle == textBox.Handle);
+        Assert.IsNotNull(boundedValueMatch);
+        Assert.AreEqual("value-must-not-be-read", boundedValueMatch.Value);
+
+        int cacheCountSeenByWaiter = -1;
+        Action structureSignal = UiAutomationControlService.CreateStructureChangedSignal(
+            () => cacheCountSeenByWaiter = UiAutomationControlService.EnumeratedControlsCacheCount);
+        structureSignal();
+
+        Assert.AreEqual(0, cacheCountSeenByWaiter);
+        Assert.AreEqual(0, UiAutomationControlService.EnumeratedControlsCacheCount);
+    }
+
+    [TestMethod]
+    public void IsTextMutationAllowed_RequiresLiveExplicitNonPasswordState() {
+        Assert.IsTrue(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(false)));
+        Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(true)));
+        Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(null)));
+    }
+
+    private sealed class UnknownPasswordState {
+        public bool? IsPassword => null;
+    }
+
+    private sealed class AutomationElementStub {
+        internal AutomationElementStub(bool? isPassword) {
+            Current = new PasswordStateStub(isPassword);
+        }
+
+        public PasswordStateStub Current { get; }
+    }
+
+    private sealed class PasswordStateStub {
+        internal PasswordStateStub(bool? isPassword) {
+            IsPassword = isPassword;
+        }
+
+        public bool? IsPassword { get; }
     }
 }

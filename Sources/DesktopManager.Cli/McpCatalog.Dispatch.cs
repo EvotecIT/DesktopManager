@@ -72,9 +72,30 @@ internal static partial class McpCatalog {
                     ReadInt(arguments, "maxLength"),
                     ReadInt(arguments, "retryCount"),
                     ReadInt(arguments, "retryDelayMs")),
-                "get_focused_control" => DesktopOperations.GetFocusedControl(ReadWindowCriteria(arguments, true))!,
+                "get_focused_control" => DesktopOperations.GetFocusedControl(
+                    ReadWindowCriteria(arguments, true),
+                    ReadOptionalString(arguments, "expectedText"),
+                    ReadInt(arguments, "maxLength"))!,
                 "wait_for_focused_control" => DesktopOperations.WaitForFocusedControl(
                     ReadWindowCriteria(arguments, true),
+                    ReadInt(arguments, "timeoutMs") ?? 10000,
+                    ReadInt(arguments, "intervalMs") ?? 200),
+                "observe_control" => DesktopOperations.ObserveControls(
+                    ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),
+                    ReadControlCriteria(arguments, allowForegroundActivation: false),
+                    ReadInt(arguments, "maxTextLength") ?? 4096,
+                    ReadOptionalString(arguments, "expectedText"),
+                    ReadBool(arguments, "ignoreCase"),
+                    !TryReadProperty(arguments, "includeTextRanges", out _) || ReadBool(arguments, "includeTextRanges"),
+                    realizeVirtualizedItem: false,
+                    ReadBool(arguments, "allWindows")),
+                "wait_for_control_observation" => DesktopOperations.WaitForControlObservation(
+                    ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),
+                    ReadControlCriteria(arguments, allowForegroundActivation: false),
+                    ReadControlObservationCondition(arguments),
+                    ReadInt(arguments, "maxTextLength") ?? 4096,
+                    !TryReadProperty(arguments, "includeTextRanges", out _) || ReadBool(arguments, "includeTextRanges"),
+                    realizeVirtualizedItem: false,
                     ReadInt(arguments, "timeoutMs") ?? 10000,
                     ReadInt(arguments, "intervalMs") ?? 200),
                 "get_control_state" => DesktopOperations.GetControlState(
@@ -423,6 +444,17 @@ internal static partial class McpCatalog {
                         ReadBool(arguments, "allWindows"),
                         ReadBool(arguments, "all"),
                         ReadMutationArtifactOptions(arguments)),
+                "edit_control_text" => DesktopOperations.EditControlText(
+                    ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),
+                    ReadControlCriteria(arguments),
+                    ReadRequiredString(arguments, "text"),
+                    ReadOptionalString(arguments, "mode") ?? nameof(DesktopTextEditMode.ReplaceDocument),
+                    ReadOptionalString(arguments, "expectedFingerprint"),
+                    ReadOptionalString(arguments, "expectedEditContextFingerprint"),
+                    ReadBool(arguments, "ensureForegroundWindow"),
+                    ReadBool(arguments, "allowForegroundInput"),
+                    !TryReadProperty(arguments, "verifyAfterEdit", out _) || ReadBool(arguments, "verifyAfterEdit"),
+                    ReadInt(arguments, "maxTextLength") ?? DesktopTextObservationOptions.MaximumTextLength),
                 "send_control_keys" => string.IsNullOrWhiteSpace(ReadOptionalString(arguments, "targetName"))
                     ? DesktopOperations.SendControlKeys(
                         ReadWindowCriteria(arguments, true, "windowTitle", "processName", "windowClassName", "processId", "windowHandle"),

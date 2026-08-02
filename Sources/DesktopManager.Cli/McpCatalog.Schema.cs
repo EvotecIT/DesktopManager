@@ -68,7 +68,7 @@ internal static partial class McpCatalog {
                ReadBool(arguments, "excludeOwned");
     }
 
-    private static ControlSelectionCriteria ReadControlCriteria(JsonElement element) {
+    private static ControlSelectionCriteria ReadControlCriteria(JsonElement element, bool allowForegroundActivation = true) {
         return new ControlSelectionCriteria {
             ClassNamePattern = ReadOptionalString(element, "controlClassName") ?? "*",
             TextPattern = ReadOptionalString(element, "controlText") ?? "*",
@@ -84,12 +84,96 @@ internal static partial class McpCatalog {
             SupportsBackgroundText = ReadNullableBool(element, "supportsBackgroundText"),
             SupportsBackgroundKeys = ReadNullableBool(element, "supportsBackgroundKeys"),
             SupportsForegroundInputFallback = ReadNullableBool(element, "supportsForegroundInputFallback"),
-            EnsureForegroundWindow = ReadBool(element, "ensureForegroundWindow"),
+            EnsureForegroundWindow = allowForegroundActivation && ReadBool(element, "ensureForegroundWindow"),
             AllowForegroundInputFallback = ReadBool(element, "allowForegroundInput"),
             UiAutomation = ReadBool(element, "uiAutomation"),
             IncludeUiAutomation = ReadBool(element, "includeUiAutomation"),
             All = ReadBool(element, "all")
         };
+    }
+
+    private static DesktopControlObservationCondition ReadControlObservationCondition(JsonElement element) {
+        return new DesktopControlObservationCondition {
+            ExpectedText = ReadOptionalString(element, "expectedText"),
+            IgnoreCase = ReadBool(element, "ignoreCase"),
+            IsTextComplete = ReadNullableBool(element, "isTextComplete"),
+            IsTextTruncated = ReadNullableBool(element, "isTextTruncated"),
+            IsEnabled = ReadNullableBool(element, "expectedEnabled"),
+            IsFocused = ReadNullableBool(element, "expectedFocused"),
+            IsChecked = ReadNullableBool(element, "expectedChecked"),
+            IsSelected = ReadNullableBool(element, "expectedSelected"),
+            ExpandCollapseState = ReadOptionalString(element, "expectedExpandCollapseState"),
+            MinimumRangeValue = ReadDouble(element, "minimumRangeValue"),
+            MaximumRangeValue = ReadDouble(element, "maximumRangeValue")
+        };
+    }
+
+    private static Dictionary<string, object> CreateSemanticControlProperties(bool includeMultiple = true, bool includeForegroundActivation = true) {
+        var properties = new Dictionary<string, object> {
+            ["windowTitle"] = CreateStringSchema("Window title filter."),
+            ["processName"] = CreateStringSchema("Process name filter."),
+            ["windowClassName"] = CreateStringSchema("Window class filter."),
+            ["processId"] = CreateIntegerSchema("Window process identifier."),
+            ["windowHandle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
+            ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
+            ["controlClassName"] = CreateStringSchema("Control class filter."),
+            ["controlText"] = CreateStringSchema("Control text filter."),
+            ["controlValue"] = CreateStringSchema("Control value filter."),
+            ["controlId"] = CreateIntegerSchema("Control identifier."),
+            ["controlHandle"] = CreateStringSchema("Control handle in decimal or hexadecimal format."),
+            ["controlAutomationId"] = CreateStringSchema("UI Automation automation identifier filter."),
+            ["controlType"] = CreateStringSchema("UI Automation control type filter."),
+            ["controlFrameworkId"] = CreateStringSchema("UI Automation framework identifier filter."),
+            ["isEnabled"] = CreateBooleanSchema("Filter by whether the control is enabled."),
+            ["isKeyboardFocusable"] = CreateBooleanSchema("Filter by whether the control can receive keyboard focus."),
+            ["uiAutomation"] = CreateBooleanSchema("Use UI Automation control discovery."),
+            ["includeUiAutomation"] = CreateBooleanSchema("Combine native and UI Automation control results."),
+            ["maxTextLength"] = CreateIntegerSchema("Maximum plain-text characters returned per control."),
+            ["expectedText"] = CreateStringSchema("Optional literal text to locate in the provider document."),
+            ["ignoreCase"] = CreateBooleanSchema("Use ordinal case-insensitive text matching."),
+            ["includeTextRanges"] = CreateBooleanSchema("Include selection, caret, and composition ranges.")
+        };
+
+        if (includeForegroundActivation) {
+            properties["ensureForegroundWindow"] = CreateBooleanSchema("Bring the target window to the foreground before provider queries or input.");
+        }
+
+        if (includeMultiple) {
+            properties["all"] = CreateBooleanSchema("Return all matching controls.");
+            properties["allWindows"] = CreateBooleanSchema("Target controls in all matching windows.");
+        }
+
+        return properties;
+    }
+
+    private static Dictionary<string, object> CreateSemanticWaitProperties() {
+        Dictionary<string, object> properties = CreateSemanticControlProperties(includeMultiple: false, includeForegroundActivation: false);
+        properties["isTextComplete"] = CreateBooleanSchema("Required text completeness state.");
+        properties["isTextTruncated"] = CreateBooleanSchema("Require text that was truncated by the configured maximum length.");
+        properties["expectedEnabled"] = CreateBooleanSchema("Required enabled state.");
+        properties["expectedFocused"] = CreateBooleanSchema("Required focused state.");
+        properties["expectedChecked"] = CreateBooleanSchema("Required toggle state.");
+        properties["expectedSelected"] = CreateBooleanSchema("Required selection-item state.");
+        properties["expectedExpandCollapseState"] = CreateStringSchema("Required expand/collapse state.");
+        properties["minimumRangeValue"] = CreateNumberSchema("Minimum acceptable range value.");
+        properties["maximumRangeValue"] = CreateNumberSchema("Maximum acceptable range value.");
+        properties["timeoutMs"] = CreateIntegerSchema("Maximum time to wait in milliseconds.");
+        properties["intervalMs"] = CreateIntegerSchema("Bounded polling fallback interval in milliseconds.");
+        return properties;
+    }
+
+    private static Dictionary<string, object> CreateSemanticEditProperties() {
+        Dictionary<string, object> properties = CreateSemanticControlProperties(includeMultiple: false);
+        properties.Remove("expectedText");
+        properties.Remove("ignoreCase");
+        properties.Remove("includeTextRanges");
+        properties["text"] = CreateStringSchema("Replacement or inserted text.");
+        properties["mode"] = CreateStringSchema("ReplaceDocument, ReplaceSelection, or InsertAtCaret.");
+        properties["expectedFingerprint"] = CreateStringSchema("Optional complete-content fingerprint that must still match before editing.");
+        properties["expectedEditContextFingerprint"] = CreateStringSchema("Optional selection/caret context fingerprint that must still match before a range edit.");
+        properties["allowForegroundInput"] = CreateBooleanSchema("Explicitly permit foreground Unicode input when a provider-safe setter is unavailable.");
+        properties["verifyAfterEdit"] = CreateBooleanSchema("Observe and verify the exact expected text after editing.");
+        return properties;
     }
 
     private static object CallClickWindowPoint(JsonElement arguments) {

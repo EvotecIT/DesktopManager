@@ -432,12 +432,15 @@ Examples:
         return """
 Control commands:
   desktopmanager control list [window-selector] ([control-selector] | --target <name>) [--all] [--all-windows] [--json]
+  desktopmanager control observe [window-selector] [control-selector] [--expected-text <value>] [--max-text-length <value>] [--include-text-ranges] [--realize-virtualized-item] [--all] [--all-windows] [--json]
+  desktopmanager control wait-observation [window-selector] [control-selector] [semantic-condition] [--timeout-ms <value>] [--interval-ms <value>] [--json]
   desktopmanager control diagnose [window-selector] ([control-selector] | --target <name>) [--sample-limit <value>] [--action-probe] [--all-windows] [--json]
   desktopmanager control exists [window-selector] ([control-selector] | --target <name>) [--all] [--all-windows] [--json]
   desktopmanager control assert-value [window-selector] ([control-selector] | --target <name>) --expected-value <value> [--contains] [--all] [--all-windows] [--json]
   desktopmanager control wait [window-selector] ([control-selector] | --target <name>) [--timeout-ms <value>] [--interval-ms <value>] [--all] [--all-windows] [--json]
   desktopmanager control click [window-selector] ([control-selector] | --target <name>) [--button <left|right>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--all] [--all-windows] [--json]
   desktopmanager control set-text [window-selector] ([control-selector] | --target <name>) --text <value> [--allow-foreground-input] [--capture-before] [--capture-after] [--artifact-directory <path>] [--all] [--all-windows] [--json]
+  desktopmanager control edit-text [window-selector] [control-selector] --text <value> [--mode <ReplaceDocument|ReplaceSelection|InsertAtCaret>] [--expected-fingerprint <sha256>] [--expected-edit-context-fingerprint <sha256>] [--allow-foreground-input] [--no-verify] [--json]
   desktopmanager control send-keys [window-selector] ([control-selector] | --target <name>) --keys <VK_A,VK_B> [--keys <VK_C>] [--allow-foreground-input] [--capture-before] [--capture-after] [--artifact-directory <path>] [--all] [--all-windows] [--json]
 
 Window selectors:
@@ -484,6 +487,27 @@ Control selectors:
   --minimum-changed-ratio <value>
   --difference-threshold <value>
 
+Semantic observation options:
+  --expected-text <value>
+  --ignore-case
+  --max-text-length <value>
+  --include-text-ranges
+  --realize-virtualized-item
+  --focused / --not-focused
+  --checked / --unchecked
+  --selected / --not-selected
+  --expand-collapse-state <value>
+  --complete-text
+  --truncated-text
+  --minimum-range-value <value>
+  --maximum-range-value <value>
+
+Text edit options:
+  --mode <ReplaceDocument|ReplaceSelection|InsertAtCaret>
+  --expected-fingerprint <sha256>
+  --expected-edit-context-fingerprint <sha256>
+  --no-verify
+
 Examples:
   desktopmanager control list --window-process notepad --json
   desktopmanager control diagnose --window-title "*Codex*" --uia --ensure-foreground --sample-limit 5 --json
@@ -499,14 +523,21 @@ Examples:
   desktopmanager control wait --window-title "Codex" --target codex-sidebar-toggle --timeout-ms 1000 --interval-ms 100 --json
   desktopmanager control wait --window-active --uia --control-type Button --text-pattern "Show sidebar" --enabled --ensure-foreground --timeout-ms 3000
   desktopmanager control list --window-active --uia --control-type Edit --json
+  desktopmanager control observe --window-active --uia --control-type Document --expected-text "ready" --include-text-ranges --json
+  desktopmanager control wait-observation --window-process myapp --uia --automation-id status --expected-text "Complete" --timeout-ms 10000 --json
   desktopmanager control click --window-process msedge --target edge-address
   desktopmanager control send-keys --window-title "Codex" --uia --control-type Button --text-pattern "Hide sidebar" --enabled --focusable --ensure-foreground --allow-foreground-input --keys VK_SPACE
   desktopmanager control set-text --window-active --class RichEditD2DPT --text "Hello world"
   desktopmanager control click --window-process notepad --class Edit
   desktopmanager control set-text --window-process notepad --class Edit --text "Hello world"
+  desktopmanager control edit-text --window-active --uia --control-type Document --mode ReplaceSelection --text "replacement" --expected-fingerprint <sha256> --allow-foreground-input --json
   desktopmanager control send-keys --window-process notepad --class Edit --keys VK_CONTROL,VK_A
 
 Notes:
+  observe returns one provider-neutral shape for native and UI Automation controls: stable session identity, supported patterns, semantic state, bounded text, selection/caret ranges, and a complete-content fingerprint when available.
+  Password controls fail closed: identity and capability metadata may be returned, but text, selection text, and fingerprints are suppressed.
+  edit-text uses provider-safe setters first. Selection/caret edits require exact complete ranges; content and edit-context fingerprints prevent stale documents or moved ranges from being mutated.
+  wait-observation subscribes to relevant UI Automation changes when supported and retains bounded polling as a compatibility fallback.
   Use --allow-foreground-input only when the control target is a zero-handle UIA surface that cannot be updated safely in the background.
   Saved control targets preserve capability hints such as background-text and UIA selection filters, which makes repeat automation less brittle.
   --wait-visual-change can confirm that a control mutation changed the visible parent window even when structural verification is weak.

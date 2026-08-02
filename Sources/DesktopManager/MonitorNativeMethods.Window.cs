@@ -568,6 +568,9 @@ public static partial class MonitorNativeMethods
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
     private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
 
+    [DllImport("kernel32.dll", EntryPoint = "SetLastError")]
+    private static extern void SetLastErrorCode(uint errorCode);
+
     /// <summary>
     /// Retrieves information about the specified window in a platform agnostic manner.
     /// </summary>
@@ -579,8 +582,17 @@ public static partial class MonitorNativeMethods
     /// Otherwise <see cref="GetWindowLong32"/> is used. The caller should convert the
     /// returned <see cref="IntPtr"/> to the appropriate numeric type.
     /// </remarks>
-    public static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex)
-    {
+    public static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex) {
+        return GetWindowLongPtrCore(hWnd, nIndex);
+    }
+
+    internal static bool TryGetWindowLongPtr(IntPtr hWnd, int nIndex, out IntPtr value) {
+        SetLastErrorCode(0);
+        value = GetWindowLongPtrCore(hWnd, nIndex);
+        return value != IntPtr.Zero || Marshal.GetLastWin32Error() == 0;
+    }
+
+    private static IntPtr GetWindowLongPtrCore(IntPtr hWnd, int nIndex) {
         return IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : GetWindowLong32(hWnd, nIndex);
     }
 

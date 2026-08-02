@@ -51,6 +51,7 @@ public sealed class CmdletWaitDesktopWindowText : PSCmdlet {
     /// <para type="description">Maximum number of characters to return in the observed value.</para>
     /// </summary>
     [Parameter]
+    [ValidateRange(1, DesktopTextObservationOptions.MaximumTextLength)]
     public int MaxObservedTextLength { get; set; } = 2048;
 
     /// <summary>

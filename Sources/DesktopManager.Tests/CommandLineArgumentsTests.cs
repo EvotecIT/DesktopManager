@@ -93,5 +93,17 @@ public class CommandLineArgumentsTests {
         Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() =>
             global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "--" }));
     }
+
+    [TestMethod]
+    public void ControlObservationCondition_TruncatedTextFlagRequiresActualTruncation() {
+        global::DesktopManager.Cli.CommandLineArguments arguments = global::DesktopManager.Cli.CommandLineArguments.Parse(new[] {
+            "--truncated-text"
+        });
+
+        DesktopControlObservationCondition condition = global::DesktopManager.Cli.ControlCommands.CreateObservationCondition(arguments);
+
+        Assert.IsNull(condition.IsTextComplete);
+        Assert.AreEqual(true, condition.IsTextTruncated);
+    }
 }
 #endif
