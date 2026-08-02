@@ -307,6 +307,25 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void UiAutomationControlService_InvokePatternCurrentMethod_UsesCurrentInformationObject() {
+        var pattern = new SemanticCollectionPatternStub();
+        var errors = new List<string>();
+
+        object? selection = UiAutomationControlService.InvokePatternCurrentMethod(pattern, "GetSelection", errors, "selection.items");
+        object? rowHeaders = UiAutomationControlService.InvokePatternCurrentMethod(pattern, "GetRowHeaders", errors, "table.rowHeaders");
+        object? columnHeaders = UiAutomationControlService.InvokePatternCurrentMethod(pattern, "GetColumnHeaders", errors, "table.columnHeaders");
+        object? rowHeaderItems = UiAutomationControlService.InvokePatternCurrentMethod(pattern, "GetRowHeaderItems", errors, "tableItem.rowHeaders");
+        object? columnHeaderItems = UiAutomationControlService.InvokePatternCurrentMethod(pattern, "GetColumnHeaderItems", errors, "tableItem.columnHeaders");
+
+        CollectionAssert.AreEqual(new[] { "selected" }, (string[])selection!);
+        CollectionAssert.AreEqual(new[] { "row" }, (string[])rowHeaders!);
+        CollectionAssert.AreEqual(new[] { "column" }, (string[])columnHeaders!);
+        CollectionAssert.AreEqual(new[] { "row-item" }, (string[])rowHeaderItems!);
+        CollectionAssert.AreEqual(new[] { "column-item" }, (string[])columnHeaderItems!);
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_TryCalculateExpectedEditedText_ReplacesExactSelection() {
         var before = new DesktopControlTextObservation {
             Value = "alpha beta gamma",
@@ -794,6 +813,32 @@ public class DesktopControlObservationContractTests {
         } finally {
             MonitorNativeMethods.DestroyWindow(checkBoxHandle);
             MonitorNativeMethods.DestroyWindow(comboBoxHandle);
+        }
+    }
+
+    private sealed class SemanticCollectionPatternStub {
+        public SemanticCollectionInformationStub Current { get; } = new();
+    }
+
+    private sealed class SemanticCollectionInformationStub {
+        public string[] GetSelection() {
+            return new[] { "selected" };
+        }
+
+        public string[] GetRowHeaders() {
+            return new[] { "row" };
+        }
+
+        public string[] GetColumnHeaders() {
+            return new[] { "column" };
+        }
+
+        public string[] GetRowHeaderItems() {
+            return new[] { "row-item" };
+        }
+
+        public string[] GetColumnHeaderItems() {
+            return new[] { "column-item" };
         }
     }
 

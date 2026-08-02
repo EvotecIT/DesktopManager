@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Linq;
@@ -80,6 +81,64 @@ public class WindowControlMessageTests {
 
     [TestMethod]
     [TestCategory("UITest")]
+    public void WindowControlService_SetText_HungControlFailsWithinBoundedTimeout() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using var ready = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        IntPtr formHandle = IntPtr.Zero;
+        IntPtr textBoxHandle = IntPtr.Zero;
+        Exception? startupFailure = null;
+        var thread = new Thread(() => {
+            try {
+                using Form form = new() { Text = "Hung Native Text Test", ShowInTaskbar = false };
+                using var textBox = new BlockingTextBox(release);
+                form.Controls.Add(textBox);
+                form.Shown += (_, _) => {
+                    formHandle = form.Handle;
+                    textBoxHandle = textBox.Handle;
+                    textBox.BlockTextMessages = true;
+                    ready.Set();
+                };
+                Application.Run(form);
+            } catch (Exception ex) {
+                startupFailure = ex;
+                ready.Set();
+            }
+        }) {
+            IsBackground = true,
+            Name = "DesktopManager hung native text harness"
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.IsTrue(ready.Wait(TimeSpan.FromSeconds(10)), "The hung native text harness did not start.");
+        Assert.IsNull(startupFailure);
+
+        try {
+            var control = new WindowControlInfo {
+                ParentWindowHandle = formHandle,
+                Handle = textBoxHandle,
+                ClassName = "Edit",
+                IsPassword = false
+            };
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            Assert.ThrowsExactly<NativeTextMutationOutcomeUnknownException>(() => WindowControlService.SetText(control, "must-not-block"));
+
+            stopwatch.Stop();
+            Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(4), $"Native text timeout took {stopwatch.Elapsed}.");
+        } finally {
+            release.Set();
+            MonitorNativeMethods.PostMessage(formHandle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+            Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(10)), "The hung native text harness did not stop.");
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
     /// <summary>
     /// Ensures direct combo-box selection can switch the current item by displayed text.
     /// </summary>
@@ -148,5 +207,23 @@ public class WindowControlMessageTests {
         Assert.IsTrue(textBoxControl.SupportsBackgroundText);
         Assert.IsTrue(textBoxControl.SupportsBackgroundKeys);
         Assert.AreEqual(textBox.Text, textBoxControl.Value);
+    }
+
+    private sealed class BlockingTextBox : TextBox {
+        private readonly ManualResetEventSlim _release;
+
+        internal BlockingTextBox(ManualResetEventSlim release) {
+            _release = release;
+        }
+
+        internal bool BlockTextMessages;
+
+        protected override void WndProc(ref Message message) {
+            if (BlockTextMessages && message.Msg == MonitorNativeMethods.WM_SETTEXT) {
+                _release.Wait(TimeSpan.FromSeconds(10));
+            }
+
+            base.WndProc(ref message);
+        }
     }
 }

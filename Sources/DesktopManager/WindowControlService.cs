@@ -161,8 +161,7 @@ public static partial class WindowControlService {
         EnsureNativeTextMutationAllowed(control.Handle);
 
         if (!TrySendStringMessageWithTimeout(control.Handle, MonitorNativeMethods.WM_SETTEXT, IntPtr.Zero, text)) {
-            EnsureNativeTextMutationAllowed(control.Handle);
-            MonitorNativeMethods.SendMessage(control.Handle, MonitorNativeMethods.WM_SETTEXT, IntPtr.Zero, text);
+            throw new NativeTextMutationOutcomeUnknownException("WM_SETTEXT", MessageTimeoutMilliseconds);
         }
 
         if (ControlTextMatches(control.Handle, text)) {
@@ -188,7 +187,19 @@ public static partial class WindowControlService {
         }
 
         EnsureNativeTextMutationAllowed(control.Handle);
-        string current = WindowTextHelper.GetWindowText(control.Handle, maxTextLength, out bool isTruncated);
+        var liveControl = new WindowControlInfo {
+            Handle = control.Handle,
+            IsPassword = false
+        };
+        if (!TryGetControlText(
+                liveControl,
+                maxTextLength,
+                (int)MessageTimeoutMilliseconds,
+                out string current,
+                out bool isTruncated)) {
+            failureCode = "native-read-timeout";
+            return false;
+        }
         if (isTruncated) {
             failureCode = "incomplete-precondition";
             return false;
@@ -365,16 +376,30 @@ public static partial class WindowControlService {
         EnsureNativeTextMutationAllowed(handle);
         uint start = appendToEnd ? unchecked((uint)0xFFFFFFFF) : 0u;
         uint end = unchecked((uint)0xFFFFFFFF);
-        SendMessageWithTimeout(handle, MonitorNativeMethods.EM_SETSEL, start, end);
+        if (!TrySendMessageWithTimeout(handle, MonitorNativeMethods.EM_SETSEL, start, end)) {
+            throw new NativeTextMutationOutcomeUnknownException("EM_SETSEL", MessageTimeoutMilliseconds);
+        }
         EnsureNativeTextMutationAllowed(handle);
         if (!TrySendStringMessageWithTimeout(handle, MonitorNativeMethods.EM_REPLACESEL, new IntPtr(1), text)) {
-            EnsureNativeTextMutationAllowed(handle);
-            MonitorNativeMethods.SendMessage(handle, MonitorNativeMethods.EM_REPLACESEL, new IntPtr(1), text);
+            throw new NativeTextMutationOutcomeUnknownException("EM_REPLACESEL", MessageTimeoutMilliseconds);
         }
     }
 
     private static bool ControlTextMatches(IntPtr handle, string expectedText) {
-        return string.Equals(WindowTextHelper.GetWindowText(handle), expectedText, StringComparison.Ordinal);
+        var control = new WindowControlInfo {
+            Handle = handle,
+            IsPassword = false
+        };
+        if (!TryGetControlText(
+                control,
+                DesktopTextObservationOptions.MaximumTextLength,
+                (int)MessageTimeoutMilliseconds,
+                out string currentText,
+                out bool isTruncated)) {
+            throw new NativeTextMutationOutcomeUnknownException("WM_GETTEXT", MessageTimeoutMilliseconds);
+        }
+
+        return !isTruncated && string.Equals(currentText, expectedText, StringComparison.Ordinal);
     }
 
     private static void EnsureNativeTextMutationAllowed(IntPtr handle) {
@@ -384,7 +409,14 @@ public static partial class WindowControlService {
             throw new InvalidOperationException("The live native control class could not be verified before editing.");
         }
 
-        long style = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE).ToInt64();
+        if (!MonitorNativeMethods.TryGetWindowLongPtr(
+                handle,
+                MonitorNativeMethods.GWL_STYLE,
+                out IntPtr stylePointer)) {
+            throw new InvalidOperationException("The live native control style could not be verified before editing.");
+        }
+
+        long style = stylePointer.ToInt64();
         if (ControlEnumerator.IsPasswordStyle(classBuilder.ToString(), style)) {
             throw new InvalidOperationException("Password controls cannot be updated through direct text messages.");
         }

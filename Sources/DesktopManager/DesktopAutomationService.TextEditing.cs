@@ -260,6 +260,8 @@ public sealed partial class DesktopAutomationService {
                         } else if (IsMutationPreconditionFailure(nativeFailureCode)) {
                             return CreateMutationPreconditionFailure(before, nativeFailureCode, nativeObservedFingerprint);
                         }
+                    } catch (NativeTextMutationOutcomeUnknownException) {
+                        throw;
                     } catch {
                         applied = false;
                     }
@@ -326,6 +328,10 @@ public sealed partial class DesktopAutomationService {
                 }
             }
         } catch (UiAutomationOperationInFlightException ex) {
+            DesktopTextEditResult uncertain = CreateTextEditFailure("mutation-outcome-unknown", ex.Message);
+            uncertain.Before = before;
+            return uncertain;
+        } catch (NativeTextMutationOutcomeUnknownException ex) {
             DesktopTextEditResult uncertain = CreateTextEditFailure("mutation-outcome-unknown", ex.Message);
             uncertain.Before = before;
             return uncertain;

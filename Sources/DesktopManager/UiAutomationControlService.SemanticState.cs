@@ -123,21 +123,12 @@ internal sealed partial class UiAutomationControlService {
             selection.CanSelectMultiple = ReadPatternCurrentBoolean(selectionPattern, "CanSelectMultiple", errors, "selection.canSelectMultiple");
             selection.IsSelectionRequired = ReadPatternCurrentBoolean(selectionPattern, "IsSelectionRequired", errors, "selection.isRequired");
             BoundedLabelResult labels = ReadElementLabels(
-                InvokePatternMethod(selectionPattern, "GetCurrentSelection", errors, "selection.items"),
+                InvokePatternCurrentMethod(selectionPattern, "GetSelection", errors, "selection.items"),
                 textBudget,
                 errors,
                 "selection.items");
             selection.Items = labels.Values;
             selection.IsTruncated = labels.IsTruncated;
-            if (selection.Items.Count == 0 && !selection.IsTruncated) {
-                labels = ReadElementLabels(
-                    InvokePatternMethod(selectionPattern, "GetSelection", errors, "selection.items"),
-                    textBudget,
-                    errors,
-                    "selection.items");
-                selection.Items = labels.Values;
-                selection.IsTruncated = labels.IsTruncated;
-            }
         }
 
         if (patterns.TryGetValue("SelectionItem", out object? selectionItemPattern)) {
@@ -197,12 +188,12 @@ internal sealed partial class UiAutomationControlService {
         if (patterns.TryGetValue("Table", out object? tablePattern)) {
             grid.RowOrColumnMajor = ReadPatternCurrentString(tablePattern, "RowOrColumnMajor", errors, "table.order");
             BoundedLabelResult rowHeaders = ReadElementLabels(
-                InvokePatternMethod(tablePattern, "GetCurrentRowHeaders", errors, "table.rowHeaders"),
+                InvokePatternCurrentMethod(tablePattern, "GetRowHeaders", errors, "table.rowHeaders"),
                 textBudget,
                 errors,
                 "table.rowHeaders");
             BoundedLabelResult columnHeaders = ReadElementLabels(
-                InvokePatternMethod(tablePattern, "GetCurrentColumnHeaders", errors, "table.columnHeaders"),
+                InvokePatternCurrentMethod(tablePattern, "GetColumnHeaders", errors, "table.columnHeaders"),
                 textBudget,
                 errors,
                 "table.columnHeaders");
@@ -213,12 +204,12 @@ internal sealed partial class UiAutomationControlService {
 
         if (patterns.TryGetValue("TableItem", out object? tableItemPattern)) {
             BoundedLabelResult rowHeaders = ReadElementLabels(
-                InvokePatternMethod(tableItemPattern, "GetCurrentRowHeaderItems", errors, "tableItem.rowHeaders"),
+                InvokePatternCurrentMethod(tableItemPattern, "GetRowHeaderItems", errors, "tableItem.rowHeaders"),
                 textBudget,
                 errors,
                 "tableItem.rowHeaders");
             BoundedLabelResult columnHeaders = ReadElementLabels(
-                InvokePatternMethod(tableItemPattern, "GetCurrentColumnHeaderItems", errors, "tableItem.columnHeaders"),
+                InvokePatternCurrentMethod(tableItemPattern, "GetColumnHeaderItems", errors, "tableItem.columnHeaders"),
                 textBudget,
                 errors,
                 "tableItem.columnHeaders");
@@ -273,7 +264,7 @@ internal sealed partial class UiAutomationControlService {
                 int allowedLength = Math.Min(4096, textBudget.RemainingCharacters);
                 UiAutomationTextReadResult? text = ReadElementText(item, allowedLength, expectedText: null);
                 string label = text?.Value ?? info.Text;
-                if (!string.IsNullOrWhiteSpace(label)) {
+                if (!string.IsNullOrEmpty(label)) {
                     if (text?.IsTruncated == true || label.Length > allowedLength) {
                         labels.Add(label.Length > allowedLength ? label.Substring(0, allowedLength) : label);
                         textBudget.RemainingCharacters -= Math.Min(label.Length, allowedLength);
@@ -310,9 +301,10 @@ internal sealed partial class UiAutomationControlService {
         internal bool IsTruncated { get; set; }
     }
 
-    private static object? InvokePatternMethod(object pattern, string name, List<string> errors, string scope) {
+    internal static object? InvokePatternCurrentMethod(object pattern, string name, List<string> errors, string scope) {
         try {
-            return pattern.GetType().GetMethod(name, Type.EmptyTypes)?.Invoke(pattern, null);
+            object? current = pattern.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(pattern);
+            return current?.GetType().GetMethod(name, Type.EmptyTypes)?.Invoke(current, null);
         } catch (Exception ex) {
             AddObservationError(errors, scope, ex);
             return null;

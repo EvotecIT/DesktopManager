@@ -109,6 +109,10 @@ public class ControlEnumerator {
             (style & EditStylePassword) == EditStylePassword;
     }
 
+    internal static bool? ResolvePasswordState(string? className, int classNameLength, bool styleAvailable, long style) {
+        return classNameLength > 0 && styleAvailable ? IsPasswordStyle(className, style) : null;
+    }
+
     private static WindowControlInfo CreateControlInfo(IntPtr parent, IntPtr handle, int? maxTextLength, bool readValue) {
         WindowControlInfo info = new WindowControlInfo {
             ParentWindowHandle = parent,
@@ -123,8 +127,11 @@ public class ControlEnumerator {
         StringBuilder classBuilder = new StringBuilder(256);
         int classNameLength = MonitorNativeMethods.GetClassName(handle, classBuilder, classBuilder.Capacity);
         info.ClassName = classBuilder.ToString();
-        long style = MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_STYLE).ToInt64();
-        info.IsPassword = classNameLength > 0 ? IsPasswordStyle(info.ClassName, style) : null;
+        bool styleAvailable = MonitorNativeMethods.TryGetWindowLongPtr(
+            handle,
+            MonitorNativeMethods.GWL_STYLE,
+            out IntPtr stylePointer);
+        info.IsPassword = ResolvePasswordState(info.ClassName, classNameLength, styleAvailable, stylePointer.ToInt64());
         if (info.IsPassword == false && readValue) {
             PopulateControlValues(new[] { info }, maxTextLength);
         }

@@ -102,6 +102,13 @@ public class ControlEnumeratorTests {
     }
 
     [TestMethod]
+    public void ResolvePasswordState_FailedStyleLookup_RemainsUnknown() {
+        Assert.IsNull(ControlEnumerator.ResolvePasswordState("Edit", classNameLength: 4, styleAvailable: false, style: 0));
+        Assert.AreEqual(false, ControlEnumerator.ResolvePasswordState("Edit", classNameLength: 4, styleAvailable: true, style: 0));
+        Assert.AreEqual(true, ControlEnumerator.ResolvePasswordState("Edit", classNameLength: 4, styleAvailable: true, style: 0x0020));
+    }
+
+    [TestMethod]
     public void MergeControlMetadata_PasswordSource_ClearsNativeText() {
         WindowControlInfo nativeControl = new() {
             Text = "must-not-survive",

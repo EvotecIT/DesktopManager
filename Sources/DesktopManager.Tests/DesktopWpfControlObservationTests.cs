@@ -17,6 +17,32 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class DesktopWpfControlObservationTests {
     [TestMethod]
+    public void DesktopAutomationService_WpfSelectionPattern_ReturnsSelectedItem() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using var harness = new PumpingWpfHarness();
+        var automation = new DesktopAutomationService();
+        DesktopControlObservation observation = harness.Invoke(() => automation.ObserveControls(
+                CreateWindowQuery(harness.WindowHandle),
+                new WindowControlQueryOptions {
+                    AutomationIdPattern = PumpingWpfHarness.SelectionAutomationId,
+                    ControlTypePattern = "List",
+                    UseUiAutomation = true,
+                    IncludeUiAutomation = true
+                },
+                new DesktopControlObservationOptions { IncludeSemanticState = true },
+                allWindows: false,
+                allControls: false)
+            .Single());
+
+        Assert.AreEqual(false, observation.IsPassword);
+        CollectionAssert.Contains(observation.Selection.Items.ToArray(), "Beta");
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_WpfRichTextSelectionCaretAndPassword_RoundTripSafely() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -181,6 +207,7 @@ public class DesktopWpfControlObservationTests {
 internal sealed class PumpingWpfHarness : IDisposable {
     internal const string RichAutomationId = "SemanticRichDocument";
     internal const string PasswordAutomationId = "SemanticPassword";
+    internal const string SelectionAutomationId = "SemanticSelection";
     private readonly ManualResetEventSlim _ready = new(false);
     private readonly Thread _thread;
     private Dispatcher? _dispatcher;
@@ -256,12 +283,20 @@ internal sealed class PumpingWpfHarness : IDisposable {
                 Margin = new Thickness(8)
             };
             AutomationProperties.SetAutomationId(passwordBox, PasswordAutomationId);
+            var selection = new System.Windows.Controls.ListBox {
+                Height = 80,
+                Margin = new Thickness(8),
+                ItemsSource = new[] { "Alpha", "Beta", "Gamma" },
+                SelectedIndex = 1
+            };
+            AutomationProperties.SetAutomationId(selection, SelectionAutomationId);
             panel.Children.Add(_richTextBox);
             panel.Children.Add(passwordBox);
+            panel.Children.Add(selection);
             _window = new Window {
                 Title = "DesktopManager WPF Semantic Proof",
                 Width = 480,
-                Height = 300,
+                Height = 400,
                 Left = 80,
                 Top = 80,
                 Content = panel
