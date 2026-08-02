@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -378,13 +379,16 @@ internal sealed partial class UiAutomationControlService {
             MonitorNativeMethods.GetWindowThreadProcessId(windowHandle, out _) == MonitorNativeMethods.GetCurrentThreadId();
     }
 
-    private static T CreateTimedOutOperationFallback<T>() {
+    internal static T CreateTimedOutOperationFallback<T>() {
         Type resultType = typeof(T);
         if (resultType.IsArray) {
             return (T)(object)Array.CreateInstance(resultType.GetElementType()!, 0);
         }
 
-        if (!resultType.IsAbstract && !resultType.IsInterface && resultType.GetConstructor(Type.EmptyTypes) != null) {
+        if (typeof(IList).IsAssignableFrom(resultType) &&
+            !resultType.IsAbstract &&
+            !resultType.IsInterface &&
+            resultType.GetConstructor(Type.EmptyTypes) != null) {
             return (T)Activator.CreateInstance(resultType)!;
         }
 

@@ -286,12 +286,8 @@ public static partial class WindowControlService {
         }
 
         int itemTextLength = unchecked((int)lengthResult.ToInt64());
-        if (itemTextLength == ComboBoxError) {
-            return true;
-        }
-        if (itemTextLength > maxTextLength) {
-            isTruncated = true;
-            return true;
+        if (!CanReadComboBoxItemText(itemTextLength, maxTextLength)) {
+            return false;
         }
 
         var buffer = new StringBuilder(itemTextLength + 1);
@@ -315,7 +311,7 @@ public static partial class WindowControlService {
         value = buffer.ToString();
         if (unchecked((int)copiedResult.ToInt64()) == ComboBoxError) {
             value = string.Empty;
-            return true;
+            return false;
         }
         if (value.Length > maxTextLength) {
             isTruncated = true;
@@ -323,6 +319,10 @@ public static partial class WindowControlService {
         }
 
         return true;
+    }
+
+    internal static bool CanReadComboBoxItemText(int itemTextLength, int maxTextLength) {
+        return itemTextLength >= 0 && itemTextLength <= maxTextLength;
     }
 
     private static int GetRemainingTimeout(Stopwatch stopwatch, int timeoutMilliseconds) {

@@ -56,7 +56,7 @@ public partial class WindowManager {
         }
 
         WindowControlQueryOptions filter = options ?? new WindowControlQueryOptions();
-        PrepareWindowForUiAutomation(window, filter);
+        PrepareWindowForUiAutomation(window, filter, getUiAutomationTimeoutMilliseconds);
         List<WindowControlInfo> controls = GetControlsInternal(window.Handle, filter, maxTextLength, getUiAutomationTimeoutMilliseconds);
         foreach (WindowControlInfo control in controls) {
             control.ParentWindowHandle = window.Handle;
@@ -151,17 +151,34 @@ public partial class WindowManager {
         };
     }
 
-    private UiAutomationPreparationResult PrepareWindowForUiAutomation(WindowInfo window, WindowControlQueryOptions filter) {
+    private UiAutomationPreparationResult PrepareWindowForUiAutomation(
+        WindowInfo window,
+        WindowControlQueryOptions filter,
+        Func<int>? getRemainingTimeoutMilliseconds = null) {
         if (!filter.RequiresUiAutomation() || !filter.EnsureForegroundWindow) {
             return UiAutomationPreparationResult.None;
         }
 
-        if (WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
-            Thread.Sleep(200);
-            return UiAutomationPreparationResult.Success;
+        if (!WindowActivationService.TryPrepareWindowForAutomation(
+                window.Handle,
+                getRemainingMilliseconds: getRemainingTimeoutMilliseconds)) {
+            return UiAutomationPreparationResult.Failed;
         }
 
-        return UiAutomationPreparationResult.Failed;
+        int settleMilliseconds = 200;
+        if (getRemainingTimeoutMilliseconds != null) {
+            int remainingMilliseconds = getRemainingTimeoutMilliseconds();
+            if (remainingMilliseconds <= 0) {
+                return UiAutomationPreparationResult.Failed;
+            }
+
+            settleMilliseconds = Math.Min(settleMilliseconds, remainingMilliseconds);
+        }
+
+        Thread.Sleep(settleMilliseconds);
+        return getRemainingTimeoutMilliseconds == null || getRemainingTimeoutMilliseconds() > 0
+            ? UiAutomationPreparationResult.Success
+            : UiAutomationPreparationResult.Failed;
     }
 
     private List<WindowControlInfo> GetControlsInternal(

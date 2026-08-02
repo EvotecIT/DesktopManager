@@ -46,6 +46,9 @@ public sealed class DesktopControlTextObservation {
     /// <summary>Gets or sets selected ranges with offsets when the provider can resolve them safely.</summary>
     public IReadOnlyList<DesktopTextRangeObservation> SelectionRanges { get; set; } = Array.Empty<DesktopTextRangeObservation>();
 
+    /// <summary>Gets or sets whether every provider selection range was returned completely.</summary>
+    public bool AreSelectionRangesComplete { get; set; } = true;
+
     /// <summary>Gets or sets the provider selection mode.</summary>
     public string SupportedSelection { get; set; } = string.Empty;
 
@@ -61,8 +64,14 @@ public sealed class DesktopControlTextObservation {
     /// <summary>Gets or sets the active input-method composition text.</summary>
     public string ActiveComposition { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets whether the complete active input-method composition was available.</summary>
+    public bool IsActiveCompositionComplete { get; set; } = true;
+
     /// <summary>Gets or sets the active input-method conversion target.</summary>
     public string ConversionTarget { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets whether the complete input-method conversion target was available.</summary>
+    public bool IsConversionTargetComplete { get; set; } = true;
 
     /// <summary>Gets or sets a SHA-256 fingerprint of complete non-password content.</summary>
     public string ContentFingerprint { get; set; } = string.Empty;

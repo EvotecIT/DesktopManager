@@ -23,7 +23,11 @@ internal static class WindowActivationService {
             : IntPtr.Zero;
     }
 
-    public static bool TryPrepareWindowForAutomation(IntPtr handle, int retryCount = 3, int retryDelayMilliseconds = 100) {
+    public static bool TryPrepareWindowForAutomation(
+        IntPtr handle,
+        int retryCount = 3,
+        int retryDelayMilliseconds = 100,
+        Func<int>? getRemainingMilliseconds = null) {
         const int SWP_NOMOVE = 0x0002;
 
         if (handle == IntPtr.Zero) {
@@ -39,6 +43,10 @@ internal static class WindowActivationService {
         }
 
         for (int attempt = 0; attempt < retryCount; attempt++) {
+            if (getRemainingMilliseconds != null && getRemainingMilliseconds() <= 0) {
+                return false;
+            }
+
             if (MonitorNativeMethods.IsIconic(handle)) {
                 MonitorNativeMethods.ShowWindow(handle, MonitorNativeMethods.SW_RESTORE);
             } else if (!MonitorNativeMethods.IsWindowVisible(handle)) {
@@ -56,7 +64,17 @@ internal static class WindowActivationService {
             }
 
             if (attempt < retryCount - 1 && retryDelayMilliseconds > 0) {
-                Thread.Sleep(retryDelayMilliseconds);
+                int delayMilliseconds = retryDelayMilliseconds;
+                if (getRemainingMilliseconds != null) {
+                    int remainingMilliseconds = getRemainingMilliseconds();
+                    if (remainingMilliseconds <= 0) {
+                        return false;
+                    }
+
+                    delayMilliseconds = Math.Min(delayMilliseconds, remainingMilliseconds);
+                }
+
+                Thread.Sleep(delayMilliseconds);
             }
         }
 

@@ -219,6 +219,9 @@ public static partial class WindowControlService {
 
         EnsureNativeTextMutationAllowed(control.Handle);
         ReplaceAllText(control.Handle, text);
+        if (!ControlTextMatches(control.Handle, text)) {
+            throw new InvalidOperationException("The native control accepted the text messages but did not adopt the requested value.");
+        }
     }
 
     internal static bool TrySetTextIfUnchanged(

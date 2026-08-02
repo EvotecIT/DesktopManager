@@ -91,7 +91,11 @@ internal static class DesktopTextObservationBuilder {
             throw new ArgumentNullException(nameof(observation));
         }
 
-        if (!observation.IsComplete || string.IsNullOrWhiteSpace(observation.ContentFingerprint)) {
+        if (!observation.IsComplete ||
+            !observation.AreSelectionRangesComplete ||
+            !observation.IsActiveCompositionComplete ||
+            !observation.IsConversionTargetComplete ||
+            string.IsNullOrWhiteSpace(observation.ContentFingerprint)) {
             return string.Empty;
         }
 

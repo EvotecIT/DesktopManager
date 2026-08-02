@@ -415,6 +415,11 @@ public sealed partial class DesktopAutomationService {
         int? offset;
         int length;
         if (request.Mode == DesktopTextEditMode.ReplaceSelection) {
+            if (!before.AreSelectionRangesComplete) {
+                error = "The complete set of selected ranges is unavailable.";
+                return false;
+            }
+
             if (before.SelectionRanges.Count != 1 || !before.SelectionRanges[0].Offset.HasValue) {
                 error = "Exactly one selected text range with a known offset is required.";
                 return false;
@@ -551,6 +556,12 @@ public sealed partial class DesktopAutomationService {
                 return false;
             }
 
+            if (!IsNativeControlOwnedByWindow(window.Handle, control.Handle)) {
+                failureCode = "control-owner-changed";
+                failureReason = "The resolved native control handle no longer belongs to the target window.";
+                return false;
+            }
+
             WindowControlInfo liveControl = new ControlEnumerator().GetControlMetadata(window.Handle, control.Handle);
             if (liveControl.IsPassword != false) {
                 failureCode = liveControl.IsPassword == true ? "password-control" : "password-state-unavailable";
@@ -570,6 +581,12 @@ public sealed partial class DesktopAutomationService {
         failureCode = "password-state-unavailable";
         failureReason = "No live provider could verify that the resolved target is not password-protected.";
         return false;
+    }
+
+    internal static bool IsNativeControlOwnedByWindow(IntPtr windowHandle, IntPtr controlHandle) {
+        return windowHandle != IntPtr.Zero &&
+            controlHandle != IntPtr.Zero &&
+            MonitorNativeMethods.GetAncestor(controlHandle, MonitorNativeMethods.GA_ROOT) == windowHandle;
     }
 
     private static DesktopTextEditResult CreateLiveMutationSafetyFailure(

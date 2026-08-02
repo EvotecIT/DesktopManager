@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -7,6 +8,71 @@ namespace DesktopManager.Tests;
 [DoNotParallelize]
 /// <summary>Protects deadline, input-delivery, retry-quality, and live password-safety regressions.</summary>
 public class DesktopSemanticSafetyRegressionTests {
+    [TestMethod]
+    public void WindowControlService_ComboItemLength_FailedOrOversizedReadIsUnavailable() {
+        Assert.IsFalse(WindowControlService.CanReadComboBoxItemText(-1, 4));
+        Assert.IsFalse(WindowControlService.CanReadComboBoxItemText(5, 4));
+        Assert.IsTrue(WindowControlService.CanReadComboBoxItemText(4, 4));
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_TimedOutFallback_OnlyConstructsCollectionResults() {
+        DesktopControlObservation? semantic = UiAutomationControlService.CreateTimedOutOperationFallback<DesktopControlObservation?>();
+        List<WindowControlInfo> controls = UiAutomationControlService.CreateTimedOutOperationFallback<List<WindowControlInfo>>();
+        WindowControlInfo[] controlArray = UiAutomationControlService.CreateTimedOutOperationFallback<WindowControlInfo[]>();
+
+        Assert.IsNull(semantic);
+        Assert.AreEqual(0, controls.Count);
+        Assert.AreEqual(0, controlArray.Length);
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_ReadTextSelections_ExactBudgetWithMoreRangesIsIncomplete() {
+        var errors = new List<string>();
+        var pattern = new TextSelectionPatternStub("abcd", "efgh");
+
+        IReadOnlyList<DesktopTextRangeObservation> ranges = UiAutomationControlService.ReadTextSelections(
+            pattern,
+            maxLength: 4,
+            errors,
+            out bool isComplete);
+
+        Assert.AreEqual(1, ranges.Count);
+        Assert.AreEqual("abcd", ranges[0].Text);
+        Assert.IsFalse(ranges[0].IsTruncated);
+        Assert.IsFalse(isComplete);
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    [TestMethod]
+    public void DesktopTextObservationBuilder_CreateEditContextFingerprint_RejectsIncompleteProviderRanges() {
+        DesktopControlTextObservation observation = DesktopTextObservationBuilder.Create("complete", "test", false, null, false, 0, 0);
+
+        observation.AreSelectionRangesComplete = false;
+        Assert.AreEqual(string.Empty, DesktopTextObservationBuilder.CreateEditContextFingerprint(observation));
+
+        observation.AreSelectionRangesComplete = true;
+        observation.IsActiveCompositionComplete = false;
+        Assert.AreEqual(string.Empty, DesktopTextObservationBuilder.CreateEditContextFingerprint(observation));
+
+        observation.IsActiveCompositionComplete = true;
+        observation.IsConversionTargetComplete = false;
+        Assert.AreEqual(string.Empty, DesktopTextObservationBuilder.CreateEditContextFingerprint(observation));
+    }
+
+    [TestMethod]
+    public void WindowActivationService_PreparationRetriesRespectRemainingDeadline() {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        bool prepared = WindowActivationService.TryPrepareWindowForAutomation(
+            new IntPtr(123),
+            retryCount: 3,
+            retryDelayMilliseconds: 100,
+            getRemainingMilliseconds: () => Math.Max(0, 10 - (int)stopwatch.ElapsedMilliseconds));
+
+        Assert.IsFalse(prepared);
+        Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromMilliseconds(500), $"Preparation exceeded its deadline: {stopwatch.Elapsed}.");
+    }
+
     [TestMethod]
     public void KeyboardInputService_PartialDelivery_ReportsUnknownOutcome() {
         KeyboardInputDeliveryException exception = Assert.ThrowsExactly<KeyboardInputDeliveryException>(
@@ -131,5 +197,34 @@ public class DesktopSemanticSafetyRegressionTests {
         DesktopControlState state = new DesktopAutomationService().GetControlState(control);
         Assert.AreEqual(string.Empty, state.Text);
         Assert.AreEqual(string.Empty, state.Value);
+    }
+
+    private sealed class TextSelectionPatternStub {
+        private readonly object[] _ranges;
+
+        internal TextSelectionPatternStub(params string[] values) {
+            _ranges = new object[values.Length];
+            for (int i = 0; i < values.Length; i++) {
+                _ranges[i] = new TextRangeStub(values[i]);
+            }
+        }
+
+        public object? DocumentRange => null;
+
+        public object[] GetSelection() {
+            return _ranges;
+        }
+    }
+
+    private sealed class TextRangeStub {
+        private readonly string _value;
+
+        internal TextRangeStub(string value) {
+            _value = value;
+        }
+
+        public string GetText(int maximumLength) {
+            return _value.Length > maximumLength ? _value.Substring(0, maximumLength) : _value;
+        }
     }
 }

@@ -82,15 +82,15 @@ public class ControlEnumeratorTests {
 
         Assert.IsNotNull(control);
         Assert.AreEqual(string.Empty, control.Value);
-        Assert.IsTrue(control.ValueIsTruncated);
+        Assert.IsFalse(control.ValueIsTruncated);
 
         DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
             new WindowInfo { Handle = form.Handle, ProcessId = unchecked((uint)System.Diagnostics.Process.GetCurrentProcess().Id) },
             control,
             new DesktopControlObservationOptions { MaxTextLength = 4 });
         Assert.AreEqual(string.Empty, observation.Text.Value);
-        Assert.AreEqual("native.selection", observation.Text.Source);
-        Assert.IsTrue(observation.Text.IsTruncated);
+        Assert.AreEqual("native.selection.unavailable", observation.Text.Source);
+        Assert.IsFalse(observation.Text.IsTruncated);
         Assert.IsFalse(observation.Text.IsComplete);
     }
 

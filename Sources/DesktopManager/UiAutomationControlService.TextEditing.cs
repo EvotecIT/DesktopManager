@@ -214,6 +214,9 @@ internal sealed partial class UiAutomationControlService {
         string expectedContentFingerprint,
         int expectedCaretOffset) {
         if (!observation.IsComplete ||
+            !observation.AreSelectionRangesComplete ||
+            !observation.IsActiveCompositionComplete ||
+            !observation.IsConversionTargetComplete ||
             !string.Equals(observation.ContentFingerprint, expectedContentFingerprint, StringComparison.OrdinalIgnoreCase) ||
             observation.CaretOffset != expectedCaretOffset) {
             return false;

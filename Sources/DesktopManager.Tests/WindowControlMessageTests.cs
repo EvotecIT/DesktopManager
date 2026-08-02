@@ -84,6 +84,69 @@ public class WindowControlMessageTests {
 
     [TestMethod]
     [TestCategory("UITest")]
+    public void WindowControlService_SetText_IgnoredMessagesDoNotReportSuccess() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Ignored SetText Test Form", ShowInTaskbar = false };
+        using var textBox = new IgnoringTextBox { Text = "original" };
+        form.Controls.Add(textBox);
+        form.Show();
+        textBox.CreateControl();
+        Application.DoEvents();
+        textBox.IgnoreTextMutations = true;
+        var control = new WindowControlInfo {
+            ParentWindowHandle = form.Handle,
+            Handle = textBox.Handle,
+            ClassName = "Edit",
+            IsPassword = false
+        };
+
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            WindowControlService.SetText(control, "ignored"));
+
+        StringAssert.Contains(exception.Message, "did not adopt");
+        Assert.AreEqual("original", textBox.Text);
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void DesktopAutomationService_LiveMutationTarget_RejectsControlFromDifferentSameProcessWindow() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form expectedWindow = new() { Text = "Expected Mutation Owner", ShowInTaskbar = false };
+        using Form replacementWindow = new() { Text = "Replacement Mutation Owner", ShowInTaskbar = false };
+        using TextBox replacementControl = new() { Text = "unrelated" };
+        replacementWindow.Controls.Add(replacementControl);
+        expectedWindow.Show();
+        replacementWindow.Show();
+        replacementControl.CreateControl();
+        Application.DoEvents();
+        WindowControlInfo control = new ControlEnumerator().GetControlMetadata(replacementWindow.Handle, replacementControl.Handle);
+        var window = new WindowInfo {
+            Handle = expectedWindow.Handle,
+            ProcessId = unchecked((uint)Process.GetCurrentProcess().Id)
+        };
+
+        bool valid = DesktopAutomationService.TryValidateLiveMutationTarget(
+            window,
+            control,
+            new UiAutomationControlService(),
+            out string failureCode,
+            out _);
+
+        Assert.IsFalse(valid);
+        Assert.AreEqual("control-owner-changed", failureCode);
+        Assert.AreEqual("unrelated", replacementControl.Text);
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
     public void WindowControlService_SetText_HungControlFailsWithinBoundedTimeout() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
@@ -419,6 +482,22 @@ public class WindowControlMessageTests {
                     message.Msg == MonitorNativeMethods.WM_GETTEXT ||
                     message.Msg == WmGetTextLength)) {
                 _release.Wait(TimeSpan.FromSeconds(10));
+            }
+
+            base.WndProc(ref message);
+        }
+    }
+
+    private sealed class IgnoringTextBox : TextBox {
+        internal bool IgnoreTextMutations;
+
+        protected override void WndProc(ref Message message) {
+            if (IgnoreTextMutations &&
+                (message.Msg == MonitorNativeMethods.WM_SETTEXT ||
+                    message.Msg == 0x00B1 ||
+                    message.Msg == 0x00C2)) {
+                message.Result = new IntPtr(1);
+                return;
             }
 
             base.WndProc(ref message);

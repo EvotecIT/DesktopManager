@@ -162,7 +162,12 @@ internal sealed partial class UiAutomationControlService {
             providerContains ? true : null);
 
         if (options.IncludeTextRanges && patterns.TryGetValue("Text", out object? textPattern)) {
-            observation.SelectionRanges = ReadTextSelections(textPattern, options.MaxTextLength, errors);
+            observation.SelectionRanges = ReadTextSelections(
+                textPattern,
+                options.MaxTextLength,
+                errors,
+                out bool selectionRangesComplete);
+            observation.AreSelectionRangesComplete = selectionRangesComplete;
             var selectedText = new List<string>(observation.SelectionRanges.Count);
             foreach (DesktopTextRangeObservation range in observation.SelectionRanges) {
                 selectedText.Add(range.Text);
@@ -188,8 +193,22 @@ internal sealed partial class UiAutomationControlService {
         }
 
         if (options.IncludeTextRanges && patterns.TryGetValue("TextEdit", out object? textEditPattern)) {
-            observation.ActiveComposition = ReadTextRangeFromMethod(textEditPattern, "GetActiveComposition", options.MaxTextLength, errors, "textEdit.activeComposition");
-            observation.ConversionTarget = ReadTextRangeFromMethod(textEditPattern, "GetConversionTarget", options.MaxTextLength, errors, "textEdit.conversionTarget");
+            observation.ActiveComposition = ReadTextRangeFromMethod(
+                textEditPattern,
+                "GetActiveComposition",
+                options.MaxTextLength,
+                errors,
+                "textEdit.activeComposition",
+                out bool activeCompositionComplete);
+            observation.IsActiveCompositionComplete = activeCompositionComplete;
+            observation.ConversionTarget = ReadTextRangeFromMethod(
+                textEditPattern,
+                "GetConversionTarget",
+                options.MaxTextLength,
+                errors,
+                "textEdit.conversionTarget",
+                out bool conversionTargetComplete);
+            observation.IsConversionTargetComplete = conversionTargetComplete;
         }
 
         observation.EditContextFingerprint = DesktopTextObservationBuilder.CreateEditContextFingerprint(observation);
@@ -197,10 +216,16 @@ internal sealed partial class UiAutomationControlService {
         return observation;
     }
 
-    private static IReadOnlyList<DesktopTextRangeObservation> ReadTextSelections(object textPattern, int maxLength, List<string> errors) {
+    internal static IReadOnlyList<DesktopTextRangeObservation> ReadTextSelections(
+        object textPattern,
+        int maxLength,
+        List<string> errors,
+        out bool isComplete) {
+        isComplete = true;
         try {
             object? result = textPattern.GetType().GetMethod("GetSelection", Type.EmptyTypes)?.Invoke(textPattern, null);
             if (result is not IEnumerable ranges) {
+                isComplete = false;
                 return Array.Empty<DesktopTextRangeObservation>();
             }
 
@@ -208,8 +233,12 @@ internal sealed partial class UiAutomationControlService {
             var values = new List<DesktopTextRangeObservation>();
             int remaining = maxLength;
             foreach (object? range in ranges) {
-                if (range == null || remaining <= 0) {
+                if (range == null) {
                     continue;
+                }
+                if (remaining <= 0) {
+                    isComplete = false;
+                    break;
                 }
 
                 string value = ReadTextRange(range, remaining, out bool truncated);
@@ -221,6 +250,7 @@ internal sealed partial class UiAutomationControlService {
                 });
                 remaining = Math.Max(0, remaining - value.Length);
                 if (truncated) {
+                    isComplete = false;
                     break;
                 }
             }
@@ -228,6 +258,7 @@ internal sealed partial class UiAutomationControlService {
             return values;
         } catch (Exception ex) {
             AddObservationError(errors, "text.selection", ex);
+            isComplete = false;
             return Array.Empty<DesktopTextRangeObservation>();
         }
     }
@@ -272,12 +303,27 @@ internal sealed partial class UiAutomationControlService {
         string methodName,
         int maxLength,
         List<string> errors,
-        string scope) {
+        string scope,
+        out bool isComplete) {
+        isComplete = true;
         try {
-            object? range = pattern.GetType().GetMethod(methodName, Type.EmptyTypes)?.Invoke(pattern, null);
-            return range == null ? string.Empty : ReadTextRange(range, maxLength, out _);
+            MethodInfo? method = pattern.GetType().GetMethod(methodName, Type.EmptyTypes);
+            if (method == null) {
+                isComplete = false;
+                return string.Empty;
+            }
+
+            object? range = method.Invoke(pattern, null);
+            if (range == null) {
+                return string.Empty;
+            }
+
+            string value = ReadTextRange(range, maxLength, out bool isTruncated);
+            isComplete = !isTruncated;
+            return value;
         } catch (Exception ex) {
             AddObservationError(errors, scope, ex);
+            isComplete = false;
             return string.Empty;
         }
     }
