@@ -104,7 +104,7 @@ public static partial class WindowControlService {
         ValidateSelectionControl(control);
         value = string.Empty;
         isTruncated = false;
-        if (control.IsPassword != false || timeoutMilliseconds <= 0) {
+        if (timeoutMilliseconds <= 0 || !RefreshNativeTextSafety(control)) {
             return false;
         }
 
@@ -128,7 +128,7 @@ public static partial class WindowControlService {
         ValidateSelectionControl(control);
         value = string.Empty;
         isTruncated = false;
-        if (control.IsPassword != false || timeoutMilliseconds <= 0) {
+        if (timeoutMilliseconds <= 0 || !RefreshNativeTextSafety(control)) {
             return false;
         }
 

@@ -38,7 +38,10 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
         return Invoke(operation, DefaultInvocationTimeoutMilliseconds);
     }
 
-    internal T Invoke<T>(Func<UiAutomationControlService, T> operation, int timeoutMilliseconds) {
+    internal T Invoke<T>(
+        Func<UiAutomationControlService, T> operation,
+        int timeoutMilliseconds,
+        Action<T>? abandonedResultHandler = null) {
         if (operation == null) {
             throw new ArgumentNullException(nameof(operation));
         }
@@ -49,9 +52,20 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
             throw new ObjectDisposedException(nameof(UiAutomationStaDispatcher));
         }
 
-        var workItem = new WorkItem<T>(operation);
+        var workItem = new WorkItem<T>(operation, abandonedResultHandler);
         _queue.Add(workItem);
         return workItem.GetResult(timeoutMilliseconds);
+    }
+
+    internal void Post(Action<UiAutomationControlService> operation) {
+        if (operation == null) {
+            throw new ArgumentNullException(nameof(operation));
+        }
+        if (_disposed) {
+            throw new ObjectDisposedException(nameof(UiAutomationStaDispatcher));
+        }
+
+        _queue.Add(new FireAndForgetWorkItem(operation));
     }
 
     public void Dispose() {
@@ -78,19 +92,38 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
         void Execute(UiAutomationControlService service);
     }
 
+    private sealed class FireAndForgetWorkItem : IWorkItem {
+        private readonly Action<UiAutomationControlService> _operation;
+
+        internal FireAndForgetWorkItem(Action<UiAutomationControlService> operation) {
+            _operation = operation;
+        }
+
+        public void Execute(UiAutomationControlService service) {
+            try {
+                _operation(service);
+            } catch {
+                // Fire-and-forget cleanup must not terminate the shared dispatcher.
+            }
+        }
+    }
+
     private sealed class WorkItem<T> : IWorkItem {
         private const int Queued = 0;
         private const int Executing = 1;
         private const int Completed = 2;
         private const int Abandoned = 3;
+        private const int AbandonedInFlight = 4;
         private readonly Func<UiAutomationControlService, T> _operation;
+        private readonly Action<T>? _abandonedResultHandler;
         private readonly ManualResetEventSlim _completed = new(false);
         private ExceptionDispatchInfo? _exception;
         private T _result = default!;
         private int _state = Queued;
 
-        internal WorkItem(Func<UiAutomationControlService, T> operation) {
+        internal WorkItem(Func<UiAutomationControlService, T> operation, Action<T>? abandonedResultHandler) {
             _operation = operation;
+            _abandonedResultHandler = abandonedResultHandler;
         }
 
         public void Execute(UiAutomationControlService service) {
@@ -103,8 +136,19 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
             } catch (Exception ex) {
                 _exception = ExceptionDispatchInfo.Capture(ex);
             } finally {
-                Volatile.Write(ref _state, Completed);
+                int priorState = Interlocked.CompareExchange(ref _state, Completed, Executing);
                 _completed.Set();
+                if (priorState == AbandonedInFlight) {
+                    if (_exception == null && _abandonedResultHandler != null) {
+                        try {
+                            _abandonedResultHandler(_result);
+                        } catch {
+                            // Late-result cleanup must not terminate the shared dispatcher.
+                        }
+                    }
+
+                    _completed.Dispose();
+                }
             }
         }
 
@@ -115,9 +159,11 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
                     throw new TimeoutException($"UI Automation did not complete within {timeoutMilliseconds}ms and was canceled before it started.");
                 }
 
-                if (!_completed.Wait(0)) {
+                if (Interlocked.CompareExchange(ref _state, AbandonedInFlight, Executing) == Executing) {
                     throw new UiAutomationOperationInFlightException(timeoutMilliseconds);
                 }
+
+                _completed.Wait();
             }
 
             try {

@@ -443,8 +443,9 @@ public static class WindowInputService {
             ExtraInfo = IntPtr.Zero
         };
 
+        uint sent = 0;
         for (int attempt = 0; attempt < options.InputRetryCount; attempt++) {
-            uint sent = MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+            sent = MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
             if (sent == inputs.Length) {
                 break;
             }
@@ -452,6 +453,8 @@ public static class WindowInputService {
                 Thread.Sleep(options.ActivationRetryDelayMilliseconds);
             }
         }
+
+        KeyboardInputService.EnsureInputDelivery((uint)inputs.Length, sent, "Unicode text input");
 
         if (options.KeyDelayMilliseconds > 0) {
             Thread.Sleep(options.KeyDelayMilliseconds);

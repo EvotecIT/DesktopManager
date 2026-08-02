@@ -331,7 +331,8 @@ internal sealed partial class UiAutomationControlService {
         Func<UiAutomationControlService, T> operation,
         IntPtr targetWindowHandle = default,
         bool isMutation = false,
-        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
+        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
+        Action<T>? abandonedResultHandler = null) {
         if (!IsAvailable) {
             return default!;
         }
@@ -349,11 +350,13 @@ internal sealed partial class UiAutomationControlService {
         }
 
         try {
-            if (TryRunWithCurrentUiMessagePump(() => StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds), out T pumpedResult)) {
+            if (TryRunWithCurrentUiMessagePump(
+                    () => StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds, abandonedResultHandler),
+                    out T pumpedResult)) {
                 return pumpedResult;
             }
 
-            return StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds);
+            return StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds, abandonedResultHandler);
         } catch (UiAutomationOperationInFlightException) when (isMutation) {
             LastOperationTimedOut = true;
             throw;

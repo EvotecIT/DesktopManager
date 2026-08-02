@@ -5,6 +5,13 @@ using System.Threading;
 
 namespace DesktopManager;
 
+/// <summary>Indicates that only part of a requested input sequence was accepted and the mutation outcome is unknown.</summary>
+internal sealed class KeyboardInputDeliveryException : InvalidOperationException {
+    internal KeyboardInputDeliveryException(string operation, uint requested, uint delivered)
+        : base($"{operation} accepted {delivered} of {requested} input events; the mutation outcome is unknown.") {
+    }
+}
+
 /// <summary>
 /// Provides methods for simulating keyboard input.
 /// </summary>
@@ -55,7 +62,7 @@ public static class KeyboardInputService {
             Time = 0,
             ExtraInfo = IntPtr.Zero
         };
-        MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        SendInputOrThrow([input], "KeyDown");
     }
 
     /// <summary>
@@ -72,7 +79,7 @@ public static class KeyboardInputService {
             Time = 0,
             ExtraInfo = IntPtr.Zero
         };
-        MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        SendInputOrThrow([input], "KeyUp");
     }
 
     /// <summary>
@@ -312,7 +319,7 @@ public static class KeyboardInputService {
             ExtraInfo = IntPtr.Zero
         };
 
-        MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        SendInputOrThrow(inputs, "Unicode text input");
         if (delayMilliseconds > 0) {
             Thread.Sleep(delayMilliseconds);
         }
@@ -448,7 +455,22 @@ public static class KeyboardInputService {
             ExtraInfo = IntPtr.Zero
         };
 
-        MonitorNativeMethods.SendInput(1, [input], Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        SendInputOrThrow([input], "Keyboard input");
+    }
+
+    private static void SendInputOrThrow(MonitorNativeMethods.INPUT[] inputs, string operation) {
+        uint requested = (uint)inputs.Length;
+        uint delivered = MonitorNativeMethods.SendInput(
+            requested,
+            inputs,
+            Marshal.SizeOf<MonitorNativeMethods.INPUT>());
+        EnsureInputDelivery(requested, delivered, operation);
+    }
+
+    internal static void EnsureInputDelivery(uint requested, uint delivered, string operation) {
+        if (delivered != requested) {
+            throw new KeyboardInputDeliveryException(operation, requested, delivered);
+        }
     }
 
     private static void ReleaseHeldModifiers(List<VirtualKey> heldModifiers) {

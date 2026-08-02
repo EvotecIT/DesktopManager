@@ -385,10 +385,10 @@ public class DesktopControlObservationContractTests {
         bool success = WindowControlService.TryGetCheckState(
             new WindowControlInfo { Handle = new IntPtr(123) },
             timeoutMilliseconds: 0,
-            out bool isChecked);
+            out bool? isChecked);
 
         Assert.IsFalse(success);
-        Assert.IsFalse(isChecked);
+        Assert.IsNull(isChecked);
     }
 
     [TestMethod]

@@ -443,6 +443,38 @@ public class UiAutomationControlServiceTests {
     }
 
     [TestMethod]
+    public void UiAutomationStaDispatcher_InFlightTimeout_CleansUpLateResult() {
+        using var dispatcher = new UiAutomationStaDispatcher();
+        using var started = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        using var cleaned = new ManualResetEventSlim(false);
+
+        Task<Exception?> timedOutInvocation = Task.Run(() => {
+            try {
+                dispatcher.Invoke(
+                    _ => {
+                        started.Set();
+                        release.Wait();
+                        return (Action)(() => cleaned.Set());
+                    },
+                    timeoutMilliseconds: 50,
+                    abandonedResultHandler: cleanup => cleanup());
+                return null;
+            } catch (Exception ex) {
+                return ex;
+            }
+        });
+
+        Assert.IsTrue(started.Wait(1000), "The dispatcher operation did not start.");
+        Assert.IsTrue(timedOutInvocation.Wait(1000), "The in-flight invocation did not time out.");
+        Assert.IsInstanceOfType<UiAutomationOperationInFlightException>(timedOutInvocation.Result);
+
+        release.Set();
+        Assert.IsTrue(cleaned.Wait(1000), "The abandoned result was not cleaned up when the operation completed.");
+        Assert.AreEqual(7, dispatcher.Invoke(_ => 7, timeoutMilliseconds: 1000));
+    }
+
+    [TestMethod]
     public void UiAutomationStaDispatcher_QueuedTimeout_CancelsWorkBeforeExecution() {
         using var dispatcher = new UiAutomationStaDispatcher();
         using var started = new ManualResetEventSlim(false);

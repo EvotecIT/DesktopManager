@@ -19,6 +19,43 @@ public static partial class WindowControlService {
     private const long ButtonStyleAutoThreeState = 0x00000006;
     private const long ButtonStyleAutoRadioButton = 0x00000009;
 
+    /// <summary>Refreshes native class/style metadata immediately before a text read and clears stale values unless safety is explicit.</summary>
+    internal static bool RefreshNativeTextSafety(WindowControlInfo control) {
+        if (control == null) {
+            throw new ArgumentNullException(nameof(control));
+        }
+
+        if (control.Handle == IntPtr.Zero) {
+            control.IsPassword = null;
+            control.Text = string.Empty;
+            control.Value = string.Empty;
+            return false;
+        }
+
+        StringBuilder classBuilder = new(256);
+        int classNameLength = MonitorNativeMethods.GetClassName(
+            control.Handle,
+            classBuilder,
+            classBuilder.Capacity);
+        bool styleAvailable = MonitorNativeMethods.TryGetWindowLongPtr(
+            control.Handle,
+            MonitorNativeMethods.GWL_STYLE,
+            out IntPtr stylePointer);
+        control.ClassName = classBuilder.ToString();
+        control.IsPassword = ControlEnumerator.ResolvePasswordState(
+            control.ClassName,
+            classNameLength,
+            styleAvailable,
+            stylePointer.ToInt64());
+        if (control.IsPassword != false) {
+            control.Text = string.Empty;
+            control.Value = string.Empty;
+            return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Clicks the specified control.
     /// </summary>
@@ -49,16 +86,16 @@ public static partial class WindowControlService {
     /// Retrieves the check state of a button control.
     /// </summary>
     /// <param name="control">Control to query.</param>
-    /// <returns><c>true</c> if checked; otherwise <c>false</c>.</returns>
-    public static bool GetCheckState(WindowControlInfo control) {
-        if (!TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool isChecked)) {
+    /// <returns><c>true</c> if checked, <c>false</c> if unchecked, or null when indeterminate.</returns>
+    public static bool? GetCheckState(WindowControlInfo control) {
+        if (!TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool? isChecked)) {
             throw new TimeoutException($"The check state did not respond within {MessageTimeoutMilliseconds}ms.");
         }
 
         return isChecked;
     }
 
-    internal static bool TryGetCheckState(WindowControlInfo control, int timeoutMilliseconds, out bool isChecked) {
+    internal static bool TryGetCheckState(WindowControlInfo control, int timeoutMilliseconds, out bool? isChecked) {
         if (control == null) {
             throw new ArgumentNullException(nameof(control));
         }
@@ -66,7 +103,7 @@ public static partial class WindowControlService {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
         if (timeoutMilliseconds <= 0) {
-            isChecked = false;
+            isChecked = null;
             return false;
         }
 
@@ -79,8 +116,18 @@ public static partial class WindowControlService {
             MonitorNativeMethods.SMTO_ABORTIFHUNG,
             boundedTimeout,
             out IntPtr state);
-        isChecked = state != IntPtr.Zero;
-        return sendResult != IntPtr.Zero;
+        if (sendResult == IntPtr.Zero) {
+            isChecked = null;
+            return false;
+        }
+
+        long nativeState = state.ToInt64();
+        isChecked = nativeState == 0
+            ? false
+            : nativeState == 1
+                ? true
+                : (bool?)null;
+        return nativeState >= 0 && nativeState <= 2;
     }
 
     /// <summary>
@@ -126,7 +173,9 @@ public static partial class WindowControlService {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
 
-        bool originalState = GetCheckState(control);
+        bool? originalState = TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool? currentState)
+            ? currentState
+            : throw new TimeoutException($"The check state did not respond within {MessageTimeoutMilliseconds}ms.");
         if (originalState == check) {
             return;
         }
@@ -428,7 +477,7 @@ public static partial class WindowControlService {
 
     private static bool GetCheckStateForHandle(IntPtr handle) {
         var control = new WindowControlInfo { Handle = handle };
-        return TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool isChecked) && isChecked;
+        return TryGetCheckState(control, (int)MessageTimeoutMilliseconds, out bool? isChecked) && isChecked == true;
     }
 
     private static bool TrySendMessageWithTimeout(IntPtr handle, uint message, uint wParam, uint lParam) {

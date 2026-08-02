@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -27,7 +28,8 @@ internal sealed partial class UiAutomationControlService {
         return RunInSta(
             service => service.TrySubscribeToChangesCore(windowHandle, signal),
             windowHandle,
-            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds,
+            abandonedResultHandler: subscription => subscription?.Dispose());
     }
 
     private IDisposable? TrySubscribeToChangesCore(IntPtr windowHandle, Action signal) {
@@ -213,24 +215,35 @@ internal sealed partial class UiAutomationControlService {
             }
 
             _signalGuard.Dispose();
-            if (timeoutMilliseconds <= 0) {
+            if (StaDispatcher.Value.IsCurrentThread) {
+                RunCleanup();
                 return;
             }
 
             try {
-                StaDispatcher.Value.Invoke(_ => {
-                    foreach (Action cleanup in _cleanup) {
-                        try {
-                            cleanup();
-                        } catch {
-                            // Event providers may disappear before unsubscription.
-                        }
+                var completion = new TaskCompletionSource<bool>();
+                StaDispatcher.Value.Post(_ => {
+                    try {
+                        RunCleanup();
+                    } finally {
+                        completion.TrySetResult(true);
                     }
+                });
+                if (timeoutMilliseconds > 0) {
+                    completion.Task.Wait(timeoutMilliseconds);
+                }
+            } catch (Exception) {
+                // A disposed or wedged dispatcher must not make wait cleanup block indefinitely.
+            }
+        }
 
-                    return true;
-                }, timeoutMilliseconds);
-            } catch (TimeoutException) {
-                // A wedged provider must not make wait cleanup block indefinitely.
+        private void RunCleanup() {
+            foreach (Action cleanup in _cleanup) {
+                try {
+                    cleanup();
+                } catch {
+                    // Event providers may disappear before unsubscription.
+                }
             }
         }
     }

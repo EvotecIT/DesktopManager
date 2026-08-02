@@ -19,7 +19,7 @@ public sealed class CmdletGetDesktopControlCheck : PSCmdlet {
 
     /// <inheritdoc />
     protected override void BeginProcessing() {
-        bool state = new DesktopAutomationService().GetControlCheckState(Control);
+        bool? state = new DesktopAutomationService().GetControlCheckState(Control);
         WriteObject(state);
     }
 }

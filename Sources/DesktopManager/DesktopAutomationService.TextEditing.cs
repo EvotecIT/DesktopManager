@@ -337,6 +337,10 @@ public sealed partial class DesktopAutomationService {
             DesktopTextEditResult uncertain = CreateTextEditFailure("mutation-outcome-unknown", ex.Message);
             uncertain.Before = before;
             return uncertain;
+        } catch (KeyboardInputDeliveryException ex) {
+            DesktopTextEditResult uncertain = CreateTextEditFailure("mutation-outcome-unknown", ex.Message);
+            uncertain.Before = before;
+            return uncertain;
         }
 
         if (!applied) {

@@ -40,7 +40,7 @@ public sealed partial class DesktopAutomationService {
                         allControls: true,
                         getUiAutomationTimeoutMilliseconds: getProviderTimeout)
                     .FirstOrDefault(condition.Matches);
-                if (observation != null) {
+                if (observation != null && CanReturnWaitObservation(observation, getProviderTimeout())) {
                     observation.WaitStrategy = subscription == null ? "polling" : "uia.events+polling";
                     return observation;
                 }
@@ -101,6 +101,10 @@ public sealed partial class DesktopAutomationService {
 
     internal static int GetRemainingProviderTimeout(Stopwatch stopwatch, int timeoutMilliseconds) {
         return GetProviderInvocationTimeout(timeoutMilliseconds, stopwatch.ElapsedMilliseconds);
+    }
+
+    internal static bool CanReturnWaitObservation(DesktopControlObservation? observation, int remainingMilliseconds) {
+        return observation != null && remainingMilliseconds > 0;
     }
 
     internal static void DisposeAutomationChangeSubscription(

@@ -213,7 +213,9 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservationOptions settings,
         int nativeTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
         Func<int>? getRemainingProviderTimeoutMilliseconds = null) {
-        bool canAccessText = control.IsPassword == false;
+        bool canAccessText = control.Handle == IntPtr.Zero
+            ? control.IsPassword == false
+            : WindowControlService.RefreshNativeTextSafety(control);
         string value = string.Empty;
         bool isTruncated = false;
         bool nativeTextAvailable = true;
@@ -266,7 +268,7 @@ public sealed partial class DesktopAutomationService {
         identity.SessionKey = UiAutomationControlService.CreateObservationSessionKey(identity);
         bool supportsCheckState = control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control);
         bool supportsSelection = control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control);
-        bool nativeCheckState = false;
+        bool? nativeCheckState = null;
         int checkStateTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
         bool checkStateAvailable = supportsCheckState && WindowControlService.TryGetCheckState(
             control,
@@ -371,6 +373,12 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservationOptions settings,
         int nativeTimeoutMilliseconds,
         Func<int>? getRemainingProviderTimeoutMilliseconds) {
+        if (observation.IsPassword == false &&
+            control.Handle != IntPtr.Zero &&
+            !WindowControlService.RefreshNativeTextSafety(control)) {
+            observation.IsPassword = control.IsPassword;
+        }
+
         if (observation.IsPassword != false) {
             observation.Text = DesktopTextObservationBuilder.CreateRestricted(
                 observation.IsPassword == true ? "password" : "passwordStateUnavailable");
@@ -423,7 +431,7 @@ public sealed partial class DesktopAutomationService {
             observation.Capabilities.CanToggle = true;
             if (!observation.IsChecked.HasValue) {
                 int checkStateTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
-                if (WindowControlService.TryGetCheckState(control, checkStateTimeoutMilliseconds, out bool nativeCheckState)) {
+                if (WindowControlService.TryGetCheckState(control, checkStateTimeoutMilliseconds, out bool? nativeCheckState)) {
                     observation.IsChecked = nativeCheckState;
                 } else {
                     AddObservationFailure(

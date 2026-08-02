@@ -1010,7 +1010,7 @@ public sealed partial class DesktopAutomationService {
                 return observation;
             }
 
-            fallbackObservation ??= observation;
+            fallbackObservation = SelectBetterTextObservation(fallbackObservation, observation);
             if (string.IsNullOrEmpty(expectedText) && fallbackObservation != null) {
                 return fallbackObservation;
             }
@@ -1168,8 +1168,8 @@ public sealed partial class DesktopAutomationService {
     /// Gets the current check state for a resolved control.
     /// </summary>
     /// <param name="control">Control to inspect.</param>
-    /// <returns><c>true</c> when the control is checked; otherwise <c>false</c>.</returns>
-    public bool GetControlCheckState(WindowControlInfo control) {
+    /// <returns><c>true</c> when checked, <c>false</c> when unchecked, or null when indeterminate or unavailable.</returns>
+    public bool? GetControlCheckState(WindowControlInfo control) {
         if (control == null) {
             throw new ArgumentNullException(nameof(control));
         }
@@ -1177,11 +1177,7 @@ public sealed partial class DesktopAutomationService {
         if (control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero) {
             WindowInfo window = ResolveParentWindow(control);
             bool? checkState = new UiAutomationControlService().TryReadCheckState(window, control);
-            if (!checkState.HasValue) {
-                throw new InvalidOperationException("The selected UI Automation control did not report a readable check state.");
-            }
-
-            return checkState.Value;
+            return checkState;
         }
 
         EnsureControlSupportsNativeCheckState(control, "queried for check state");
@@ -3722,13 +3718,33 @@ public sealed partial class DesktopAutomationService {
         UiAutomationControlService? uiAutomation = control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero
             ? new UiAutomationControlService()
             : null;
-        bool canAccessText = control.IsPassword == false;
-        string liveText = canAccessText && control.Handle != IntPtr.Zero
-            ? WindowTextHelper.GetWindowText(control.Handle)
-            : string.Empty;
-        string selectedValue = canAccessText && control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)
-            ? WindowControlService.GetSelectedValue(control)
-            : canAccessText ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
+        bool canUseCachedText = control.Handle == IntPtr.Zero;
+        bool canAccessText = control.Handle == IntPtr.Zero
+            ? control.IsPassword == false
+            : WindowControlService.RefreshNativeTextSafety(control);
+        string liveText = string.Empty;
+        string selectedValue = string.Empty;
+        if (canAccessText && control.Handle != IntPtr.Zero) {
+            if (WindowControlService.SupportsSelection(control)) {
+                WindowControlService.TryGetSelectedValue(
+                    control,
+                    DesktopTextObservationOptions.MaximumTextLength,
+                    UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
+                    out selectedValue,
+                    out _);
+            } else {
+                WindowControlService.TryGetControlText(
+                    control,
+                    DesktopTextObservationOptions.MaximumTextLength,
+                    UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
+                    out liveText,
+                    out _);
+            }
+
+            canAccessText = control.IsPassword == false;
+        } else if (canAccessText) {
+            selectedValue = uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty;
+        }
         string uiAutomationValue = canAccessText ? uiAutomation?.TryReadSelectedValue(window, control) ?? string.Empty : string.Empty;
         string resolvedText = !canAccessText
             ? string.Empty
@@ -3736,7 +3752,7 @@ public sealed partial class DesktopAutomationService {
             ? liveText
             : !string.IsNullOrEmpty(selectedValue)
                 ? selectedValue
-                : !string.IsNullOrEmpty(control.Text)
+                : canUseCachedText && !string.IsNullOrEmpty(control.Text)
                     ? control.Text
                     : uiAutomationValue;
         string resolvedValue = !canAccessText
@@ -3745,7 +3761,7 @@ public sealed partial class DesktopAutomationService {
             ? selectedValue
             : !string.IsNullOrEmpty(liveText)
                 ? liveText
-                : !string.IsNullOrEmpty(control.Value)
+                : canUseCachedText && !string.IsNullOrEmpty(control.Value)
                     ? control.Value
                     : !string.IsNullOrEmpty(uiAutomationValue)
                         ? uiAutomationValue

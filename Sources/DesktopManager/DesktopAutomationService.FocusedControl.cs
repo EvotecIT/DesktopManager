@@ -81,26 +81,34 @@ public sealed partial class DesktopAutomationService {
         string liveText = string.Empty;
         bool nativeTextTruncated = false;
         bool nativeTextAvailable = false;
+        bool nativeTextReadAttempted = false;
         IntPtr nativeTextHandle = ResolveNativeTextHandle(automationResult, focusedHandle);
         if (canAccessText && automationText == null && nativeTextHandle != IntPtr.Zero) {
+            nativeTextReadAttempted = true;
             nativeTextAvailable = TryReadFocusedNativeText(
                 control,
                 maxObservedTextLength,
                 getRemainingProviderTimeoutMilliseconds,
                 out liveText,
                 out nativeTextTruncated);
+            isPassword = control.IsPassword == true;
+            canAccessText = control.IsPassword == false;
         }
         string controlText = !canAccessText
             ? string.Empty
             : nativeTextAvailable
                 ? liveText
-                : control.Text;
+                : nativeTextReadAttempted
+                    ? string.Empty
+                    : control.Text;
         string valueSource = string.Empty;
         string value = !canAccessText
             ? string.Empty
             : automationText == null && nativeTextAvailable
                 ? liveText
-                : ResolveFocusedValue(automationText, control, liveText, out valueSource);
+                : nativeTextReadAttempted && !nativeTextAvailable
+                    ? string.Empty
+                    : ResolveFocusedValue(automationText, control, liveText, out valueSource);
         if (automationText == null && nativeTextAvailable) {
             valueSource = "native.windowText";
         }
