@@ -34,7 +34,7 @@ public class PowerShellCoreCmdletSurfaceTests {
     [DataRow("CmdletTestDesktopElevation")]
     [DataRow("CmdletWaitDesktopFocusedControl", "Name", "Handle", "ActiveWindow", "TimeoutMs", "IntervalMs")]
     [DataRow("CmdletGetDesktopControlObservation", "Name", "Handle", "ActiveWindow", "ClassName", "TextPattern", "ValuePattern", "AutomationId", "ControlType", "ExpectedText", "MaxTextLength", "IncludeTextRanges", "RealizeVirtualizedItem")]
-    [DataRow("CmdletWaitDesktopControlObservation", "Name", "Handle", "ActiveWindow", "ClassName", "TextPattern", "ValuePattern", "AutomationId", "ControlType", "ExpectedText", "IsTextComplete", "IsEnabled", "IsFocused", "IsChecked", "IsSelected", "MinimumRangeValue", "MaximumRangeValue", "TimeoutMs", "IntervalMs")]
+    [DataRow("CmdletWaitDesktopControlObservation", "Name", "Handle", "ActiveWindow", "ClassName", "TextPattern", "ValuePattern", "AutomationId", "ControlType", "ExpectedText", "IsTextComplete", "IsTextTruncated", "IsEnabled", "IsFocused", "IsChecked", "IsSelected", "MinimumRangeValue", "MaximumRangeValue", "TimeoutMs", "IntervalMs")]
     [DataRow("CmdletSetDesktopControlText", "Control", "Observation", "Text", "Mode", "ExpectedFingerprint", "ExpectedEditContextFingerprint", "AllowForegroundInput", "NoVerify", "PassThru")]
     [DataRow("CmdletGetDesktopAudioEndpoint", "DeviceId", "DataFlow", "ActiveOnly")]
     [DataRow("CmdletSetDesktopAudioEndpoint", "DeviceId", "Volume", "Muted", "PassThru")]

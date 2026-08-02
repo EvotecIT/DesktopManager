@@ -454,7 +454,12 @@ public static class WindowInputService {
             }
         }
 
-        KeyboardInputService.EnsureInputDelivery((uint)inputs.Length, sent, "Unicode text input");
+        try {
+            KeyboardInputService.EnsureInputDelivery((uint)inputs.Length, sent, "Unicode text input");
+        } catch (KeyboardInputDeliveryException) {
+            KeyboardInputService.TryReleaseUnicodeCharacter(character);
+            throw;
+        }
 
         if (options.KeyDelayMilliseconds > 0) {
             Thread.Sleep(options.KeyDelayMilliseconds);

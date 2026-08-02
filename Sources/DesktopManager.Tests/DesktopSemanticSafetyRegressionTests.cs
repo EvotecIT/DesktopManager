@@ -17,12 +17,59 @@ public class DesktopSemanticSafetyRegressionTests {
     }
 
     [TestMethod]
+    public void KeyboardInputService_FailedSequence_ReleasesEveryAcceptedKey() {
+        var pressed = new List<VirtualKey>();
+        var released = new List<VirtualKey>();
+
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            KeyboardInputService.ExecuteKeySequence(
+                new[] { VirtualKey.VK_CONTROL, VirtualKey.VK_A, VirtualKey.VK_B },
+                delayMilliseconds: 0,
+                key => {
+                    if (key == VirtualKey.VK_B) {
+                        throw new InvalidOperationException("delivery failed");
+                    }
+
+                    pressed.Add(key);
+                },
+                key => released.Add(key)));
+
+        Assert.AreEqual("delivery failed", exception.Message);
+        CollectionAssert.AreEqual(new[] { VirtualKey.VK_CONTROL, VirtualKey.VK_A }, pressed);
+        CollectionAssert.AreEqual(new[] { VirtualKey.VK_A, VirtualKey.VK_CONTROL }, released);
+    }
+
+    [TestMethod]
+    public void KeyboardInputService_ReleaseFailure_StillAttemptsRemainingKeyUps() {
+        var released = new List<VirtualKey>();
+
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            KeyboardInputService.ExecuteKeySequence(
+                new[] { VirtualKey.VK_CONTROL, VirtualKey.VK_A },
+                delayMilliseconds: 0,
+                _ => { },
+                key => {
+                    released.Add(key);
+                    if (key == VirtualKey.VK_A) {
+                        throw new InvalidOperationException("release failed");
+                    }
+                }));
+
+        Assert.AreEqual("release failed", exception.Message);
+        CollectionAssert.AreEqual(new[] { VirtualKey.VK_A, VirtualKey.VK_CONTROL }, released);
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_ExpiredWaitMatch_IsNotReturned() {
         var observation = new DesktopControlObservation();
+        var focusedObservation = new DesktopFocusedControlObservation();
 
         Assert.IsFalse(DesktopAutomationService.CanReturnWaitObservation(observation, remainingMilliseconds: 0));
         Assert.IsTrue(DesktopAutomationService.CanReturnWaitObservation(observation, remainingMilliseconds: 1));
-        Assert.IsFalse(DesktopAutomationService.CanReturnWaitObservation(null, remainingMilliseconds: 1));
+        Assert.IsFalse(DesktopAutomationService.CanReturnWaitObservation((DesktopControlObservation?)null, remainingMilliseconds: 1));
+        Assert.IsFalse(DesktopAutomationService.CanReturnWaitObservation(focusedObservation, remainingMilliseconds: 0));
+        Assert.IsTrue(DesktopAutomationService.CanReturnWaitObservation(focusedObservation, remainingMilliseconds: 1));
+        Assert.IsFalse(DesktopAutomationService.CanReturnWaitObservation((DesktopFocusedControlObservation?)null, remainingMilliseconds: 1));
     }
 
     [TestMethod]

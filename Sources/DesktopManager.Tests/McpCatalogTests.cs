@@ -21,6 +21,7 @@ public class McpCatalogTests {
         Assert.IsTrue(wait.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("minimumRangeValue", out _));
         JsonElement waitProperties = wait.GetProperty("inputSchema").GetProperty("properties");
         Assert.IsTrue(waitProperties.TryGetProperty("includeTextRanges", out _));
+        Assert.IsTrue(waitProperties.TryGetProperty("isTextTruncated", out _));
         Assert.IsFalse(observe.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("realizeVirtualizedItem", out _));
         Assert.IsFalse(waitProperties.TryGetProperty("realizeVirtualizedItem", out _));
         Assert.IsFalse(observe.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("ensureForegroundWindow", out _));

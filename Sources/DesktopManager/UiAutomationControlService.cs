@@ -983,6 +983,10 @@ internal sealed partial class UiAutomationControlService {
 
     internal static int ScoreMatch(WindowControlInfo expected, WindowControlInfo candidate) {
         int score = 0;
+        if (expected.Handle != IntPtr.Zero && candidate.Handle != IntPtr.Zero && expected.Handle != candidate.Handle) {
+            return -1;
+        }
+
         if (!string.IsNullOrWhiteSpace(expected.RuntimeId)) {
             if (!string.Equals(expected.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal)) {
                 return -1;

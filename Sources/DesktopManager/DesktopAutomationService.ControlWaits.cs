@@ -107,6 +107,10 @@ public sealed partial class DesktopAutomationService {
         return observation != null && remainingMilliseconds > 0;
     }
 
+    internal static bool CanReturnWaitObservation(DesktopFocusedControlObservation? observation, int remainingMilliseconds) {
+        return observation != null && remainingMilliseconds > 0;
+    }
+
     internal static void DisposeAutomationChangeSubscription(
         IDisposable? subscription,
         Func<int> getInvocationTimeoutMilliseconds) {

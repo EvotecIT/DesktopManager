@@ -3102,8 +3102,8 @@ public sealed partial class DesktopAutomationService {
                     maxObservedTextLength: 2048,
                     expectedText: null,
                     getProviderTimeout);
-                if (observation != null) {
-                    return observation;
+                if (CanReturnWaitObservation(observation, getProviderTimeout())) {
+                    return observation!;
                 }
 
                 if (getProviderTimeout() <= 0) {

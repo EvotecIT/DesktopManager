@@ -270,6 +270,24 @@ public class UiAutomationControlServiceTests {
     }
 
     [TestMethod]
+    public void ScoreMatch_WithKnownDifferentHandles_RejectsCandidateBeforeMetadataScoring() {
+        var expected = new WindowControlInfo {
+            Handle = new IntPtr(101),
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same"
+        };
+        var candidate = new WindowControlInfo {
+            Handle = new IntPtr(202),
+            AutomationId = "duplicate",
+            ControlType = "Edit",
+            Text = "same"
+        };
+
+        Assert.AreEqual(-1, UiAutomationControlService.ScoreMatch(expected, candidate));
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures editable UIA controls can opt into explicit foreground fallback even when focusability metadata is missing.
     /// </summary>

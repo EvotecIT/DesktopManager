@@ -36,6 +36,8 @@ public sealed class CmdletWaitDesktopControlObservation : PSCmdlet {
     [Parameter] public SwitchParameter IgnoreCase { get; set; }
     /// <summary><para type="description">Required complete-text state.</para></summary>
     [Parameter] public bool? IsTextComplete { get; set; }
+    /// <summary><para type="description">Required text-truncation state.</para></summary>
+    [Parameter] public bool? IsTextTruncated { get; set; }
     /// <summary><para type="description">Required enabled state.</para></summary>
     [Parameter] public bool? IsEnabled { get; set; }
     /// <summary><para type="description">Required focused state.</para></summary>
@@ -65,6 +67,7 @@ public sealed class CmdletWaitDesktopControlObservation : PSCmdlet {
             ExpectedText = string.IsNullOrEmpty(ExpectedText) ? null : ExpectedText,
             IgnoreCase = IgnoreCase,
             IsTextComplete = IsTextComplete,
+            IsTextTruncated = IsTextTruncated,
             IsEnabled = IsEnabled,
             IsFocused = IsFocused,
             IsChecked = IsChecked,

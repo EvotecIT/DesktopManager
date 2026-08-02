@@ -497,7 +497,8 @@ Semantic observation options:
   --checked / --unchecked
   --selected / --not-selected
   --expand-collapse-state <value>
-  --complete-text / --truncated-text
+  --complete-text
+  --truncated-text
   --minimum-range-value <value>
   --maximum-range-value <value>
 

@@ -15,6 +15,9 @@ public sealed class DesktopControlObservationCondition {
     /// <summary>Gets or sets whether complete text is required.</summary>
     public bool? IsTextComplete { get; set; }
 
+    /// <summary>Gets or sets whether text truncated by the configured observation limit is required.</summary>
+    public bool? IsTextTruncated { get; set; }
+
     /// <summary>Gets or sets the required enabled state.</summary>
     public bool? IsEnabled { get; set; }
 
@@ -54,6 +57,7 @@ public sealed class DesktopControlObservationCondition {
         }
 
         return Matches(IsTextComplete, observation.Text.IsComplete) &&
+            Matches(IsTextTruncated, observation.Text.IsTruncated) &&
             Matches(IsEnabled, observation.IsEnabled) &&
             Matches(IsFocused, observation.IsFocused) &&
             Matches(IsChecked, observation.IsChecked) &&

@@ -47,18 +47,7 @@ internal static class ControlCommands {
     }
 
     private static int WaitObservation(CommandLineArguments arguments) {
-        var condition = new DesktopControlObservationCondition {
-            ExpectedText = arguments.GetOption("expected-text"),
-            IgnoreCase = arguments.GetBoolFlag("ignore-case"),
-            IsTextComplete = arguments.GetBoolFlag("complete-text") ? true : arguments.GetBoolFlag("truncated-text") ? false : null,
-            IsEnabled = arguments.GetBoolFlag("enabled") ? true : arguments.GetBoolFlag("disabled") ? false : null,
-            IsFocused = arguments.GetBoolFlag("focused") ? true : arguments.GetBoolFlag("not-focused") ? false : null,
-            IsChecked = arguments.GetBoolFlag("checked") ? true : arguments.GetBoolFlag("unchecked") ? false : null,
-            IsSelected = arguments.GetBoolFlag("selected") ? true : arguments.GetBoolFlag("not-selected") ? false : null,
-            ExpandCollapseState = arguments.GetOption("expand-collapse-state"),
-            MinimumRangeValue = arguments.GetDoubleOption("minimum-range-value"),
-            MaximumRangeValue = arguments.GetDoubleOption("maximum-range-value")
-        };
+        DesktopControlObservationCondition condition = CreateObservationCondition(arguments);
         DesktopControlObservation observation = DesktopOperations.WaitForControlObservation(
             CreateWindowCriteria(arguments),
             CreateControlCriteria(arguments),
@@ -75,6 +64,22 @@ internal static class ControlCommands {
         }
 
         return 0;
+    }
+
+    internal static DesktopControlObservationCondition CreateObservationCondition(CommandLineArguments arguments) {
+        return new DesktopControlObservationCondition {
+            ExpectedText = arguments.GetOption("expected-text"),
+            IgnoreCase = arguments.GetBoolFlag("ignore-case"),
+            IsTextComplete = arguments.GetBoolFlag("complete-text") ? true : null,
+            IsTextTruncated = arguments.GetBoolFlag("truncated-text") ? true : null,
+            IsEnabled = arguments.GetBoolFlag("enabled") ? true : arguments.GetBoolFlag("disabled") ? false : null,
+            IsFocused = arguments.GetBoolFlag("focused") ? true : arguments.GetBoolFlag("not-focused") ? false : null,
+            IsChecked = arguments.GetBoolFlag("checked") ? true : arguments.GetBoolFlag("unchecked") ? false : null,
+            IsSelected = arguments.GetBoolFlag("selected") ? true : arguments.GetBoolFlag("not-selected") ? false : null,
+            ExpandCollapseState = arguments.GetOption("expand-collapse-state"),
+            MinimumRangeValue = arguments.GetDoubleOption("minimum-range-value"),
+            MaximumRangeValue = arguments.GetDoubleOption("maximum-range-value")
+        };
     }
 
     private static int List(CommandLineArguments arguments) {

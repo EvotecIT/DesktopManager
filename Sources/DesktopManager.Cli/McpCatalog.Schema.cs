@@ -97,6 +97,7 @@ internal static partial class McpCatalog {
             ExpectedText = ReadOptionalString(element, "expectedText"),
             IgnoreCase = ReadBool(element, "ignoreCase"),
             IsTextComplete = ReadNullableBool(element, "isTextComplete"),
+            IsTextTruncated = ReadNullableBool(element, "isTextTruncated"),
             IsEnabled = ReadNullableBool(element, "expectedEnabled"),
             IsFocused = ReadNullableBool(element, "expectedFocused"),
             IsChecked = ReadNullableBool(element, "expectedChecked"),
@@ -148,6 +149,7 @@ internal static partial class McpCatalog {
     private static Dictionary<string, object> CreateSemanticWaitProperties() {
         Dictionary<string, object> properties = CreateSemanticControlProperties(includeMultiple: false, includeForegroundActivation: false);
         properties["isTextComplete"] = CreateBooleanSchema("Required text completeness state.");
+        properties["isTextTruncated"] = CreateBooleanSchema("Require text that was truncated by the configured maximum length.");
         properties["expectedEnabled"] = CreateBooleanSchema("Required enabled state.");
         properties["expectedFocused"] = CreateBooleanSchema("Required focused state.");
         properties["expectedChecked"] = CreateBooleanSchema("Required toggle state.");

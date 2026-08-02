@@ -331,6 +331,21 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopControlObservationCondition_TruncationIsDistinctFromIncompleteText() {
+        var unavailable = new DesktopControlObservation {
+            Text = DesktopTextObservationBuilder.Create(string.Empty, "uia.textUnavailable", false, null, false, 0, 0)
+        };
+        unavailable.Text.IsComplete = false;
+        var truncated = new DesktopControlObservation {
+            Text = DesktopTextObservationBuilder.Create("bounded", "uia.textPattern", true, null, false, 0, 0)
+        };
+
+        Assert.IsFalse(new DesktopControlObservationCondition { IsTextTruncated = true }.Matches(unavailable));
+        Assert.IsTrue(new DesktopControlObservationCondition { IsTextComplete = false }.Matches(unavailable));
+        Assert.IsTrue(new DesktopControlObservationCondition { IsTextTruncated = true }.Matches(truncated));
+    }
+
+    [TestMethod]
     public void ControlEnumerator_PopulateControlValues_UnknownPasswordStateFailsClosed() {
         var control = new WindowControlInfo {
             Handle = new IntPtr(123),
