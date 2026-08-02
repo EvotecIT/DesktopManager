@@ -9,6 +9,111 @@ namespace DesktopManager.Tests;
 /// <summary>Protects deadline, input-delivery, retry-quality, and live password-safety regressions.</summary>
 public class DesktopSemanticSafetyRegressionTests {
     [TestMethod]
+    public void DesktopAutomationService_FocusedEmptyProviderValue_RemainsAuthoritative() {
+        Assert.IsTrue(DesktopAutomationService.HasAuthoritativeFocusedValue(new DesktopFocusedControlObservation {
+            Value = string.Empty,
+            ValueSource = "uia.textPattern",
+            Text = "accessible label"
+        }));
+        Assert.IsTrue(DesktopAutomationService.HasAuthoritativeFocusedValue(new DesktopFocusedControlObservation {
+            Value = string.Empty,
+            ValueSource = "native.windowText",
+            Text = "stale metadata"
+        }));
+        Assert.IsFalse(DesktopAutomationService.HasAuthoritativeFocusedValue(new DesktopFocusedControlObservation {
+            Value = string.Empty,
+            ValueSource = "uia.textUnavailable",
+            Text = "accessible label"
+        }));
+        Assert.IsFalse(DesktopAutomationService.HasAuthoritativeFocusedValue(new DesktopFocusedControlObservation {
+            Value = string.Empty,
+            ValueSource = "uia.password",
+            Text = string.Empty
+        }));
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_MergeNativeObservationState_DisabledFallbackLeavesProviderStateUntouched() {
+        var observation = new DesktopControlObservation {
+            Status = "available",
+            IsPassword = false,
+            IsEnabled = true,
+            IsVisible = true,
+            IsFocused = true,
+            IsChecked = true,
+            Text = DesktopTextObservationBuilder.Create("provider", "uia.textPattern", false, null, false, 0, 0),
+            Capabilities = new DesktopControlCapabilities {
+                CanReadText = true,
+                CanToggle = false
+            }
+        };
+
+        DesktopAutomationService.MergeNativeObservationState(
+            observation,
+            new WindowInfo { Handle = new IntPtr(10), ProcessId = 20 },
+            new WindowControlInfo {
+                ParentWindowHandle = new IntPtr(10),
+                Handle = new IntPtr(30),
+                IsPassword = null,
+                SupportsBackgroundClick = true
+            },
+            new DesktopControlObservationOptions { IncludeNativeFallback = false },
+            nativeTimeoutMilliseconds: 1,
+            getRemainingProviderTimeoutMilliseconds: null);
+
+        Assert.AreEqual("available", observation.Status);
+        Assert.AreEqual("provider", observation.Text.Value);
+        Assert.AreEqual("uia.textPattern", observation.Text.Source);
+        Assert.AreEqual(false, observation.IsPassword);
+        Assert.AreEqual(true, observation.IsEnabled);
+        Assert.AreEqual(true, observation.IsVisible);
+        Assert.AreEqual(true, observation.IsFocused);
+        Assert.AreEqual(true, observation.IsChecked);
+        Assert.IsTrue(observation.Capabilities.CanReadText);
+        Assert.IsFalse(observation.Capabilities.CanToggle);
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_ForegroundPreparation_PrecedesElementFocus() {
+        var operations = new List<string>();
+
+        bool result = UiAutomationControlService.TryPrepareForegroundAndFocus(
+            ensureForegroundWindow: true,
+            prepareForeground: () => {
+                operations.Add("activate");
+                return true;
+            },
+            prepareElement: () => operations.Add("scroll"),
+            focusElement: () => {
+                operations.Add("focus");
+                return true;
+            },
+            out bool foregroundPreparationFailed);
+
+        Assert.IsTrue(result);
+        Assert.IsFalse(foregroundPreparationFailed);
+        CollectionAssert.AreEqual(new[] { "activate", "scroll", "focus" }, operations);
+
+        operations.Clear();
+        result = UiAutomationControlService.TryPrepareForegroundAndFocus(
+            ensureForegroundWindow: true,
+            prepareForeground: () => {
+                operations.Add("activate");
+                return false;
+            },
+            prepareElement: () => operations.Add("scroll"),
+            focusElement: () => {
+                operations.Add("focus");
+                return true;
+            },
+            out foregroundPreparationFailed);
+
+        Assert.IsFalse(result);
+        Assert.IsTrue(foregroundPreparationFailed);
+        CollectionAssert.AreEqual(new[] { "activate" }, operations);
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_FocusedHandlelessUiAutomationMetadata_IsNotText() {
         var automationResult = new UiAutomationFocusedControlResult {
             Control = new WindowControlInfo {

@@ -4031,7 +4031,7 @@ public sealed partial class DesktopAutomationService {
             return null;
         }
 
-        if (!string.IsNullOrEmpty(focusedControl.Value)) {
+        if (HasAuthoritativeFocusedValue(focusedControl)) {
             DesktopWindowTextObservation observation = CreateTextObservation(
                 window,
                 focusedControl.FocusedHandle,
@@ -4061,6 +4061,20 @@ public sealed partial class DesktopAutomationService {
         }
 
         return null;
+    }
+
+    internal static bool HasAuthoritativeFocusedValue(DesktopFocusedControlObservation focusedControl) {
+        if (focusedControl == null) {
+            throw new ArgumentNullException(nameof(focusedControl));
+        }
+
+        if (!string.IsNullOrEmpty(focusedControl.Value)) {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(focusedControl.ValueSource) &&
+            !string.Equals(focusedControl.ValueSource, "uia.textUnavailable", StringComparison.Ordinal) &&
+            !string.Equals(focusedControl.ValueSource, "uia.password", StringComparison.Ordinal);
     }
 
     private (WindowControlInfo Control, DesktopWindowTextObservation Observation)? CreateControlTextObservation(

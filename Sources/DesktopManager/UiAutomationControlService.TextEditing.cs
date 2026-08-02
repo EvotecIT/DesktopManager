@@ -87,13 +87,13 @@ internal sealed partial class UiAutomationControlService {
             return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
         }
 
-        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
-        if (!TrySetFocus(element)) {
-            return UiAutomationTextEditAttempt.Failed("focus-failed");
-        }
-
-        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
-            return UiAutomationTextEditAttempt.Failed("foreground-failed");
+        if (!TryPrepareForegroundAndFocus(
+                ensureForegroundWindow,
+                () => WindowActivationService.TryPrepareWindowForAutomation(window.Handle),
+                () => TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView"),
+                () => TrySetFocus(element),
+                out bool foregroundPreparationFailed)) {
+            return UiAutomationTextEditAttempt.Failed(foregroundPreparationFailed ? "foreground-failed" : "focus-failed");
         }
 
         if (MonitorNativeMethods.GetForegroundWindow() != window.Handle) {
@@ -144,6 +144,22 @@ internal sealed partial class UiAutomationControlService {
 
         KeyboardInputService.SendTextToForeground(value);
         return UiAutomationTextEditAttempt.Succeeded();
+    }
+
+    internal static bool TryPrepareForegroundAndFocus(
+        bool ensureForegroundWindow,
+        Func<bool> prepareForeground,
+        Action prepareElement,
+        Func<bool> focusElement,
+        out bool foregroundPreparationFailed) {
+        foregroundPreparationFailed = false;
+        if (ensureForegroundWindow && !prepareForeground()) {
+            foregroundPreparationFailed = true;
+            return false;
+        }
+
+        prepareElement();
+        return focusElement();
     }
 
     private bool? TryReadResolvedPasswordStateCore(WindowInfo window, WindowControlInfo control) {

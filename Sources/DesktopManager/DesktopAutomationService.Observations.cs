@@ -381,6 +381,10 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservationOptions settings,
         int nativeTimeoutMilliseconds,
         Func<int>? getRemainingProviderTimeoutMilliseconds) {
+        if (!settings.IncludeNativeFallback) {
+            return;
+        }
+
         bool nativeTargetCurrent = control.Handle == IntPtr.Zero || IsNativeObservationTargetCurrent(window, control);
         if (control.Handle != IntPtr.Zero && !nativeTargetCurrent) {
             if (ShouldUseNativeTextFallback(observation, control, settings)) {

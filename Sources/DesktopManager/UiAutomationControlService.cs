@@ -651,13 +651,13 @@ internal sealed partial class UiAutomationControlService {
             return UiAutomationTextEditAttempt.Succeeded();
         }
 
-        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
-        if (!TrySetFocus(element)) {
-            return UiAutomationTextEditAttempt.Failed("focus-failed");
-        }
-
-        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
-            return UiAutomationTextEditAttempt.Failed("foreground-failed");
+        if (!TryPrepareForegroundAndFocus(
+                ensureForegroundWindow,
+                () => WindowActivationService.TryPrepareWindowForAutomation(window.Handle),
+                () => TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView"),
+                () => TrySetFocus(element),
+                out bool foregroundPreparationFailed)) {
+            return UiAutomationTextEditAttempt.Failed(foregroundPreparationFailed ? "foreground-failed" : "focus-failed");
         }
 
         if (MonitorNativeMethods.GetForegroundWindow() != window.Handle) {
@@ -740,12 +740,12 @@ internal sealed partial class UiAutomationControlService {
             return false;
         }
 
-        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
-        if (!TrySetFocus(element)) {
-            return false;
-        }
-
-        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
+        if (!TryPrepareForegroundAndFocus(
+                ensureForegroundWindow,
+                () => WindowActivationService.TryPrepareWindowForAutomation(window.Handle),
+                () => TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView"),
+                () => TrySetFocus(element),
+                out _)) {
             return false;
         }
 
@@ -769,12 +769,12 @@ internal sealed partial class UiAutomationControlService {
             return false;
         }
 
-        TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView");
-        if (!TrySetFocus(element)) {
-            return false;
-        }
-
-        if (ensureForegroundWindow && !WindowActivationService.TryPrepareWindowForAutomation(window.Handle)) {
+        if (!TryPrepareForegroundAndFocus(
+                ensureForegroundWindow,
+                () => WindowActivationService.TryPrepareWindowForAutomation(window.Handle),
+                () => TryPatternAction(element, "System.Windows.Automation.ScrollItemPattern", "ScrollIntoView"),
+                () => TrySetFocus(element),
+                out _)) {
             return false;
         }
 
