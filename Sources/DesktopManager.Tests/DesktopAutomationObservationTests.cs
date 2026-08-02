@@ -443,7 +443,38 @@ public class DesktopAutomationObservationTests {
         WindowControlInfo second = CreatePasswordControl(left: 40);
 
         Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
-        Assert.IsTrue(WindowManager.AreEquivalentControls(first, CreatePasswordControl(left: 10)));
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, CreatePasswordControl(left: 10)));
+    }
+
+    [TestMethod]
+    public void WindowManager_AreEquivalentControls_WeakHandlelessSiblingsRemainDistinct() {
+        var first = new WindowControlInfo {
+            AutomationId = "editor",
+            ControlType = "Document",
+            FrameworkId = "WPF",
+            ClassName = "RichTextBox",
+            Text = "same",
+            Left = 10,
+            Top = 20,
+            Width = 300,
+            Height = 200
+        };
+        var second = new WindowControlInfo {
+            AutomationId = first.AutomationId,
+            ControlType = first.ControlType,
+            FrameworkId = first.FrameworkId,
+            ClassName = first.ClassName,
+            Text = first.Text,
+            Left = first.Left,
+            Top = first.Top,
+            Width = first.Width,
+            Height = first.Height
+        };
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        first.RuntimeId = "1.2.3";
+        second.RuntimeId = first.RuntimeId;
+        Assert.IsTrue(WindowManager.AreEquivalentControls(first, second));
     }
 
     [TestMethod]

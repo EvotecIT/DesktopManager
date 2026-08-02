@@ -518,10 +518,16 @@ public class DesktopControlObservationContractTests {
         };
 
         Assert.AreEqual("needle", WindowManager.GetProviderContainsLiteral("*needle*"));
+        Assert.IsNull(WindowManager.GetProviderContainsLiteral("needle"));
         Assert.IsNull(WindowManager.GetProviderContainsLiteral("needle*"));
         Assert.IsNull(WindowManager.GetProviderContainsLiteral("*need?e*"));
         Assert.IsTrue(new WindowManager().MatchesValuePattern(control, "*NEEDLE*"));
         Assert.IsFalse(new WindowManager().MatchesValuePattern(control, "different"));
+
+        control.Value = "Not Ready";
+        control.ValueMatchPattern = "Ready";
+        control.ValuePatternMatched = true;
+        Assert.IsFalse(new WindowManager().MatchesValuePattern(control, "Ready"));
     }
 
     [TestMethod]

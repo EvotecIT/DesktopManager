@@ -259,6 +259,11 @@ public static partial class WindowControlService {
         }
 
         EnsureNativeTextMutationAllowed(control.Handle);
+        if (string.IsNullOrWhiteSpace(expectedContentFingerprint)) {
+            SetText(control, text);
+            return true;
+        }
+
         var liveControl = new WindowControlInfo {
             Handle = control.Handle,
             IsPassword = false

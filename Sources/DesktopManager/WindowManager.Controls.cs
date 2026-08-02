@@ -333,32 +333,9 @@ public partial class WindowManager {
             return true;
         }
 
-        bool metadataMatches = string.Equals(existing.AutomationId, candidate.AutomationId, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.ControlType, candidate.ControlType, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.Text, candidate.Text, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(existing.ClassName, candidate.ClassName, StringComparison.OrdinalIgnoreCase);
-        if (!metadataMatches) {
-            return false;
-        }
-
-        if (existing.IsPassword == true || candidate.IsPassword == true) {
-            return existing.IsPassword == true &&
-                candidate.IsPassword == true &&
-                existing.Handle == IntPtr.Zero &&
-                candidate.Handle == IntPtr.Zero &&
-                HasUsableBounds(existing) &&
-                HasUsableBounds(candidate) &&
-                existing.Left == candidate.Left &&
-                existing.Top == candidate.Top &&
-                existing.Width == candidate.Width &&
-                existing.Height == candidate.Height;
-        }
-
-        return true;
-    }
-
-    private static bool HasUsableBounds(WindowControlInfo control) {
-        return control.Width > 0 && control.Height > 0;
+        // Metadata, text, and bounds are not unique identities. In particular,
+        // handleless UIA siblings on overlapping pages can be indistinguishable.
+        return false;
     }
 
     internal static void MergeControlMetadata(WindowControlInfo target, WindowControlInfo source) {
@@ -509,10 +486,18 @@ public partial class WindowManager {
     }
 
     internal bool MatchesValuePattern(WindowControlInfo control, string valuePattern) {
-        bool matchingProviderEvidence = control.ValuePatternMatched == true &&
+        bool matchingProviderEvidence = GetProviderContainsLiteral(valuePattern) != null &&
+            control.ValuePatternMatched == true &&
             control.ValueMatchIgnoreCase &&
             string.Equals(control.ValueMatchPattern, valuePattern, StringComparison.OrdinalIgnoreCase);
-        return matchingProviderEvidence || MatchesWildcard(control.Value ?? string.Empty, valuePattern);
+        if (matchingProviderEvidence) {
+            return true;
+        }
+
+        string value = control.Value ?? string.Empty;
+        return valuePattern.IndexOf('*') >= 0 || valuePattern.IndexOf('?') >= 0
+            ? MatchesWildcard(value, valuePattern)
+            : string.Equals(value, valuePattern, StringComparison.OrdinalIgnoreCase);
     }
 
     internal static string? GetProviderContainsLiteral(string valuePattern) {
@@ -522,7 +507,7 @@ public partial class WindowManager {
 
         int firstWildcard = valuePattern.IndexOf('*');
         if (firstWildcard < 0) {
-            return valuePattern;
+            return null;
         }
 
         if (firstWildcard != 0 || valuePattern.Length < 3 || valuePattern[valuePattern.Length - 1] != '*') {

@@ -360,9 +360,7 @@ public static partial class WindowControlService {
             throw new NativeTextMutationOutcomeUnknownException("WM_COMMAND/CBN_SELCHANGE", timeoutMilliseconds);
         }
 
-        IntPtr parentHandle = control.ParentWindowHandle != IntPtr.Zero
-            ? control.ParentWindowHandle
-            : MonitorNativeMethods.GetParent(control.Handle);
+        IntPtr parentHandle = MonitorNativeMethods.GetParent(control.Handle);
         if (parentHandle == IntPtr.Zero) {
             return;
         }

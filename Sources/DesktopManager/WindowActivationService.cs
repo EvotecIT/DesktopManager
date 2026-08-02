@@ -18,7 +18,11 @@ internal static class WindowActivationService {
             cbSize = System.Runtime.InteropServices.Marshal.SizeOf<MonitorNativeMethods.GUITHREADINFO>()
         };
 
-        return MonitorNativeMethods.GetGUIThreadInfo(threadId, ref threadInfo)
+        if (!MonitorNativeMethods.GetGUIThreadInfo(threadId, ref threadInfo) || threadInfo.hwndFocus == IntPtr.Zero) {
+            return IntPtr.Zero;
+        }
+
+        return MonitorNativeMethods.GetAncestor(threadInfo.hwndFocus, MonitorNativeMethods.GA_ROOT) == windowHandle
             ? threadInfo.hwndFocus
             : IntPtr.Zero;
     }
