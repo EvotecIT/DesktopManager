@@ -52,7 +52,7 @@ internal sealed partial class UiAutomationControlService {
             return $"p:{identity.ProcessId}|w:{identity.WindowHandle.ToInt64()}|h:{identity.ControlHandle.ToInt64()}";
         }
 
-        return $"p:{identity.ProcessId}|w:{identity.WindowHandle.ToInt64()}|a:{identity.AutomationId}|t:{identity.ControlType}|f:{identity.FrameworkId}|c:{identity.ClassName}|b:{identity.Left},{identity.Top},{identity.Width},{identity.Height}";
+        return $"p:{identity.ProcessId}|w:{identity.WindowHandle.ToInt64()}|a:{identity.AutomationId}|t:{identity.ControlType}|f:{identity.FrameworkId}|c:{identity.ClassName}|b:{identity.Left},{identity.Top},{identity.Width},{identity.Height}|x:{identity.AncestorPath}";
     }
 
     private static string ReadRuntimeId(object element, List<string>? errors) {

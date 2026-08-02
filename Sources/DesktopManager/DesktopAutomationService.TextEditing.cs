@@ -55,7 +55,7 @@ public sealed partial class DesktopAutomationService {
                 "The observed window handle now belongs to a different process.");
         }
 
-        WindowControlInfo? control = GetObservationTargets(
+        IEnumerable<WindowControlInfo> candidates = GetObservationTargets(
                 new WindowQueryOptions {
                     Handle = window.Handle,
                     IncludeHidden = true,
@@ -70,8 +70,14 @@ public sealed partial class DesktopAutomationService {
                 settings,
                 allWindows: false,
                 allControls: true)
-            .Select(target => target.Control)
-            .FirstOrDefault(candidate => MatchesObservedIdentity(candidate, observation.Identity));
+            .Select(target => target.Control);
+        WindowControlInfo? control = ResolveUniqueObservedControl(candidates, observation.Identity, out bool identityAmbiguous);
+        if (identityAmbiguous) {
+            return CreateTextEditFailure(
+                "control-identity-ambiguous",
+                "More than one live control matches the weak observed identity; refusing to choose a mutation target.");
+        }
+
         return control == null
             ? CreateTextEditFailure("control-not-found", "The observed control identity is no longer present in the target window.")
             : EditResolvedControlText(window, control, request, settings, observation.Text.EditContextFingerprint);
@@ -512,6 +518,35 @@ public sealed partial class DesktopAutomationService {
             control.Top == identity.Top &&
             control.Width == identity.Width &&
             control.Height == identity.Height;
+    }
+
+    internal static WindowControlInfo? ResolveUniqueObservedControl(
+        IEnumerable<WindowControlInfo> controls,
+        DesktopControlIdentity identity,
+        out bool ambiguous) {
+        if (controls == null) {
+            throw new ArgumentNullException(nameof(controls));
+        }
+        if (identity == null) {
+            throw new ArgumentNullException(nameof(identity));
+        }
+
+        WindowControlInfo? match = null;
+        ambiguous = false;
+        foreach (WindowControlInfo candidate in controls) {
+            if (!MatchesObservedIdentity(candidate, identity)) {
+                continue;
+            }
+
+            if (match != null) {
+                ambiguous = true;
+                return null;
+            }
+
+            match = candidate;
+        }
+
+        return match;
     }
 
     internal static bool MatchesObservedWindowOwner(WindowInfo window, DesktopControlIdentity identity) {

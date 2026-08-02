@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -9,6 +10,84 @@ namespace DesktopManager.Tests;
 [DoNotParallelize]
 /// <summary>Protects deadline, input-delivery, retry-quality, and live password-safety regressions.</summary>
 public class DesktopSemanticSafetyRegressionTests {
+    [TestMethod]
+    public void DesktopAutomationService_WeakObservationIdentity_RejectsAmbiguousMatches() {
+        var identity = new DesktopControlIdentity {
+            AutomationId = "editor",
+            ControlType = "Document",
+            FrameworkId = "WPF",
+            ClassName = "RichTextBox",
+            AncestorPath = "Window#root/TabItem#second/Document#editor",
+            Left = 10,
+            Top = 20,
+            Width = 300,
+            Height = 200
+        };
+        var first = new WindowControlInfo {
+            AutomationId = "editor",
+            ControlType = "Document",
+            FrameworkId = "WPF",
+            ClassName = "RichTextBox",
+            Left = 10,
+            Top = 20,
+            Width = 300,
+            Height = 200
+        };
+        var second = new WindowControlInfo {
+            AutomationId = "editor",
+            ControlType = "Document",
+            FrameworkId = "WPF",
+            ClassName = "RichTextBox",
+            Left = 10,
+            Top = 20,
+            Width = 300,
+            Height = 200
+        };
+
+        WindowControlInfo? resolved = DesktopAutomationService.ResolveUniqueObservedControl(
+            new[] { first, second },
+            identity,
+            out bool ambiguous);
+
+        Assert.IsNull(resolved);
+        Assert.IsTrue(ambiguous);
+        StringAssert.Contains(UiAutomationControlService.CreateObservationSessionKey(identity), "|x:Window#root/TabItem#second/Document#editor");
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_ControlWithoutReadableText_IsUnavailable() {
+        var errors = new List<string>();
+        DesktopControlTextObservation observation = new UiAutomationControlService().ReadControlTextObservation(
+            new NoTextAutomationElementStub(),
+            new Dictionary<string, object>(),
+            new DesktopControlObservationOptions { ExpectedText = "needle" },
+            errors);
+
+        Assert.AreEqual("uia.textUnavailable", observation.Source);
+        Assert.IsFalse(observation.IsComplete);
+        Assert.AreEqual(string.Empty, observation.ContentFingerprint);
+        Assert.IsNull(observation.ContainsExpected);
+        CollectionAssert.Contains(errors, "text.unavailable");
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_ZeroLengthSelections_AreRangeBounded() {
+        string[] emptySelections = Enumerable
+            .Repeat(string.Empty, UiAutomationControlService.MaximumSelectionRangeCount + 1)
+            .ToArray();
+        var errors = new List<string>();
+
+        IReadOnlyList<DesktopTextRangeObservation> selections = UiAutomationControlService.ReadTextSelections(
+            new TextSelectionPatternStub(emptySelections),
+            maxLength: 4096,
+            errors,
+            out bool isComplete);
+
+        Assert.AreEqual(UiAutomationControlService.MaximumSelectionRangeCount, selections.Count);
+        Assert.IsFalse(isComplete);
+        Assert.AreEqual(0, errors.Count);
+    }
+
     [TestMethod]
     public void UiAutomationControlService_ProviderMutationException_PreservesUnknownOutcome() {
         var provider = new ThrowingMutationPattern();
@@ -449,6 +528,14 @@ public class DesktopSemanticSafetyRegressionTests {
             Value = value;
             throw new InvalidOperationException("Provider failed after applying the mutation.");
         }
+    }
+
+    private sealed class NoTextAutomationElementStub {
+        public NonPasswordStateStub Current { get; } = new();
+    }
+
+    private sealed class NonPasswordStateStub {
+        public bool IsPassword => false;
     }
 
     private sealed class TextRangeStub {

@@ -6,6 +6,8 @@ using System.Reflection;
 namespace DesktopManager;
 
 internal sealed partial class UiAutomationControlService {
+    internal const int MaximumSelectionRangeCount = 256;
+
     /// <summary>
     /// Observes one resolved control through UI Automation without exposing provider-specific objects.
     /// </summary>
@@ -126,7 +128,7 @@ internal sealed partial class UiAutomationControlService {
         return observation;
     }
 
-    private DesktopControlTextObservation ReadControlTextObservation(
+    internal DesktopControlTextObservation ReadControlTextObservation(
         object element,
         Dictionary<string, object> patterns,
         DesktopControlObservationOptions options,
@@ -138,11 +140,7 @@ internal sealed partial class UiAutomationControlService {
             providerContains = TryFindTextWithProvider(patterns, options.ExpectedText!, options.IgnoreCase, errors);
         }
 
-        bool providerTextSupported = patterns.ContainsKey("Text") ||
-            patterns.ContainsKey("Value") ||
-            patterns.ContainsKey("RangeValue") ||
-            patterns.ContainsKey("LegacyIAccessible");
-        if (textResult == null && providerTextSupported) {
+        if (textResult == null) {
             errors.Add("text.unavailable");
             return DesktopTextObservationBuilder.CreateUnavailable(
                 "uia.textUnavailable",
@@ -232,7 +230,14 @@ internal sealed partial class UiAutomationControlService {
             object? documentRange = textPattern.GetType().GetProperty("DocumentRange", BindingFlags.Public | BindingFlags.Instance)?.GetValue(textPattern);
             var values = new List<DesktopTextRangeObservation>();
             int remaining = maxLength;
+            int inspectedRangeCount = 0;
             foreach (object? range in ranges) {
+                if (inspectedRangeCount >= MaximumSelectionRangeCount) {
+                    isComplete = false;
+                    break;
+                }
+
+                inspectedRangeCount++;
                 if (range == null) {
                     continue;
                 }
