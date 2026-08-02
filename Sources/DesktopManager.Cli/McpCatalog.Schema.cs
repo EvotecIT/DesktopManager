@@ -169,7 +169,7 @@ internal static partial class McpCatalog {
         properties["mode"] = CreateStringSchema("ReplaceDocument, ReplaceSelection, or InsertAtCaret.");
         properties["expectedFingerprint"] = CreateStringSchema("Optional complete-content fingerprint that must still match before editing.");
         properties["expectedEditContextFingerprint"] = CreateStringSchema("Optional selection/caret context fingerprint that must still match before a range edit.");
-        properties["allowForegroundInput"] = CreateBooleanSchema("Explicitly permit foreground clipboard input when a provider-safe setter is unavailable.");
+        properties["allowForegroundInput"] = CreateBooleanSchema("Explicitly permit foreground Unicode input when a provider-safe setter is unavailable.");
         properties["verifyAfterEdit"] = CreateBooleanSchema("Observe and verify the exact expected text after editing.");
         return properties;
     }

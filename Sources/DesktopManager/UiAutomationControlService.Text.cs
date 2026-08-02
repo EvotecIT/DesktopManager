@@ -58,7 +58,12 @@ internal sealed partial class UiAutomationControlService {
     /// <summary>
     /// Reads text from a previously resolved UI Automation control using a bounded provider call.
     /// </summary>
-    public UiAutomationTextReadResult? TryReadText(WindowInfo window, WindowControlInfo control, int maxLength, string? expectedText = null) {
+    public UiAutomationTextReadResult? TryReadText(
+        WindowInfo window,
+        WindowControlInfo control,
+        int maxLength,
+        string? expectedText = null,
+        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
         if (window == null) {
             throw new ArgumentNullException(nameof(window));
         }
@@ -72,7 +77,10 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return RunInSta(service => service.TryReadTextCore(window, control, maxLength, expectedText), window.Handle);
+        return RunInSta(
+            service => service.TryReadTextCore(window, control, maxLength, expectedText),
+            window.Handle,
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
     }
 
     internal static UiAutomationTextReadResult CreateBoundedTextResult(string value, string source, int maxLength, string? expectedText, bool? containsExpected = null) {

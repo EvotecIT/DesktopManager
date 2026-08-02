@@ -92,13 +92,15 @@ public sealed partial class DesktopAutomationService {
         }
         string controlText = !canAccessText
             ? string.Empty
-            : !string.IsNullOrEmpty(liveText)
+            : nativeTextAvailable
                 ? liveText
                 : control.Text;
         string valueSource = string.Empty;
         string value = !canAccessText
             ? string.Empty
-            : ResolveFocusedValue(automationText, control, liveText, out valueSource);
+            : automationText == null && nativeTextAvailable
+                ? liveText
+                : ResolveFocusedValue(automationText, control, liveText, out valueSource);
         if (automationText == null && nativeTextAvailable) {
             valueSource = "native.windowText";
         }

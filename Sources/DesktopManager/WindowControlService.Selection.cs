@@ -332,7 +332,7 @@ public static partial class WindowControlService {
 
     private static void NotifyParentSelectionChanged(WindowControlInfo control, int timeoutMilliseconds) {
         if (timeoutMilliseconds <= 0) {
-            throw new TimeoutException("The combo box selection notification exceeded the operation deadline.");
+            throw new NativeTextMutationOutcomeUnknownException("WM_COMMAND/CBN_SELCHANGE", timeoutMilliseconds);
         }
 
         IntPtr parentHandle = control.ParentWindowHandle != IntPtr.Zero
@@ -344,7 +344,7 @@ public static partial class WindowControlService {
 
         int controlId = control.Id != 0 ? control.Id : MonitorNativeMethods.GetDlgCtrlID(control.Handle);
         int wParam = unchecked((CbnSelChange << 16) | (controlId & 0xFFFF));
-        MonitorNativeMethods.SendMessageTimeout(
+        IntPtr sendResult = MonitorNativeMethods.SendMessageTimeout(
             parentHandle,
             WmCommand,
             new IntPtr(wParam),
@@ -352,6 +352,9 @@ public static partial class WindowControlService {
             MonitorNativeMethods.SMTO_ABORTIFHUNG,
             (uint)timeoutMilliseconds,
             out _);
+        if (sendResult == IntPtr.Zero) {
+            throw new NativeTextMutationOutcomeUnknownException("WM_COMMAND/CBN_SELCHANGE", timeoutMilliseconds);
+        }
     }
 
     private static bool TrySendMessageForResult(

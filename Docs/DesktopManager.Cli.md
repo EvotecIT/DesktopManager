@@ -183,7 +183,7 @@ desktopmanager mcp serve --dry-run
 - `control set-text` and handle-backed `control send-keys` now use shared direct-to-control message routing instead of relying on foreground focus.
 - UIA control actions now reuse the same shared fallback-root search strategy as UIA discovery, which reduces “listed but not actionable” mismatches when modern apps expose controls under Chromium-style child roots.
 - zero-handle UIA text and key fallback paths are now shared too, but they are intentionally opt-in because they rely on focused foreground input for modern apps.
-- when zero-handle UIA text fallback is enabled, the shared library now prefers a focused replace-and-paste flow with verification before it falls back to raw typed input, which is notably more reliable for Chromium-style edit fields.
+- when zero-handle UIA text fallback is enabled, the shared library revalidates the exact focused target and emits Unicode input directly without changing the clipboard.
 - `window type` sends text to the target window, either by simulated typing or clipboard paste.
 - `window type --foreground-input` requires real foreground keyboard delivery and fails instead of silently falling back to background window messaging, which is a better fit for remote-session hosts such as RDP, Hyper-V, and Remote Desktop Manager.
 - `window type --physical-keys` adds a layout-aware physical-key typing mode for foreground targets, which is often closer to how password managers "type" into hosted remote sessions.

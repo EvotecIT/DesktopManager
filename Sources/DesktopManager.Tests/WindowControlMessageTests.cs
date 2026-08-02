@@ -12,6 +12,7 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class WindowControlMessageTests {
     private const int WmGetTextLength = 0x000E;
+    private const int WmCommand = 0x0111;
 
     [TestMethod]
     [TestCategory("UITest")]
@@ -207,6 +208,65 @@ public class WindowControlMessageTests {
 
     [TestMethod]
     [TestCategory("UITest")]
+    public void DesktopAutomationService_WaitForObservedText_BoundsBlockingNativeReadsAndRetries() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using var ready = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        IntPtr formHandle = IntPtr.Zero;
+        Exception? startupFailure = null;
+        var thread = new Thread(() => {
+            try {
+                using Form form = new() { Text = "Bounded Observed Text Wait Test", ShowInTaskbar = false };
+                using var textBox = new BlockingTextBox(release) { Text = "must-not-match" };
+                form.Controls.Add(textBox);
+                form.Shown += (_, _) => {
+                    formHandle = form.Handle;
+                    textBox.Focus();
+                    textBox.BlockTextMessages = true;
+                    ready.Set();
+                };
+                Application.Run(form);
+            } catch (Exception ex) {
+                startupFailure = ex;
+                ready.Set();
+            }
+        }) {
+            IsBackground = true,
+            Name = "DesktopManager bounded observed text wait harness"
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.IsTrue(ready.Wait(TimeSpan.FromSeconds(10)), "The bounded observed text wait harness did not start.");
+        Assert.IsNull(startupFailure);
+
+        try {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            Assert.ThrowsExactly<TimeoutException>(() => new DesktopAutomationService().WaitForObservedText(
+                formHandle,
+                "never-match",
+                timeoutMilliseconds: 100,
+                intervalMilliseconds: 10,
+                new DesktopTextObservationOptions {
+                    RetryCount = 3,
+                    RetryDelayMilliseconds = 1000
+                }));
+
+            stopwatch.Stop();
+            Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(2), $"Observed text wait took {stopwatch.Elapsed}.");
+        } finally {
+            release.Set();
+            MonitorNativeMethods.PostMessage(formHandle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+            Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(10)), "The bounded observed text wait harness did not stop.");
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
     /// <summary>
     /// Ensures direct combo-box selection can switch the current item by displayed text.
     /// </summary>
@@ -241,6 +301,73 @@ public class WindowControlMessageTests {
 
         Assert.AreEqual("Beta", comboBox.Text);
         Assert.AreEqual("Beta", WindowControlService.GetSelectedValue(control));
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void WindowControlService_SetSelectedValue_HungParentNotificationReportsUnknownOutcome() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using var ready = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        IntPtr formHandle = IntPtr.Zero;
+        IntPtr comboBoxHandle = IntPtr.Zero;
+        int controlId = 0;
+        Exception? startupFailure = null;
+        var thread = new Thread(() => {
+            try {
+                using var form = new BlockingSelectionNotificationForm(release) {
+                    Text = "Hung Combo Notification Test",
+                    ShowInTaskbar = false
+                };
+                using var comboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+                comboBox.Items.AddRange(["Alpha", "Beta"]);
+                comboBox.SelectedIndex = 0;
+                form.Controls.Add(comboBox);
+                form.Shown += (_, _) => {
+                    formHandle = form.Handle;
+                    comboBoxHandle = comboBox.Handle;
+                    controlId = MonitorNativeMethods.GetDlgCtrlID(comboBox.Handle);
+                    form.BlockSelectionNotifications = true;
+                    ready.Set();
+                };
+                Application.Run(form);
+            } catch (Exception ex) {
+                startupFailure = ex;
+                ready.Set();
+            }
+        }) {
+            IsBackground = true,
+            Name = "DesktopManager hung combo notification harness"
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.IsTrue(ready.Wait(TimeSpan.FromSeconds(10)), "The hung combo notification harness did not start.");
+        Assert.IsNull(startupFailure);
+
+        try {
+            var control = new WindowControlInfo {
+                ParentWindowHandle = formHandle,
+                Handle = comboBoxHandle,
+                ClassName = "ComboBox",
+                Id = controlId,
+                IsPassword = false
+            };
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            Assert.ThrowsExactly<NativeTextMutationOutcomeUnknownException>(() =>
+                WindowControlService.SetSelectedValue(control, "Beta"));
+
+            stopwatch.Stop();
+            Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(4), $"Combo notification timeout took {stopwatch.Elapsed}.");
+        } finally {
+            release.Set();
+            MonitorNativeMethods.PostMessage(formHandle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+            Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(10)), "The hung combo notification harness did not stop.");
+        }
     }
 
     [TestMethod]
@@ -291,6 +418,24 @@ public class WindowControlMessageTests {
                 (message.Msg == MonitorNativeMethods.WM_SETTEXT ||
                     message.Msg == MonitorNativeMethods.WM_GETTEXT ||
                     message.Msg == WmGetTextLength)) {
+                _release.Wait(TimeSpan.FromSeconds(10));
+            }
+
+            base.WndProc(ref message);
+        }
+    }
+
+    private sealed class BlockingSelectionNotificationForm : Form {
+        private readonly ManualResetEventSlim _release;
+
+        internal BlockingSelectionNotificationForm(ManualResetEventSlim release) {
+            _release = release;
+        }
+
+        internal bool BlockSelectionNotifications;
+
+        protected override void WndProc(ref Message message) {
+            if (BlockSelectionNotifications && message.Msg == WmCommand) {
                 _release.Wait(TimeSpan.FromSeconds(10));
             }
 

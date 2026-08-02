@@ -136,6 +136,54 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
+    public void DesktopAutomationService_CreateNativeControlObservation_PreservesRuntimeIdentity() {
+        DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
+            new WindowInfo { Handle = new IntPtr(10), ProcessId = 20 },
+            new WindowControlInfo {
+                ParentWindowHandle = new IntPtr(10),
+                RuntimeId = "1.2.3",
+                Value = "metadata",
+                IsPassword = false,
+                Source = WindowControlSource.UiAutomation
+            },
+            new DesktopControlObservationOptions());
+
+        Assert.AreEqual("1.2.3", observation.Identity.RuntimeId);
+        StringAssert.Contains(observation.Identity.SessionKey, "|r:1.2.3");
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_CreateNativeControlObservation_LiveEmptyTextOverridesStaleMetadata() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        TextBox? editor = null;
+        using PumpingWinFormsHarness harness = PumpingWinFormsHarness.Create(
+            "DesktopManager Authoritative Empty Native Text Harness",
+            form => {
+                editor = new TextBox { Text = string.Empty };
+                form.Controls.Add(editor);
+            });
+        Assert.IsNotNull(editor);
+        IntPtr editorHandle = harness.Invoke(() => editor.Handle);
+        WindowControlInfo control = new ControlEnumerator().GetControlMetadata(harness.Window.Handle, editorHandle);
+        control.Text = "stale text";
+        control.Value = "stale value";
+
+        DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
+            harness.Window,
+            control,
+            new DesktopControlObservationOptions());
+
+        Assert.AreEqual(string.Empty, observation.Text.Value);
+        Assert.AreEqual("native.windowText", observation.Text.Source);
+        Assert.IsTrue(observation.Text.IsComplete);
+        Assert.AreEqual(DesktopTextObservationBuilder.CreateFingerprint(string.Empty), observation.Text.ContentFingerprint);
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_ShouldUseNativeTextFallback_ProviderEmptyText_RemainsAuthoritative() {
         var observation = new DesktopControlObservation {
             Text = DesktopTextObservationBuilder.Create(

@@ -217,10 +217,12 @@ public sealed partial class DesktopAutomationService {
         string value = string.Empty;
         bool isTruncated = false;
         bool nativeTextAvailable = true;
+        bool nativeTextReadAttempted = false;
         string textSource = "native.windowText";
         if (canAccessText) {
             int textTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
             if (control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control)) {
+                nativeTextReadAttempted = true;
                 nativeTextAvailable = WindowControlService.TryGetSelectedValue(
                     control,
                     settings.MaxTextLength,
@@ -229,6 +231,7 @@ public sealed partial class DesktopAutomationService {
                     out isTruncated);
                 textSource = "native.selection";
             } else if (control.Handle != IntPtr.Zero) {
+                nativeTextReadAttempted = true;
                 nativeTextAvailable = WindowControlService.TryGetControlText(
                     control,
                     settings.MaxTextLength,
@@ -237,7 +240,7 @@ public sealed partial class DesktopAutomationService {
                     out isTruncated);
             }
 
-            if (nativeTextAvailable && string.IsNullOrEmpty(value) && !isTruncated) {
+            if (!nativeTextReadAttempted && nativeTextAvailable && string.IsNullOrEmpty(value) && !isTruncated) {
                 string candidate = !string.IsNullOrEmpty(control.Value) ? control.Value : control.Text;
                 isTruncated = control.ValueIsTruncated || candidate.Length > settings.MaxTextLength;
                 value = candidate.Length > settings.MaxTextLength
@@ -250,6 +253,7 @@ public sealed partial class DesktopAutomationService {
             ProcessId = window.ProcessId,
             WindowHandle = window.Handle,
             ControlHandle = control.Handle,
+            RuntimeId = control.RuntimeId,
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
             FrameworkId = control.FrameworkId,

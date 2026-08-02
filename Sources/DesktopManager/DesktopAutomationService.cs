@@ -972,6 +972,14 @@ public sealed partial class DesktopAutomationService {
     /// <param name="observationOptions">Observation configuration.</param>
     /// <returns>The best matching text observation when one is available; otherwise null.</returns>
     public DesktopWindowTextObservation? ObserveWindowText(WindowQueryOptions options, string? expectedText = null, DesktopTextObservationOptions? observationOptions = null) {
+        return ObserveWindowText(options, expectedText, observationOptions, getRemainingProviderTimeoutMilliseconds: null);
+    }
+
+    private DesktopWindowTextObservation? ObserveWindowText(
+        WindowQueryOptions options,
+        string? expectedText,
+        DesktopTextObservationOptions? observationOptions,
+        Func<int>? getRemainingProviderTimeoutMilliseconds) {
         if (options == null) {
             throw new ArgumentNullException(nameof(options));
         }
@@ -986,8 +994,19 @@ public sealed partial class DesktopAutomationService {
 
         DesktopWindowTextObservation? fallbackObservation = null;
         for (int attempt = 0; attempt < settings.RetryCount; attempt++) {
-            DesktopWindowTextObservation? observation = TryObserveWindowText(window, expectedText, settings);
-            if (observation?.ContainsExpected == true) {
+            int providerTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ??
+                UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+            if (providerTimeoutMilliseconds <= 0) {
+                break;
+            }
+
+            DesktopWindowTextObservation? observation = TryObserveWindowText(
+                window,
+                expectedText,
+                settings,
+                getRemainingProviderTimeoutMilliseconds);
+            if (observation?.ContainsExpected == true &&
+                (getRemainingProviderTimeoutMilliseconds?.Invoke() ?? 1) > 0) {
                 return observation;
             }
 
@@ -997,7 +1016,14 @@ public sealed partial class DesktopAutomationService {
             }
 
             if (attempt < settings.RetryCount - 1 && settings.RetryDelayMilliseconds > 0) {
-                Thread.Sleep(settings.RetryDelayMilliseconds);
+                int retryDelayMilliseconds = getRemainingProviderTimeoutMilliseconds == null
+                    ? settings.RetryDelayMilliseconds
+                    : Math.Min(settings.RetryDelayMilliseconds, getRemainingProviderTimeoutMilliseconds());
+                if (retryDelayMilliseconds <= 0) {
+                    break;
+                }
+
+                UiAutomationControlService.WaitWithCurrentUiMessagePump(retryDelayMilliseconds);
             }
         }
 
@@ -3007,8 +3033,12 @@ public sealed partial class DesktopAutomationService {
         IDisposable? subscription = TryCreateAutomationChangeSubscription(options, signal, getProviderTimeout);
         try {
             while (timeoutMilliseconds == 0 || stopwatch.ElapsedMilliseconds < timeoutMilliseconds) {
-                DesktopWindowTextObservation? observation = ObserveWindowText(options, expectedText, settings);
-                if (observation?.ContainsExpected == true) {
+                DesktopWindowTextObservation? observation = ObserveWindowText(
+                    options,
+                    expectedText,
+                    settings,
+                    getProviderTimeout);
+                if (observation?.ContainsExpected == true && getProviderTimeout() > 0) {
                     return observation;
                 }
 
@@ -3907,8 +3937,16 @@ public sealed partial class DesktopAutomationService {
         }
     }
 
-    private DesktopWindowTextObservation? TryObserveWindowText(WindowInfo window, string? expectedText, DesktopTextObservationOptions observationOptions) {
-        DesktopWindowTextObservation? focusedObservation = TryObserveFocusedWindowText(window, expectedText, observationOptions.MaxObservedTextLength);
+    private DesktopWindowTextObservation? TryObserveWindowText(
+        WindowInfo window,
+        string? expectedText,
+        DesktopTextObservationOptions observationOptions,
+        Func<int>? getRemainingProviderTimeoutMilliseconds) {
+        DesktopWindowTextObservation? focusedObservation = TryObserveFocusedWindowText(
+            window,
+            expectedText,
+            observationOptions.MaxObservedTextLength,
+            getRemainingProviderTimeoutMilliseconds);
         if (focusedObservation?.ContainsExpected == true || string.IsNullOrEmpty(expectedText)) {
             return focusedObservation;
         }
@@ -3918,10 +3956,17 @@ public sealed partial class DesktopAutomationService {
             new WindowControlQueryOptions {
                 UseUiAutomation = true,
                 IncludeUiAutomation = true
-            });
+            },
+            observationOptions.MaxObservedTextLength,
+            getRemainingProviderTimeoutMilliseconds);
         List<(WindowControlInfo Control, DesktopWindowTextObservation Observation)> candidates = controls
             .Where(IsEditableTextCandidate)
-            .Select(control => CreateControlTextObservation(window, control, expectedText, observationOptions.MaxObservedTextLength))
+            .Select(control => CreateControlTextObservation(
+                window,
+                control,
+                expectedText,
+                observationOptions.MaxObservedTextLength,
+                getRemainingProviderTimeoutMilliseconds))
             .Where(candidate => candidate.HasValue)
             .Select(candidate => candidate!.Value)
             .ToList();
@@ -3936,7 +3981,8 @@ public sealed partial class DesktopAutomationService {
             return controlObservation;
         }
 
-        if (!string.IsNullOrWhiteSpace(window.Title)) {
+        if ((getRemainingProviderTimeoutMilliseconds?.Invoke() ?? 1) > 0 &&
+            !string.IsNullOrWhiteSpace(window.Title)) {
             return CreateTextObservation(
                 window,
                 IntPtr.Zero,
@@ -3952,14 +3998,18 @@ public sealed partial class DesktopAutomationService {
         return focusedObservation;
     }
 
-    private DesktopWindowTextObservation? TryObserveFocusedWindowText(WindowInfo window, string? expectedText, int maxObservedTextLength) {
+    private DesktopWindowTextObservation? TryObserveFocusedWindowText(
+        WindowInfo window,
+        string? expectedText,
+        int maxObservedTextLength,
+        Func<int>? getRemainingProviderTimeoutMilliseconds) {
         DesktopFocusedControlObservation? focusedControl = GetFocusedControlObservation(new WindowQueryOptions {
             Handle = window.Handle,
             IncludeHidden = true,
             IncludeCloaked = true,
             IncludeOwned = true,
             IncludeEmptyTitles = true
-        }, maxObservedTextLength, expectedText);
+        }, maxObservedTextLength, expectedText, getRemainingProviderTimeoutMilliseconds);
         if (focusedControl == null) {
             return null;
         }
@@ -3996,12 +4046,28 @@ public sealed partial class DesktopAutomationService {
         return null;
     }
 
-    private (WindowControlInfo Control, DesktopWindowTextObservation Observation)? CreateControlTextObservation(WindowInfo window, WindowControlInfo control, string? expectedText, int maxObservedTextLength) {
+    private (WindowControlInfo Control, DesktopWindowTextObservation Observation)? CreateControlTextObservation(
+        WindowInfo window,
+        WindowControlInfo control,
+        string? expectedText,
+        int maxObservedTextLength,
+        Func<int>? getRemainingProviderTimeoutMilliseconds) {
         if (control.IsPassword == true) {
             return null;
         }
 
-        UiAutomationTextReadResult? automationText = _uiAutomationControlService.TryReadText(window, control, maxObservedTextLength, expectedText);
+        int providerTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ??
+            UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+        if (providerTimeoutMilliseconds <= 0) {
+            return null;
+        }
+
+        UiAutomationTextReadResult? automationText = _uiAutomationControlService.TryReadText(
+            window,
+            control,
+            maxObservedTextLength,
+            expectedText,
+            providerTimeoutMilliseconds);
         if (automationText?.IsPassword == true) {
             return null;
         }
@@ -4011,22 +4077,50 @@ public sealed partial class DesktopAutomationService {
             return null;
         }
 
-        string? rawValue = automationText?.Value ?? (!string.IsNullOrEmpty(control.Value)
-            ? control.Value
-            : !string.IsNullOrEmpty(control.Text)
-                ? control.Text
-                : canAccessNativeText && control.Handle != IntPtr.Zero
-                    ? WindowTextHelper.GetWindowText(control.Handle)
-                    : null);
+        string? rawValue = automationText?.Value;
+        string? source = automationText?.Source;
+        bool nativeTextTruncated = false;
+        if (automationText == null && canAccessNativeText && control.Handle != IntPtr.Zero) {
+            int nativeTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ??
+                UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
+            bool nativeTextAvailable = nativeTimeoutMilliseconds > 0 &&
+                (WindowControlService.SupportsSelection(control)
+                    ? WindowControlService.TryGetSelectedValue(
+                        control,
+                        maxObservedTextLength,
+                        nativeTimeoutMilliseconds,
+                        out rawValue,
+                        out nativeTextTruncated)
+                    : WindowControlService.TryGetControlText(
+                        control,
+                        maxObservedTextLength,
+                        nativeTimeoutMilliseconds,
+                        out rawValue,
+                        out nativeTextTruncated));
+            if (!nativeTextAvailable) {
+                return null;
+            }
+
+            source = WindowControlService.SupportsSelection(control)
+                ? "native.selection"
+                : "native.windowText";
+        } else if (automationText == null) {
+            rawValue = !string.IsNullOrEmpty(control.Value)
+                ? control.Value
+                : !string.IsNullOrEmpty(control.Text)
+                    ? control.Text
+                    : null;
+            source = !string.IsNullOrEmpty(control.Value)
+                ? "control.value"
+                : !string.IsNullOrEmpty(control.Text)
+                    ? "control.text"
+                    : null;
+        }
         if (rawValue == null) {
             return null;
         }
 
-        string source = automationText?.Source ?? (!string.IsNullOrEmpty(control.Value)
-            ? "control.value"
-            : !string.IsNullOrEmpty(control.Text)
-                ? "control.text"
-                : "control.liveText");
+        source ??= "control.liveText";
 
         DesktopWindowTextObservation observation = CreateTextObservation(
             window,
@@ -4041,6 +4135,8 @@ public sealed partial class DesktopAutomationService {
         if (automationText != null) {
             observation.IsTruncated = automationText.IsTruncated;
             observation.ContainsExpected = automationText.ContainsExpected ?? observation.ContainsExpected;
+        } else {
+            observation.IsTruncated = nativeTextTruncated;
         }
         return (control, observation);
     }

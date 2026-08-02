@@ -302,14 +302,17 @@ public partial class WindowManager {
     }
 
     internal static bool AreEquivalentControls(WindowControlInfo existing, WindowControlInfo candidate) {
+        bool bothHandlesKnown = existing.Handle != IntPtr.Zero && candidate.Handle != IntPtr.Zero;
+        if (bothHandlesKnown && existing.Handle != candidate.Handle) {
+            return false;
+        }
+
         if (!string.IsNullOrWhiteSpace(existing.RuntimeId) &&
             !string.IsNullOrWhiteSpace(candidate.RuntimeId)) {
             return string.Equals(existing.RuntimeId, candidate.RuntimeId, StringComparison.Ordinal);
         }
 
-        if (existing.Handle != IntPtr.Zero &&
-            candidate.Handle != IntPtr.Zero &&
-            existing.Handle == candidate.Handle) {
+        if (bothHandlesKnown) {
             return true;
         }
 

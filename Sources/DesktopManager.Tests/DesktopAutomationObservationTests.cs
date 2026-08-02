@@ -464,7 +464,32 @@ public class DesktopAutomationObservationTests {
         };
 
         Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        first.Handle = new IntPtr(100);
+        second.Handle = first.Handle;
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
         second.RuntimeId = first.RuntimeId;
+        Assert.IsTrue(WindowManager.AreEquivalentControls(first, second));
+    }
+
+    [TestMethod]
+    public void WindowManager_AreEquivalentControls_DifferentKnownHandles_ReturnsFalse() {
+        var first = new WindowControlInfo {
+            Handle = new IntPtr(100),
+            AutomationId = "duplicate",
+            ControlType = "Button",
+            Text = "same",
+            ClassName = "Button"
+        };
+        var second = new WindowControlInfo {
+            Handle = new IntPtr(200),
+            AutomationId = "duplicate",
+            ControlType = "Button",
+            Text = "same",
+            ClassName = "Button"
+        };
+
+        Assert.IsFalse(WindowManager.AreEquivalentControls(first, second));
+        second.Handle = first.Handle;
         Assert.IsTrue(WindowManager.AreEquivalentControls(first, second));
     }
 

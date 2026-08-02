@@ -29,7 +29,7 @@ public sealed class DesktopTextEditRequest {
     /// <summary>Gets or sets whether the target window should be prepared for foreground input.</summary>
     public bool EnsureForegroundWindow { get; set; }
 
-    /// <summary>Gets or sets whether foreground clipboard/input fallback is explicitly allowed.</summary>
+    /// <summary>Gets or sets whether foreground input fallback is explicitly allowed.</summary>
     public bool AllowForegroundInputFallback { get; set; }
 
     /// <summary>Gets or sets whether the post-edit text should be observed and verified.</summary>
