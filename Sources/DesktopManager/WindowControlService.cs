@@ -32,6 +32,20 @@ public static partial class WindowControlService {
             return false;
         }
 
+        if (control.ParentWindowHandle != IntPtr.Zero) {
+            MonitorNativeMethods.GetWindowThreadProcessId(control.ParentWindowHandle, out uint parentProcessId);
+            MonitorNativeMethods.GetWindowThreadProcessId(control.Handle, out uint controlProcessId);
+            if (parentProcessId == 0 ||
+                controlProcessId == 0 ||
+                parentProcessId != controlProcessId ||
+                MonitorNativeMethods.GetAncestor(control.Handle, MonitorNativeMethods.GA_ROOT) != control.ParentWindowHandle) {
+                control.IsPassword = null;
+                control.Text = string.Empty;
+                control.Value = string.Empty;
+                return false;
+            }
+        }
+
         StringBuilder classBuilder = new(256);
         int classNameLength = MonitorNativeMethods.GetClassName(
             control.Handle,
@@ -225,7 +239,8 @@ public static partial class WindowControlService {
         EnsureNativeTextMutationAllowed(control.Handle);
         ReplaceAllText(control.Handle, text);
         if (!ControlTextMatches(control.Handle, text)) {
-            throw new InvalidOperationException("The native control accepted the text messages but did not adopt the requested value.");
+            throw new NativeTextMutationOutcomeUnknownException(
+                "The native control accepted text mutation messages but the verified value differs from the requested value; the mutation outcome is unknown.");
         }
     }
 

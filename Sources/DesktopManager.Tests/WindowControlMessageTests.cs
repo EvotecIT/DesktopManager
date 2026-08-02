@@ -104,11 +104,39 @@ public class WindowControlMessageTests {
             IsPassword = false
         };
 
-        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
+        NativeTextMutationOutcomeUnknownException exception = Assert.ThrowsExactly<NativeTextMutationOutcomeUnknownException>(() =>
             WindowControlService.SetText(control, "ignored"));
 
-        StringAssert.Contains(exception.Message, "did not adopt");
+        StringAssert.Contains(exception.Message, "outcome is unknown");
         Assert.AreEqual("original", textBox.Text);
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void WindowControlService_SetText_PartiallyAdoptedValueReportsUnknownOutcome() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using Form form = new() { Text = "Partial SetText Test Form", ShowInTaskbar = false };
+        using var textBox = new TruncatingTextBox { Text = "original", MaximumAcceptedLength = 3 };
+        form.Controls.Add(textBox);
+        form.Show();
+        textBox.CreateControl();
+        Application.DoEvents();
+        var control = new WindowControlInfo {
+            ParentWindowHandle = form.Handle,
+            Handle = textBox.Handle,
+            ClassName = "Edit",
+            IsPassword = false
+        };
+
+        NativeTextMutationOutcomeUnknownException exception = Assert.ThrowsExactly<NativeTextMutationOutcomeUnknownException>(() =>
+            WindowControlService.SetText(control, "changed"));
+
+        StringAssert.Contains(exception.Message, "outcome is unknown");
+        Assert.AreEqual("cha", textBox.Text);
     }
 
     [TestMethod]
@@ -170,6 +198,15 @@ public class WindowControlMessageTests {
         Assert.IsFalse(valid);
         Assert.AreEqual("control-owner-changed", failureCode);
         Assert.AreEqual("unrelated", replacementControl.Text);
+
+        DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
+            window,
+            control,
+            new DesktopControlObservationOptions { ExpectedText = "unrelated" });
+        Assert.AreEqual("partial", observation.Status);
+        Assert.AreEqual("native.windowText.unavailable", observation.Text.Source);
+        Assert.AreEqual(string.Empty, observation.Text.Value);
+        Assert.AreEqual(null, observation.Text.ContainsExpected);
     }
 
     [TestMethod]
@@ -555,6 +592,31 @@ public class WindowControlMessageTests {
                     message.Msg == 0x00B1 ||
                     message.Msg == 0x00C2)) {
                 message.Result = new IntPtr(1);
+                return;
+            }
+
+            base.WndProc(ref message);
+        }
+    }
+
+    private sealed class TruncatingTextBox : TextBox {
+        internal int MaximumAcceptedLength = int.MaxValue;
+
+        protected override void WndProc(ref Message message) {
+            if ((message.Msg == MonitorNativeMethods.WM_SETTEXT || message.Msg == 0x00C2) &&
+                message.LParam != IntPtr.Zero) {
+                string requested = Marshal.PtrToStringUni(message.LParam) ?? string.Empty;
+                string accepted = requested.Length > MaximumAcceptedLength
+                    ? requested.Substring(0, MaximumAcceptedLength)
+                    : requested;
+                IntPtr acceptedPointer = Marshal.StringToHGlobalUni(accepted);
+                try {
+                    Message bounded = Message.Create(message.HWnd, message.Msg, message.WParam, acceptedPointer);
+                    base.WndProc(ref bounded);
+                    message.Result = bounded.Result;
+                } finally {
+                    Marshal.FreeHGlobal(acceptedPointer);
+                }
                 return;
             }
 

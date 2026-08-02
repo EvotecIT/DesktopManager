@@ -213,12 +213,13 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservationOptions settings,
         int nativeTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds,
         Func<int>? getRemainingProviderTimeoutMilliseconds = null) {
+        bool nativeTargetCurrent = control.Handle == IntPtr.Zero || IsNativeObservationTargetCurrent(window, control);
         bool canAccessText = control.Handle == IntPtr.Zero
             ? control.IsPassword == false
-            : WindowControlService.RefreshNativeTextSafety(control);
+            : nativeTargetCurrent && WindowControlService.RefreshNativeTextSafety(control);
         string value = string.Empty;
         bool isTruncated = false;
-        bool nativeTextAvailable = control.Handle != IntPtr.Zero;
+        bool nativeTextAvailable = control.Handle != IntPtr.Zero && nativeTargetCurrent;
         string textSource = "native.windowText";
         if (canAccessText) {
             int textTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
@@ -255,8 +256,8 @@ public sealed partial class DesktopAutomationService {
             Height = control.Height
         };
         identity.SessionKey = UiAutomationControlService.CreateObservationSessionKey(identity);
-        bool supportsCheckState = control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control);
-        bool supportsSelection = control.Handle != IntPtr.Zero && WindowControlService.SupportsSelection(control);
+        bool supportsCheckState = control.Handle != IntPtr.Zero && nativeTargetCurrent && WindowControlService.SupportsCheckState(control);
+        bool supportsSelection = control.Handle != IntPtr.Zero && nativeTargetCurrent && WindowControlService.SupportsSelection(control);
         bool? nativeCheckState = null;
         int checkStateTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ?? nativeTimeoutMilliseconds;
         bool checkStateAvailable = supportsCheckState && WindowControlService.TryGetCheckState(
@@ -267,16 +268,22 @@ public sealed partial class DesktopAutomationService {
             Identity = identity,
             Capabilities = new DesktopControlCapabilities {
                 CanReadText = canAccessText && nativeTextAvailable && (control.Handle != IntPtr.Zero || !string.IsNullOrEmpty(value)),
-                CanSetValue = canAccessText && control.SupportsBackgroundText,
-                CanInvoke = control.SupportsBackgroundClick,
+                CanSetValue = canAccessText && nativeTargetCurrent && control.SupportsBackgroundText,
+                CanInvoke = nativeTargetCurrent && control.SupportsBackgroundClick,
                 CanToggle = supportsCheckState,
                 CanSelect = supportsSelection,
-                SupportsBackgroundClick = control.SupportsBackgroundClick,
-                SupportsBackgroundText = canAccessText && control.SupportsBackgroundText,
-                SupportsBackgroundKeys = control.SupportsBackgroundKeys,
-                SupportsForegroundInputFallback = control.SupportsForegroundInputFallback
+                SupportsBackgroundClick = nativeTargetCurrent && control.SupportsBackgroundClick,
+                SupportsBackgroundText = canAccessText && nativeTargetCurrent && control.SupportsBackgroundText,
+                SupportsBackgroundKeys = nativeTargetCurrent && control.SupportsBackgroundKeys,
+                SupportsForegroundInputFallback = nativeTargetCurrent && control.SupportsForegroundInputFallback
             },
-            Text = !canAccessText
+            Text = control.Handle != IntPtr.Zero && !nativeTargetCurrent
+                ? DesktopTextObservationBuilder.CreateUnavailable(
+                    "native.windowText.unavailable",
+                    settings.ExpectedText,
+                    settings.IgnoreCase,
+                    containsExpected: null)
+                : !canAccessText
                 ? DesktopTextObservationBuilder.CreateRestricted(control.IsPassword == true ? "native.password" : "native.passwordStateUnavailable")
                 : !nativeTextAvailable
                     ? DesktopTextObservationBuilder.CreateUnavailable(
@@ -294,15 +301,25 @@ public sealed partial class DesktopAutomationService {
                     settings.MatchContextLength),
             Source = control.Source == WindowControlSource.UiAutomation ? "uia.metadata" : "win32",
             ObservedAtUtc = DateTime.UtcNow,
-            Status = !canAccessText ? "restricted" : nativeTextAvailable ? "available" : "partial",
+            Status = control.Handle != IntPtr.Zero && !nativeTargetCurrent
+                ? "partial"
+                : !canAccessText ? "restricted" : nativeTextAvailable ? "available" : "partial",
             IsPassword = control.IsPassword,
-            IsEnabled = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowEnabled(control.Handle) : control.IsEnabled,
-            IsVisible = control.Handle != IntPtr.Zero ? MonitorNativeMethods.IsWindowVisible(control.Handle) : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null,
-            IsOffscreen = control.IsOffscreen,
+            IsEnabled = control.Handle != IntPtr.Zero
+                ? nativeTargetCurrent ? MonitorNativeMethods.IsWindowEnabled(control.Handle) : null
+                : control.IsEnabled,
+            IsVisible = control.Handle != IntPtr.Zero
+                ? nativeTargetCurrent ? MonitorNativeMethods.IsWindowVisible(control.Handle) : null
+                : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null,
+            IsOffscreen = nativeTargetCurrent ? control.IsOffscreen : null,
             IsKeyboardFocusable = control.IsKeyboardFocusable,
             IsChecked = checkStateAvailable ? nativeCheckState : null
         };
-        if (canAccessText && !nativeTextAvailable) {
+        if (control.Handle != IntPtr.Zero && !nativeTargetCurrent) {
+            AddObservationFailure(
+                observation,
+                "The native control no longer belongs to the observed window.");
+        } else if (canAccessText && !nativeTextAvailable) {
             AddObservationFailure(
                 observation,
                 "The native text was unavailable within the observation deadline.");
@@ -313,7 +330,9 @@ public sealed partial class DesktopAutomationService {
                 "The native check state was unavailable within the observation deadline.");
         }
         IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
-        observation.IsFocused = focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero ? focusedHandle == control.Handle : null;
+        observation.IsFocused = nativeTargetCurrent && focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero
+            ? focusedHandle == control.Handle
+            : null;
         return observation;
     }
 
@@ -362,6 +381,20 @@ public sealed partial class DesktopAutomationService {
         DesktopControlObservationOptions settings,
         int nativeTimeoutMilliseconds,
         Func<int>? getRemainingProviderTimeoutMilliseconds) {
+        bool nativeTargetCurrent = control.Handle == IntPtr.Zero || IsNativeObservationTargetCurrent(window, control);
+        if (control.Handle != IntPtr.Zero && !nativeTargetCurrent) {
+            if (ShouldUseNativeTextFallback(observation, control, settings)) {
+                observation.Text = DesktopTextObservationBuilder.CreateUnavailable(
+                    "native.windowText.unavailable",
+                    settings.ExpectedText,
+                    settings.IgnoreCase,
+                    observation.Text.ContainsExpected);
+                observation.Capabilities.CanReadText = false;
+                AddObservationFailure(observation, "The native control no longer belongs to the observed window.");
+            }
+            return;
+        }
+
         if (observation.IsPassword == false &&
             control.Handle != IntPtr.Zero &&
             !WindowControlService.RefreshNativeTextSafety(control)) {
@@ -433,6 +466,20 @@ public sealed partial class DesktopAutomationService {
             IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
             observation.IsFocused = focusedHandle != IntPtr.Zero ? focusedHandle == control.Handle : null;
         }
+    }
+
+    internal static bool IsNativeObservationTargetCurrent(WindowInfo window, WindowControlInfo control) {
+        if (window == null || control == null ||
+            window.Handle == IntPtr.Zero || control.Handle == IntPtr.Zero ||
+            window.ProcessId == 0) {
+            return false;
+        }
+
+        MonitorNativeMethods.GetWindowThreadProcessId(window.Handle, out uint windowProcessId);
+        MonitorNativeMethods.GetWindowThreadProcessId(control.Handle, out uint controlProcessId);
+        return windowProcessId == unchecked((uint)window.ProcessId) &&
+            controlProcessId == unchecked((uint)window.ProcessId) &&
+            MonitorNativeMethods.GetAncestor(control.Handle, MonitorNativeMethods.GA_ROOT) == window.Handle;
     }
 
     private static void AddObservationFailure(DesktopControlObservation observation, string reason) {

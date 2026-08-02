@@ -3709,10 +3709,11 @@ public sealed partial class DesktopAutomationService {
     }
 
     private DesktopControlState CreateControlState(WindowInfo window, WindowControlInfo control) {
-        bool? isVisible = control.Handle != IntPtr.Zero
+        bool nativeTargetCurrent = control.Handle == IntPtr.Zero || IsNativeObservationTargetCurrent(window, control);
+        bool? isVisible = control.Handle != IntPtr.Zero && nativeTargetCurrent
             ? MonitorNativeMethods.IsWindowVisible(control.Handle)
             : control.IsOffscreen.HasValue ? !control.IsOffscreen.Value : null;
-        bool? isEnabled = control.Handle != IntPtr.Zero
+        bool? isEnabled = control.Handle != IntPtr.Zero && nativeTargetCurrent
             ? MonitorNativeMethods.IsWindowEnabled(control.Handle)
             : control.IsEnabled;
         UiAutomationControlService? uiAutomation = control.Source == WindowControlSource.UiAutomation && control.Handle == IntPtr.Zero
@@ -3721,10 +3722,10 @@ public sealed partial class DesktopAutomationService {
         bool canUseCachedText = control.Handle == IntPtr.Zero;
         bool canAccessText = control.Handle == IntPtr.Zero
             ? control.IsPassword == false
-            : WindowControlService.RefreshNativeTextSafety(control);
+            : nativeTargetCurrent && WindowControlService.RefreshNativeTextSafety(control);
         string liveText = string.Empty;
         string selectedValue = string.Empty;
-        if (canAccessText && control.Handle != IntPtr.Zero) {
+        if (canAccessText && control.Handle != IntPtr.Zero && nativeTargetCurrent) {
             if (WindowControlService.SupportsSelection(control)) {
                 WindowControlService.TryGetSelectedValue(
                     control,
@@ -3768,12 +3769,12 @@ public sealed partial class DesktopAutomationService {
                         : resolvedText;
         bool? isFocused = null;
         IntPtr focusedHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
-        if (focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero) {
+        if (focusedHandle != IntPtr.Zero && control.Handle != IntPtr.Zero && nativeTargetCurrent) {
             isFocused = focusedHandle == control.Handle;
         }
 
         bool? isChecked = null;
-        if (control.Handle != IntPtr.Zero && WindowControlService.SupportsCheckState(control)) {
+        if (control.Handle != IntPtr.Zero && nativeTargetCurrent && WindowControlService.SupportsCheckState(control)) {
             isChecked = WindowControlService.GetCheckState(control);
         } else if (uiAutomation != null) {
             isChecked = uiAutomation.TryReadCheckState(window, control);
@@ -3794,10 +3795,10 @@ public sealed partial class DesktopAutomationService {
             IsOffscreen = control.IsOffscreen,
             IsChecked = isChecked,
             SelectedValue = selectedValue,
-            SupportsBackgroundClick = control.SupportsBackgroundClick,
-            SupportsBackgroundText = control.SupportsBackgroundText,
-            SupportsBackgroundKeys = control.SupportsBackgroundKeys,
-            SupportsForegroundInputFallback = control.SupportsForegroundInputFallback,
+            SupportsBackgroundClick = nativeTargetCurrent && control.SupportsBackgroundClick,
+            SupportsBackgroundText = nativeTargetCurrent && control.SupportsBackgroundText,
+            SupportsBackgroundKeys = nativeTargetCurrent && control.SupportsBackgroundKeys,
+            SupportsForegroundInputFallback = nativeTargetCurrent && control.SupportsForegroundInputFallback,
             Left = control.Left,
             Top = control.Top,
             Width = control.Width,
@@ -4096,7 +4097,10 @@ public sealed partial class DesktopAutomationService {
         string? rawValue = automationText?.Value;
         string? source = automationText?.Source;
         bool nativeTextTruncated = false;
-        if (automationText == null && canAccessNativeText && control.Handle != IntPtr.Zero) {
+        if (automationText == null &&
+            canAccessNativeText &&
+            control.Handle != IntPtr.Zero &&
+            IsNativeObservationTargetCurrent(window, control)) {
             int nativeTimeoutMilliseconds = getRemainingProviderTimeoutMilliseconds?.Invoke() ??
                 UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds;
             bool nativeTextAvailable = nativeTimeoutMilliseconds > 0 &&
@@ -4121,16 +4125,7 @@ public sealed partial class DesktopAutomationService {
                 ? "native.selection"
                 : "native.windowText";
         } else if (automationText == null) {
-            rawValue = !string.IsNullOrEmpty(control.Value)
-                ? control.Value
-                : !string.IsNullOrEmpty(control.Text)
-                    ? control.Text
-                    : null;
-            source = !string.IsNullOrEmpty(control.Value)
-                ? "control.value"
-                : !string.IsNullOrEmpty(control.Text)
-                    ? "control.text"
-                    : null;
+            return null;
         }
         if (rawValue == null) {
             return null;

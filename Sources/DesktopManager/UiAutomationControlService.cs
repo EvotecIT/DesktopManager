@@ -828,20 +828,6 @@ internal sealed partial class UiAutomationControlService {
         WindowControlInfo? bestControlInfo = null;
         if (preferredRootHandle != IntPtr.Zero && preferredRootHandle != windowHandle) {
             FindBestMatchInRoot(preferredRootHandle, includeRoot: true, control, ref bestMatch, ref bestScore, ref bestRootHandle, ref bestControlInfo);
-            if (bestScore > 0) {
-                RememberPreferredSearchRootHandle(windowHandle, preferredRootHandle);
-                CacheActionMatch(actionMatchCacheKey, bestRootHandle, bestControlInfo);
-                return new UiAutomationElementMatchResult {
-                    Element = bestMatch,
-                    UsedCachedActionMatch = false,
-                    UsedPreferredRoot = true,
-                    RootHandle = bestRootHandle,
-                    Score = bestScore,
-                    SearchMode = "PreferredRootSearch"
-                };
-            }
-
-            ForgetPreferredSearchRootHandle(windowHandle, preferredRootHandle);
         }
 
         for (int rootIndex = 0; rootIndex < searchRootHandles.Count; rootIndex++) {
@@ -852,9 +838,12 @@ internal sealed partial class UiAutomationControlService {
 
             bool includeRoot = rootHandle != windowHandle;
             FindBestMatchInRoot(rootHandle, includeRoot, control, ref bestMatch, ref bestScore, ref bestRootHandle, ref bestControlInfo);
-            if (bestScore > 0 && rootHandle != windowHandle) {
-                RememberPreferredSearchRootHandle(windowHandle, rootHandle);
-            }
+        }
+
+        if (bestScore > 0 && bestRootHandle != windowHandle) {
+            RememberPreferredSearchRootHandle(windowHandle, bestRootHandle);
+        } else if (preferredRootHandle != IntPtr.Zero) {
+            ForgetPreferredSearchRootHandle(windowHandle, preferredRootHandle);
         }
 
         CacheActionMatch(actionMatchCacheKey, bestRootHandle, bestControlInfo);
@@ -998,13 +987,32 @@ internal sealed partial class UiAutomationControlService {
             }
 
             int score = ScoreMatch(expected, candidateInfo);
-            if (score > bestScore) {
+            if (ShouldReplaceBestMatch(expected, candidateInfo, score, bestControlInfo, bestScore)) {
                 bestScore = score;
                 bestMatch = candidate;
                 bestRootHandle = rootHandle;
                 bestControlInfo = CloneControl(candidateInfo);
             }
         }
+    }
+
+    internal static bool ShouldReplaceBestMatch(
+        WindowControlInfo expected,
+        WindowControlInfo candidate,
+        int candidateScore,
+        WindowControlInfo? currentBest,
+        int currentBestScore) {
+        if (candidateScore <= 0) {
+            return false;
+        }
+
+        bool candidateIsStrong = IsStrongCachedMatch(expected, candidate);
+        bool currentBestIsStrong = currentBest != null && IsStrongCachedMatch(expected, currentBest);
+        if (candidateIsStrong != currentBestIsStrong) {
+            return candidateIsStrong;
+        }
+
+        return candidateScore > currentBestScore;
     }
 
     private static IReadOnlyList<IntPtr> OrderFallbackRootHandles(IReadOnlyList<IntPtr>? fallbackRootHandles, IntPtr preferredRootHandle) {

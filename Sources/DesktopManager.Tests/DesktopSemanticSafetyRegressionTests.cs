@@ -9,6 +9,67 @@ namespace DesktopManager.Tests;
 /// <summary>Protects deadline, input-delivery, retry-quality, and live password-safety regressions.</summary>
 public class DesktopSemanticSafetyRegressionTests {
     [TestMethod]
+    public void DesktopAutomationService_FocusedHandlelessUiAutomationMetadata_IsNotText() {
+        var automationResult = new UiAutomationFocusedControlResult {
+            Control = new WindowControlInfo {
+                Handle = IntPtr.Zero,
+                Text = "accessible label",
+                Value = "cached metadata",
+                IsPassword = false,
+                Source = WindowControlSource.UiAutomation
+            }
+        };
+
+        Assert.IsFalse(DesktopAutomationService.CanUseFocusedMetadataText(
+            automationResult,
+            automationText: null,
+            nativeTextReadAttempted: false));
+        Assert.IsTrue(DesktopAutomationService.CanUseFocusedMetadataText(
+            automationResult: null,
+            automationText: null,
+            nativeTextReadAttempted: false));
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_ObservationIdentity_PreservesDiscoveredRuntimeIdWhenRefreshFails() {
+        Assert.AreEqual("1.2.3", UiAutomationControlService.ResolveObservationRuntimeId(string.Empty, "1.2.3"));
+        Assert.AreEqual("4.5.6", UiAutomationControlService.ResolveObservationRuntimeId("4.5.6", "1.2.3"));
+    }
+
+    [TestMethod]
+    public void UiAutomationControlService_BestMatch_PrefersStrictIdentityOverPreferredRootPartialMatch() {
+        var expected = new WindowControlInfo {
+            AutomationId = "TargetEditor",
+            ControlType = "Edit",
+            ClassName = "EditorClass"
+        };
+        var preferredRootPartial = new WindowControlInfo {
+            ControlType = "Edit"
+        };
+        var strictMatch = new WindowControlInfo {
+            AutomationId = "TargetEditor",
+            ControlType = "Edit",
+            ClassName = "EditorClass"
+        };
+
+        int partialScore = UiAutomationControlService.ScoreMatch(expected, preferredRootPartial);
+        int strictScore = UiAutomationControlService.ScoreMatch(expected, strictMatch);
+
+        Assert.IsTrue(UiAutomationControlService.ShouldReplaceBestMatch(
+            expected,
+            strictMatch,
+            strictScore,
+            preferredRootPartial,
+            partialScore));
+        Assert.IsFalse(UiAutomationControlService.ShouldReplaceBestMatch(
+            expected,
+            preferredRootPartial,
+            partialScore,
+            strictMatch,
+            strictScore));
+    }
+
+    [TestMethod]
     public void DesktopAutomationService_HandlelessMetadataText_RemainsUnavailable() {
         DesktopControlObservation observation = DesktopAutomationService.CreateNativeControlObservation(
             new WindowInfo { Handle = new IntPtr(10), ProcessId = 20 },

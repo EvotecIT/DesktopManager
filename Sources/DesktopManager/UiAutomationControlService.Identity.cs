@@ -18,7 +18,7 @@ internal sealed partial class UiAutomationControlService {
             ProcessId = window.ProcessId,
             WindowHandle = window.Handle,
             ControlHandle = control.Handle,
-            RuntimeId = runtimeId,
+            RuntimeId = ResolveObservationRuntimeId(runtimeId, control.RuntimeId),
             AutomationId = control.AutomationId,
             ControlType = control.ControlType,
             FrameworkId = control.FrameworkId,
@@ -31,6 +31,12 @@ internal sealed partial class UiAutomationControlService {
         };
         identity.SessionKey = CreateObservationSessionKey(identity);
         return identity;
+    }
+
+    internal static string ResolveObservationRuntimeId(string? refreshedRuntimeId, string? discoveredRuntimeId) {
+        return !string.IsNullOrWhiteSpace(refreshedRuntimeId)
+            ? refreshedRuntimeId!
+            : discoveredRuntimeId ?? string.Empty;
     }
 
     internal static string CreateObservationSessionKey(DesktopControlIdentity identity) {

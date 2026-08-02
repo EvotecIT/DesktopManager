@@ -83,7 +83,11 @@ public sealed partial class DesktopAutomationService {
         bool nativeTextAvailable = false;
         bool nativeTextReadAttempted = false;
         IntPtr nativeTextHandle = ResolveNativeTextHandle(automationResult, focusedHandle);
-        if (canAccessText && automationText == null && nativeTextHandle != IntPtr.Zero) {
+        bool nativeTargetCurrent = nativeTextHandle == IntPtr.Zero || IsNativeObservationTargetCurrent(window, control);
+        if (canAccessText &&
+            automationText == null &&
+            nativeTextHandle != IntPtr.Zero &&
+            nativeTargetCurrent) {
             nativeTextReadAttempted = true;
             nativeTextAvailable = TryReadFocusedNativeText(
                 control,
@@ -94,13 +98,17 @@ public sealed partial class DesktopAutomationService {
             isPassword = control.IsPassword == true;
             canAccessText = control.IsPassword == false;
         }
+        bool canUseMetadataText = nativeTargetCurrent &&
+            CanUseFocusedMetadataText(automationResult, automationText, nativeTextReadAttempted);
         string controlText = !canAccessText
             ? string.Empty
             : nativeTextAvailable
                 ? liveText
                 : nativeTextReadAttempted
                     ? string.Empty
-                    : control.Text;
+                    : canUseMetadataText
+                        ? control.Text
+                        : string.Empty;
         string valueSource = string.Empty;
         string value = !canAccessText
             ? string.Empty
@@ -108,9 +116,13 @@ public sealed partial class DesktopAutomationService {
                 ? liveText
                 : nativeTextReadAttempted && !nativeTextAvailable
                     ? string.Empty
-                    : ResolveFocusedValue(automationText, control, liveText, out valueSource);
+                    : canUseMetadataText
+                        ? ResolveFocusedValue(automationText, control, liveText, out valueSource)
+                        : string.Empty;
         if (automationText == null && nativeTextAvailable) {
             valueSource = "native.windowText";
+        } else if (automationText == null && automationResult != null) {
+            valueSource = "uia.textUnavailable";
         }
         if (isPassword) {
             valueSource = "uia.password";
@@ -162,6 +174,13 @@ public sealed partial class DesktopAutomationService {
         return automationResult != null
             ? automationResult.Control?.Handle ?? IntPtr.Zero
             : nativeFocusedHandle;
+    }
+
+    internal static bool CanUseFocusedMetadataText(
+        UiAutomationFocusedControlResult? automationResult,
+        UiAutomationTextReadResult? automationText,
+        bool nativeTextReadAttempted) {
+        return automationText != null || (automationResult == null && !nativeTextReadAttempted);
     }
 
     internal static string ResolveFocusedValue(
