@@ -151,8 +151,59 @@ public class DesktopControlObservationContractTests {
         var settings = new DesktopControlObservationOptions { IncludeNativeFallback = true };
 
         Assert.IsFalse(DesktopAutomationService.ShouldUseNativeTextFallback(observation, control, settings));
+        observation.Text = DesktopTextObservationBuilder.CreateUnavailable(
+            "uia.textUnavailable",
+            expectedText: null,
+            ignoreCase: false,
+            containsExpected: null);
+        Assert.IsTrue(DesktopAutomationService.ShouldUseNativeTextFallback(observation, control, settings));
         observation.Text.Source = string.Empty;
         Assert.IsTrue(DesktopAutomationService.ShouldUseNativeTextFallback(observation, control, settings));
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_MergeNativeObservationState_UnavailableProviderUsesBoundedNativeText() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        TextBox? editor = null;
+        using PumpingWinFormsHarness harness = PumpingWinFormsHarness.Create(
+            "DesktopManager Native Observation Fallback Harness",
+            form => {
+                editor = new TextBox { Text = "native fallback value" };
+                form.Controls.Add(editor);
+            });
+        Assert.IsNotNull(editor);
+        IntPtr editorHandle = harness.Invoke(() => editor.Handle);
+        var control = new ControlEnumerator().GetControlMetadata(harness.Window.Handle, editorHandle);
+        var observation = new DesktopControlObservation {
+            IsPassword = false,
+            Text = DesktopTextObservationBuilder.CreateUnavailable(
+                "uia.textUnavailable",
+                expectedText: "fallback",
+                ignoreCase: false,
+                containsExpected: null)
+        };
+
+        DesktopAutomationService.MergeNativeObservationState(
+            observation,
+            harness.Window,
+            control,
+            new DesktopControlObservationOptions {
+                IncludeNativeFallback = true,
+                ExpectedText = "fallback",
+                MaxTextLength = 1024
+            },
+            nativeTimeoutMilliseconds: 1000,
+            getRemainingProviderTimeoutMilliseconds: null);
+
+        Assert.AreEqual("native.windowText", observation.Text.Source);
+        Assert.AreEqual("native fallback value", observation.Text.Value);
+        Assert.IsTrue(observation.Text.IsComplete);
+        Assert.AreEqual(true, observation.Text.ContainsExpected);
+        Assert.IsTrue(observation.Capabilities.CanReadText);
     }
 
     [TestMethod]

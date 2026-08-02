@@ -360,7 +360,7 @@ public sealed partial class DesktopAutomationService {
         };
     }
 
-    private static void MergeNativeObservationState(
+    internal static void MergeNativeObservationState(
         DesktopControlObservation observation,
         WindowInfo window,
         WindowControlInfo control,
@@ -385,17 +385,16 @@ public sealed partial class DesktopAutomationService {
                     textTimeoutMilliseconds,
                     out string nativeValue,
                     out bool isTruncated)) {
-                if (!string.IsNullOrEmpty(nativeValue)) {
-                    observation.Text = DesktopTextObservationBuilder.Create(
-                        nativeValue,
-                        "native.windowText",
-                        isTruncated,
-                        settings.ExpectedText,
-                        settings.IgnoreCase,
-                        settings.MaxMatches,
-                        settings.MatchContextLength,
-                        observation.Text.ContainsExpected);
-                }
+                observation.Text = DesktopTextObservationBuilder.Create(
+                    nativeValue,
+                    "native.windowText",
+                    isTruncated,
+                    settings.ExpectedText,
+                    settings.IgnoreCase,
+                    settings.MaxMatches,
+                    settings.MatchContextLength,
+                    observation.Text.ContainsExpected);
+                observation.Capabilities.CanReadText = true;
             } else {
                 observation.Text = DesktopTextObservationBuilder.CreateUnavailable(
                     "native.windowText.unavailable",
@@ -447,7 +446,8 @@ public sealed partial class DesktopAutomationService {
         WindowControlInfo control,
         DesktopControlObservationOptions settings) {
         return settings.IncludeNativeFallback &&
-            string.IsNullOrEmpty(observation.Text.Source) &&
+            (string.IsNullOrEmpty(observation.Text.Source) ||
+                string.Equals(observation.Text.Source, "uia.textUnavailable", StringComparison.Ordinal)) &&
             control.Handle != IntPtr.Zero;
     }
 

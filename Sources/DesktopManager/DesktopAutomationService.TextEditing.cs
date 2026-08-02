@@ -220,6 +220,7 @@ public sealed partial class DesktopAutomationService {
 
         bool applied = false;
         string method = string.Empty;
+        string lastFailureCode = string.Empty;
         var uiAutomation = new UiAutomationControlService();
         try {
             if (request.Mode == DesktopTextEditMode.ReplaceDocument) {
@@ -313,6 +314,7 @@ public sealed partial class DesktopAutomationService {
                     expectedCaretOffset: selectCaret ? before.Text.CaretOffset : null,
                     maxTextLength: settings.MaxTextLength);
                 applied = attempt.Applied;
+                lastFailureCode = attempt.FailureCode;
                 method = applied
                     ? request.Mode == DesktopTextEditMode.ReplaceSelection
                         ? "foreground.replaceSelection"
@@ -338,7 +340,10 @@ public sealed partial class DesktopAutomationService {
         }
 
         if (!applied) {
-            DesktopTextEditResult failed = CreateTextEditFailure("edit-failed", "No permitted provider path could apply the text edit.");
+            string failureCode = string.IsNullOrWhiteSpace(lastFailureCode) ? "edit-failed" : lastFailureCode;
+            DesktopTextEditResult failed = CreateTextEditFailure(
+                failureCode,
+                $"No permitted provider path could apply the text edit ({failureCode}).");
             failed.Before = before;
             return failed;
         }

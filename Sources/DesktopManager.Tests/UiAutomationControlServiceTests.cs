@@ -472,6 +472,22 @@ public class UiAutomationControlServiceTests {
     }
 
     [TestMethod]
+    public void ShouldRunProviderOperationInline_CallingThreadOwnsWindow_RemainsDeadlineBound() {
+        Assert.IsFalse(UiAutomationControlService.ShouldRunProviderOperationInline(
+            isDispatcherThread: false,
+            isWindowOwnedByCallingThread: true,
+            isMutation: false));
+        Assert.IsTrue(UiAutomationControlService.ShouldRunProviderOperationInline(
+            isDispatcherThread: false,
+            isWindowOwnedByCallingThread: true,
+            isMutation: true));
+        Assert.IsTrue(UiAutomationControlService.ShouldRunProviderOperationInline(
+            isDispatcherThread: true,
+            isWindowOwnedByCallingThread: false,
+            isMutation: false));
+    }
+
+    [TestMethod]
     public void TryReadPasswordState_NullProviderValue_ReturnsUnavailable() {
         bool available = UiAutomationControlService.TryReadPasswordState(
             new UnknownPasswordState(),

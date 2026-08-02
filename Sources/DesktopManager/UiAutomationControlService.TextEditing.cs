@@ -134,36 +134,16 @@ internal sealed partial class UiAutomationControlService {
             return UiAutomationTextEditAttempt.Succeeded();
         }
 
-        ClipboardHelper.ClipboardSnapshot? clipboardSnapshot = null;
-        try {
-            clipboardSnapshot = ClipboardHelper.CaptureSnapshot();
-            ClipboardHelper.SetText(value);
-        } catch {
-            clipboardSnapshot?.Dispose();
-            return UiAutomationTextEditAttempt.Failed("clipboard-unavailable");
+        if (!IsTextMutationAllowed(element)) {
+            return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
         }
 
-        try {
-            if (!IsTextMutationAllowed(element)) {
-                return UiAutomationTextEditAttempt.Failed("password-state-unavailable");
-            }
-
-            if (!IsExpectedForegroundInputTarget(window, control, element)) {
-                return UiAutomationTextEditAttempt.Failed("input-target-changed");
-            }
-
-            KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
-            WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
-            return UiAutomationTextEditAttempt.Succeeded();
-        } finally {
-            try {
-                clipboardSnapshot.Restore();
-            } catch {
-                // Preserve the input result if clipboard restoration is blocked.
-            } finally {
-                clipboardSnapshot.Dispose();
-            }
+        if (!IsExpectedForegroundInputTarget(window, control, element)) {
+            return UiAutomationTextEditAttempt.Failed("input-target-changed");
         }
+
+        KeyboardInputService.SendTextToForeground(value);
+        return UiAutomationTextEditAttempt.Succeeded();
     }
 
     private bool? TryReadResolvedPasswordStateCore(WindowInfo window, WindowControlInfo control) {

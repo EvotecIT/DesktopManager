@@ -341,8 +341,10 @@ internal sealed partial class UiAutomationControlService {
         }
 
         LastOperationTimedOut = false;
-        if (StaDispatcher.Value.IsCurrentThread ||
-            invocationTimeoutMilliseconds == UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds && IsWindowOwnedByCurrentThread(targetWindowHandle)) {
+        if (ShouldRunProviderOperationInline(
+            StaDispatcher.Value.IsCurrentThread,
+            IsWindowOwnedByCurrentThread(targetWindowHandle),
+            isMutation)) {
             return operation(this);
         }
 
@@ -359,6 +361,13 @@ internal sealed partial class UiAutomationControlService {
             LastOperationTimedOut = true;
             return CreateTimedOutOperationFallback<T>();
         }
+    }
+
+    internal static bool ShouldRunProviderOperationInline(
+        bool isDispatcherThread,
+        bool isWindowOwnedByCallingThread,
+        bool isMutation) {
+        return isDispatcherThread || isMutation && isWindowOwnedByCallingThread;
     }
 
     private static bool IsWindowOwnedByCurrentThread(IntPtr windowHandle) {
@@ -717,10 +726,6 @@ internal sealed partial class UiAutomationControlService {
         precondition = ValidateContentPrecondition(element, expectedContentFingerprint, maxTextLength);
         if (!precondition.Applied) {
             return precondition;
-        }
-
-        if (TryReplaceFocusedTextWithPaste(window, control, element, value)) {
-            return UiAutomationTextEditAttempt.Succeeded();
         }
 
         if (!IsTextMutationAllowed(element)) {
@@ -1673,43 +1678,6 @@ internal sealed partial class UiAutomationControlService {
             ReadPatternValue(element, "System.Windows.Automation.RangeValuePattern") ??
             ReadPatternValue(element, "System.Windows.Automation.LegacyIAccessiblePattern") ??
             string.Empty;
-    }
-
-    private bool TryReplaceFocusedTextWithPaste(WindowInfo window, WindowControlInfo control, object element, string value) {
-        ClipboardHelper.ClipboardSnapshot? clipboardSnapshot = null;
-
-        try {
-            clipboardSnapshot = ClipboardHelper.CaptureSnapshot();
-            ClipboardHelper.SetText(value);
-        } catch {
-            clipboardSnapshot?.Dispose();
-            return false;
-        }
-
-        try {
-            if (!IsExpectedForegroundInputTarget(window, control, element)) {
-                return false;
-            }
-
-            KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_A);
-            WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
-            if (TryReadResolvedPasswordStateCore(window, control) != false ||
-                !IsExpectedForegroundInputTarget(window, control, element)) {
-                return false;
-            }
-
-            KeyboardInputService.SendToForeground(VirtualKey.VK_CONTROL, VirtualKey.VK_V);
-            WaitWithCurrentUiMessagePump(ForegroundInputSettleMilliseconds);
-            return true;
-        } finally {
-            try {
-                clipboardSnapshot.Restore();
-            } catch {
-                // Preserve the successful input result even if clipboard restoration fails.
-            } finally {
-                clipboardSnapshot.Dispose();
-            }
-        }
     }
 
     private bool WaitForResolvedCheckState(WindowInfo window, WindowControlInfo control, bool expectedState) {

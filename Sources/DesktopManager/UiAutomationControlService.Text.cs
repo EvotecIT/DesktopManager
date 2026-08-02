@@ -10,7 +10,12 @@ internal sealed partial class UiAutomationControlService {
     /// Resolves the UI Automation focused element for a target window and reads its text without
     /// requesting an unbounded cross-process document range.
     /// </summary>
-    public UiAutomationFocusedControlResult? TryGetFocusedControl(IntPtr windowHandle, IntPtr focusedHandle, int maxLength, string? expectedText = null) {
+    public UiAutomationFocusedControlResult? TryGetFocusedControl(
+        IntPtr windowHandle,
+        IntPtr focusedHandle,
+        int maxLength,
+        string? expectedText = null,
+        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
         if (windowHandle == IntPtr.Zero) {
             throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
         }
@@ -20,13 +25,21 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return RunInSta(service => service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText), windowHandle);
+        return RunInSta(
+            service => service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText),
+            windowHandle,
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
     }
 
     /// <summary>
     /// Resolves focus for a same-process window while allowing a WPF dispatcher to service provider calls.
     /// </summary>
-    internal UiAutomationFocusedControlResult? TryGetFocusedControlOnCurrentThread(IntPtr windowHandle, IntPtr focusedHandle, int maxLength, string? expectedText = null) {
+    internal UiAutomationFocusedControlResult? TryGetFocusedControlOnCurrentThread(
+        IntPtr windowHandle,
+        IntPtr focusedHandle,
+        int maxLength,
+        string? expectedText = null,
+        int invocationTimeoutMilliseconds = UiAutomationStaDispatcher.DefaultInvocationTimeoutMilliseconds) {
         if (windowHandle == IntPtr.Zero) {
             throw new ArgumentException("Invalid window handle.", nameof(windowHandle));
         }
@@ -36,7 +49,10 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        return RunInSta(service => service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText), windowHandle);
+        return RunInSta(
+            service => service.TryGetFocusedControlCore(windowHandle, focusedHandle, maxLength, expectedText),
+            windowHandle,
+            invocationTimeoutMilliseconds: invocationTimeoutMilliseconds);
     }
 
     /// <summary>

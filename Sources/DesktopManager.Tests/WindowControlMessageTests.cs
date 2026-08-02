@@ -11,6 +11,8 @@ namespace DesktopManager.Tests;
 /// Tests for direct Win32 control messaging helpers.
 /// </summary>
 public class WindowControlMessageTests {
+    private const int WmGetTextLength = 0x000E;
+
     [TestMethod]
     [TestCategory("UITest")]
     /// <summary>
@@ -139,6 +141,72 @@ public class WindowControlMessageTests {
 
     [TestMethod]
     [TestCategory("UITest")]
+    public void DesktopAutomationService_FocusedNativeTextRead_UsesRemainingDeadline() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        TestHelper.RequireOwnedWindowUiTests();
+        using var ready = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        IntPtr formHandle = IntPtr.Zero;
+        IntPtr textBoxHandle = IntPtr.Zero;
+        Exception? startupFailure = null;
+        var thread = new Thread(() => {
+            try {
+                using Form form = new() { Text = "Hung Focused Native Read Test", ShowInTaskbar = false };
+                using var textBox = new BlockingTextBox(release) { Text = "must-not-block" };
+                form.Controls.Add(textBox);
+                form.Shown += (_, _) => {
+                    formHandle = form.Handle;
+                    textBoxHandle = textBox.Handle;
+                    textBox.BlockTextMessages = true;
+                    ready.Set();
+                };
+                Application.Run(form);
+            } catch (Exception ex) {
+                startupFailure = ex;
+                ready.Set();
+            }
+        }) {
+            IsBackground = true,
+            Name = "DesktopManager hung focused native read harness"
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.IsTrue(ready.Wait(TimeSpan.FromSeconds(10)), "The hung focused native read harness did not start.");
+        Assert.IsNull(startupFailure);
+
+        try {
+            var control = new WindowControlInfo {
+                ParentWindowHandle = formHandle,
+                Handle = textBoxHandle,
+                ClassName = "Edit",
+                IsPassword = false
+            };
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            bool available = DesktopAutomationService.TryReadFocusedNativeText(
+                control,
+                maxObservedTextLength: 2048,
+                getRemainingProviderTimeoutMilliseconds: () => 75,
+                out string value,
+                out bool isTruncated);
+
+            stopwatch.Stop();
+            Assert.IsFalse(available);
+            Assert.AreEqual(string.Empty, value);
+            Assert.IsFalse(isTruncated);
+            Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(2), $"Focused native text read took {stopwatch.Elapsed}.");
+        } finally {
+            release.Set();
+            MonitorNativeMethods.PostMessage(formHandle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+            Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(10)), "The hung focused native read harness did not stop.");
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
     /// <summary>
     /// Ensures direct combo-box selection can switch the current item by displayed text.
     /// </summary>
@@ -219,7 +287,10 @@ public class WindowControlMessageTests {
         internal bool BlockTextMessages;
 
         protected override void WndProc(ref Message message) {
-            if (BlockTextMessages && message.Msg == MonitorNativeMethods.WM_SETTEXT) {
+            if (BlockTextMessages &&
+                (message.Msg == MonitorNativeMethods.WM_SETTEXT ||
+                    message.Msg == MonitorNativeMethods.WM_GETTEXT ||
+                    message.Msg == WmGetTextLength)) {
                 _release.Wait(TimeSpan.FromSeconds(10));
             }
 
