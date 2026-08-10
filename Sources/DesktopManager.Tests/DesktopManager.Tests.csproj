@@ -39,6 +39,15 @@
     <Compile Remove="HotkeyProfileStoreTests.cs" />
   </ItemGroup>
 
+  <Target Name="BuildWindowHelperDependencies"
+          BeforeTargets="CopyWindowHelperDependencies"
+          Condition="'$(TargetFramework)' != 'net472' and '$(DesignTimeBuild)' != 'true'">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\WindowTextHelper32\WindowTextHelper32.csproj"
+             Targets="Build"
+             BuildInParallel="false"
+             Properties="Configuration=$(Configuration);TargetFramework=net472" />
+  </Target>
+
   <Target Name="CopyWindowHelperDependencies" AfterTargets="Build">
     <ItemGroup>
       <HelperFiles Include="$(MSBuildProjectDirectory)\..\WindowTextHelper32\bin\$(Configuration)\net472\**\*.*" />
