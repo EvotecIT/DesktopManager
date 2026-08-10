@@ -35,10 +35,10 @@ jobs:
             framework: net10.0-windows10.0.19041.0
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             8.0.x
@@ -59,14 +59,14 @@ jobs:
         run: dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework ${{ matrix.framework }} --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-windows-${{ matrix.label }}
           path: '**/*.trx'
 
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always() && matrix.label == 'net8'
         with:
           name: coverage-reports-windows-net8
@@ -74,6 +74,6 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.label == 'net8'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: '**/coverage.cobertura.xml'
