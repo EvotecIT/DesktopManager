@@ -151,16 +151,23 @@ public class DesktopStateCapabilityTests {
     public void DesktopSessionWatcher_ContainsSubscriberFailureAndNotifiesRemainingSubscribers() {
         DesktopSessionInfo initial = CreateSession(isLocked: false, TimeSpan.Zero);
         DesktopSessionInfo changed = CreateSession(isLocked: true, TimeSpan.Zero);
+        using var allowChange = new ManualResetEventSlim();
         using var notificationObserved = new ManualResetEventSlim();
         int readCount = 0;
 
         DesktopSessionInfo ReadSession() {
-            return Interlocked.Increment(ref readCount) == 1 ? initial : changed;
+            if (Interlocked.Increment(ref readCount) == 1) {
+                return initial;
+            }
+
+            allowChange.Wait(TimeSpan.FromSeconds(5));
+            return changed;
         }
 
         using var watcher = new DesktopSessionWatcher(ReadSession, TimeSpan.FromMilliseconds(5));
         watcher.Changed += (_, _) => throw new InvalidOperationException("Subscriber failure.");
         watcher.Changed += (_, _) => notificationObserved.Set();
+        allowChange.Set();
 
         Assert.IsTrue(
             notificationObserved.Wait(TimeSpan.FromSeconds(5)),

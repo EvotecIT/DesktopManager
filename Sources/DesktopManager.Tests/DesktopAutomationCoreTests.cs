@@ -781,6 +781,27 @@ public class DesktopAutomationCoreTests {
     }
 
     [TestMethod]
+    public void DesktopAutomationService_ClickWindowPoint_NaNRatio_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ClickWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, null, null, double.NaN, 0.5, MouseButton.Left, activate: false, clientArea: false));
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_DragWindowPoints_NaNRatio_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.DragWindowPoints(new WindowQueryOptions { TitlePattern = "*" }, null, null, double.NaN, 0.5, null, null, 0.5, 0.5, MouseButton.Left, 0, activate: false, clientArea: false));
+    }
+
+    [TestMethod]
+    public void DesktopAutomationService_ScrollWindowPoint_NaNRatio_ThrowsArgumentOutOfRangeException() {
+        var automation = new DesktopAutomationService();
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => automation.ScrollWindowPoint(new WindowQueryOptions { TitlePattern = "*" }, null, null, double.NaN, 0.5, 120, activate: false, clientArea: false));
+    }
+
+    [TestMethod]
     /// <summary>
     /// Ensures window geometry rejects a missing selector.
     /// </summary>

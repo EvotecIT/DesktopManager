@@ -1707,6 +1707,7 @@ public sealed partial class DesktopAutomationService {
     /// Clicks a point relative to each matching window using either pixels or normalized ratios.
     /// </summary>
     public IReadOnlyList<WindowInfo> ClickWindowPoint(WindowQueryOptions options, int? x, int? y, double? xRatio, double? yRatio, MouseButton button, bool activate, bool clientArea, bool all = false) {
+        ValidateRelativePointArguments(x, y, xRatio, yRatio);
         IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
         foreach (WindowInfo window in windows) {
             if (activate) {
@@ -1738,6 +1739,8 @@ public sealed partial class DesktopAutomationService {
             throw new ArgumentOutOfRangeException(nameof(stepDelayMilliseconds), "stepDelayMilliseconds must be zero or greater.");
         }
 
+        ValidateRelativePointArguments(startX, startY, startXRatio, startYRatio);
+        ValidateRelativePointArguments(endX, endY, endXRatio, endYRatio);
         IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
         foreach (WindowInfo window in windows) {
             if (activate) {
@@ -1764,6 +1767,7 @@ public sealed partial class DesktopAutomationService {
     /// Scrolls the mouse wheel at a point relative to each matching window using either pixels or normalized ratios.
     /// </summary>
     public IReadOnlyList<WindowInfo> ScrollWindowPoint(WindowQueryOptions options, int? x, int? y, double? xRatio, double? yRatio, int delta, bool activate, bool clientArea, bool all = false) {
+        ValidateRelativePointArguments(x, y, xRatio, yRatio);
         IReadOnlyList<WindowInfo> windows = ResolveWindows(options, all);
         foreach (WindowInfo window in windows) {
             if (activate) {
@@ -4784,7 +4788,7 @@ public sealed partial class DesktopAutomationService {
         }
 
         double ratioValue = ratio!.Value;
-        if (ratioValue < 0 || ratioValue > 1) {
+        if (IsNormalizedRatioOutOfRange(ratioValue, allowZero: true)) {
             throw new ArgumentOutOfRangeException(ratioName, $"{ratioName} must be between 0 and 1.");
         }
     }
@@ -4809,7 +4813,7 @@ public sealed partial class DesktopAutomationService {
         }
 
         double ratioValue = ratio!.Value;
-        if (ratioValue <= 0 || ratioValue > 1) {
+        if (IsNormalizedRatioOutOfRange(ratioValue, allowZero: false)) {
             throw new ArgumentOutOfRangeException(ratioName, $"{ratioName} must be greater than 0 and less than or equal to 1.");
         }
     }
@@ -4849,6 +4853,11 @@ public sealed partial class DesktopAutomationService {
         }
 
         return (geometry.ClientLeft + resolvedX, geometry.ClientTop + resolvedY);
+    }
+
+    private static void ValidateRelativePointArguments(int? x, int? y, double? xRatio, double? yRatio) {
+        _ = ResolveAxisCoordinate(x, xRatio, 1, nameof(x), nameof(xRatio));
+        _ = ResolveAxisCoordinate(y, yRatio, 1, nameof(y), nameof(yRatio));
     }
 
     private static DesktopWindowGeometry DescribeWindowGeometry(WindowInfo window) {
@@ -4915,7 +4924,7 @@ public sealed partial class DesktopAutomationService {
         }
 
         double ratioValue = ratio!.Value;
-        if (ratioValue <= 0 || ratioValue > 1) {
+        if (IsNormalizedRatioOutOfRange(ratioValue, allowZero: false)) {
             throw new ArgumentOutOfRangeException(ratioName, $"{ratioName} must be greater than 0 and less than or equal to 1.");
         }
 
@@ -4942,7 +4951,7 @@ public sealed partial class DesktopAutomationService {
         }
 
         double ratioValue = ratio!.Value;
-        if (ratioValue < 0 || ratioValue > 1) {
+        if (IsNormalizedRatioOutOfRange(ratioValue, allowZero: true)) {
             throw new ArgumentOutOfRangeException(ratioName, $"{ratioName} must be between 0 and 1.");
         }
 
@@ -4951,5 +4960,12 @@ public sealed partial class DesktopAutomationService {
         }
 
         return (int)Math.Round((size - 1) * ratioValue, MidpointRounding.AwayFromZero);
+    }
+
+    private static bool IsNormalizedRatioOutOfRange(double value, bool allowZero) {
+        return double.IsNaN(value) ||
+            double.IsInfinity(value) ||
+            value > 1 ||
+            (allowZero ? value < 0 : value <= 0);
     }
 }

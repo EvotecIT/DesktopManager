@@ -14,7 +14,8 @@ namespace DesktopManager;
 /// </summary>
 public partial class MonitorService {
     private const int ENUM_CURRENT_SETTINGS = -1;
-    private readonly IDesktopManager _desktopManager;
+    private readonly Lazy<IDesktopManager> _lazyDesktopManager;
+    private IDesktopManager _desktopManager => _lazyDesktopManager.Value;
     private bool _desktopWallpaperEnableAttempted;
 
     /// <summary>
@@ -49,8 +50,20 @@ public partial class MonitorService {
     /// Initializes a new instance of the <see cref="MonitorService"/> class.
     /// </summary>
     /// <param name="desktopManager">The desktop manager interface.</param>
-    public MonitorService(IDesktopManager desktopManager) {
-        _desktopManager = desktopManager;
+    public MonitorService(IDesktopManager desktopManager)
+        : this(() => desktopManager) {
+        if (desktopManager == null) {
+            throw new ArgumentNullException(nameof(desktopManager));
+        }
+    }
+
+    internal MonitorService(Func<IDesktopManager> desktopManagerFactory) {
+        if (desktopManagerFactory == null) {
+            throw new ArgumentNullException(nameof(desktopManagerFactory));
+        }
+
+        _lazyDesktopManager = new Lazy<IDesktopManager>(() => desktopManagerFactory()
+            ?? throw new InvalidOperationException("The desktop wallpaper COM service could not be created."));
     }
 
     private void EnsureDesktopWallpaperEnabled() {

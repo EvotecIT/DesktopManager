@@ -25,11 +25,7 @@ public class Monitors {
             throw new ArgumentNullException(nameof(desktopManagerFactory));
         }
 
-        _lazyMonitorService = new Lazy<MonitorService>(() => {
-            IDesktopManager desktopManager = desktopManagerFactory()
-                ?? throw new InvalidOperationException("The desktop wallpaper COM service could not be created.");
-            return new MonitorService(desktopManager);
-        });
+        _lazyMonitorService = new Lazy<MonitorService>(() => new MonitorService(desktopManagerFactory));
     }
 
     /// <summary>
