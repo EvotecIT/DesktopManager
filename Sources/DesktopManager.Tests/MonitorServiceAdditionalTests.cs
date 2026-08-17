@@ -27,6 +27,27 @@ public class MonitorServiceAdditionalTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures COM activation failures use monitor fallback enumeration instead of escaping the public helper.
+    /// </summary>
+    public void Monitors_GetMonitors_ComActivationFailure_UsesFallbackEnumeration() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("Test requires Windows");
+        }
+
+        int activationCount = 0;
+        var monitors = new Monitors(() => {
+            activationCount++;
+            throw new COMException("activation-probe");
+        });
+
+        List<Monitor> result = monitors.GetMonitors();
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, activationCount);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures position changes cannot silently reinterpret right and bottom as a resolution request.
     /// </summary>
     public void ValidatePositionDimensions_ChangedResolution_ThrowsArgumentException() {

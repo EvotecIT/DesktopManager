@@ -25,6 +25,7 @@ public class HotkeyServiceTests {
 #endif
             Assert.Inconclusive("Test requires Windows");
         }
+        TestHelper.RequireInteractive();
 
         using Mutex mutex = new(false, HotkeyTestMutexName);
         bool hasHandle;

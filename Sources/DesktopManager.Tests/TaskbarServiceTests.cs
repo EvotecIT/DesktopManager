@@ -16,6 +16,7 @@ public class TaskbarServiceTests {
 #endif
             Assert.Inconclusive("Test requires Windows");
         }
+        TestHelper.RequireInteractive();
 
         TaskbarService service = new TaskbarService();
         var bars = service.GetTaskbars();
