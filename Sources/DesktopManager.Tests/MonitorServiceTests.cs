@@ -19,6 +19,10 @@ public class MonitorServiceTests {
         internal override void SetSystemWallpaper(string path) {
             SystemWallpaperPaths.Add(path);
         }
+
+        internal override Task<MemoryStream> DownloadWallpaperAsync(Uri uri, CancellationToken cancellationToken) {
+            return Task.FromResult(new MemoryStream(new byte[] { 1, 2, 3 }));
+        }
     }
 
     private static string CreateHistoryPath() {
@@ -102,8 +106,9 @@ public class MonitorServiceTests {
     /// </summary>
     public void SetWallpaper_ByIndex_NullDevicePath_FallsBackToSystemWallpaper() {
         WithIsolatedWallpaperHistory(_ => {
-            var fake = new FakeDesktopManager { DevicePathCount = 1 };
+            var fake = new FakeDesktopManager { DevicePathCount = 2 };
             fake.DevicePaths[0] = null!;
+            fake.DevicePaths[1] = "other-monitor";
             var service = new RecordingMonitorService(fake);
 
             service.SetWallpaper(0, "img");
@@ -119,8 +124,9 @@ public class MonitorServiceTests {
     /// Stream-based wallpaper updates should use the same null-device fallback and clean up their temporary file.
     /// </summary>
     public void SetWallpaper_ByIndexStream_NullDevicePath_FallsBackAndDeletesTempFile() {
-        var fake = new FakeDesktopManager { DevicePathCount = 1 };
+        var fake = new FakeDesktopManager { DevicePathCount = 2 };
         fake.DevicePaths[0] = null!;
+        fake.DevicePaths[1] = "other-monitor";
         var service = new RecordingMonitorService(fake);
         using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
 
@@ -133,15 +139,23 @@ public class MonitorServiceTests {
 
     [TestMethod]
     /// <summary>
-    /// URL-based wallpaper updates should continue through validation instead of silently returning for a null device ID.
+    /// URL-based wallpaper updates should download once and use the direct system fallback for a null device ID.
     /// </summary>
-    public void SetWallpaperFromUrl_ByIndex_NullDevicePath_UsesGlobalUrlPath() {
-        var fake = new FakeDesktopManager { DevicePathCount = 1 };
-        fake.DevicePaths[0] = null!;
-        var service = new RecordingMonitorService(fake);
+    public void SetWallpaperFromUrl_ByIndex_NullDevicePath_UsesSystemFallback() {
+        WithIsolatedWallpaperHistory(_ => {
+            var fake = new FakeDesktopManager { DevicePathCount = 2 };
+            fake.DevicePaths[0] = null!;
+            fake.DevicePaths[1] = "other-monitor";
+            var service = new RecordingMonitorService(fake);
+            const string url = "https://example.test/wallpaper.bmp";
 
-        Assert.ThrowsExactly<NotSupportedException>(
-            () => service.SetWallpaperFromUrl(0, new Uri(Path.Combine(Path.GetTempPath(), "wallpaper.bmp")).AbsoluteUri));
+            service.SetWallpaperFromUrl(0, url);
+
+            Assert.HasCount(1, service.SystemWallpaperPaths);
+            Assert.IsFalse(File.Exists(service.SystemWallpaperPaths[0]));
+            Assert.AreEqual(0, fake.SetWallpaperCalls.Count);
+            CollectionAssert.AreEqual(new[] { url }, WallpaperHistory.GetHistory());
+        });
     }
 
     [TestMethod]
