@@ -1,3 +1,4 @@
+#if !NETSTANDARD2_0
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -227,3 +228,4 @@ public sealed class RadioService : IDisposable {
         }
     }
 }
+#endif

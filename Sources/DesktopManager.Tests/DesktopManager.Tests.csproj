@@ -34,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.28000.2526" PrivateAssets="all" />
     <Compile Remove="DesktopManagerAutomationBasicsTests.cs" />
     <Compile Remove="DesktopManagerWinUiHarnessTests.cs" />
     <Compile Remove="HotkeyProfileStoreTests.cs" />
