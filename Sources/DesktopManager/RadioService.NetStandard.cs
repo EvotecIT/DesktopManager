@@ -15,20 +15,18 @@ public sealed class RadioService : IDisposable {
     private bool _disposed;
 
     /// <summary>Raised when an observed Windows radio changes state.</summary>
-    public event EventHandler<DesktopRadioStateChangedEventArgs>? StateChanged {
-        add { }
-        remove { }
-    }
+    public event EventHandler<DesktopRadioStateChangedEventArgs>? StateChanged;
 
     /// <summary>
     /// Gets a current snapshot of all radios exposed to this process.
     /// </summary>
     /// <param name="cancellationToken">A token checked before reporting platform support.</param>
     /// <returns>A task that reports that the portable target cannot access WinRT radios.</returns>
-    public Task<IReadOnlyList<DesktopRadioInfo>> GetRadiosAsync(CancellationToken cancellationToken = default) {
+    public async Task<IReadOnlyList<DesktopRadioInfo>> GetRadiosAsync(CancellationToken cancellationToken = default) {
         ThrowIfDisposed();
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromException<IReadOnlyList<DesktopRadioInfo>>(CreatePlatformException());
+        await Task.Yield();
+        throw CreatePlatformException();
     }
 
     /// <summary>
@@ -39,7 +37,7 @@ public sealed class RadioService : IDisposable {
     /// <param name="name">An optional exact radio name.</param>
     /// <param name="cancellationToken">A token checked before reporting platform support.</param>
     /// <returns>A task that reports that the portable target cannot access WinRT radios.</returns>
-    public Task<IReadOnlyList<DesktopRadioSetResult>> SetRadioStateAsync(
+    public async Task<IReadOnlyList<DesktopRadioSetResult>> SetRadioStateAsync(
         DesktopRadioKind kind,
         DesktopRadioState state,
         string? name = null,
@@ -50,21 +48,22 @@ public sealed class RadioService : IDisposable {
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromException<IReadOnlyList<DesktopRadioSetResult>>(CreatePlatformException());
+        await Task.Yield();
+        throw CreatePlatformException();
     }
 
     /// <summary>Reports that radio observation requires a Windows-specific target.</summary>
     /// <param name="cancellationToken">A token checked before reporting platform support.</param>
     /// <returns>A task that reports that the portable target cannot access WinRT radios.</returns>
-    public Task StartMonitoringAsync(CancellationToken cancellationToken = default) {
+    public async Task StartMonitoringAsync(CancellationToken cancellationToken = default) {
         ThrowIfDisposed();
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromException(CreatePlatformException());
+        await Task.Yield();
+        throw CreatePlatformException();
     }
 
     /// <summary>Stops radio state observation.</summary>
     public void StopMonitoring() {
-        ThrowIfDisposed();
     }
 
     /// <inheritdoc/>
@@ -74,6 +73,22 @@ public sealed class RadioService : IDisposable {
         }
 
         _disposed = true;
+    }
+
+    /// <summary>Notifies each radio-state subscriber independently so one host callback cannot block the others.</summary>
+    internal void NotifyStateChanged(DesktopRadioStateChangedEventArgs args) {
+        EventHandler<DesktopRadioStateChangedEventArgs>? handlers = StateChanged;
+        if (handlers == null) {
+            return;
+        }
+
+        foreach (EventHandler<DesktopRadioStateChangedEventArgs> handler in handlers.GetInvocationList()) {
+            try {
+                handler(this, args);
+            } catch (Exception ex) {
+                DesktopManagerDiagnostics.Report($"Desktop radio notification handler failed: {ex.Message}");
+            }
+        }
     }
 
     private static PlatformNotSupportedException CreatePlatformException() {

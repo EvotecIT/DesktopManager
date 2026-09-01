@@ -106,7 +106,7 @@ public partial class MonitorService {
     /// Sets the system wallpaper path using <c>SystemParametersInfo</c>.
     /// </summary>
     /// <param name="path">Path to the wallpaper image.</param>
-    private void SetSystemWallpaper(string path) {
+    internal virtual void SetSystemWallpaper(string path) {
         if (string.IsNullOrEmpty(path)) {
             throw new ArgumentNullException(nameof(path));
         }

@@ -22,6 +22,21 @@ public partial class MonitorService {
     private readonly Dictionary<string, WallpaperCacheEntry> _wallpaperCache =
         new(StringComparer.OrdinalIgnoreCase);
 
+    private bool TryGetMonitorDevicePathForWallpaper(int index, out string monitorId) {
+        uint count = Execute(
+            () => _desktopManager.GetMonitorDevicePathCount(),
+            nameof(IDesktopManager.GetMonitorDevicePathCount));
+        if (index < 0 || (uint)index >= count) {
+            monitorId = string.Empty;
+            return false;
+        }
+
+        monitorId = Execute(
+            () => _desktopManager.GetMonitorDevicePathAt((uint)index),
+            nameof(IDesktopManager.GetMonitorDevicePathAt)) ?? string.Empty;
+        return true;
+    }
+
     private readonly struct WallpaperCacheEntry {
         public WallpaperCacheEntry(string path, DateTimeOffset updated) {
             Path = path;
@@ -159,8 +174,11 @@ public partial class MonitorService {
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(int index, string wallpaperPath) {
         try {
-            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (!TryGetMonitorDevicePathForWallpaper(index, out string monitorId)) {
+                return;
+            }
             if (string.IsNullOrWhiteSpace(monitorId)) {
+                SetWallpaper(wallpaperPath);
                 return;
             }
             SetWallpaperInternal(monitorId, wallpaperPath, true);
@@ -181,8 +199,11 @@ public partial class MonitorService {
         }
 
         try {
-            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (!TryGetMonitorDevicePathForWallpaper(index, out string monitorId)) {
+                return;
+            }
             if (string.IsNullOrWhiteSpace(monitorId)) {
+                SetWallpaper(imageStream);
                 return;
             }
 
@@ -220,8 +241,11 @@ public partial class MonitorService {
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task SetWallpaperFromUrlAsync(int index, string url, CancellationToken cancellationToken) {
         try {
-            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (!TryGetMonitorDevicePathForWallpaper(index, out string monitorId)) {
+                return;
+            }
             if (string.IsNullOrWhiteSpace(monitorId)) {
+                await SetWallpaperFromUrlAsync(url, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
