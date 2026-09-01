@@ -22,6 +22,49 @@ public partial class MonitorService {
     private readonly Dictionary<string, WallpaperCacheEntry> _wallpaperCache =
         new(StringComparer.OrdinalIgnoreCase);
 
+    private bool TryGetMonitorDevicePathForWallpaper(int index, out string monitorId) {
+        uint count = Execute(
+            () => _desktopManager.GetMonitorDevicePathCount(),
+            nameof(IDesktopManager.GetMonitorDevicePathCount));
+        if (index < 0 || (uint)index >= count) {
+            monitorId = string.Empty;
+            return false;
+        }
+
+        monitorId = Execute(
+            () => _desktopManager.GetMonitorDevicePathAt((uint)index),
+            nameof(IDesktopManager.GetMonitorDevicePathAt)) ?? string.Empty;
+        return true;
+    }
+
+    private void SetSystemWallpaperFallback(string wallpaperPath, bool addToHistory) {
+        if (string.IsNullOrWhiteSpace(wallpaperPath)) {
+            throw new ArgumentNullException(nameof(wallpaperPath));
+        }
+
+        EnsureDesktopWallpaperEnabled();
+        SetSystemWallpaper(wallpaperPath);
+        if (addToHistory) {
+            WallpaperHistory.AddEntry(wallpaperPath);
+        }
+    }
+
+    private void SetSystemWallpaperFallback(Stream imageStream) {
+        string temp = WriteStreamToTempFile(imageStream);
+        try {
+            SetSystemWallpaperFallback(temp, false);
+        } finally {
+            DeleteTempFile(temp);
+        }
+    }
+
+    private async Task SetSystemWallpaperFromUrlFallbackAsync(string url, CancellationToken cancellationToken) {
+        Uri uri = CreateWallpaperUri(url);
+        using MemoryStream stream = await DownloadWallpaperAsync(uri, cancellationToken).ConfigureAwait(false);
+        SetSystemWallpaperFallback(stream);
+        WallpaperHistory.AddEntry(url);
+    }
+
     private readonly struct WallpaperCacheEntry {
         public WallpaperCacheEntry(string path, DateTimeOffset updated) {
             Path = path;
@@ -159,8 +202,11 @@ public partial class MonitorService {
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(int index, string wallpaperPath) {
         try {
-            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (!TryGetMonitorDevicePathForWallpaper(index, out string monitorId)) {
+                return;
+            }
             if (string.IsNullOrWhiteSpace(monitorId)) {
+                SetSystemWallpaperFallback(wallpaperPath, true);
                 return;
             }
             SetWallpaperInternal(monitorId, wallpaperPath, true);
@@ -181,8 +227,11 @@ public partial class MonitorService {
         }
 
         try {
-            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (!TryGetMonitorDevicePathForWallpaper(index, out string monitorId)) {
+                return;
+            }
             if (string.IsNullOrWhiteSpace(monitorId)) {
+                SetSystemWallpaperFallback(imageStream);
                 return;
             }
 
@@ -220,8 +269,11 @@ public partial class MonitorService {
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task SetWallpaperFromUrlAsync(int index, string url, CancellationToken cancellationToken) {
         try {
-            var monitorId = Execute(() => _desktopManager.GetMonitorDevicePathAt((uint)index), nameof(IDesktopManager.GetMonitorDevicePathAt));
+            if (!TryGetMonitorDevicePathForWallpaper(index, out string monitorId)) {
+                return;
+            }
             if (string.IsNullOrWhiteSpace(monitorId)) {
+                await SetSystemWallpaperFromUrlFallbackAsync(url, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -285,7 +337,7 @@ public partial class MonitorService {
         WallpaperHistory.AddEntry(url);
     }
 
-    private static async Task<MemoryStream> DownloadWallpaperAsync(Uri uri, CancellationToken cancellationToken) {
+    internal virtual async Task<MemoryStream> DownloadWallpaperAsync(Uri uri, CancellationToken cancellationToken) {
         using HttpResponseMessage response = await WallpaperHttpClient.GetAsync(
             uri,
             HttpCompletionOption.ResponseHeadersRead,
