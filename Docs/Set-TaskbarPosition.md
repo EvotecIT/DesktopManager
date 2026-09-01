@@ -11,7 +11,7 @@ Moves or hides the taskbar for one or more monitors.
 ## SYNTAX
 ### Index (Default)
 ```powershell
-Set-TaskbarPosition [[-Index] <int>] [-Position <TaskbarPosition>] [-Hide] [-Show] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-TaskbarPosition [[-Index] <Int32>] [-Position <TaskbarPosition>] [-Hide] [-Show] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceId
@@ -62,7 +62,7 @@ Required: False
 Position: 4
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceId
@@ -78,7 +78,7 @@ Required: False
 Position: 1
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceName
@@ -94,7 +94,7 @@ Required: False
 Position: 2
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Hide
@@ -110,14 +110,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Index
 The index of the monitor.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: Index
 Aliases: None
 Possible values:
@@ -126,23 +126,23 @@ Required: False
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Position
 Desired taskbar position.
 
 ```yaml
-Type: Nullable`1
+Type: TaskbarPosition
 Parameter Sets: Index, DeviceId, DeviceName, PrimaryOnly, All
 Aliases: None
-Possible values:
+Possible values: Left, Top, Right, Bottom
 
 Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -PrimaryOnly
@@ -158,7 +158,7 @@ Required: False
 Position: 3
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Show
@@ -174,7 +174,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -186,7 +186,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

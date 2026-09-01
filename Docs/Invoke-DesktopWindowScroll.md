@@ -11,12 +11,12 @@ Scrolls at a point relative to a desktop window.
 ## SYNTAX
 ### ByName
 ```powershell
-Invoke-DesktopWindowScroll [-Name] <string> -Delta <int> [-X <int>] [-Y <int>] [-XRatio <double>] [-YRatio <double>] [-TargetName <string>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
+Invoke-DesktopWindowScroll [-Name] <string> -Delta <int> [-X <Int32>] [-Y <Int32>] [-XRatio <Double>] [-YRatio <Double>] [-TargetName <string>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ActiveWindow
 ```powershell
-Invoke-DesktopWindowScroll -ActiveWindow -Delta <int> [-X <int>] [-Y <int>] [-XRatio <double>] [-YRatio <double>] [-TargetName <string>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
+Invoke-DesktopWindowScroll -ActiveWindow -Delta <int> [-X <Int32>] [-Y <Int32>] [-XRatio <Double>] [-YRatio <Double>] [-TargetName <string>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -45,7 +45,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ActiveWindow
@@ -61,7 +61,7 @@ Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ClientArea
@@ -77,7 +77,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Delta
@@ -93,7 +93,7 @@ Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -109,7 +109,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -PassThru
@@ -125,7 +125,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -TargetName
@@ -141,7 +141,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -VerificationTolerancePixels
@@ -157,7 +157,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Verify
@@ -173,14 +173,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -X
 Horizontal coordinate relative to the target window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -189,14 +189,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -XRatio
 Horizontal coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -205,14 +205,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Y
 Vertical coordinate relative to the target window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -221,14 +221,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -YRatio
 Vertical coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -237,7 +237,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -249,7 +249,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

@@ -11,12 +11,12 @@ Drags between two points relative to a desktop window.
 ## SYNTAX
 ### ByName
 ```powershell
-Invoke-DesktopWindowDrag [-Name] <string> [-StartX <int>] [-StartY <int>] [-EndX <int>] [-EndY <int>] [-StartXRatio <double>] [-StartYRatio <double>] [-EndXRatio <double>] [-EndYRatio <double>] [-StartTargetName <string>] [-EndTargetName <string>] [-Button <MouseButton>] [-StepDelayMilliseconds <int>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
+Invoke-DesktopWindowDrag [-Name] <string> [-StartX <Int32>] [-StartY <Int32>] [-EndX <Int32>] [-EndY <Int32>] [-StartXRatio <Double>] [-StartYRatio <Double>] [-EndXRatio <Double>] [-EndYRatio <Double>] [-StartTargetName <string>] [-EndTargetName <string>] [-Button <MouseButton>] [-StepDelayMilliseconds <int>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### ActiveWindow
 ```powershell
-Invoke-DesktopWindowDrag -ActiveWindow [-StartX <int>] [-StartY <int>] [-EndX <int>] [-EndY <int>] [-StartXRatio <double>] [-StartYRatio <double>] [-EndXRatio <double>] [-EndYRatio <double>] [-StartTargetName <string>] [-EndTargetName <string>] [-Button <MouseButton>] [-StepDelayMilliseconds <int>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
+Invoke-DesktopWindowDrag -ActiveWindow [-StartX <Int32>] [-StartY <Int32>] [-EndX <Int32>] [-EndY <Int32>] [-StartXRatio <Double>] [-StartYRatio <Double>] [-EndXRatio <Double>] [-EndYRatio <Double>] [-StartTargetName <string>] [-EndTargetName <string>] [-Button <MouseButton>] [-StepDelayMilliseconds <int>] [-Activate] [-ClientArea] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -45,7 +45,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ActiveWindow
@@ -61,7 +61,7 @@ Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Button
@@ -77,7 +77,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ClientArea
@@ -93,7 +93,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -EndTargetName
@@ -109,14 +109,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -EndX
 Horizontal ending coordinate relative to the target window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -125,14 +125,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -EndXRatio
 Horizontal ending coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -141,14 +141,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -EndY
 Vertical ending coordinate relative to the target window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -157,14 +157,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -EndYRatio
 Vertical ending coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -173,7 +173,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -189,7 +189,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -PassThru
@@ -205,7 +205,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -StartTargetName
@@ -221,14 +221,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -StartX
 Horizontal starting coordinate relative to the target window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -237,14 +237,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -StartXRatio
 Horizontal starting coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -253,14 +253,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -StartY
 Vertical starting coordinate relative to the target window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -269,14 +269,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -StartYRatio
 Vertical starting coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -285,7 +285,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -StepDelayMilliseconds
@@ -301,7 +301,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -VerificationTolerancePixels
@@ -317,7 +317,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Verify
@@ -333,7 +333,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -345,7 +345,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

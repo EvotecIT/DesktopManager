@@ -11,7 +11,7 @@ Connects an exact saved Windows Wi-Fi profile without scanning nearby networks.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Connect-DesktopWifiProfile [-Name] <string> [-Timeout <timespan>] [-InterfaceId <guid>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Connect-DesktopWifiProfile [-Name] <string> [-Timeout <timespan>] [-InterfaceId <Guid>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -32,7 +32,7 @@ Connects the exact saved profile when it exists on one wireless LAN interface.
 Optional interface identifier used when the profile exists on multiple wireless LAN adapters.
 
 ```yaml
-Type: Nullable`1
+Type: Guid
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -41,7 +41,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -57,7 +57,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Timeout
@@ -73,7 +73,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters

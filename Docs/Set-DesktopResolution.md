@@ -11,7 +11,7 @@ Sets the resolution of a desktop monitor.
 ## SYNTAX
 ### Index (Default)
 ```powershell
-Set-DesktopResolution [[-Index] <int>] [-Width] <int> [-Height] <int> [[-Orientation] <DisplayOrientation>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopResolution [[-Index] <Int32>] [-Width] <int> [-Height] <int> [[-Orientation] <DisplayOrientation>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceID
@@ -57,7 +57,7 @@ Required: False
 Position: 1
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceName
@@ -73,7 +73,7 @@ Required: False
 Position: 2
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Height
@@ -89,14 +89,14 @@ Required: True
 Position: 5
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Index
 The index of the monitor.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: Index
 Aliases: None
 Possible values:
@@ -105,23 +105,23 @@ Required: False
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Orientation
 Optional display orientation.
 
 ```yaml
-Type: Nullable`1
+Type: DisplayOrientation
 Parameter Sets: Index, DeviceID, DeviceName, PrimaryOnly
 Aliases: None
-Possible values:
+Possible values: Default, Degrees90, Degrees180, Degrees270
 
 Required: False
 Position: 6
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -PrimaryOnly
@@ -137,7 +137,7 @@ Required: False
 Position: 3
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Width
@@ -153,7 +153,7 @@ Required: True
 Position: 4
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -165,7 +165,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

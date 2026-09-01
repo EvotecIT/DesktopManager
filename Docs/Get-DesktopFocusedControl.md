@@ -11,23 +11,23 @@ Gets the focused control for a desktop window.
 ## SYNTAX
 ### ByName
 ```powershell
-Get-DesktopFocusedControl [-Name] <string> [<CommonParameters>]
+Get-DesktopFocusedControl [-Name] <string> [-MaxObservedTextLength <int>] [-ExpectedText <string>] [<CommonParameters>]
 ```
 
 ### ByHandle
 ```powershell
-Get-DesktopFocusedControl -Handle <string> [<CommonParameters>]
+Get-DesktopFocusedControl -Handle <string> [-MaxObservedTextLength <int>] [-ExpectedText <string>] [<CommonParameters>]
 ```
 
 ### ActiveWindow
 ```powershell
-Get-DesktopFocusedControl -ActiveWindow [<CommonParameters>]
+Get-DesktopFocusedControl -ActiveWindow [-MaxObservedTextLength <int>] [-ExpectedText <string>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
 Gets the focused control for a desktop window.
 
-Returns focused-control metadata for a specific window selected by title, handle, or the current foreground window.
+Returns focused-control metadata and a bounded plain-text value for a specific window selected by title, handle, or the current foreground window. Document editors that expose UI Automation TextPattern are read directly; password controls are never read.
 
 ## EXAMPLES
 
@@ -40,6 +40,12 @@ Get-DesktopFocusedControl -ActiveWindow
 ### EXAMPLE 2
 ```powershell
 Get-DesktopFocusedControl -Handle 0x123456
+```
+
+
+### EXAMPLE 3
+```powershell
+Get-DesktopFocusedControl -Name '*Outlook*' -MaxObservedTextLength 4096 -ExpectedText 'matthew'
 ```
 
 
@@ -58,7 +64,23 @@ Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
+```
+
+### -ExpectedText
+Optional text to search for across the complete UI Automation document range even when the returned value is truncated.
+
+```yaml
+Type: String
+Parameter Sets: ByName, ByHandle, ActiveWindow
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
 ```
 
 ### -Handle
@@ -74,7 +96,23 @@ Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
+```
+
+### -MaxObservedTextLength
+Maximum number of focused-control value characters to return. The default is 2048.
+
+```yaml
+Type: Int32
+Parameter Sets: ByName, ByHandle, ActiveWindow
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -90,7 +128,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -102,7 +140,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

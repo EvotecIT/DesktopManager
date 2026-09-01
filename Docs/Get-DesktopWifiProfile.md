@@ -11,7 +11,7 @@ Gets saved Windows Wi-Fi profiles without scanning nearby networks.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopWifiProfile [-InterfaceId <guid>] [<CommonParameters>]
+Get-DesktopWifiProfile [-InterfaceId <Guid>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -32,7 +32,7 @@ Returns profiles already stored by Windows on every wireless LAN interface.
 Optional exact wireless LAN interface identifier.
 
 ```yaml
-Type: Nullable`1
+Type: Guid
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -41,7 +41,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters

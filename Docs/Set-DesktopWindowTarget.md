@@ -11,7 +11,7 @@ Saves or updates a reusable window-relative target.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopWindowTarget [-Name] <string> [-Description <string>] [-X <int>] [-Y <int>] [-XRatio <double>] [-YRatio <double>] [-ClientArea] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopWindowTarget [-Name] <string> [-Description <string>] [-X <Int32>] [-Y <Int32>] [-XRatio <Double>] [-YRatio <Double>] [-ClientArea] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -40,7 +40,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Description
@@ -56,7 +56,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -72,14 +72,14 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -X
 Horizontal coordinate relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -88,14 +88,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -XRatio
 Horizontal coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -104,14 +104,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Y
 Vertical coordinate relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -120,14 +120,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -YRatio
 Vertical coordinate ratio from 0 to 1 relative to the target bounds.
 
 ```yaml
-Type: Nullable`1
+Type: Double
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -136,7 +136,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -148,7 +148,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

@@ -11,7 +11,7 @@ Gets information about desktop windows.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Get-DesktopWindow [[-Name] <string>] [-ProcessName <string>] [-ClassName <string>] [-Regex <regex>] [-ProcessId <int>] [-ActiveWindow] [-IncludeHidden] [-IncludeCloaked <bool>] [-IncludeOwned <bool>] [-IsVisible <bool>] [-State <WindowState>] [-IsTopMost <bool>] [-ZOrderMin <int>] [-ZOrderMax <int>] [<CommonParameters>]
+Get-DesktopWindow [[-Name] <string>] [-ProcessName <string>] [-ClassName <string>] [-Regex <regex>] [-ProcessId <int>] [-ActiveWindow] [-IncludeHidden] [-IncludeCloaked <bool>] [-IncludeOwned <bool>] [-IsVisible <Boolean>] [-State <WindowState>] [-IsTopMost <Boolean>] [-ZOrderMin <Int32>] [-ZOrderMax <Int32>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -50,7 +50,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ClassName
@@ -66,7 +66,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IncludeCloaked
@@ -82,7 +82,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IncludeHidden
@@ -98,7 +98,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IncludeOwned
@@ -114,14 +114,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IsTopMost
 Filter windows by topmost state.
 
 ```yaml
-Type: Nullable`1
+Type: Boolean
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -130,14 +130,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IsVisible
 Filter windows by visibility. Use $true for visible or $false for hidden.
 
 ```yaml
-Type: Nullable`1
+Type: Boolean
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -146,7 +146,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -162,7 +162,7 @@ Required: False
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ProcessId
@@ -178,7 +178,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ProcessName
@@ -194,7 +194,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Regex
@@ -210,30 +210,30 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -State
 Filter windows by state (Normal, Minimize, Maximize).
 
 ```yaml
-Type: Nullable`1
+Type: WindowState
 Parameter Sets: __AllParameterSets
 Aliases: None
-Possible values:
+Possible values: Normal, Minimize, Maximize, Close
 
 Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ZOrderMax
 Maximum Z-order index (0 is top-most).
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -242,14 +242,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ZOrderMin
 Minimum Z-order index (0 is top-most).
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -258,7 +258,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -270,7 +270,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

@@ -11,12 +11,12 @@ Gets shared diagnostics for desktop window control discovery.
 ## SYNTAX
 ### ByName
 ```powershell
-Get-DesktopWindowControlDiagnostic [-Name] <string> [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <int>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-IsEnabled <bool>] [-IsKeyboardFocusable <bool>] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [-ControlTargetName <string>] [-SampleLimit <int>] [-ActionProbe] [<CommonParameters>]
+Get-DesktopWindowControlDiagnostic [-Name] <string> [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <Int32>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-IsEnabled <Boolean>] [-IsKeyboardFocusable <Boolean>] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [-ControlTargetName <string>] [-SampleLimit <int>] [-ActionProbe] [<CommonParameters>]
 ```
 
 ### ActiveWindow
 ```powershell
-Get-DesktopWindowControlDiagnostic -ActiveWindow [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <int>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-IsEnabled <bool>] [-IsKeyboardFocusable <bool>] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [-ControlTargetName <string>] [-SampleLimit <int>] [-ActionProbe] [<CommonParameters>]
+Get-DesktopWindowControlDiagnostic -ActiveWindow [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <Int32>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-IsEnabled <Boolean>] [-IsKeyboardFocusable <Boolean>] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [-ControlTargetName <string>] [-SampleLimit <int>] [-ActionProbe] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -51,7 +51,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ActiveWindow
@@ -67,7 +67,7 @@ Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -AutomationId
@@ -83,7 +83,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ClassName
@@ -99,7 +99,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ControlTargetName
@@ -115,7 +115,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ControlType
@@ -131,7 +131,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -EnsureForeground
@@ -147,7 +147,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -FrameworkId
@@ -163,14 +163,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Id
 Filter controls by control identifier.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -179,7 +179,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IncludeUiAutomation
@@ -195,14 +195,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IsEnabled
 Filter by whether the control is enabled.
 
 ```yaml
-Type: Nullable`1
+Type: Boolean
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -211,14 +211,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IsKeyboardFocusable
 Filter by whether the control can receive keyboard focus.
 
 ```yaml
-Type: Nullable`1
+Type: Boolean
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -227,7 +227,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -243,7 +243,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -SampleLimit
@@ -259,7 +259,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -TextPattern
@@ -275,7 +275,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -UiAutomation
@@ -291,7 +291,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ValuePattern
@@ -307,7 +307,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -319,7 +319,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

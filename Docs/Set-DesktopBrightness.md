@@ -11,7 +11,7 @@ Sets the brightness for one or more desktop monitors.
 ## SYNTAX
 ### Index (Default)
 ```powershell
-Set-DesktopBrightness [[-Index] <int>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopBrightness [[-Index] <Int32>] [-Brightness] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceID
@@ -57,7 +57,7 @@ Required: True
 Position: 4
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceId
@@ -73,7 +73,7 @@ Required: False
 Position: 1
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceName
@@ -89,14 +89,14 @@ Required: False
 Position: 2
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Index
 The index of the monitor.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: Index
 Aliases: None
 Possible values:
@@ -105,7 +105,7 @@ Required: False
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -PrimaryOnly
@@ -121,7 +121,7 @@ Required: False
 Position: 3
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -133,7 +133,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

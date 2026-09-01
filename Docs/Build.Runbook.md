@@ -1,6 +1,6 @@
 # DesktopManager Build Runbook
 
-DesktopManager uses one repo entrypoint for package, module, CLI, app, and installer outputs:
+DesktopManager uses one repository entrypoint for package, module, CLI, app, and installer builds:
 
 ```powershell
 .\Build\Build-Project.ps1
@@ -9,15 +9,15 @@ DesktopManager uses one repo entrypoint for package, module, CLI, app, and insta
 ## Build Surfaces
 
 - `Build/Build-Project.ps1`
-  Orchestrates repository package build, PowerShell module build, CLI publish, app publish, and installer publish.
+  Orchestrates the unified NuGet and PowerShell module build, then builds the configured CLI, app, and installer outputs.
 - `Build/Build-DesktopManagerApp.ps1`
   Publishes the daily-use WinUI tray app without building installers.
 - `Build/Build-DesktopManagerApp-MSI.ps1`
   Publishes the WinUI tray app and builds the generated MSI installer.
 - `Build/project.build.json`
-  Controls `Invoke-ProjectBuild` for the `DesktopManager` NuGet package and GitHub/NuGet release settings.
+  Controls the `DesktopManager` NuGet package build and NuGet publication settings.
 - `Build/Build-Module.ps1`
-  Builds the PowerShell module artefacts using `Invoke-ModuleBuild`.
+  Owns the coordinated NuGet, PowerShell Gallery, and GitHub module release flow.
 - `powerforge.dotnetpublish.json`
   Controls `Invoke-DotNetPublish` for `desktopmanager.exe`, `DesktopManager.App.exe`, the app zip, and the generated MSI.
 
@@ -35,22 +35,22 @@ Plan package and CLI work without executing build steps:
 .\Build\Build-Project.ps1 -Plan
 ```
 
-Build package only:
+Build the NuGet package and PowerShell module only:
 
 ```powershell
-.\Build\Build-Project.ps1 -BuildModule:$false -PublishTools:$false
+.\Build\Build-Module.ps1 -ConfigurationGateMode Build
 ```
 
-Build module only:
+Refresh the module manifest without compiling or signing:
 
 ```powershell
-.\Build\Build-Module.ps1 -SkipInstall
+.\Build\Build-Module.ps1 -ConfigurationGateMode Manifest -SignModule:$false
 ```
 
 Build CLI and app outputs only:
 
 ```powershell
-.\Build\Build-Project.ps1 -Build:$false -BuildModule:$false
+.\Build\Build-Project.ps1 -BuildModule:$false
 ```
 
 Build the daily tray app portable output only:
@@ -83,22 +83,16 @@ Use silent install only when automation intentionally asks for it:
 msiexec.exe /i .\Artefacts\PowerForge\Msi\DesktopManager.App\win-x64\net10.0-windows10.0.19041.0\PortableCompat\output\DesktopManager.msi /qn
 ```
 
-Publish the NuGet package using the repo config:
+Publish the NuGet package, PowerShell module, and GitHub module release in one ordered run:
 
 ```powershell
-.\Build\Build-Project.ps1 -PublishNuget:$true -BuildModule:$false -PublishTools:$false
-```
-
-Publish the GitHub release asset using the repo config:
-
-```powershell
-.\Build\Build-Project.ps1 -PublishGitHub:$true -BuildModule:$false -PublishTools:$false
+.\Build\Build-Module.ps1 -ConfigurationGateMode Publish
 ```
 
 Publish a specific CLI runtime:
 
 ```powershell
-.\Build\Build-Project.ps1 -Build:$false -BuildModule:$false -Target DesktopManager.Cli.net10 -Runtimes win-x64 -SkipInstallers
+.\Build\Build-Project.ps1 -BuildModule:$false -Target DesktopManager.Cli.net10 -Runtimes win-x64 -SkipInstallers
 ```
 
 ## Output Locations
@@ -117,8 +111,9 @@ Publish a specific CLI runtime:
 
 ## Notes
 
-- `Build-Project.ps1` is the only package and release entrypoint in this repo.
-- `Build-Project.ps1 -Plan` skips the module build execution because the module path does not expose the same standalone plan surface here.
+- `Build-Module.ps1` is the only NuGet and PowerShell module release entrypoint in this repo. Its publish order is NuGet, PowerShell Gallery, then the GitHub module release.
+- The NuGet package remains on the `3.6.x` version line while the PowerShell module remains on `4.x`; the coordinated release does not overwrite either version source.
+- `Build-Project.ps1 -Plan` plans CLI, app, and installer work and skips the package/module build.
 - The CLI publish targets package `Sources/DesktopManager.Cli/DesktopManager.Cli.csproj` as `desktopmanager.exe` for both `net8.0-windows` and `net10.0-windows`.
 - The daily app publish target packages `Sources/DesktopManager.App/DesktopManager.App.csproj` as an unpackaged, self-contained WinUI app under `DesktopManager.App`.
 - The WinUI app is not forced into NativeAOT. The nested `DesktopManager.HotkeyHost` remains NativeAOT, while the app uses a self-contained publish profile that avoids WinAppSDK single-file and NativeAOT limitations.

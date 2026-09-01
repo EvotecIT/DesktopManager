@@ -1,37 +1,19 @@
 param(
-    [switch] $SkipInstall,
-    [switch] $JsonOnly,
-    [string] $JsonPath,
-    [switch] $NoInteractive
+    [ValidateSet('Manifest', 'Documentation', 'Build', 'Publish')]
+    [string] $ConfigurationGateMode = 'Build',
+
+    [bool] $SignModule = $true,
+
+    [string] $ProjectBuildConfigPath = 'Build\project.build.json',
+
+    [string] $PowerShellGalleryApiKeyPath = 'C:\Support\Important\PowerShellGalleryAPI.txt',
+
+    [string] $GitHubApiKeyPath = 'C:\Support\Important\GitHubAPI.txt'
 )
 
-$ErrorActionPreference = 'Stop'
+Import-Module PSPublishModule -MinimumVersion '3.0.129' -Force -ErrorAction Stop
 
-Import-Module PSPublishModule -Force -ErrorAction Stop
-
-$refreshPsd1Only = $false
-if ($env:RefreshPSD1Only) {
-    $refreshPsd1Only = $env:RefreshPSD1Only -eq 'true'
-}
-
-$invokeModuleBuild = @{
-    ModuleName = 'DesktopManager'
-}
-
-if ($SkipInstall) {
-    $invokeModuleBuild.SkipInstall = $true
-}
-if ($JsonOnly) {
-    $invokeModuleBuild.JsonOnly = $true
-}
-if ($JsonPath) {
-    $invokeModuleBuild.JsonPath = $JsonPath
-}
-if ($NoInteractive) {
-    $invokeModuleBuild.NoInteractive = $true
-}
-
-Invoke-ModuleBuild @invokeModuleBuild -Settings {
+Build-Module -ModuleName 'DesktopManager' {
     $manifest = [ordered] @{
         PowerShellVersion      = '5.1'
         CompatiblePSEditions   = @('Desktop', 'Core')
@@ -65,8 +47,8 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
         UseConsistentWhitespaceEnable               = $true
         UseConsistentWhitespaceCheckInnerBrace      = $true
         UseConsistentWhitespaceCheckOpenBrace       = $true
-        UseConsistentWhitespaceCheckOpenParen       = $true
         UseConsistentWhitespaceCheckOperator        = $true
+        UseConsistentWhitespaceCheckOpenParen       = $true
         UseConsistentWhitespaceCheckPipe            = $true
         UseConsistentWhitespaceCheckSeparator       = $true
         AlignAssignmentStatementEnable              = $true
@@ -78,18 +60,19 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
     New-ConfigurationFormat -ApplyTo 'DefaultPSD1', 'DefaultPSM1' -EnableFormatting -Sort None
     New-ConfigurationFormat -ApplyTo 'DefaultPSD1', 'OnMergePSD1' -PSD1Style 'Minimal'
 
-    New-ConfigurationDocumentation -Enable:$true -PathReadme 'Docs\Readme.md' -Path 'Docs'
+    New-ConfigurationDocumentation -Enable -PathReadme 'Docs\Readme.md' -Path 'Docs' -SyncExternalHelpToProjectRoot
+    New-ConfigurationImportModule -ImportSelf -ImportRequiredModules
 
     $newConfigurationBuild = @{
         Enable                            = $true
-        SignModule                        = -not $refreshPsd1Only
+        SignModule                        = $SignModule
         MergeModuleOnBuild                = $true
         MergeFunctionsFromApprovedModules = $true
         CertificateThumbprint             = '92E95FB58EFFA6A4A75E77A33CDD6BFE6DD30F1A'
         ResolveBinaryConflicts            = $true
         ResolveBinaryConflictsName        = 'DesktopManager.PowerShell'
         NETProjectName                    = 'DesktopManager.PowerShell'
-        NETProjectPath                    = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\Sources\DesktopManager.PowerShell\DesktopManager.PowerShell.csproj')).Path
+        NETProjectPath                    = 'Sources\DesktopManager.PowerShell\DesktopManager.PowerShell.csproj'
         NETConfiguration                  = 'Release'
         NETFramework                      = 'net8.0-windows10.0.19041.0', 'net472'
         NETSearchClass                    = 'DesktopManager.PowerShell.CmdletSetDesktopWallpaper'
@@ -99,11 +82,17 @@ Invoke-ModuleBuild @invokeModuleBuild -Settings {
         DotSourceLibraries                = $true
         DotSourceClasses                  = $true
         DeleteTargetModuleBeforeBuild     = $true
-        RefreshPSD1Only                   = $refreshPsd1Only
     }
     New-ConfigurationBuild @newConfigurationBuild
+
+    New-ConfigurationProjectBuild -Name 'DesktopManager' -ConfigPath $ProjectBuildConfigPath -Enabled -BuildBeforeModule -ProvideLocalNuGetFeed -PublishNuget
+    New-ConfigurationRelease -StageRoot 'Artefacts\UploadReady' -VersionSource Module -BuildOrder 'Packages', 'Module' -PublishOrder 'NuGet', 'PowerShellGallery', 'GitHub'
 
     New-ConfigurationArtefact -Type Unpacked -Enable -Path "$PSScriptRoot\..\Artefacts\Unpacked" -RequiredModulesPath "$PSScriptRoot\..\Artefacts\Unpacked\Modules"
     New-ConfigurationArtefact -Type Packed -Enable -Path "$PSScriptRoot\..\Artefacts\Packed" -IncludeTagName -ArtefactName 'DesktopManager-PowerShellModule.<TagModuleVersionWithPreRelease>.zip' -ID 'ToGitHub'
 
-}
+    New-ConfigurationPublish -Type PowerShellGallery -FilePath $PowerShellGalleryApiKeyPath -Enabled:$false
+    New-ConfigurationPublish -Type GitHub -FilePath $GitHubApiKeyPath -UserName 'EvotecIT' -RepositoryName 'DesktopManager' -Enabled:$false -GenerateReleaseNotes -OverwriteTagName 'DesktopManager-PowerShellModule.<TagModuleVersionWithPreRelease>'
+
+    New-ConfigurationGate -Mode $ConfigurationGateMode
+} -ExitCode

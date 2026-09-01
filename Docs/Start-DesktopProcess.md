@@ -11,7 +11,7 @@ Starts a desktop application or process.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Start-DesktopProcess [-Path] <string> [-ArgumentList <string>] [-WorkingDirectory <string>] [-WaitForInputIdleMilliseconds <int>] [-WaitForWindowMilliseconds <int>] [-WaitForWindowIntervalMilliseconds <int>] [-WindowTitle <string>] [-WindowClassName <string>] [-RequireWindow] [-WhatIf] [-Confirm] [<CommonParameters>]
+Start-DesktopProcess [-Path] <string> [-ArgumentList <string>] [-WorkingDirectory <string>] [-WaitForInputIdleMilliseconds <Int32>] [-WaitForWindowMilliseconds <Int32>] [-WaitForWindowIntervalMilliseconds <Int32>] [-WindowTitle <string>] [-WindowClassName <string>] [-RequireWindow] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -48,7 +48,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Path
@@ -64,7 +64,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -RequireWindow
@@ -80,14 +80,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WaitForInputIdleMilliseconds
 Optional time to wait for UI input idle in milliseconds.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -96,14 +96,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WaitForWindowIntervalMilliseconds
 Polling interval while waiting for a launched window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -112,14 +112,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WaitForWindowMilliseconds
 Optional time to wait for a launched window in milliseconds.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -128,7 +128,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WindowClassName
@@ -144,7 +144,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WindowTitle
@@ -160,7 +160,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WorkingDirectory
@@ -176,7 +176,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -188,7 +188,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

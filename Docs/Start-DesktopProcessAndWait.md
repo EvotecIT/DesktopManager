@@ -11,7 +11,7 @@ Starts a desktop process and waits for a correlated final window.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Start-DesktopProcessAndWait [-Path] <string> [-ArgumentList <string>] [-WorkingDirectory <string>] [-WaitForInputIdleMilliseconds <int>] [-LaunchWaitForWindowMilliseconds <int>] [-LaunchWaitForWindowIntervalMilliseconds <int>] [-LaunchWindowTitle <string>] [-LaunchWindowClassName <string>] [-WindowTitle <string>] [-WindowClassName <string>] [-IncludeHidden] [-IncludeEmptyTitles] [-All] [-FollowProcessFamily] [-TimeoutMilliseconds <int>] [-IntervalMilliseconds <int>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Start-DesktopProcessAndWait [-Path] <string> [-ArgumentList <string>] [-WorkingDirectory <string>] [-WaitForInputIdleMilliseconds <Int32>] [-LaunchWaitForWindowMilliseconds <Int32>] [-LaunchWaitForWindowIntervalMilliseconds <Int32>] [-LaunchWindowTitle <string>] [-LaunchWindowClassName <string>] [-WindowTitle <string>] [-WindowClassName <string>] [-IncludeHidden] [-IncludeEmptyTitles] [-All] [-FollowProcessFamily] [-TimeoutMilliseconds <int>] [-IntervalMilliseconds <int>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -42,7 +42,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ArgumentList
@@ -58,7 +58,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -FollowProcessFamily
@@ -74,7 +74,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IncludeEmptyTitles
@@ -90,7 +90,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IncludeHidden
@@ -106,7 +106,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IntervalMilliseconds
@@ -122,14 +122,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -LaunchWaitForWindowIntervalMilliseconds
 Polling interval while correlating the launch-time window.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -138,14 +138,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -LaunchWaitForWindowMilliseconds
 Optional launch-time window correlation wait in milliseconds.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -154,7 +154,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -LaunchWindowClassName
@@ -170,7 +170,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -LaunchWindowTitle
@@ -186,7 +186,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Path
@@ -202,7 +202,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -TimeoutMilliseconds
@@ -218,14 +218,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WaitForInputIdleMilliseconds
 Optional time to wait for UI input idle in milliseconds.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: __AllParameterSets
 Aliases: None
 Possible values:
@@ -234,7 +234,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WindowClassName
@@ -250,7 +250,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WindowTitle
@@ -266,7 +266,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WorkingDirectory
@@ -282,7 +282,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -294,7 +294,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

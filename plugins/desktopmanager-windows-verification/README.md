@@ -44,7 +44,7 @@ dotnet build .\Sources\DesktopManager.Cli\DesktopManager.Cli.csproj -c Debug
 or
 
 ```powershell
-.\Build\Build-Project.ps1 -Build:$false -BuildModule:$false
+.\Build\Build-Project.ps1 -BuildModule:$false
 ```
 
 ## MCP Startup

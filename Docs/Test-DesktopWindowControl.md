@@ -11,12 +11,12 @@ Tests whether a desktop window control exists.
 ## SYNTAX
 ### ByName
 ```powershell
-Test-DesktopWindowControl [-Name] <string> [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <int>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-ControlTargetName <string>] [-Enabled] [-Disabled] [-Focusable] [-NotFocusable] [-BackgroundClick] [-BackgroundText] [-BackgroundKeys] [-ForegroundFallback] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [<CommonParameters>]
+Test-DesktopWindowControl [-Name] <string> [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <Int32>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-ControlTargetName <string>] [-Enabled] [-Disabled] [-Focusable] [-NotFocusable] [-BackgroundClick] [-BackgroundText] [-BackgroundKeys] [-ForegroundFallback] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [<CommonParameters>]
 ```
 
 ### ActiveWindow
 ```powershell
-Test-DesktopWindowControl -ActiveWindow [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <int>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-ControlTargetName <string>] [-Enabled] [-Disabled] [-Focusable] [-NotFocusable] [-BackgroundClick] [-BackgroundText] [-BackgroundKeys] [-ForegroundFallback] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [<CommonParameters>]
+Test-DesktopWindowControl -ActiveWindow [-ClassName <string>] [-TextPattern <string>] [-ValuePattern <string>] [-Id <Int32>] [-AutomationId <string>] [-ControlType <string>] [-FrameworkId <string>] [-ControlTargetName <string>] [-Enabled] [-Disabled] [-Focusable] [-NotFocusable] [-BackgroundClick] [-BackgroundText] [-BackgroundKeys] [-ForegroundFallback] [-UiAutomation] [-IncludeUiAutomation] [-EnsureForeground] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -45,7 +45,7 @@ Required: True
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -AutomationId
@@ -61,7 +61,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -BackgroundClick
@@ -77,7 +77,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -BackgroundKeys
@@ -93,7 +93,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -BackgroundText
@@ -109,7 +109,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ClassName
@@ -125,7 +125,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ControlTargetName
@@ -141,7 +141,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ControlType
@@ -157,7 +157,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Disabled
@@ -173,7 +173,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Enabled
@@ -189,7 +189,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -EnsureForeground
@@ -205,7 +205,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Focusable
@@ -221,7 +221,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ForegroundFallback
@@ -237,7 +237,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -FrameworkId
@@ -253,14 +253,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Id
 Filter controls by control identifier.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: ByName, ActiveWindow
 Aliases: None
 Possible values:
@@ -269,7 +269,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -IncludeUiAutomation
@@ -285,7 +285,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -301,7 +301,7 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -NotFocusable
@@ -317,7 +317,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -TextPattern
@@ -333,7 +333,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -UiAutomation
@@ -349,7 +349,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ValuePattern
@@ -365,7 +365,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -377,7 +377,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

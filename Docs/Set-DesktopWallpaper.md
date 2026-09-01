@@ -11,7 +11,7 @@ Sets the desktop wallpaper for one or more monitors.
 ## SYNTAX
 ### Index (Default)
 ```powershell
-Set-DesktopWallpaper [[-Index] <int>] [-ConnectedOnly] [-PrimaryOnly] [[-WallpaperPosition] <DesktopWallpaperPosition>] [[-WallpaperPath] <string>] [-AllUsers] [-ExcludeDefaultUserProfile] [-Url <string>] [-ImageData <Stream>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopWallpaper [[-Index] <Int32>] [-ConnectedOnly] [-PrimaryOnly] [[-WallpaperPosition] <DesktopWallpaperPosition>] [[-WallpaperPath] <string>] [-AllUsers] [-ExcludeDefaultUserProfile] [-Url <string>] [-ImageData <Stream>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceId
@@ -72,7 +72,7 @@ Required: False
 Position: 5
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -AllUsers
@@ -88,7 +88,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ConnectedOnly
@@ -104,7 +104,7 @@ Required: False
 Position: 3
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceId
@@ -120,7 +120,7 @@ Required: False
 Position: 1
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceName
@@ -136,7 +136,7 @@ Required: False
 Position: 2
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ExcludeDefaultUserProfile
@@ -152,7 +152,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ImageData
@@ -168,14 +168,14 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Index
 The index of the monitor to set the wallpaper for.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: Index
 Aliases: None
 Possible values:
@@ -184,7 +184,7 @@ Required: False
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -PrimaryOnly
@@ -200,7 +200,7 @@ Required: False
 Position: 4
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Url
@@ -216,7 +216,7 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WallpaperPath
@@ -232,23 +232,23 @@ Required: False
 Position: 7
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -WallpaperPosition
 The position of the wallpaper on the monitor.
 
 ```yaml
-Type: Nullable`1
+Type: DesktopWallpaperPosition
 Parameter Sets: Index, DeviceId, DeviceName, All
 Aliases: Position
-Possible values:
+Possible values: Center, Tile, Stretch, Fit, Fill, Span
 
 Required: False
 Position: 6
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -260,7 +260,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

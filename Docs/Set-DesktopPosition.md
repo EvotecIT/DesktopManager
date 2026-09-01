@@ -11,7 +11,7 @@ Sets the position of the desktop for one or more monitors.
 ## SYNTAX
 ### Index (Default)
 ```powershell
-Set-DesktopPosition [[-Index] <int>] [-Left] <int> [-Top] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopPosition [[-Index] <Int32>] [-Left] <int> [-Top] <int> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### DeviceID
@@ -67,7 +67,7 @@ Required: False
 Position: 1
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -DeviceName
@@ -83,14 +83,14 @@ Required: False
 Position: 2
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Index
 The index of the monitor to set the position for.
 
 ```yaml
-Type: Nullable`1
+Type: Int32
 Parameter Sets: Index
 Aliases: None
 Possible values:
@@ -99,7 +99,7 @@ Required: False
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Left
@@ -115,7 +115,7 @@ Required: True
 Position: 4
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -PrimaryOnly
@@ -131,7 +131,7 @@ Required: False
 Position: 3
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Top
@@ -147,7 +147,7 @@ Required: True
 Position: 5
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -159,7 +159,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

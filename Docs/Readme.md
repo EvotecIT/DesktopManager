@@ -10,11 +10,23 @@ Locale: en-US
 Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.
 
 ## DesktopManager Cmdlets
+### [Add-DesktopDriverPackage](Add-DesktopDriverPackage.md)
+Stages an INF package in the Driver Store and optionally installs it on matching devices.
+
 ### [Connect-DesktopWifiProfile](Connect-DesktopWifiProfile.md)
 Connects an exact saved Windows Wi-Fi profile without scanning nearby networks.
 
+### [Disable-DesktopDevice](Disable-DesktopDevice.md)
+Disables an exact Windows Plug and Play device instance.
+
+### [Enable-DesktopDevice](Enable-DesktopDevice.md)
+Enables an exact Windows Plug and Play device instance.
+
 ### [Exit-DesktopSession](Exit-DesktopSession.md)
 Signs out the current interactive Windows session.
+
+### [Export-DesktopDriverPackage](Export-DesktopDriverPackage.md)
+Exports one exact third-party package from the Driver Store.
 
 ### [Get-DesktopAirplaneMode](Get-DesktopAirplaneMode.md)
 Gets global airplane mode through an undocumented experimental Windows COM contract.
@@ -34,11 +46,29 @@ Gets Unicode text from the desktop clipboard.
 ### [Get-DesktopControlCheck](Get-DesktopControlCheck.md)
 Gets the check state of a button control.
 
+### [Get-DesktopControlObservation](Get-DesktopControlObservation.md)
+Gets provider-neutral semantic observations for desktop controls.
+
 ### [Get-DesktopControlState](Get-DesktopControlState.md)
 Gets the observable state for a desktop control.
 
 ### [Get-DesktopControlTarget](Get-DesktopControlTarget.md)
 Gets saved reusable control targets, or resolves one against live windows.
+
+### [Get-DesktopDevice](Get-DesktopDevice.md)
+Gets local Windows Plug and Play device instances.
+
+### [Get-DesktopDeviceClass](Get-DesktopDeviceClass.md)
+Gets Windows device setup classes and their filter chains.
+
+### [Get-DesktopDeviceContainer](Get-DesktopDeviceContainer.md)
+Gets Windows device containers assembled from Plug and Play device instances.
+
+### [Get-DesktopDeviceDriver](Get-DesktopDeviceDriver.md)
+Gets drivers Windows considers compatible with an exact device instance.
+
+### [Get-DesktopDriverPackage](Get-DesktopDriverPackage.md)
+Gets third-party packages from the Windows Driver Store.
 
 ### [Get-DesktopFocusedControl](Get-DesktopFocusedControl.md)
 Gets the focused control for a desktop window.
@@ -115,6 +145,9 @@ Gets the current logon (lock screen) wallpaper.
 ### [Invoke-DesktopControlClick](Invoke-DesktopControlClick.md)
 Clicks a specific window control.
 
+### [Invoke-DesktopDeviceScan](Invoke-DesktopDeviceScan.md)
+Requests Plug and Play re-enumeration for the machine or one device subtree.
+
 ### [Invoke-DesktopKeyPress](Invoke-DesktopKeyPress.md)
 Presses keyboard keys.
 
@@ -151,6 +184,9 @@ Locks the current interactive workstation.
 ### [Move-DesktopWindowToVirtualDesktop](Move-DesktopWindowToVirtualDesktop.md)
 Moves a top-level window to a known virtual desktop.
 
+### [New-DesktopRootDevice](New-DesktopRootDevice.md)
+Creates a ROOT-enumerated device and installs an INF package for it.
+
 ### [Register-DesktopAudioEvent](Register-DesktopAudioEvent.md)
 Registers for Core Audio endpoint changes.
 
@@ -172,11 +208,23 @@ Registers for desktop resolution change events.
 ### [Register-DesktopSessionEvent](Register-DesktopSessionEvent.md)
 Registers for meaningful current-session changes.
 
+### [Remove-DesktopDevice](Remove-DesktopDevice.md)
+Uninstalls an exact Plug and Play device instance.
+
+### [Remove-DesktopDriverPackage](Remove-DesktopDriverPackage.md)
+Removes an exact published third-party package from the Driver Store.
+
 ### [Remove-DesktopPersonalization](Remove-DesktopPersonalization.md)
 Removes a stored personalization snapshot.
 
 ### [Remove-DesktopWorkstationProfile](Remove-DesktopWorkstationProfile.md)
 Removes a stored workstation profile.
+
+### [Restart-DesktopDevice](Restart-DesktopDevice.md)
+Restarts an exact Plug and Play device without rebooting Windows.
+
+### [Restore-DesktopDeviceDriver](Restore-DesktopDeviceDriver.md)
+Rolls an exact device instance back to its previous installed driver.
 
 ### [Restore-DesktopPersonalization](Restore-DesktopPersonalization.md)
 Restores a stored personalization snapshot.
@@ -230,10 +278,13 @@ Focuses a desktop control.
 Saves or updates a reusable control target.
 
 ### [Set-DesktopControlText](Set-DesktopControlText.md)
-Sets text on a specific window control.
+Safely edits text on a specific window control or prior semantic observation.
 
 ### [Set-DesktopControlVisibility](Set-DesktopControlVisibility.md)
 Shows or hides a desktop control.
+
+### [Set-DesktopDeviceClassFilter](Set-DesktopDeviceClassFilter.md)
+Replaces the upper or lower filter-service chain for an exact device setup class.
 
 ### [Set-DesktopPersonalization](Set-DesktopPersonalization.md)
 Applies a typed personalization settings object.
@@ -246,6 +297,9 @@ Sets an explicit state through the supported Windows radio API.
 
 ### [Set-DesktopResolution](Set-DesktopResolution.md)
 Sets the resolution of a desktop monitor.
+
+### [Set-DesktopRootHardwareId](Set-DesktopRootHardwareId.md)
+Replaces the hardware identifier list of an exact ROOT-enumerated device.
 
 ### [Set-DesktopSlideshowOptions](Set-DesktopSlideshowOptions.md)
 Sets desktop wallpaper slideshow options.
@@ -330,6 +384,12 @@ Tests whether a desktop window control exists.
 
 ### [Unregister-DesktopHotkey](Unregister-DesktopHotkey.md)
 Unregisters a global desktop hotkey.
+
+### [Update-DesktopDeviceDriver](Update-DesktopDeviceDriver.md)
+Updates present devices matching an exact hardware identifier from an INF package.
+
+### [Wait-DesktopControlObservation](Wait-DesktopControlObservation.md)
+Waits for semantic desktop-control state.
 
 ### [Wait-DesktopFocusedControl](Wait-DesktopFocusedControl.md)
 Waits until a desktop window exposes a focused control.

@@ -47,10 +47,8 @@ jobs:
 
       - name: Refresh module manifest
         shell: pwsh
-        env:
-          RefreshPSD1Only: 'true'
         run: |
-          .\Build\Build-Module.ps1 -SkipInstall -NoInteractive
+          .\Build\Build-Module.ps1 -ConfigurationGateMode Manifest -SignModule:$false
 
       - name: Commit refreshed PSD1
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}

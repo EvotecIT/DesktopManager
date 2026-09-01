@@ -31,16 +31,16 @@ Get-DesktopRadio -Kind 'Value'
 Optional radio technology filter.
 
 ```yaml
-Type: Nullable`1
+Type: DesktopRadioKind
 Parameter Sets: __AllParameterSets
 Aliases: None
-Possible values:
+Possible values: Other, WiFi, MobileBroadband, Bluetooth, FM
 
 Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters

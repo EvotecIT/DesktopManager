@@ -41,23 +41,23 @@ Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -ExStyle
 Extended style flags to change.
 
 ```yaml
-Type: Nullable`1
+Type: WindowExStyleFlags
 Parameter Sets: __AllParameterSets
 Aliases: None
-Possible values:
+Possible values: TopMost, Layered
 
 Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Name
@@ -73,23 +73,23 @@ Required: True
 Position: 0
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### -Style
 Standard style flags to change.
 
 ```yaml
-Type: Nullable`1
+Type: WindowStyleFlags
 Parameter Sets: __AllParameterSets
 Aliases: None
-Possible values:
+Possible values: MaximizeBox, MinimizeBox, ThickFrame, SysMenu
 
 Required: False
 Position: named
 Default value: None
 Accept pipeline input: False
-Accept wildcard characters: True
+Accept wildcard characters: False
 ```
 
 ### CommonParameters
@@ -101,7 +101,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-- `System.Object`
+- `None`
 
 ## RELATED LINKS
 

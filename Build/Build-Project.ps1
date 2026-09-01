@@ -1,14 +1,9 @@
 param(
-    [string] $ConfigPath = "$PSScriptRoot\project.build.json",
-    [string] $DotNetPublishConfigPath = "$PSScriptRoot\..\powerforge.dotnetpublish.json",
-    [Nullable[bool]] $UpdateVersions,
-    [Nullable[bool]] $Build,
+    [ValidateSet('Manifest', 'Documentation', 'Build', 'Publish')]
+    [string] $ConfigurationGateMode = 'Build',
     [bool] $BuildModule = $true,
     [bool] $PublishTools = $true,
-    [Nullable[bool]] $PublishNuget = $false,
-    [Nullable[bool]] $PublishGitHub = $false,
     [switch] $Plan,
-    [string] $PlanPath,
     [string[]] $Target = @(),
     [string[]] $Runtimes = @(),
     [string[]] $Frameworks = @(),
@@ -17,12 +12,13 @@ param(
     [switch] $SkipInstallers,
     [switch] $Validate,
     [switch] $SkipRestore,
-    [switch] $SkipBuild
+    [switch] $SkipBuild,
+    [string] $DotNetPublishConfigPath = "$PSScriptRoot\..\powerforge.dotnetpublish.json"
 )
 
 $ErrorActionPreference = 'Stop'
 
-Import-Module PSPublishModule -Force -ErrorAction Stop
+Import-Module PSPublishModule -MinimumVersion '3.0.129' -Force -ErrorAction Stop
 
 function Invoke-DesktopManagerDotNetPublish {
     $dotNetPublishParams = @{
@@ -42,28 +38,14 @@ function Invoke-DesktopManagerDotNetPublish {
     Invoke-DotNetPublish @dotNetPublishParams
 }
 
-$dotNetPublishInvoked = $false
-if ($Plan -and $PublishTools) {
-    Invoke-DesktopManagerDotNetPublish
-    $dotNetPublishInvoked = $true
-}
-
-$invokeParams = @{
-    ConfigPath = $ConfigPath
-}
-if ($null -ne $UpdateVersions) { $invokeParams.UpdateVersions = $UpdateVersions }
-if ($null -ne $Build) { $invokeParams.Build = $Build }
-if ($null -ne $PublishNuget) { $invokeParams.PublishNuget = $PublishNuget }
-if ($null -ne $PublishGitHub) { $invokeParams.PublishGitHub = $PublishGitHub }
-if ($Plan) { $invokeParams.Plan = $true }
-if ($PlanPath) { $invokeParams.PlanPath = $PlanPath }
-
-Invoke-ProjectBuild @invokeParams
-
 if ($BuildModule -and -not $Plan) {
-    & (Join-Path $PSScriptRoot 'Build-Module.ps1') -SkipInstall
+    $powerShellExecutable = (Get-Process -Id $PID).Path
+    & $powerShellExecutable -NoLogo -NoProfile -File (Join-Path $PSScriptRoot 'Build-Module.ps1') -ConfigurationGateMode $ConfigurationGateMode
+    if ($LASTEXITCODE -ne 0) {
+        throw "DesktopManager package and module build failed with exit code $LASTEXITCODE."
+    }
 }
 
-if ($PublishTools -and -not $dotNetPublishInvoked) {
+if ($PublishTools) {
     Invoke-DesktopManagerDotNetPublish
 }
