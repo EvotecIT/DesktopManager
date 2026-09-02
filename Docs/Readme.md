@@ -2,7 +2,7 @@
 Module Name: DesktopManager
 Module Guid: 56f85fa6-c622-4204-8e97-3d99e3e06e75
 Download Help Link: https://github.com/EvotecIT/DesktopManager
-Help Version: 4.1.0
+Help Version: 4.4.0
 Locale: en-US
 ---
 # DesktopManager Module

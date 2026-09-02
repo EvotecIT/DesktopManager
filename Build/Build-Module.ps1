@@ -11,7 +11,7 @@ param(
     [string] $GitHubApiKeyPath = 'C:\Support\Important\GitHubAPI.txt'
 )
 
-Import-Module PSPublishModule -MinimumVersion '3.0.129' -Force -ErrorAction Stop
+Import-Module PSPublishModule -MinimumVersion '3.0.130' -Force -ErrorAction Stop
 
 Build-Module -ModuleName 'DesktopManager' {
     $manifest = [ordered] @{
@@ -85,8 +85,8 @@ Build-Module -ModuleName 'DesktopManager' {
     }
     New-ConfigurationBuild @newConfigurationBuild
 
-    New-ConfigurationProjectBuild -Name 'DesktopManager' -ConfigPath $ProjectBuildConfigPath -Enabled -BuildBeforeModule -ProvideLocalNuGetFeed -PublishNuget
-    New-ConfigurationRelease -StageRoot 'Artefacts\UploadReady' -VersionSource Module -BuildOrder 'Packages', 'Module' -PublishOrder 'NuGet', 'PowerShellGallery', 'GitHub'
+    New-ConfigurationProjectBuild -Name 'DesktopManager' -ConfigPath $ProjectBuildConfigPath -Enabled -BuildBeforeModule -UseAsReleaseVersionSource -ProvideLocalNuGetFeed -PublishNuget
+    New-ConfigurationRelease -StageRoot 'Artefacts\UploadReady' -VersionSource ProjectBuild -PrimaryProject 'DesktopManager' -SynchronizeModuleVersion -BuildOrder 'Packages', 'Module' -PublishOrder 'NuGet', 'PowerShellGallery', 'GitHub'
 
     New-ConfigurationArtefact -Type Unpacked -Enable -Path "$PSScriptRoot\..\Artefacts\Unpacked" -RequiredModulesPath "$PSScriptRoot\..\Artefacts\Unpacked\Modules"
     New-ConfigurationArtefact -Type Packed -Enable -Path "$PSScriptRoot\..\Artefacts\Packed" -IncludeTagName -ArtefactName 'DesktopManager-PowerShellModule.<TagModuleVersionWithPreRelease>.zip' -ID 'ToGitHub'
