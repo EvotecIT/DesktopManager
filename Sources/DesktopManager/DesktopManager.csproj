@@ -50,7 +50,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
-      <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.28000.2526" PrivateAssets="all" />
+      <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.28000.2705" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
