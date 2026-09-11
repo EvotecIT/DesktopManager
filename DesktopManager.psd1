@@ -22,5 +22,4 @@
     }
     RootModule             = 'DesktopManager.psm1'
     RequiredModules        = @()
-    ScriptsToProcess       = @()
 }
