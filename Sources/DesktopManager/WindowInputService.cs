@@ -60,6 +60,7 @@ public static class WindowInputService {
             previousForeground = MonitorNativeMethods.GetForegroundWindow();
         }
 
+        IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
         string? clipboardBackup = null;
         bool restoreClipboard = false;
         if (settings.PreserveClipboard) {
@@ -68,7 +69,6 @@ public static class WindowInputService {
 
         bool operationFailed = false;
         try {
-            IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
             ClipboardHelper.SetText(text, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
             if (settings.ActivateWindow) {
                 TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
@@ -118,6 +118,7 @@ public static class WindowInputService {
 
         WindowInputOptions settings = options ?? new WindowInputOptions();
         NormalizeOptions(settings);
+        IntPtr focusedTextHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
 
         IntPtr previousForeground = IntPtr.Zero;
         if (settings.ActivateWindow || settings.RestoreFocus) {
@@ -131,13 +132,14 @@ public static class WindowInputService {
 
             bool targetOwnsForeground = MonitorNativeMethods.GetForegroundWindow() == window.Handle;
             WindowTextDeliveryMode deliveryMode = ResolveTextDeliveryMode(settings, targetOwnsForeground);
+            IntPtr targetHandle = deliveryMode == WindowTextDeliveryMode.WindowMessage
+                ? ResolvePreferredTextHandle(window.Handle, focusedTextHandle) : IntPtr.Zero;
             if (settings.TypeTextAsScript) {
-                SendScriptText(window, text, settings, deliveryMode);
+                SendScriptText(window, text, settings, deliveryMode, targetHandle);
             } else {
                 if (deliveryMode == WindowTextDeliveryMode.ForegroundInput) {
                     SendForegroundText(window, text, settings);
                 } else {
-                    IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
                     SendMessageText(targetHandle, text, settings.KeyDelayMilliseconds);
                 }
             }
@@ -332,7 +334,7 @@ public static class WindowInputService {
         }
     }
 
-    private static void SendScriptText(WindowInfo window, string text, WindowInputOptions options, WindowTextDeliveryMode deliveryMode) {
+    private static void SendScriptText(WindowInfo window, string text, WindowInputOptions options, WindowTextDeliveryMode deliveryMode, IntPtr targetHandle) {
         IReadOnlyList<WindowScriptChunk> chunks = CreateScriptChunks(text, options.ScriptChunkLength);
         if (chunks.Count == 0) {
             return;
@@ -357,7 +359,6 @@ public static class WindowInputService {
             return;
         }
 
-        IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
         foreach (WindowScriptChunk chunk in chunks) {
             if (!string.IsNullOrEmpty(chunk.Text)) {
                 SendMessageText(targetHandle, chunk.Text, options.KeyDelayMilliseconds);
@@ -524,14 +525,14 @@ public static class WindowInputService {
         return "[" + "0x" + handle.ToInt64().ToString("X") + "]";
     }
 
-    private static WindowControlInfo? FindPreferredEditableControl(IntPtr windowHandle) {
+    private static WindowControlInfo? FindPreferredEditableControl(IntPtr windowHandle, IntPtr focusedHandle) {
         var enumerator = new ControlEnumerator();
         List<WindowControlInfo> controls = enumerator.EnumerateControlMetadata(windowHandle);
 
         List<WindowControlInfo> editors = controls.FindAll(control => control.IsPassword == false &&
             (control.ClassName.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase) ||
                 control.ClassName.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0));
-        IntPtr focused = WindowActivationService.GetFocusedControlHandle(windowHandle);
+        IntPtr focused = focusedHandle != IntPtr.Zero ? focusedHandle : WindowActivationService.GetFocusedControlHandle(windowHandle);
         WindowControlInfo? focusedEditor = editors.Find(control => control.Handle == focused);
         if (focusedEditor != null) { return focusedEditor; }
         if (editors.Count > 1) {
@@ -540,9 +541,8 @@ public static class WindowInputService {
         return editors.Count == 1 ? editors[0] : null;
     }
 
-    private static IntPtr ResolvePreferredTextHandle(IntPtr windowHandle) {
-        WindowControlInfo? editable = FindPreferredEditableControl(windowHandle);
+    private static IntPtr ResolvePreferredTextHandle(IntPtr windowHandle, IntPtr focusedHandle = default) {
+        WindowControlInfo? editable = FindPreferredEditableControl(windowHandle, focusedHandle);
         return editable?.Handle ?? windowHandle;
     }
 }
-

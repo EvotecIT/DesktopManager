@@ -38,13 +38,13 @@ public class AutomationReviewRegressionTests {
 
     [TestMethod]
     [TestCategory("UITest")]
-    public void PasteText_UsesFocusedSecondEditorAndRejectsAmbiguousUnfocusedEditors() {
+    public void NativeTextInput_PreservesFocusedEditorAndClipboardWhenRejected() {
         TestHelper.RequireOwnedWindowMutationTests();
         Exception? failure = null;
         var thread = new Thread(() => {
             try {
                 using var original = ClipboardHelper.CaptureSnapshot();
-                using var form = new Form { Text = "Owned paste fixture", ShowInTaskbar = false };
+                using var form = new FocusErasingForm { Text = "Owned input fixture", ShowInTaskbar = false };
                 using var first = new TextBox { Text = "first", Top = 10 };
                 using var second = new TextBox { Text = "second", Top = 40 };
                 using var button = new Button { Text = "Focus fixture", Top = 75 };
@@ -55,11 +55,21 @@ public class AutomationReviewRegressionTests {
                 _ = second.Handle;
                 try {
                     var window = new WindowInfo { Handle = form.Handle };
-                    var settings = new WindowInputOptions { ActivateWindow = false };
+                    var settings = new WindowInputOptions { ActivateWindow = false, PreserveClipboard = true };
                     form.Show();
+                    Assert.AreEqual(0, new WindowManager().GetWindows(new WindowQueryOptions {
+                        Handle = second.Handle, IncludeHidden = true
+                    }).Count, "An explicit window query must still exclude child controls.");
                     button.Focus();
                     Application.DoEvents();
+                    var clipboard = new DataObject();
+                    clipboard.SetData(DataFormats.UnicodeText, "preserved");
+                    clipboard.SetData(DataFormats.Html, "<b>preserved</b>");
+                    Clipboard.SetDataObject(clipboard, true);
                     Assert.ThrowsExactly<InvalidOperationException>(() => WindowInputService.PasteText(window, "replacement", settings));
+                    Assert.IsTrue(Clipboard.ContainsData(DataFormats.Html), "Rejected paste must not rewrite the original clipboard formats.");
+                    Assert.AreEqual("preserved", Clipboard.GetText(TextDataFormat.UnicodeText));
+                    settings.PreserveClipboard = false;
                     second.Focus();
                     second.Select(0, second.TextLength);
                     Application.DoEvents();
@@ -67,6 +77,16 @@ public class AutomationReviewRegressionTests {
                     WindowInputService.PasteText(window, "replacement", settings);
                     Assert.AreEqual("first", first.Text);
                     Assert.AreEqual("replacement", second.Text);
+                    foreach (bool asScript in new[] { false, true }) {
+                        MonitorNativeMethods.SetFocus(second.Handle);
+                        second.Select(0, second.TextLength);
+                        Assert.AreEqual(second.Handle, WindowActivationService.GetFocusedControlHandle(form.Handle));
+                        WindowInputService.TypeText(window, "typed", new WindowInputOptions {
+                            ActivateWindow = true, UseSendInput = false, TypeTextAsScript = asScript
+                        });
+                        Assert.AreEqual("first", first.Text);
+                        Assert.AreEqual("typed", second.Text);
+                    }
                 } finally { original.Restore(); }
             } catch (Exception ex) { failure = ex; }
         }) { IsBackground = true };
@@ -129,6 +149,51 @@ public class AutomationReviewRegressionTests {
             MonitorNativeMethods.PostMessage(handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
             Assert.IsTrue(owner.Join(2000));
             if (caller != null) { Assert.IsTrue(caller.Wait(2000)); }
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("UITest")]
+    public async Task WindowWaitAsync_RejectsMatchCompletedAfterMetadataDeadline() {
+        TestHelper.RequireOwnedWindowUiTests();
+        using var ready = new ManualResetEventSlim(false);
+        using var metadataStarted = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+        IntPtr handle = IntPtr.Zero;
+        var owner = new Thread(() => {
+            using var form = new Form { Text = "Owned metadata deadline fixture", ShowInTaskbar = false };
+            handle = form.Handle;
+            form.Shown += (_, _) => ready.Set();
+            Application.Run(form);
+        }) { IsBackground = true };
+        owner.SetApartmentState(ApartmentState.STA);
+        owner.Start();
+        Task<IReadOnlyList<WindowInfo>>? wait = null;
+        try {
+            Assert.IsTrue(ready.Wait(2000));
+            var desktop = new FakeDesktopManager {
+                DevicePathCount = 0,
+                BeforeMonitorEnumeration = () => { metadataStarted.Set(); release.Wait(); }
+            };
+            var manager = new WindowManager(new Monitors(() => desktop));
+            wait = manager.WaitWindowsAsync(new WindowQueryOptions { Handle = handle, IncludeHidden = true }, 250);
+            Assert.IsTrue(metadataStarted.Wait(2000));
+            await Task.Delay(400);
+            release.Set();
+            await Assert.ThrowsAsync<TimeoutException>(() => wait);
+        } finally {
+            release.Set();
+            MonitorNativeMethods.PostMessage(handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+            Assert.IsTrue(owner.Join(2000));
+            if (wait != null) { try { await wait; } catch (TimeoutException) { } }
+        }
+    }
+
+    private sealed class FocusErasingForm : Form {
+        protected override void WndProc(ref Message message) {
+            // Model a native host that keeps focus on the parent after activation.
+            if (message.Msg == 0x0007) { message.Result = IntPtr.Zero; return; }
+            base.WndProc(ref message);
         }
     }
 

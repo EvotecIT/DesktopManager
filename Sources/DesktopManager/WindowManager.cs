@@ -82,7 +82,14 @@ public partial class WindowManager {
                 ? GetRootWindowHandle(MonitorNativeMethods.GetForegroundWindow())
                 : IntPtr.Zero;
 
-            if (!MonitorNativeMethods.EnumWindows(
+            if (options.Handle.HasValue) {
+                IntPtr handle = options.Handle.Value;
+                if (handle != IntPtr.Zero && handle != shellWindowhWnd &&
+                    MonitorNativeMethods.GetAncestor(handle, MonitorNativeMethods.GA_ROOT) == handle &&
+                    (includeHidden || MonitorNativeMethods.IsWindowVisible(handle))) {
+                    handles.Add(handle);
+                }
+            } else if (!MonitorNativeMethods.EnumWindows(
                 (handle, lParam) => {
                     if (handle != shellWindowhWnd) {
                         if (includeHidden || MonitorNativeMethods.IsWindowVisible(handle)) {

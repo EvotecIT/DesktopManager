@@ -71,11 +71,8 @@ public partial class WindowManager {
             cancellationToken.ThrowIfCancellationRequested();
             List<WindowInfo> windows = await Task.Run(() => GetWindowsCore(options, cancellationToken,
                 () => GetWindowObservationBudget(timeoutMilliseconds, elapsed, cancellationToken)), cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
+            GetWindowObservationBudget(timeoutMilliseconds, elapsed, cancellationToken);
             if (windows.Count > 0) { return all ? windows : new[] { windows[0] }; }
-            if (timeoutMilliseconds > 0 && elapsed.ElapsedMilliseconds >= timeoutMilliseconds) {
-                throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching window.");
-            }
             await Task.Delay(WindowWaitDelay(timeoutMilliseconds, intervalMilliseconds, elapsed.ElapsedMilliseconds),
                 cancellationToken).ConfigureAwait(false);
         }
