@@ -396,6 +396,8 @@ UI-impacting tests are opt-in to avoid opening windows or changing the desktop d
 - `RUN_EXPERIMENTAL_UI_TESTS=true` (or `DESKTOPMANAGER_RUN_EXPERIMENTAL_UI_TESTS=true`) enables experimental live UI harnesses that are useful for manual validation but are not part of the stable regression pack.
 - `SKIP_UI_TESTS=true` (or `DESKTOPMANAGER_SKIP_UI_TESTS=true`) forces UI tests to skip, even if enabled elsewhere.
 
+Owned WinForms fixtures show without activation. Tests that explicitly activate a window or depend on foreground focus also require the foreground gate. Keep `RUN_FOREGROUND_UI_TESTS` and `DESKTOPMANAGER_RUN_FOREGROUND_UI_TESTS` disabled while using the desktop; enable that slice only during a dedicated interactive run.
+
 The gates compose intentionally:
 
 | Gate | What it permits | Typical impact |
@@ -617,6 +619,17 @@ manager.SaveLayout("layout.json");
 manager.LoadLayout("layout.json", validate: true);
 ```
 
+Layout restoration uses each live window at most once and skips ambiguous or missing targets. Saved layouts include process and native class names so a restarted application can be matched without relying only on its title. Legacy files retain exact process-ID/title matching; title-only and process-only fallback are disabled. Use `PlanLayout` to inspect matches and `ApplyLayout` to obtain per-window outcomes:
+
+```csharp
+var layout = JsonSerializer.Deserialize<WindowLayout>(File.ReadAllText("layout.json"))!;
+WindowLayoutPlan plan = manager.PlanLayout(layout);
+foreach (WindowLayoutMatch match in plan.Windows) {
+    Console.WriteLine($"{match.SavedWindow.Title}: {match.Status} ({match.CandidateCount} candidates)");
+}
+IReadOnlyList<WindowLayoutApplyResult> results = manager.ApplyLayout(layout);
+```
+
 #### Examples in PowerShell - Window Keep-Alive Cmdlets
 
 ```powershell
@@ -687,3 +700,32 @@ DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0`, `ne
 - `RadioService` for supported per-radio operations and `ExperimentalAirplaneModeService` for the separately acknowledged undocumented global switch.
 - `WifiProfileService` for saved-profile inventory and exact profile connection without nearby-network scanning.
 - `VirtualDesktopService` for the supported window-to-desktop operations.
+
+### Input, waits, and provider health
+
+`TypeText` and `PasteText` insert at an editable control's current selection. They do not replace its whole value to repair an unexpected result. Background text delivery prefers the target's focused editor and rejects multiple eligible editors when none is focused. Use `WindowControlService.SetText` when replacement is intended. Paste, native clicks, and character messages are delivered once. `InputRetryCount` applies only when `SendInput` confirms zero input was delivered. A `NativeOperationOutcomeUnknownException` means the target may already have changed; observe its state before deciding whether to retry. Requested focus and clipboard-text restoration also runs when delivery fails.
+
+Asynchronous waits support cancellation on every library target. A zero timeout waits indefinitely until a match appears or cancellation is requested:
+
+```csharp
+using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+WindowInfo window = await manager.WaitWindowAsync("*Notepad*", cancellationToken: cancellation.Token);
+```
+
+UI Automation uses a separate STA worker per target process, with at most 16 workers and 64 queued operations per worker. Each worker permits up to 64 active event subscriptions with reserved cleanup capacity, so a full operation queue cannot lose cleanup. One blocked provider therefore leaves other processes available while capacity remains. In-flight native calls cannot be safely canceled or replayed and retain their worker until they return. `DesktopAutomationDiagnostics.GetUiAutomationHealth()` reports pending work and blocked calls without contacting the providers. Worker shutdown is bounded, and new work fails when the worker or queue limit is reached.
+
+### Window capture provenance
+
+`CaptureWindow` retains its desktop fallback behavior. `CaptureWindowDetailed` defaults to strict window capture and records the backend, actual screen bounds, dark-pixel observation, and fallback reason. A dark image can be legitimate; strict mode retains those pixels. Desktop fallback may contain a covering application's pixels.
+
+```csharp
+using WindowCaptureResult capture = ScreenshotService.CaptureWindowDetailed(window.Handle);
+Console.WriteLine($"{capture.Backend}: {capture.ScreenBounds}");
+capture.Bitmap.Save("window.png");
+```
+
+Pass `new WindowCaptureOptions { AllowDesktopFallback = true }` to opt into visible-desktop fallback. `DesktopAutomationService` capture objects and CLI/MCP screenshot results also expose the capture backend and fallback reason. Sparse dark-image and visual-difference sampling reads locked pixels directly, avoiding full-image managed copies; template matching retains its dense pixel buffer.
+
+### Display requests requiring a restart
+
+`SetMonitorDisplayModeDetailed` returns `RestartRequired` when Windows accepts a display request that needs a system restart. The existing void `SetMonitorDisplayMode` method throws `DisplayRestartRequiredException` for that outcome. Workstation profile results report `Succeeded = false` and `RestartRequired = true` for this request. PowerShell and the tray app display a warning; CLI JSON and MCP results preserve the restart requirement. No API restarts Windows automatically.

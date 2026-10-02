@@ -20,20 +20,21 @@ internal sealed partial class UiAutomationControlService {
 
         LastOperationTimedOut = false;
         if (ShouldRunProviderOperationInline(
-            StaDispatcher.Value.IsCurrentThread,
+            UiAutomationStaDispatcher.Current != null,
             IsWindowOwnedByCurrentThread(targetWindowHandle),
             isMutation)) {
             return operation(this);
         }
 
         try {
+            MonitorNativeMethods.GetWindowThreadProcessId(targetWindowHandle, out uint processId);
             if (TryRunWithCurrentUiMessagePump(
-                    () => StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds, abandonedResultHandler),
+                    () => Dispatchers.Invoke(processId, operation, invocationTimeoutMilliseconds, abandonedResultHandler),
                     out T pumpedResult)) {
                 return pumpedResult;
             }
 
-            return StaDispatcher.Value.Invoke(operation, invocationTimeoutMilliseconds, abandonedResultHandler);
+            return Dispatchers.Invoke(processId, operation, invocationTimeoutMilliseconds, abandonedResultHandler);
         } catch (UiAutomationOperationInFlightException) when (isMutation) {
             LastOperationTimedOut = true;
             throw;

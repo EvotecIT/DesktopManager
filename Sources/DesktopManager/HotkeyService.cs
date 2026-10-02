@@ -4,6 +4,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -24,17 +25,26 @@ public sealed class HotkeyService : IDisposable {
     private MonitorNativeMethods.WndProc? _wndProc;
     private readonly ManualResetEventSlim _ready = new(false);
     private readonly Queue<Action> _actions = new();
+    private int _disposed;
+    private Exception? _startupFailure;
     private const uint WM_RUN = MonitorNativeMethods.WM_APP + 1;
 
-    private HotkeyService() {
+    /// <summary>Creates an independently owned hotkey service. Dispose it to release its registrations.</summary>
+    public HotkeyService() {
         _thread = new Thread(MessageLoop) { IsBackground = true };
         _thread.SetApartmentState(ApartmentState.STA);
         _thread.Start();
-        _ready.Wait();
+        if (!_ready.Wait(10000)) {
+            Interlocked.Exchange(ref _disposed, 1);
+            throw new TimeoutException("The hotkey message window did not start within 10 seconds.");
+        }
+        if (_startupFailure != null) {
+            ExceptionDispatchInfo.Capture(_startupFailure).Throw();
+        }
     }
 
     private void Invoke(Action action) {
-        if (_thread == null) {
+        if (_thread == null || Volatile.Read(ref _disposed) != 0) {
             throw new ObjectDisposedException(nameof(HotkeyService));
         }
 
@@ -43,21 +53,42 @@ public sealed class HotkeyService : IDisposable {
             return;
         }
 
-        using var done = new ManualResetEventSlim(false);
+        var done = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         Exception? ex = null;
+        int state = 0;
         lock (_actions) {
+            if (_disposed != 0) {
+                throw new ObjectDisposedException(nameof(HotkeyService));
+            }
+            if (_actions.Count >= 64) {
+                throw new TimeoutException("The hotkey message queue is full; the operation was not started.");
+            }
             _actions.Enqueue(() => {
+                if (Interlocked.CompareExchange(ref state, 1, 0) != 0) {
+                    return;
+                }
                 try {
+                    if (Volatile.Read(ref _disposed) != 0) {
+                        throw new ObjectDisposedException(nameof(HotkeyService));
+                    }
                     action();
                 } catch (Exception e) {
                     ex = e;
                 } finally {
-                    done.Set();
+                    done.TrySetResult(true);
                 }
             });
+            if (!MonitorNativeMethods.PostMessage(_hwnd, WM_RUN, IntPtr.Zero, IntPtr.Zero)) {
+                Interlocked.CompareExchange(ref state, 2, 0);
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            }
         }
-        MonitorNativeMethods.PostMessage(_hwnd, WM_RUN, IntPtr.Zero, IntPtr.Zero);
-        done.Wait();
+        if (!done.Task.Wait(5000)) {
+            if (Interlocked.CompareExchange(ref state, 2, 0) == 0) {
+                throw new TimeoutException("The hotkey operation was canceled before it started.");
+            }
+            throw new NativeOperationOutcomeUnknownException("Hotkey registration", 5000);
+        }
         if (ex != null) {
             ExceptionDispatchInfo.Capture(ex).Throw();
         }
@@ -109,12 +140,17 @@ public sealed class HotkeyService : IDisposable {
         _wndProc = WndProc;
         _hwnd = MonitorNativeMethods.CreateWindowExW(0, "Message", string.Empty, 0, 0, 0, 0, 0,
             MonitorNativeMethods.HWND_MESSAGE, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        if (_hwnd == IntPtr.Zero) {
+            _startupFailure = new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            _ready.Set();
+            return;
+        }
         MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
             Marshal.GetFunctionPointerForDelegate(_wndProc));
         _ready.Set();
 
         MonitorNativeMethods.MSG msg;
-        while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) != 0) {
+        while (Volatile.Read(ref _disposed) == 0 && MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
             MonitorNativeMethods.TranslateMessage(ref msg);
             MonitorNativeMethods.DispatchMessage(ref msg);
         }
@@ -122,6 +158,11 @@ public sealed class HotkeyService : IDisposable {
         if (_hwnd != IntPtr.Zero) {
             MonitorNativeMethods.DestroyWindow(_hwnd);
             _hwnd = IntPtr.Zero;
+        }
+        lock (_actions) {
+            while (_actions.Count > 0) {
+                _actions.Dequeue()();
+            }
         }
     }
 
@@ -132,7 +173,13 @@ public sealed class HotkeyService : IDisposable {
             lock (_callbacks) {
                 _callbacks.TryGetValue(id, out callback);
             }
-            callback?.Invoke();
+            if (Volatile.Read(ref _disposed) == 0) {
+                try {
+                    callback?.Invoke();
+                } catch (Exception ex) {
+                    DesktopManagerDiagnostics.Report($"Hotkey callback failed: {ex.Message}");
+                }
+            }
             return IntPtr.Zero;
         }
 
@@ -157,9 +204,14 @@ public sealed class HotkeyService : IDisposable {
 
     /// <inheritdoc />
     public void Dispose() {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            return;
+        }
         if (_hwnd != IntPtr.Zero) {
             MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
-            _thread?.Join();
+            if (_thread != null && Thread.CurrentThread != _thread && !_thread.Join(5000)) {
+                DesktopManagerDiagnostics.Report("Hotkey shutdown is still pending on a callback.");
+            }
         }
         _ready.Dispose();
     }

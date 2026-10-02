@@ -24,6 +24,7 @@ public class DesktopWpfControlObservationTests {
 
         TestHelper.RequireOwnedWindowUiTests();
         using var harness = new PumpingWpfHarness();
+        Assert.AreNotEqual(harness.WindowHandle, MonitorNativeMethods.GetForegroundWindow(), "The background WPF fixture must not activate itself.");
         var automation = new DesktopAutomationService();
         DesktopControlObservation observation = harness.Invoke(() => automation.ObserveControls(
                 CreateWindowQuery(harness.WindowHandle),
@@ -295,6 +296,8 @@ internal sealed class PumpingWpfHarness : IDisposable {
             panel.Children.Add(selection);
             _window = new Window {
                 Title = "DesktopManager WPF Semantic Proof",
+                ShowActivated = false,
+                ShowInTaskbar = false,
                 Width = 480,
                 Height = 400,
                 Left = 80,
@@ -302,7 +305,7 @@ internal sealed class PumpingWpfHarness : IDisposable {
                 Content = panel
             };
             _window.ContentRendered += (_, _) => {
-                _richTextBox.Focus();
+                if (!TestHelper.ShouldSkipForegroundWindowUiTests()) { _richTextBox.Focus(); }
                 Paragraph paragraph = (Paragraph)_richTextBox.Document.Blocks.FirstBlock!;
                 TextPointer start = paragraph.ContentStart.GetPositionAtOffset(7, LogicalDirection.Forward)!;
                 TextPointer end = paragraph.ContentStart.GetPositionAtOffset(11, LogicalDirection.Forward)!;

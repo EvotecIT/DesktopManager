@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.Threading;
 
 namespace DesktopManager;
 
@@ -66,6 +67,10 @@ public partial class WindowManager {
         /// <param name="options">Window query options.</param>
         /// <returns>A list of WindowInfo objects.</returns>
         public List<WindowInfo> GetWindows(WindowQueryOptions options) {
+            return GetWindowsCore(options, CancellationToken.None, null);
+        }
+
+        private List<WindowInfo> GetWindowsCore(WindowQueryOptions options, CancellationToken cancellationToken, Func<int>? observationBudget) {
             if (options == null) {
                 throw new ArgumentNullException(nameof(options));
             }
@@ -77,7 +82,14 @@ public partial class WindowManager {
                 ? GetRootWindowHandle(MonitorNativeMethods.GetForegroundWindow())
                 : IntPtr.Zero;
 
-            if (!MonitorNativeMethods.EnumWindows(
+            if (options.Handle.HasValue) {
+                IntPtr handle = options.Handle.Value;
+                if (handle != IntPtr.Zero && handle != shellWindowhWnd &&
+                    MonitorNativeMethods.GetAncestor(handle, MonitorNativeMethods.GA_ROOT) == handle &&
+                    (includeHidden || MonitorNativeMethods.IsWindowVisible(handle))) {
+                    handles.Add(handle);
+                }
+            } else if (!MonitorNativeMethods.EnumWindows(
                 (handle, lParam) => {
                     if (handle != shellWindowhWnd) {
                         if (includeHidden || MonitorNativeMethods.IsWindowVisible(handle)) {
@@ -92,6 +104,8 @@ public partial class WindowManager {
             var windows = new List<WindowInfo>();
             List<Monitor>? connectedMonitors = null;
             for (int index = 0; index < handles.Count; index++) {
+                cancellationToken.ThrowIfCancellationRequested();
+                observationBudget?.Invoke();
                 var handle = handles[index];
                 if (options.ActiveWindow && handle != activeWindowHandle) {
                     continue;
@@ -146,7 +160,10 @@ public partial class WindowManager {
                     }
                 }
 
-                var title = WindowTextHelper.GetWindowText(handle);
+                var title = observationBudget == null ? WindowTextHelper.GetWindowText(handle) :
+                    WindowTextHelper.GetWindowTextForObservation(handle, observationBudget);
+                cancellationToken.ThrowIfCancellationRequested();
+                observationBudget?.Invoke();
 
                 // For process-specific queries, include windows even with empty titles
                 // For name-based queries, skip empty titles unless using wildcard "*"
@@ -158,14 +175,11 @@ public partial class WindowManager {
                     continue;
                 }
 
-                // Skip title matching if title is empty and we're doing process-based search
-                if (!string.IsNullOrEmpty(title) || options.ProcessId <= 0) {
-                    bool titleMatches = options.TitleRegex != null ?
-                        (string.IsNullOrEmpty(title) ? false : options.TitleRegex.IsMatch(title)) :
-                        MatchesWildcard(title ?? string.Empty, options.TitlePattern);
-                    if (!titleMatches) {
-                        continue;
-                    }
+                bool titleMatches = options.TitleRegex != null ?
+                    options.TitleRegex.IsMatch(title ?? string.Empty) :
+                    MatchesWildcard(title ?? string.Empty, options.TitlePattern);
+                if (!titleMatches) {
+                    continue;
                 }
 
                 connectedMonitors ??= _monitors.GetMonitors(connectedOnly: true, refresh: true);
@@ -204,18 +218,21 @@ public partial class WindowManager {
             ValidateWindowInfo(parent);
 
             var handles = new List<IntPtr>();
-            if (!MonitorNativeMethods.EnumChildWindows(
+            if (MonitorNativeMethods.GetWindowThreadProcessId(parent.Handle, out _) == 0) {
+                throw new ArgumentException("The parent window no longer exists.", nameof(parent));
+            }
+            // EnumChildWindows has no documented success return value, including for an empty tree.
+            MonitorNativeMethods.EnumChildWindows(
                 parent.Handle,
                 (handle, lParam) => {
                     if (includeHidden || MonitorNativeMethods.IsWindowVisible(handle)) {
                         handles.Add(handle);
                     }
                     return true;
-                }, IntPtr.Zero)) {
-                throw new InvalidOperationException("Failed to enumerate child windows");
-            }
+                }, IntPtr.Zero);
 
             var windows = new List<WindowInfo>();
+            IReadOnlyList<Monitor>? connectedMonitors = null;
             for (int index = 0; index < handles.Count; index++) {
                 var handle = handles[index];
                 bool isCloaked = false;
@@ -229,7 +246,8 @@ public partial class WindowManager {
                 var ownerHandle = MonitorNativeMethods.GetWindow(handle, MonitorNativeMethods.GW_OWNER);
                 var title = WindowTextHelper.GetWindowText(handle);
                 bool isVisible = MonitorNativeMethods.IsWindowVisible(handle);
-                windows.Add(BuildWindowInfo(handle, title, windowProcessId, windowThreadId, ownerHandle, isCloaked, isVisible, index, connectedMonitors: null));
+                connectedMonitors ??= _monitors.GetMonitors(connectedOnly: true, refresh: true);
+                windows.Add(BuildWindowInfo(handle, title, windowProcessId, windowThreadId, ownerHandle, isCloaked, isVisible, index, connectedMonitors));
             }
 
             return windows;
@@ -340,10 +358,21 @@ public partial class WindowManager {
                     state = WindowState.Maximize;
                 }
 
+                var className = new StringBuilder(256);
+                MonitorNativeMethods.GetClassName(windowInfo.Handle, className, className.Capacity);
+                MonitorNativeMethods.GetWindowThreadProcessId(windowInfo.Handle, out uint processId);
+                string processName = string.Empty;
+                try {
+                    using var process = Process.GetProcessById((int)processId);
+                    processName = process.ProcessName;
+                } catch (ArgumentException) { } catch (InvalidOperationException) { }
+                catch (System.ComponentModel.Win32Exception) { } catch (System.Security.SecurityException) { }
                 return new WindowPosition {
                     Title = windowInfo.Title,
                     Handle = windowInfo.Handle,
-                    ProcessId = windowInfo.ProcessId,
+                    ProcessId = processId,
+                    ProcessName = processName,
+                    ClassName = className.ToString(),
                     Left = rect.Left,
                     Top = rect.Top,
                     Right = rect.Right,

@@ -608,6 +608,11 @@ internal sealed class ResolvedControlTargetResult {
 }
 
 internal sealed class ScreenshotResult {
+    public string? CaptureBackend { get; set; }
+    public string? CaptureFallbackReason { get; set; }
+    public bool? IsDarkCapture { get; set; }
+    public int? CapturedLeft { get; set; }
+    public int? CapturedTop { get; set; }
     public string Kind { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public int Width { get; set; }

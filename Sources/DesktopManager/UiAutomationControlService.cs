@@ -15,7 +15,7 @@ internal sealed partial class UiAutomationControlService {
     internal const int PreferredSearchRootsMaximumCount = 256;
     private const int EnumeratedControlsCacheMaximumCount = 512;
     private const int ActionMatchCacheMaximumCount = 512;
-    private static readonly Lazy<UiAutomationStaDispatcher> StaDispatcher = new(() => new UiAutomationStaDispatcher());
+    internal static readonly UiAutomationDispatcherPool Dispatchers = new();
     private static readonly ConcurrentDictionary<IntPtr, IntPtr> PreferredSearchRoots = new();
     private static readonly ConcurrentDictionary<string, CachedControlCollection> EnumeratedControlsCache = new();
     private static readonly ConcurrentDictionary<string, CachedActionMatch> ActionMatchCache = new();

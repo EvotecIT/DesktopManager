@@ -577,7 +577,7 @@ public class UiAutomationControlServiceTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using System.Windows.Forms.Form form = new() { Text = "UIA Metadata Enumeration Harness", ShowInTaskbar = false };
+        using System.Windows.Forms.Form form = new NonActivatingTestForm() { Text = "UIA Metadata Enumeration Harness", ShowInTaskbar = false };
         using System.Windows.Forms.TextBox textBox = new() { Text = "value-must-not-be-read" };
         form.Controls.Add(textBox);
         form.Show();

@@ -25,7 +25,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Message Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Message Test Form", ShowInTaskbar = false };
         using TextBox textBox = new();
         form.Controls.Add(textBox);
         form.Show();
@@ -59,7 +59,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "SetText Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "SetText Test Form", ShowInTaskbar = false };
         using TextBox textBox = new();
         form.Controls.Add(textBox);
         form.Show();
@@ -90,7 +90,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Ignored SetText Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Ignored SetText Test Form", ShowInTaskbar = false };
         using var textBox = new IgnoringTextBox { Text = "original" };
         form.Controls.Add(textBox);
         form.Show();
@@ -119,7 +119,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Partial SetText Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Partial SetText Test Form", ShowInTaskbar = false };
         using var textBox = new TruncatingTextBox { Text = "original", MaximumAcceptedLength = 3 };
         form.Controls.Add(textBox);
         form.Show();
@@ -147,7 +147,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Long SetText Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Long SetText Test Form", ShowInTaskbar = false };
         using var textBox = new TextBox();
         form.Controls.Add(textBox);
         form.Show();
@@ -174,8 +174,8 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form expectedWindow = new() { Text = "Expected Mutation Owner", ShowInTaskbar = false };
-        using Form replacementWindow = new() { Text = "Replacement Mutation Owner", ShowInTaskbar = false };
+        using Form expectedWindow = new NonActivatingTestForm() { Text = "Expected Mutation Owner", ShowInTaskbar = false };
+        using Form replacementWindow = new NonActivatingTestForm() { Text = "Replacement Mutation Owner", ShowInTaskbar = false };
         using TextBox replacementControl = new() { Text = "unrelated" };
         replacementWindow.Controls.Add(replacementControl);
         expectedWindow.Show();
@@ -224,7 +224,7 @@ public class WindowControlMessageTests {
         Exception? startupFailure = null;
         var thread = new Thread(() => {
             try {
-                using Form form = new() { Text = "Hung Native Text Test", ShowInTaskbar = false };
+                using Form form = new NonActivatingTestForm() { Text = "Hung Native Text Test", ShowInTaskbar = false };
                 using var textBox = new BlockingTextBox(release);
                 form.Controls.Add(textBox);
                 form.Shown += (_, _) => {
@@ -282,7 +282,7 @@ public class WindowControlMessageTests {
         Exception? startupFailure = null;
         var thread = new Thread(() => {
             try {
-                using Form form = new() { Text = "Hung Focused Native Read Test", ShowInTaskbar = false };
+                using Form form = new NonActivatingTestForm() { Text = "Hung Focused Native Read Test", ShowInTaskbar = false };
                 using var textBox = new BlockingTextBox(release) { Text = "must-not-block" };
                 form.Controls.Add(textBox);
                 form.Shown += (_, _) => {
@@ -340,14 +340,14 @@ public class WindowControlMessageTests {
             Assert.Inconclusive("Test requires Windows");
         }
 
-        TestHelper.RequireOwnedWindowUiTests();
+        TestHelper.RequireForegroundWindowUiTests();
         using var ready = new ManualResetEventSlim(false);
         using var release = new ManualResetEventSlim(false);
         IntPtr formHandle = IntPtr.Zero;
         Exception? startupFailure = null;
         var thread = new Thread(() => {
             try {
-                using Form form = new() { Text = "Bounded Observed Text Wait Test", ShowInTaskbar = false };
+                using Form form = new NonActivatingTestForm() { Text = "Bounded Observed Text Wait Test", ShowInTaskbar = false };
                 using var textBox = new BlockingTextBox(release) { Text = "must-not-match" };
                 form.Controls.Add(textBox);
                 form.Shown += (_, _) => {
@@ -403,7 +403,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Combo Selection Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Combo Selection Test Form", ShowInTaskbar = false };
         using ComboBox comboBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
         comboBox.Items.AddRange(["Alpha", "Beta", "Gamma"]);
         comboBox.SelectedIndex = 0;
@@ -438,7 +438,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Oversized Combo Lookup Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Oversized Combo Lookup Test Form", ShowInTaskbar = false };
         using ComboBox comboBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
         comboBox.Items.AddRange(["oversized", "Beta"]);
         comboBox.SelectedIndex = 0;
@@ -539,7 +539,7 @@ public class WindowControlMessageTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Enumerator Test Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Enumerator Test Form", ShowInTaskbar = false };
         using TextBox textBox = new() { Text = "sample" };
         using Button button = new() { Text = "Go" };
         form.Controls.Add(textBox);
@@ -624,7 +624,7 @@ public class WindowControlMessageTests {
         }
     }
 
-    private sealed class BlockingSelectionNotificationForm : Form {
+    private sealed class BlockingSelectionNotificationForm : NonActivatingTestForm {
         private readonly ManualResetEventSlim _release;
 
         internal BlockingSelectionNotificationForm(ManualResetEventSlim release) {

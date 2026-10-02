@@ -150,7 +150,7 @@ public partial class WindowManager
         }
 
         /// <summary>
-        /// Sets the position of a window.
+        /// Sets the position of a window without activating it.
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
         /// <param name="left">The left position.</param>
@@ -160,7 +160,7 @@ public partial class WindowManager
         }
 
         /// <summary>
-        /// Sets the position and size of a window.
+        /// Sets the position and size of a window without activating it.
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
         /// <param name="left">The left position.</param>
@@ -172,7 +172,7 @@ public partial class WindowManager
 
             ValidateWindowInfo(windowInfo);
 
-            int flags = MonitorNativeMethods.SWP_NOZORDER;
+            int flags = MonitorNativeMethods.SWP_NOZORDER | MonitorNativeMethods.SWP_NOACTIVATE;
 
             // If position is -1, don't move
             if (left == -1 && top == -1) {
@@ -338,11 +338,7 @@ public partial class WindowManager
         /// <param name="windowInfo">The window information.</param>
         public void CloseWindow(WindowInfo windowInfo) {
             ValidateWindowInfo(windowInfo);
-            MonitorNativeMethods.SendMessage(
-                windowInfo.Handle,
-                (uint)WindowMessage.WM_SYSCOMMAND,
-                (uint)WindowCommand.SC_CLOSE,
-                0);
+            SendWindowCommand(windowInfo.Handle, WindowCommand.SC_CLOSE);
         }
 
         /// <summary>
@@ -351,11 +347,7 @@ public partial class WindowManager
         /// <param name="windowInfo">The window information.</param>
         public void MinimizeWindow(WindowInfo windowInfo) {
             ValidateWindowInfo(windowInfo);
-            MonitorNativeMethods.SendMessage(
-                windowInfo.Handle,
-                (uint)WindowMessage.WM_SYSCOMMAND,
-                (uint)WindowCommand.SC_MINIMIZE,
-                0);
+            SendWindowCommand(windowInfo.Handle, WindowCommand.SC_MINIMIZE);
         }
 
         /// <summary>
@@ -364,11 +356,7 @@ public partial class WindowManager
         /// <param name="windowInfo">The window information.</param>
         public void MaximizeWindow(WindowInfo windowInfo) {
             ValidateWindowInfo(windowInfo);
-            MonitorNativeMethods.SendMessage(
-                windowInfo.Handle,
-                (uint)WindowMessage.WM_SYSCOMMAND,
-                (uint)WindowCommand.SC_MAXIMIZE,
-                0);
+            SendWindowCommand(windowInfo.Handle, WindowCommand.SC_MAXIMIZE);
         }
 
         /// <summary>
@@ -377,12 +365,14 @@ public partial class WindowManager
         /// <param name="windowInfo">The window information.</param>
         public void RestoreWindow(WindowInfo windowInfo) {
             ValidateWindowInfo(windowInfo);
-            MonitorNativeMethods.ShowWindow(windowInfo.Handle, MonitorNativeMethods.SW_RESTORE);
-            MonitorNativeMethods.SendMessage(
-                windowInfo.Handle,
-                (uint)WindowMessage.WM_SYSCOMMAND,
-                (uint)WindowCommand.SC_RESTORE,
-                0);
+            SendWindowCommand(windowInfo.Handle, WindowCommand.SC_RESTORE);
+        }
+
+        private static void SendWindowCommand(IntPtr handle, WindowCommand command) {
+            if (MonitorNativeMethods.SendMessageTimeout(handle, (uint)WindowMessage.WM_SYSCOMMAND,
+                    new IntPtr((long)command), IntPtr.Zero, MonitorNativeMethods.SMTO_ABORTIFHUNG, 1000, out _) == IntPtr.Zero) {
+                throw new NativeOperationOutcomeUnknownException(command.ToString(), 1000);
+            }
         }
 
         /// <summary>

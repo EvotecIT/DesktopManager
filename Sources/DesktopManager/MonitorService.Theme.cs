@@ -46,7 +46,8 @@ public partial class MonitorService {
 
     private static void RefreshTheme() {
         try {
-            MonitorNativeMethods.SendMessage(MonitorNativeMethods.HWND_BROADCAST, MonitorNativeMethods.WM_SETTINGCHANGE, 0, 0);
+            MonitorNativeMethods.SendMessageTimeout(MonitorNativeMethods.HWND_BROADCAST, MonitorNativeMethods.WM_SETTINGCHANGE,
+                IntPtr.Zero, IntPtr.Zero, MonitorNativeMethods.SMTO_ABORTIFHUNG, 200, out _);
         } catch (Exception ex) {
             DesktopManagerDiagnostics.Report($"RefreshTheme failed: {ex.Message}");
         }

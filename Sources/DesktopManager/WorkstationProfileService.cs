@@ -38,16 +38,20 @@ public sealed class WorkstationProfileService {
     /// <summary>Captures connected display, personalization, taskbar, and active audio state.</summary>
     /// <returns>A complete workstation profile snapshot.</returns>
     public WorkstationProfile CaptureProfile() {
-        List<Monitor> monitors = _monitors.GetMonitors()
+        return CaptureProfile(new WorkstationProfileApplyOptions());
+    }
+
+    private WorkstationProfile CaptureProfile(WorkstationProfileApplyOptions sections) {
+        List<Monitor> monitors = sections.ApplyDisplays || sections.ApplyTaskbars ? _monitors.GetMonitors()
             .Where(monitor => monitor.IsConnected)
-            .ToList();
+            .ToList() : new List<Monitor>();
         IReadOnlyDictionary<Monitor, string> monitorStableKeys = WorkstationMonitorKeyResolver.Resolve(monitors);
-        PersonalizationSnapshot personalization = _personalization.CaptureSnapshot();
+        PersonalizationSnapshot personalization = sections.ApplyPersonalization ? _personalization.CaptureSnapshot() : new PersonalizationSnapshot();
         personalization.Monitors.Clear();
         var profile = new WorkstationProfile {
             CapturedAt = DateTimeOffset.UtcNow,
             Personalization = personalization,
-            TaskbarAutoHide = _taskbars.GetTaskbarAutoHide()
+            TaskbarAutoHide = sections.ApplyTaskbars && _taskbars.GetTaskbarAutoHide()
         };
 
         foreach (Monitor monitor in monitors) {
@@ -58,9 +62,9 @@ public sealed class WorkstationProfileService {
                 IsPrimary = monitor.IsPrimary,
                 Left = monitor.PositionLeft,
                 Top = monitor.PositionTop,
-                DisplayMode = _monitors.GetMonitorDisplayMode(monitor.DeviceId),
-                Brightness = TryGetBrightness(monitor),
-                HdrEnabled = TryGetHdrState(monitor),
+                DisplayMode = _monitors.GetMonitorDisplayMode(monitor),
+                Brightness = sections.ApplyDisplays ? TryGetBrightness(monitor) : null,
+                HdrEnabled = sections.ApplyDisplays ? TryGetHdrState(monitor) : null,
                 WallpaperPath = monitor.Wallpaper
             });
         }
@@ -68,7 +72,7 @@ public sealed class WorkstationProfileService {
         IReadOnlyDictionary<int, string> monitorKeys = monitors.ToDictionary(
             monitor => monitor.Index,
             monitor => monitorStableKeys[monitor]);
-        foreach (TaskbarInfo taskbar in _taskbars.GetTaskbars()) {
+        foreach (TaskbarInfo taskbar in sections.ApplyTaskbars ? (IEnumerable<TaskbarInfo>)_taskbars.GetTaskbars() : Array.Empty<TaskbarInfo>()) {
             if (!monitorKeys.TryGetValue(taskbar.MonitorIndex, out string? stableKey)) {
                 continue;
             }
@@ -79,7 +83,7 @@ public sealed class WorkstationProfileService {
             });
         }
 
-        foreach (AudioEndpointInfo endpoint in _audio.GetEndpoints(states: AudioEndpointState.Active)) {
+        foreach (AudioEndpointInfo endpoint in sections.ApplyAudio ? _audio.GetEndpoints(states: AudioEndpointState.Active) : Array.Empty<AudioEndpointInfo>()) {
             profile.AudioEndpoints.Add(new WorkstationAudioEndpointProfile {
                 Id = endpoint.Id,
                 Name = endpoint.Name,
@@ -123,7 +127,7 @@ public sealed class WorkstationProfileService {
         WorkstationProfile? rollback = null;
         if (effectiveOptions.RollbackOnFailure) {
             try {
-                rollback = CaptureProfile();
+                rollback = CaptureProfile(effectiveOptions);
             } catch (Exception ex) {
                 return new WorkstationProfileApplyResult(
                     false,
@@ -134,33 +138,41 @@ public sealed class WorkstationProfileService {
         }
 
         var warnings = new List<string>();
+        bool restartRequired = false;
         try {
-            ApplyCore(profile, effectiveOptions, warnings);
-            return new WorkstationProfileApplyResult(true, false, null, warnings.ToArray());
+            ApplyCore(profile, effectiveOptions, warnings, ref restartRequired);
+            return new WorkstationProfileApplyResult(!restartRequired, false, null, warnings.ToArray(), restartRequired);
         } catch (Exception ex) {
             bool rolledBack = false;
             string error = ex.Message;
             if (rollback != null) {
+                bool rollbackNeedsRestart = false;
                 try {
-                    ApplyCore(rollback, CreateRollbackOptions(effectiveOptions), warnings);
-                    rolledBack = true;
+                    ApplyCore(rollback, CreateRollbackOptions(effectiveOptions), warnings, ref rollbackNeedsRestart);
+                    rolledBack = !rollbackNeedsRestart;
+                    if (rollbackNeedsRestart) { error += " Rollback requires a system restart."; }
                 } catch (Exception rollbackException) {
                     error += $" Rollback also failed: {rollbackException.Message}";
+                } finally {
+                    restartRequired |= rollbackNeedsRestart;
                 }
             }
 
-            return new WorkstationProfileApplyResult(false, rolledBack, error, warnings.ToArray());
+            return new WorkstationProfileApplyResult(false, rolledBack, error, warnings.ToArray(), restartRequired);
         }
     }
 
     private void ApplyCore(
         WorkstationProfile profile,
         WorkstationProfileApplyOptions options,
-        ICollection<string> warnings) {
-        List<Monitor> currentMonitors = _monitors.GetMonitors()
+        ICollection<string> warnings,
+        ref bool restartRequired) {
+        bool needsMonitors = options.ApplyDisplays || options.ApplyTaskbars;
+        List<Monitor> currentMonitors = needsMonitors ? _monitors.GetMonitors()
             .Where(monitor => monitor.IsConnected)
-            .ToList();
-        IReadOnlyDictionary<string, Monitor> matches = MatchMonitors(profile.Monitors, currentMonitors, warnings);
+            .ToList() : new List<Monitor>();
+        IReadOnlyDictionary<string, Monitor> matches = needsMonitors ? MatchMonitors(profile.Monitors, currentMonitors, warnings) :
+            new Dictionary<string, Monitor>();
         string[] missing = profile.Monitors
             .Where(saved => !matches.ContainsKey(saved.StableKey))
             .Select(saved => saved.StableKey)
@@ -170,7 +182,7 @@ public sealed class WorkstationProfileService {
         }
 
         if (options.ApplyDisplays) {
-            _monitors.ApplyDisplayProfile(profile.Monitors, matches);
+            _monitors.ApplyDisplayProfile(profile.Monitors, matches, ref restartRequired);
         }
         if (options.ApplyPersonalization) {
             _personalization.Restore(profile.Personalization, options.ApplyMachinePolicies);

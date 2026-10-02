@@ -1349,6 +1349,14 @@ public sealed class DesktopResolvedControlTarget {
 /// Represents a screenshot capture produced by DesktopManager.
 /// </summary>
 public sealed class DesktopCapture : IDisposable {
+    /// <summary>Gets or sets the API supplying window pixels, when applicable.</summary>
+    public WindowCaptureBackend? CaptureBackend { get; set; }
+    /// <summary>Gets or sets the actual screen rectangle represented by the captured pixels.</summary>
+    public Rectangle? CapturedScreenBounds { get; set; }
+    /// <summary>Gets or sets why visible desktop fallback was used.</summary>
+    public string? CaptureFallbackReason { get; set; }
+    /// <summary>Gets or sets whether the source window capture was predominantly dark.</summary>
+    public bool? IsDarkCapture { get; set; }
     /// <summary>
     /// Gets or sets the capture kind.
     /// </summary>

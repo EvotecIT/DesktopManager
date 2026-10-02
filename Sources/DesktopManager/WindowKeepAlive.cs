@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.Versioning;
 using System.Linq;
@@ -21,7 +20,8 @@ public sealed class WindowKeepAlive : IDisposable {
     /// </summary>
     public static WindowKeepAlive Instance => _instance.Value;
 
-    private readonly ConcurrentDictionary<IntPtr, Timer> _timers = new();
+    private readonly object _sync = new();
+    private readonly Dictionary<IntPtr, Session> _sessions = new();
 
     private WindowKeepAlive() {
     }
@@ -51,7 +51,21 @@ public sealed class WindowKeepAlive : IDisposable {
             throw new ArgumentOutOfRangeException(nameof(interval));
         }
 
-        _timers.GetOrAdd(handle, h => new Timer(KeepAliveCallback, h, interval, interval));
+        lock (_sync) {
+            if (_sessions.ContainsKey(handle)) {
+                return;
+            }
+            uint threadId = MonitorNativeMethods.GetWindowThreadProcessId(handle, out uint processId);
+            var session = new Session(handle, processId, threadId);
+            session.Timer = new Timer(KeepAliveCallback, session, Timeout.Infinite, Timeout.Infinite);
+            try {
+                session.Timer.Change(interval, interval);
+                _sessions.Add(handle, session);
+            } catch {
+                session.Timer.Dispose();
+                throw;
+            }
+        }
     }
 
     /// <summary>
@@ -59,8 +73,11 @@ public sealed class WindowKeepAlive : IDisposable {
     /// </summary>
     /// <param name="handle">Window handle.</param>
     public void Stop(IntPtr handle) {
-        if (_timers.TryRemove(handle, out var timer)) {
-            timer.Dispose();
+        lock (_sync) {
+            if (_sessions.TryGetValue(handle, out Session? session)) {
+                _sessions.Remove(handle);
+                session.Timer?.Dispose();
+            }
         }
     }
 
@@ -68,9 +85,11 @@ public sealed class WindowKeepAlive : IDisposable {
     /// Stops all keep alive sessions.
     /// </summary>
     public void StopAll() {
-        var handles = _timers.Keys.ToList();
-        foreach (var handle in handles) {
-            Stop(handle);
+        lock (_sync) {
+            foreach (Session session in _sessions.Values) {
+                session.Timer?.Dispose();
+            }
+            _sessions.Clear();
         }
     }
 
@@ -78,32 +97,64 @@ public sealed class WindowKeepAlive : IDisposable {
     /// Checks if keep alive is active for the specified window handle.
     /// </summary>
     public bool IsActive(IntPtr handle) {
-        return _timers.ContainsKey(handle);
+        lock (_sync) {
+            return _sessions.ContainsKey(handle);
+        }
     }
 
     /// <summary>
     /// Gets handles currently under keep alive.
     /// </summary>
-    public IEnumerable<IntPtr> ActiveHandles => _timers.Keys;
-
-    private void KeepAliveCallback(object? state) {
-        if (state is not IntPtr handle) {
-            return;
+    public IEnumerable<IntPtr> ActiveHandles {
+        get {
+            lock (_sync) {
+                return _sessions.Keys.ToArray();
+            }
         }
-
-        if (MonitorNativeMethods.GetForegroundWindow() == handle) {
-            return;
-        }
-
-        MonitorNativeMethods.SendMessage(handle, WM_MOUSEMOVE, 0, 0);
     }
 
-    /// <inheritdoc/>
-    public void Dispose() {
-        foreach (var timer in _timers.Values) {
-            timer.Dispose();
+    private void KeepAliveCallback(object? state) {
+        if (state is not Session session || Interlocked.Exchange(ref session.Running, 1) != 0) {
+            return;
         }
-        _timers.Clear();
+
+        try {
+            lock (_sync) {
+                if (!_sessions.TryGetValue(session.Handle, out Session? current) || current != session) {
+                    return;
+                }
+                uint threadId = MonitorNativeMethods.GetWindowThreadProcessId(session.Handle, out uint processId);
+                if (threadId == 0 || session.ProcessId == 0 ||
+                        processId != session.ProcessId || threadId != session.ThreadId) {
+                    Stop(session.Handle);
+                    return;
+                }
+                if (MonitorNativeMethods.GetForegroundWindow() != session.Handle) {
+                    MonitorNativeMethods.SendMessageTimeout(session.Handle, WM_MOUSEMOVE, IntPtr.Zero, IntPtr.Zero,
+                        MonitorNativeMethods.SMTO_ABORTIFHUNG, 200, out _);
+                }
+            }
+        } finally {
+            Volatile.Write(ref session.Running, 0);
+        }
+    }
+
+    /// <summary>Stops all current sessions. The shared service can subsequently start new sessions.</summary>
+    public void Dispose() {
+        StopAll();
+    }
+
+    private sealed class Session {
+        internal Session(IntPtr handle, uint processId, uint threadId) {
+            Handle = handle;
+            ProcessId = processId;
+            ThreadId = threadId;
+        }
+        internal readonly IntPtr Handle;
+        internal readonly uint ProcessId;
+        internal readonly uint ThreadId;
+        internal Timer? Timer;
+        internal int Running;
     }
 
     private const uint WM_MOUSEMOVE = 0x0200;

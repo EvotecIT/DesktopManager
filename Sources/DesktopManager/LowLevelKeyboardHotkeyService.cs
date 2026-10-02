@@ -254,7 +254,13 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
         }
 
         foreach (Action<IntPtr> callback in callbacks) {
-            ThreadPool.QueueUserWorkItem(_ => callback(foregroundHandle));
+            ThreadPool.QueueUserWorkItem(_ => {
+                try {
+                    callback(foregroundHandle);
+                } catch (Exception ex) {
+                    DesktopManagerDiagnostics.Report($"Low-level hotkey callback failed: {ex.Message}");
+                }
+            });
         }
 
         return true;

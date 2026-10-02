@@ -13,7 +13,7 @@ namespace DesktopManager;
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class WindowInputService {
-    private const int NativeTextVerificationTimeoutMilliseconds = 1000;
+    private const int NativeInputTimeoutMilliseconds = 1000;
 
     internal enum WindowTextDeliveryMode {
         ForegroundInput,
@@ -60,27 +60,33 @@ public static class WindowInputService {
             previousForeground = MonitorNativeMethods.GetForegroundWindow();
         }
 
+        IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
         string? clipboardBackup = null;
         bool restoreClipboard = false;
         if (settings.PreserveClipboard) {
             restoreClipboard = ClipboardHelper.TryGetText(out clipboardBackup, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
         }
 
-        ClipboardHelper.SetText(text, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+        bool operationFailed = false;
+        try {
+            ClipboardHelper.SetText(text, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+            if (settings.ActivateWindow) {
+                TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
+            }
 
-        if (settings.ActivateWindow) {
-            TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
-        }
-
-        SendPaste(window.Handle, settings.InputRetryCount, settings.ActivationRetryDelayMilliseconds);
-        EnsureTextApplied(window, text);
-
-        if (settings.RestoreFocus && previousForeground != IntPtr.Zero && previousForeground != window.Handle) {
-            MonitorNativeMethods.SetForegroundWindow(previousForeground);
-        }
-
-        if (settings.PreserveClipboard && restoreClipboard) {
-            ClipboardHelper.SetText(clipboardBackup ?? string.Empty, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+            SendPaste(targetHandle, settings.InputRetryCount, settings.ActivationRetryDelayMilliseconds);
+        } catch {
+            operationFailed = true;
+            throw;
+        } finally {
+            RestoreFocus(window, settings, previousForeground);
+            if (restoreClipboard) {
+                try {
+                    ClipboardHelper.SetText(clipboardBackup ?? string.Empty, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+                } catch when (operationFailed) {
+                    // Cleanup must not hide the original delivery failure.
+                }
+            }
         }
     }
 
@@ -112,32 +118,33 @@ public static class WindowInputService {
 
         WindowInputOptions settings = options ?? new WindowInputOptions();
         NormalizeOptions(settings);
+        IntPtr focusedTextHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
 
         IntPtr previousForeground = IntPtr.Zero;
         if (settings.ActivateWindow || settings.RestoreFocus) {
             previousForeground = MonitorNativeMethods.GetForegroundWindow();
         }
 
-        if (settings.ActivateWindow) {
-            TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
-        }
-
-        bool targetOwnsForeground = MonitorNativeMethods.GetForegroundWindow() == window.Handle;
-        WindowTextDeliveryMode deliveryMode = ResolveTextDeliveryMode(settings, targetOwnsForeground);
-        if (settings.TypeTextAsScript) {
-            SendScriptText(window, text, settings, deliveryMode);
-        } else {
-            if (deliveryMode == WindowTextDeliveryMode.ForegroundInput) {
-                SendForegroundText(window, text, settings);
-            } else {
-                IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
-                SendMessageText(targetHandle, text, settings.KeyDelayMilliseconds);
-                EnsureTextApplied(window, text);
+        try {
+            if (settings.ActivateWindow) {
+                TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
             }
-        }
 
-        if (settings.RestoreFocus && previousForeground != IntPtr.Zero && previousForeground != window.Handle) {
-            MonitorNativeMethods.SetForegroundWindow(previousForeground);
+            bool targetOwnsForeground = MonitorNativeMethods.GetForegroundWindow() == window.Handle;
+            WindowTextDeliveryMode deliveryMode = ResolveTextDeliveryMode(settings, targetOwnsForeground);
+            IntPtr targetHandle = deliveryMode == WindowTextDeliveryMode.WindowMessage
+                ? ResolvePreferredTextHandle(window.Handle, focusedTextHandle) : IntPtr.Zero;
+            if (settings.TypeTextAsScript) {
+                SendScriptText(window, text, settings, deliveryMode, targetHandle);
+            } else {
+                if (deliveryMode == WindowTextDeliveryMode.ForegroundInput) {
+                    SendForegroundText(window, text, settings);
+                } else {
+                    SendMessageText(targetHandle, text, settings.KeyDelayMilliseconds);
+                }
+            }
+        } finally {
+            RestoreFocus(window, settings, previousForeground);
         }
     }
 
@@ -173,16 +180,22 @@ public static class WindowInputService {
             previousForeground = MonitorNativeMethods.GetForegroundWindow();
         }
 
-        if (settings.ActivateWindow) {
-            TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
+        try {
+            if (settings.ActivateWindow) {
+                TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
+            }
+
+            if (MonitorNativeMethods.GetForegroundWindow() != window.Handle) {
+                throw new InvalidOperationException("Window must own the foreground before sending window-level keys.");
+            }
+
+            KeyboardInputService.SendToForeground(keys is VirtualKey[] keyArray ? keyArray : keys.ToArray());
+        } finally {
+            RestoreFocus(window, settings, previousForeground);
         }
+    }
 
-        if (MonitorNativeMethods.GetForegroundWindow() != window.Handle) {
-            throw new InvalidOperationException("Window must own the foreground before sending window-level keys.");
-        }
-
-        KeyboardInputService.SendToForeground(keys is VirtualKey[] keyArray ? keyArray : keys.ToArray());
-
+    private static void RestoreFocus(WindowInfo window, WindowInputOptions settings, IntPtr previousForeground) {
         if (settings.RestoreFocus && previousForeground != IntPtr.Zero && previousForeground != window.Handle) {
             MonitorNativeMethods.SetForegroundWindow(previousForeground);
         }
@@ -321,7 +334,7 @@ public static class WindowInputService {
         }
     }
 
-    private static void SendScriptText(WindowInfo window, string text, WindowInputOptions options, WindowTextDeliveryMode deliveryMode) {
+    private static void SendScriptText(WindowInfo window, string text, WindowInputOptions options, WindowTextDeliveryMode deliveryMode, IntPtr targetHandle) {
         IReadOnlyList<WindowScriptChunk> chunks = CreateScriptChunks(text, options.ScriptChunkLength);
         if (chunks.Count == 0) {
             return;
@@ -346,7 +359,6 @@ public static class WindowInputService {
             return;
         }
 
-        IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
         foreach (WindowScriptChunk chunk in chunks) {
             if (!string.IsNullOrEmpty(chunk.Text)) {
                 SendMessageText(targetHandle, chunk.Text, options.KeyDelayMilliseconds);
@@ -405,20 +417,23 @@ public static class WindowInputService {
     }
 
     private static void SendPaste(IntPtr handle, int retryCount, int retryDelayMilliseconds) {
-        for (int attempt = 0; attempt < retryCount; attempt++) {
-            MonitorNativeMethods.SendMessage(handle, MonitorNativeMethods.WM_PASTE, 0, 0);
-            if (attempt < retryCount - 1 && retryDelayMilliseconds > 0) {
-                Thread.Sleep(retryDelayMilliseconds);
-            }
-        }
+        // Paste is non-idempotent. A timeout cannot establish that no text was inserted.
+        SendInputMessage(handle, MonitorNativeMethods.WM_PASTE, 0);
     }
 
     private static void SendMessageText(IntPtr handle, string text, int delayMilliseconds) {
         foreach (char c in text) {
-            MonitorNativeMethods.SendMessage(handle, MonitorNativeMethods.WM_CHAR, (uint)c, 0);
+            SendInputMessage(handle, MonitorNativeMethods.WM_CHAR, c);
             if (delayMilliseconds > 0) {
                 Thread.Sleep(delayMilliseconds);
             }
+        }
+    }
+
+    private static void SendInputMessage(IntPtr handle, uint message, uint value) {
+        if (MonitorNativeMethods.SendMessageTimeout(handle, message, new IntPtr(value), IntPtr.Zero,
+                MonitorNativeMethods.SMTO_ABORTIFHUNG, NativeInputTimeoutMilliseconds, out _) == IntPtr.Zero) {
+            throw new NativeOperationOutcomeUnknownException($"Input message 0x{message:X}", NativeInputTimeoutMilliseconds);
         }
     }
 
@@ -446,7 +461,8 @@ public static class WindowInputService {
         uint sent = 0;
         for (int attempt = 0; attempt < options.InputRetryCount; attempt++) {
             sent = MonitorNativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<MonitorNativeMethods.INPUT>());
-            if (sent == inputs.Length) {
+            if (sent != 0) {
+                // A partial batch may already have inserted the character; never replay it.
                 break;
             }
             if (attempt < options.InputRetryCount - 1 && options.ActivationRetryDelayMilliseconds > 0) {
@@ -509,46 +525,24 @@ public static class WindowInputService {
         return "[" + "0x" + handle.ToInt64().ToString("X") + "]";
     }
 
-    private static void EnsureTextApplied(WindowInfo window, string text) {
-        WindowControlInfo? editable = FindPreferredEditableControl(window.Handle);
-        if (editable == null) {
-            return;
-        }
-
-        if (!WindowControlService.TryGetControlText(
-                editable,
-                DesktopTextObservationOptions.MaximumTextLength,
-                NativeTextVerificationTimeoutMilliseconds,
-                out string current,
-                out bool isTruncated)) {
-            throw new NativeTextMutationOutcomeUnknownException(
-                "WM_GETTEXT",
-                NativeTextVerificationTimeoutMilliseconds);
-        }
-        if (isTruncated) {
-            throw new InvalidOperationException("The editable control text was too large to verify before applying the fallback text.");
-        }
-
-        if (string.Equals(current, text, StringComparison.Ordinal)) {
-            return;
-        }
-
-        WindowControlService.SetText(editable, text);
-    }
-
-    private static WindowControlInfo? FindPreferredEditableControl(IntPtr windowHandle) {
+    private static WindowControlInfo? FindPreferredEditableControl(IntPtr windowHandle, IntPtr focusedHandle) {
         var enumerator = new ControlEnumerator();
-        List<WindowControlInfo> controls = enumerator.EnumerateControls(windowHandle);
+        List<WindowControlInfo> controls = enumerator.EnumerateControlMetadata(windowHandle);
 
-        return controls.Find(control => control.IsPassword == false && control.ClassName.Equals("RichEditD2DPT", StringComparison.OrdinalIgnoreCase))
-            ?? controls.Find(control => control.IsPassword == false && control.ClassName.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase))
-            ?? controls.Find(control => control.IsPassword == false && control.ClassName.IndexOf("RichEdit", StringComparison.OrdinalIgnoreCase) >= 0)
-            ?? controls.Find(control => control.IsPassword == false && control.ClassName.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0);
+        List<WindowControlInfo> editors = controls.FindAll(control => control.IsPassword == false &&
+            (control.ClassName.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase) ||
+                control.ClassName.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0));
+        IntPtr focused = focusedHandle != IntPtr.Zero ? focusedHandle : WindowActivationService.GetFocusedControlHandle(windowHandle);
+        WindowControlInfo? focusedEditor = editors.Find(control => control.Handle == focused);
+        if (focusedEditor != null) { return focusedEditor; }
+        if (editors.Count > 1) {
+            throw new InvalidOperationException("Several editable controls match and no focused editor is available. Target a control explicitly.");
+        }
+        return editors.Count == 1 ? editors[0] : null;
     }
 
-    private static IntPtr ResolvePreferredTextHandle(IntPtr windowHandle) {
-        WindowControlInfo? editable = FindPreferredEditableControl(windowHandle);
+    private static IntPtr ResolvePreferredTextHandle(IntPtr windowHandle, IntPtr focusedHandle = default) {
+        WindowControlInfo? editable = FindPreferredEditableControl(windowHandle, focusedHandle);
         return editable?.Handle ?? windowHandle;
     }
 }
-

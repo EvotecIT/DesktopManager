@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -19,10 +20,9 @@ internal sealed partial class UiAutomationControlService {
             return;
         }
 
-        if (!TryRunWithCurrentUiMessagePump(() => {
-            Thread.Sleep(milliseconds);
-            return true;
-        }, out _)) {
+        if (ShouldPumpCurrentThread()) {
+            PumpWait(Array.Empty<IntPtr>(), milliseconds);
+        } else {
             Thread.Sleep(milliseconds);
         }
     }
@@ -32,9 +32,52 @@ internal sealed partial class UiAutomationControlService {
             throw new ArgumentNullException(nameof(signal));
         }
 
-        return TryRunWithCurrentUiMessagePump(() => signal.WaitOne(milliseconds), out bool signaled)
-            ? signaled
-            : signal.WaitOne(milliseconds);
+        if (milliseconds < Timeout.Infinite) { throw new ArgumentOutOfRangeException(nameof(milliseconds)); }
+        if (!ShouldPumpCurrentThread()) { return signal.WaitOne(milliseconds); }
+        bool referenceAdded = false;
+        try {
+            signal.SafeWaitHandle.DangerousAddRef(ref referenceAdded);
+            return PumpWait(new[] { signal.SafeWaitHandle.DangerousGetHandle() }, milliseconds);
+        } finally {
+            if (referenceAdded) { signal.SafeWaitHandle.DangerousRelease(); }
+        }
+    }
+
+    private static bool ShouldPumpCurrentThread() {
+        return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) &&
+            (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA || SynchronizationContext.Current != null);
+    }
+
+    private static bool PumpWait(IntPtr[] handles, int milliseconds) {
+        Stopwatch elapsed = Stopwatch.StartNew();
+        bool repostQuit = false;
+        int quitCode = 0;
+        try {
+            while (true) {
+                uint remaining = milliseconds == Timeout.Infinite ? InfiniteWait :
+                    (uint)Math.Max(0, milliseconds - elapsed.ElapsedMilliseconds);
+                uint result = MsgWaitForMultipleObjectsEx((uint)handles.Length, handles, remaining,
+                    MessageQueueInput, MessageWaitInputAvailable);
+                if (handles.Length > 0 && result == WaitObject0) { return true; }
+                if (result == 0x102) { return false; }
+                if (result == WaitFailed) { throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()); }
+                for (int count = 0; count < 64 && PeekMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0, PeekMessageRemove); count++) {
+                    if (message.message == WindowMessageQuit) {
+                        repostQuit = true;
+                        quitCode = unchecked((int)message.wParam.ToInt64());
+                    } else {
+                        MonitorNativeMethods.TranslateMessage(ref message);
+                        MonitorNativeMethods.DispatchMessage(ref message);
+                    }
+                }
+                if (milliseconds != Timeout.Infinite && elapsed.ElapsedMilliseconds >= milliseconds) {
+                    return handles.Length > 0 && MsgWaitForMultipleObjectsEx((uint)handles.Length, handles, 0,
+                        MessageQueueInput, MessageWaitInputAvailable) == WaitObject0;
+                }
+            }
+        } finally {
+            if (repostQuit) { PostQuitMessage(quitCode); }
+        }
     }
 
     /// <summary>
@@ -44,14 +87,14 @@ internal sealed partial class UiAutomationControlService {
     /// </summary>
     private static bool TryRunWithCurrentUiMessagePump<T>(Func<T> operation, out T result) {
         result = default!;
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+        if (!ShouldPumpCurrentThread()) {
             return false;
         }
 
         T workerResult = default!;
         ExceptionDispatchInfo? workerException = null;
         using var completed = new EventWaitHandle(false, EventResetMode.ManualReset);
-        var worker = new Thread(() => {
+        ThreadPool.QueueUserWorkItem(_ => {
             try {
                 workerResult = operation();
             } catch (Exception ex) {
@@ -59,11 +102,7 @@ internal sealed partial class UiAutomationControlService {
             } finally {
                 completed.Set();
             }
-        }) {
-            IsBackground = true,
-            Name = "DesktopManager UI message-pump bridge"
-        };
-        worker.Start();
+        });
 
         bool repostQuit = false;
         int quitCode = 0;
@@ -96,7 +135,6 @@ internal sealed partial class UiAutomationControlService {
             }
         }
 
-        worker.Join();
         if (repostQuit) {
             PostQuitMessage(quitCode);
         }

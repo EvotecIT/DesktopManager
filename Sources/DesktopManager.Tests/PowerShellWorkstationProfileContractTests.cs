@@ -15,7 +15,7 @@ public class PowerShellWorkstationProfileContractTests {
             succeeded: false,
             rolledBack: true,
             error: "A required monitor is missing.",
-            warnings: new[] { "Audio state was not changed." });
+            warnings: new[] { "Audio state was not changed." }, restartRequired: true);
 
         Type? cmdletType = Type.GetType(
             "DesktopManager.PowerShell.CmdletRestoreDesktopWorkstationProfile, DesktopManager.PowerShell",
@@ -31,6 +31,7 @@ public class PowerShellWorkstationProfileContractTests {
         StringAssert.Contains(message, "A required monitor is missing.");
         StringAssert.Contains(message, "Previous desktop state was restored.");
         StringAssert.Contains(message, "Audio state was not changed.");
+        StringAssert.Contains(message, "system restart");
     }
 }
 #endif

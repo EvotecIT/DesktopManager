@@ -369,5 +369,6 @@ public class DesktopManagerWinUiHarnessTests {
         }
 
         TestHelper.RequireExternalDesktopApplicationTests();
+        TestHelper.RequireForegroundWindowUiTests();
     }
 }

@@ -83,8 +83,31 @@ public static partial class WindowControlService {
             throw new ArgumentException("Invalid control handle", nameof(control));
         }
 
-        // Try to use BM_CLICK first
-        SendMessageWithTimeout(control.Handle, MonitorNativeMethods.BM_CLICK, 0, 0);
+        if (button != MouseButton.Left && button != MouseButton.Right) {
+            throw new ArgumentOutOfRangeException(nameof(button));
+        }
+
+        var className = new StringBuilder(256);
+        MonitorNativeMethods.GetClassName(control.Handle, className, className.Capacity);
+        string liveClass = className.ToString();
+        if (button == MouseButton.Left && liveClass.StartsWith("WindowsForms10.BUTTON", StringComparison.OrdinalIgnoreCase)) {
+            if (!MonitorNativeMethods.IsWindowEnabled(control.Handle)) {
+                throw new InvalidOperationException("The target control is disabled.");
+            }
+            IntPtr parent = MonitorNativeMethods.GetParent(control.Handle);
+            // WinForms buttons may be owner-drawn and ignore BM_CLICK. Their parent reflects
+            // BN_CLICKED to the managed control without depending on the physical cursor.
+            int id = MonitorNativeMethods.GetDlgCtrlID(control.Handle);
+            if (MonitorNativeMethods.SendMessageTimeout(parent, 0x0111, new IntPtr(id & 0xFFFF), control.Handle,
+                    MonitorNativeMethods.SMTO_ABORTIFHUNG, MessageTimeoutMilliseconds, out _) == IntPtr.Zero) {
+                throw new NativeOperationOutcomeUnknownException("WinForms BN_CLICKED", MessageTimeoutMilliseconds);
+            }
+            return;
+        }
+        if (button == MouseButton.Left && liveClass.Equals("Button", StringComparison.OrdinalIgnoreCase)) {
+            SendMessageWithTimeout(control.Handle, MonitorNativeMethods.BM_CLICK, 0, 0);
+            return;
+        }
 
         RECT rect;
         if (MonitorNativeMethods.GetClientRect(control.Handle, out rect)) {
@@ -500,7 +523,9 @@ public static partial class WindowControlService {
     }
 
     private static void SendMessageWithTimeout(IntPtr handle, uint message, uint wParam, uint lParam) {
-        TrySendMessageWithTimeout(handle, message, wParam, lParam);
+        if (!TrySendMessageWithTimeout(handle, message, wParam, lParam)) {
+            throw new NativeOperationOutcomeUnknownException($"Control message 0x{message:X}", MessageTimeoutMilliseconds);
+        }
     }
 
     private static bool GetCheckStateForHandle(IntPtr handle) {

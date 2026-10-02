@@ -1080,7 +1080,7 @@ internal sealed class PumpingWinFormsHarness : IDisposable {
 
     private void Run(string title, Action<Form> configure) {
         try {
-            using var form = new Form {
+            using var form = new NonActivatingTestForm {
                 Text = title,
                 Width = 320,
                 Height = 240,
