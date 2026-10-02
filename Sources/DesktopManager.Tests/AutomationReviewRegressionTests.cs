@@ -10,14 +10,15 @@ public class AutomationReviewRegressionTests {
     [TestMethod]
     public void FullProviderQueue_RetainsSubscriptionCleanupUntilRecovery() {
         using var dispatcher = new UiAutomationStaDispatcher();
+        Assert.AreEqual(0, dispatcher.Invoke(_ => 0, 5000));
         using var started = new ManualResetEventSlim(false);
         using var release = new ManualResetEventSlim(false);
         using var cleaned = new ManualResetEventSlim(false);
         Task blocked = Task.Run(() => Assert.ThrowsExactly<UiAutomationOperationInFlightException>(() =>
-            dispatcher.Invoke(_ => { started.Set(); release.Wait(); return 1; }, 100)));
+            dispatcher.Invoke(_ => { started.Set(); release.Wait(); return 1; }, 1000)));
         try {
             Assert.IsTrue(started.Wait(2000));
-            Assert.IsTrue(blocked.Wait(2000));
+            Assert.IsTrue(blocked.Wait(5000));
             for (int index = 0; index < UiAutomationStaDispatcher.SubscriptionCapacity; index++) {
                 Assert.IsTrue(dispatcher.TryRetainSubscription());
             }
@@ -33,7 +34,7 @@ public class AutomationReviewRegressionTests {
             release.Set();
             Assert.IsTrue(cleaned.Wait(2000), "Saturation must not lose native subscription cleanup.");
             Assert.AreEqual(0, dispatcher.SubscriptionCount);
-        } finally { release.Set(); Assert.IsTrue(blocked.Wait(2000)); }
+        } finally { release.Set(); Assert.IsTrue(blocked.Wait(5000)); }
     }
 
     [TestMethod]

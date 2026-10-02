@@ -177,36 +177,40 @@ public class AutomationReliabilityTests {
     [TestMethod]
     public void UiAutomation_BlockedWorker_DisposalRejectsNewWorkAndCompletesAfterRelease() {
         using var dispatcher = new UiAutomationStaDispatcher();
+        // Worker initialization is a fixture prerequisite, not part of the in-flight deadline.
+        Assert.AreEqual(0, dispatcher.Invoke(_ => 0, 5000));
         using var started = new ManualResetEventSlim(false);
         using var release = new ManualResetEventSlim(false);
         Task first = Task.Run(() => Assert.ThrowsExactly<UiAutomationOperationInFlightException>(() =>
-            dispatcher.Invoke(_ => { started.Set(); release.Wait(); return 1; }, 100)));
+            dispatcher.Invoke(_ => { started.Set(); release.Wait(); return 1; }, 1000)));
         try {
             Assert.IsTrue(started.Wait(2000));
-            Assert.IsTrue(first.Wait(2000));
+            Assert.IsTrue(first.Wait(5000));
             dispatcher.Dispose();
             Assert.ThrowsExactly<ObjectDisposedException>(() => dispatcher.Invoke(_ => 2, 100));
         } finally {
             release.Set();
-            Assert.IsTrue(first.Wait(2000));
+            Assert.IsTrue(first.Wait(5000));
         }
     }
 
     [TestMethod]
     public void UiAutomation_BlockedProcess_DoesNotBlockAnotherProcess() {
         using var pool = new UiAutomationDispatcherPool();
+        Assert.AreEqual(0, pool.Invoke(100, _ => 0, 5000));
+        Assert.AreEqual(0, pool.Invoke(200, _ => 0, 5000));
         using var started = new ManualResetEventSlim(false);
         using var release = new ManualResetEventSlim(false);
         Task first = Task.Run(() => Assert.ThrowsExactly<UiAutomationOperationInFlightException>(() =>
-            pool.Invoke(100, _ => { started.Set(); release.Wait(); return 1; }, 100)));
+            pool.Invoke(100, _ => { started.Set(); release.Wait(); return 1; }, 1000)));
         try {
             Assert.IsTrue(started.Wait(2000));
-            Assert.IsTrue(first.Wait(2000));
+            Assert.IsTrue(first.Wait(5000));
             Assert.AreEqual(2, pool.Invoke(200, _ => 2, 1000));
             Assert.IsTrue(pool.GetHealth().Single(item => item.ProcessId == 100).IsBlocked);
         } finally {
             release.Set();
-            Assert.IsTrue(first.Wait(2000));
+            Assert.IsTrue(first.Wait(5000));
         }
         Assert.AreEqual(3, pool.Invoke(100, _ => 3, 1000));
     }
