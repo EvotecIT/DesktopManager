@@ -39,7 +39,7 @@ public class AutomationReviewRegressionTests {
     [TestMethod]
     [TestCategory("UITest")]
     public void NativeTextInput_PreservesFocusedEditorAndClipboardWhenRejected() {
-        TestHelper.RequireOwnedWindowMutationTests();
+        TestHelper.RequireForegroundWindowUiTests();
         Exception? failure = null;
         var thread = new Thread(() => {
             try {
@@ -99,7 +99,7 @@ public class AutomationReviewRegressionTests {
     [TestMethod]
     [TestCategory("UITest")]
     public void ApplyLayout_RestoresExactNegativeOneCoordinates() {
-        TestHelper.RequireOwnedWindowMutationTests();
+        TestHelper.RequireForegroundWindowUiTests();
         using var harness = WinFormsWindowHarness.Create("Negative layout " + Guid.NewGuid().ToString("N"));
         var manager = new WindowManager();
         WindowPosition saved = manager.GetWindowPosition(harness.Window);
@@ -161,7 +161,7 @@ public class AutomationReviewRegressionTests {
         using var release = new ManualResetEventSlim(false);
         IntPtr handle = IntPtr.Zero;
         var owner = new Thread(() => {
-            using var form = new Form { Text = "Owned metadata deadline fixture", ShowInTaskbar = false };
+            using var form = new NonActivatingTestForm { Text = "Owned metadata deadline fixture", ShowInTaskbar = false };
             handle = form.Handle;
             form.Shown += (_, _) => ready.Set();
             Application.Run(form);
@@ -189,6 +189,32 @@ public class AutomationReviewRegressionTests {
         }
     }
 
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void OwnedWindowFixture_ShowMoveAndClosePreserveTheForegroundWindow() {
+        TestHelper.RequireOwnedWindowMutationTests();
+        Exception? failure = null;
+        var thread = new Thread(() => {
+            try {
+                IntPtr foreground = MonitorNativeMethods.GetForegroundWindow();
+                using (var form = new NonActivatingTestForm { Text = "Owned background fixture", ShowInTaskbar = false }) {
+                    form.Show();
+                    Application.DoEvents();
+                    Assert.AreEqual(foreground, MonitorNativeMethods.GetForegroundWindow(), "Showing an owned fixture must not take foreground focus.");
+                    new WindowManager().SetWindowPosition(new WindowInfo { Handle = form.Handle }, 50, 50, 300, 200);
+                    Assert.AreEqual(foreground, MonitorNativeMethods.GetForegroundWindow(), "Moving a background window must not activate it.");
+                    form.Close();
+                    Application.DoEvents();
+                }
+                Assert.AreEqual(foreground, MonitorNativeMethods.GetForegroundWindow(), "Closing a background fixture must not change foreground focus.");
+            } catch (Exception ex) { failure = ex; }
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.IsTrue(thread.Join(10000));
+        if (failure != null) { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw(); }
+    }
+
     private sealed class FocusErasingForm : Form {
         protected override void WndProc(ref Message message) {
             // Model a native host that keeps focus on the parent after activation.
@@ -197,7 +223,7 @@ public class AutomationReviewRegressionTests {
         }
     }
 
-    private sealed class SlowTitleForm : Form {
+    private sealed class SlowTitleForm : NonActivatingTestForm {
         private readonly ManualResetEventSlim _started;
         private readonly ManualResetEventSlim _release;
         internal volatile bool Armed;

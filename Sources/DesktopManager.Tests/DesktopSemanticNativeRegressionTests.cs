@@ -17,7 +17,7 @@ public class DesktopSemanticNativeRegressionTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "No Fingerprint Replacement Test", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "No Fingerprint Replacement Test", ShowInTaskbar = false };
         using var textBox = new TextBox { Text = "long current value" };
         form.Controls.Add(textBox);
         form.Show();
@@ -51,9 +51,9 @@ public class DesktopSemanticNativeRegressionTests {
             Assert.Inconclusive("Test requires Windows");
         }
 
-        TestHelper.RequireOwnedWindowUiTests();
-        using Form selectedWindow = new() { Text = "Selected Focus Owner", ShowInTaskbar = false };
-        using Form siblingWindow = new() { Text = "Sibling Focus Owner", ShowInTaskbar = false };
+        TestHelper.RequireForegroundWindowUiTests();
+        using Form selectedWindow = new NonActivatingTestForm() { Text = "Selected Focus Owner", ShowInTaskbar = false };
+        using Form siblingWindow = new NonActivatingTestForm() { Text = "Sibling Focus Owner", ShowInTaskbar = false };
         using TextBox selectedTextBox = new();
         using TextBox siblingTextBox = new();
         selectedWindow.Controls.Add(selectedTextBox);
@@ -81,7 +81,7 @@ public class DesktopSemanticNativeRegressionTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Nested Combo Notification Test", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Nested Combo Notification Test", ShowInTaskbar = false };
         using var panel = new SelectionNotificationPanel();
         using var comboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
         comboBox.Items.AddRange(["Alpha", "Beta"]);

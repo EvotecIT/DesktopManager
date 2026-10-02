@@ -150,7 +150,7 @@ public partial class WindowManager
         }
 
         /// <summary>
-        /// Sets the position of a window.
+        /// Sets the position of a window without activating it.
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
         /// <param name="left">The left position.</param>
@@ -160,7 +160,7 @@ public partial class WindowManager
         }
 
         /// <summary>
-        /// Sets the position and size of a window.
+        /// Sets the position and size of a window without activating it.
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
         /// <param name="left">The left position.</param>
@@ -172,7 +172,7 @@ public partial class WindowManager
 
             ValidateWindowInfo(windowInfo);
 
-            int flags = MonitorNativeMethods.SWP_NOZORDER;
+            int flags = MonitorNativeMethods.SWP_NOZORDER | MonitorNativeMethods.SWP_NOACTIVATE;
 
             // If position is -1, don't move
             if (left == -1 && top == -1) {

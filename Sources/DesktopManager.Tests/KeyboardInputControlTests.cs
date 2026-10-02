@@ -19,10 +19,10 @@ public class KeyboardInputControlTests {
             Assert.Inconclusive("Test requires Windows");
         }
 
-        TestHelper.RequireOwnedWindowUiTests();
-        using Form targetForm = new() { Text = "Target Form", ShowInTaskbar = false };
+        TestHelper.RequireForegroundWindowUiTests();
+        using Form targetForm = new NonActivatingTestForm() { Text = "Target Form", ShowInTaskbar = false };
         using TextBox textBox = new();
-        using Form foregroundForm = new() { Text = "Foreground Form", ShowInTaskbar = false };
+        using Form foregroundForm = new NonActivatingTestForm() { Text = "Foreground Form", ShowInTaskbar = false };
 
         targetForm.Controls.Add(textBox);
         targetForm.Show();

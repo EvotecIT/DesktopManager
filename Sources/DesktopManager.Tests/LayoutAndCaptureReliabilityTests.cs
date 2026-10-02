@@ -102,11 +102,11 @@ public class LayoutAndCaptureReliabilityTests {
     [TestCategory("UITest")]
     public void StrictCapture_LeavesDarkWindowPixelsIntactWhenAnotherOwnedWindowCoversIt() {
         TestHelper.RequireOwnedWindowUiTests();
-        using Form target = new() {
+        using Form target = new NonActivatingTestForm() {
             FormBorderStyle = FormBorderStyle.None, BackColor = Color.Black,
             StartPosition = FormStartPosition.Manual, Bounds = new Rectangle(40, 40, 160, 100), ShowInTaskbar = false
         };
-        using Form cover = new() {
+        using Form cover = new NonActivatingTestForm() {
             FormBorderStyle = FormBorderStyle.None, BackColor = Color.Red,
             StartPosition = FormStartPosition.Manual, Bounds = new Rectangle(0, 0, 500, 400), ShowInTaskbar = false, TopMost = true
         };

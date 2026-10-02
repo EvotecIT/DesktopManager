@@ -18,7 +18,7 @@ internal sealed class WinFormsWindowHarness : IDisposable {
     public WindowInfo Window { get; }
 
     public static WinFormsWindowHarness Create(string title, int width = 320, int height = 240) {
-        Form form = new() {
+        Form form = new NonActivatingTestForm() {
             Text = title,
             Width = width,
             Height = height,
@@ -49,7 +49,7 @@ internal sealed class WinFormsWindowHarness : IDisposable {
             throw new ArgumentNullException(nameof(configure));
         }
 
-        Form form = new() {
+        Form form = new NonActivatingTestForm() {
             Text = title,
             Width = width,
             Height = height,

@@ -16,7 +16,7 @@ public class AutomationReliabilityTests {
     [TestCategory("UITest")]
     public void BackgroundTyping_PreservesPrefixAndSuffixAroundSelection() {
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { ShowInTaskbar = false };
         using TextBox edit = new() { Text = "prefix old suffix" };
         form.Controls.Add(edit);
         _ = form.Handle;
@@ -64,7 +64,7 @@ public class AutomationReliabilityTests {
     [TestCategory("UITest")]
     public void EmptyTitle_WithProcessFilter_StillObeysExplicitTitleFilters() {
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = string.Empty, ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = string.Empty, ShowInTaskbar = false };
         var query = new WindowQueryOptions {
             Handle = form.Handle, ProcessId = Process.GetCurrentProcess().Id,
             IncludeHidden = true, IncludeEmptyTitles = true, TitlePattern = "required-title"
@@ -101,7 +101,7 @@ public class AutomationReliabilityTests {
     [TestCategory("UITest")]
     public void ChildWindowEnumeration_UsesOneMonitorSnapshotForAllChildren() {
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { ShowInTaskbar = false };
         _ = form.Handle;
         for (int index = 0; index < 12; index++) {
             var child = new Label { Text = "child " + index };
@@ -119,7 +119,7 @@ public class AutomationReliabilityTests {
     [TestCategory("UITest")]
     public void ChildWindowEnumeration_EmptyOwnedWindow_ReturnsAnEmptyCollection() {
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { ShowInTaskbar = false };
         Assert.AreEqual(0, new WindowManager().GetChildWindows(new WindowInfo { Handle = form.Handle }, includeHidden: true).Count);
     }
 

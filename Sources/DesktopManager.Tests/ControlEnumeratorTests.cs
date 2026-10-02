@@ -20,7 +20,7 @@ public class ControlEnumeratorTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Control Enumerator Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Control Enumerator Form", ShowInTaskbar = false };
         using TextBox textBox = new() { Text = "DesktopManager" };
         form.Controls.Add(textBox);
         form.Show();
@@ -43,7 +43,7 @@ public class ControlEnumeratorTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Bounded Control Enumerator Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Bounded Control Enumerator Form", ShowInTaskbar = false };
         using TextBox textBox = new() { Text = "DesktopManager" };
         form.Controls.Add(textBox);
         form.Show();
@@ -67,7 +67,7 @@ public class ControlEnumeratorTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Bounded Combo Control Enumerator Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Bounded Combo Control Enumerator Form", ShowInTaskbar = false };
         using ComboBox comboBox = new() { Width = 220, DropDownStyle = ComboBoxStyle.DropDownList };
         comboBox.Items.Add("selected-value-beyond-bound");
         comboBox.SelectedIndex = 0;
@@ -135,7 +135,7 @@ public class ControlEnumeratorTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Control Enumerator Password Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Control Enumerator Password Form", ShowInTaskbar = false };
         using TextBox passwordBox = new() { Text = "password-sentinel", UseSystemPasswordChar = true };
         form.Controls.Add(passwordBox);
         form.Show();
@@ -160,7 +160,7 @@ public class ControlEnumeratorTests {
         }
 
         TestHelper.RequireOwnedWindowUiTests();
-        using Form form = new() { Text = "Live Password Revalidation Form", ShowInTaskbar = false };
+        using Form form = new NonActivatingTestForm() { Text = "Live Password Revalidation Form", ShowInTaskbar = false };
         using TextBox passwordBox = new() { Text = "password-sentinel", UseSystemPasswordChar = true };
         form.Controls.Add(passwordBox);
         form.Show();

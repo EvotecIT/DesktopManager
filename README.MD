@@ -396,6 +396,8 @@ UI-impacting tests are opt-in to avoid opening windows or changing the desktop d
 - `RUN_EXPERIMENTAL_UI_TESTS=true` (or `DESKTOPMANAGER_RUN_EXPERIMENTAL_UI_TESTS=true`) enables experimental live UI harnesses that are useful for manual validation but are not part of the stable regression pack.
 - `SKIP_UI_TESTS=true` (or `DESKTOPMANAGER_SKIP_UI_TESTS=true`) forces UI tests to skip, even if enabled elsewhere.
 
+Owned WinForms fixtures show without activation. Tests that explicitly activate a window or depend on foreground focus also require the foreground gate. Keep `RUN_FOREGROUND_UI_TESTS` and `DESKTOPMANAGER_RUN_FOREGROUND_UI_TESTS` disabled while using the desktop; enable that slice only during a dedicated interactive run.
+
 The gates compose intentionally:
 
 | Gate | What it permits | Typical impact |

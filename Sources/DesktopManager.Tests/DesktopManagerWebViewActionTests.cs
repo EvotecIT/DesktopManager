@@ -191,5 +191,6 @@ public class DesktopManagerWebViewActionTests {
         }
 
         TestHelper.RequireExternalDesktopApplicationTests();
+        TestHelper.RequireForegroundWindowUiTests();
     }
 }
