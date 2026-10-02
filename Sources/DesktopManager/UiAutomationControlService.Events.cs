@@ -198,11 +198,14 @@ internal sealed partial class UiAutomationControlService {
     private sealed class UiAutomationChangeSubscription : IUiAutomationBoundedDisposable {
         private readonly IReadOnlyList<Action> _cleanup;
         private readonly IDisposable _signalGuard;
+        private readonly UiAutomationStaDispatcher _dispatcher;
         private int _disposed;
 
         public UiAutomationChangeSubscription(IReadOnlyList<Action> cleanup, IDisposable signalGuard) {
             _cleanup = cleanup;
             _signalGuard = signalGuard;
+            _dispatcher = UiAutomationStaDispatcher.Current ?? throw new InvalidOperationException("Event subscriptions require a provider worker.");
+            _dispatcher.RetainSubscription();
         }
 
         public void Dispose() {
@@ -215,14 +218,14 @@ internal sealed partial class UiAutomationControlService {
             }
 
             _signalGuard.Dispose();
-            if (StaDispatcher.Value.IsCurrentThread) {
+            if (_dispatcher.IsCurrentThread) {
                 RunCleanup();
                 return;
             }
 
             try {
                 var completion = new TaskCompletionSource<bool>();
-                StaDispatcher.Value.Post(_ => {
+                _dispatcher.Post(_ => {
                     try {
                         RunCleanup();
                     } finally {
@@ -238,12 +241,16 @@ internal sealed partial class UiAutomationControlService {
         }
 
         private void RunCleanup() {
-            foreach (Action cleanup in _cleanup) {
-                try {
-                    cleanup();
-                } catch {
-                    // Event providers may disappear before unsubscription.
+            try {
+                foreach (Action cleanup in _cleanup) {
+                    try {
+                        cleanup();
+                    } catch {
+                        // Event providers may disappear before unsubscription.
+                    }
                 }
+            } finally {
+                _dispatcher.ReleaseSubscription();
             }
         }
     }

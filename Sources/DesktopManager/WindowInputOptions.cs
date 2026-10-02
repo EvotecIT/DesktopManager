@@ -40,7 +40,8 @@ public sealed class WindowInputOptions {
     public int ActivationRetryDelayMilliseconds { get; set; } = 100;
 
     /// <summary>
-    /// Gets or sets the number of input retries.
+    /// Gets or sets the number of retries when SendInput confirms that no input was delivered.
+    /// Paste and native character messages are sent once; partial or timed-out mutations are not replayed.
     /// </summary>
     public int InputRetryCount { get; set; } = 2;
 

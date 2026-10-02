@@ -23,8 +23,8 @@ public class WindowControlServiceTests {
         using Form targetForm = new() { Text = "Target Form", ShowInTaskbar = false };
         using Button cancelButton = new() { Text = "Cancel" };
         using Form foregroundForm = new() { Text = "Foreground Form", ShowInTaskbar = false };
-        bool clicked = false;
-        cancelButton.Click += (_, _) => clicked = true;
+        int clicks = 0;
+        cancelButton.Click += (_, _) => clicks++;
 
         targetForm.Controls.Add(cancelButton);
         targetForm.Show();
@@ -46,6 +46,6 @@ public class WindowControlServiceTests {
         Application.DoEvents();
         Thread.Sleep(100);
 
-        Assert.IsTrue(clicked, "Button click handler was not invoked.");
+        Assert.AreEqual(1, clicks, "Button click handler must be invoked exactly once.");
     }
 }

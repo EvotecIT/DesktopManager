@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Threading;
 
 namespace DesktopManager;
 
@@ -12,26 +13,35 @@ namespace DesktopManager;
 [SupportedOSPlatform("windows")]
 public sealed class AudioEndpointWatcher : IMMNotificationClient, IDisposable {
     private readonly IMMDeviceEnumerator _enumerator;
-    private bool _disposed;
+    private int _disposed;
 
     /// <summary>Initializes and registers a Core Audio notification watcher.</summary>
     public AudioEndpointWatcher() {
         _enumerator = CoreAudioNative.CreateEnumerator();
-        Marshal.ThrowExceptionForHR(_enumerator.RegisterEndpointNotificationCallback(this));
+        try {
+            Marshal.ThrowExceptionForHR(_enumerator.RegisterEndpointNotificationCallback(this));
+        } catch {
+            CoreAudioNative.Release(_enumerator);
+            throw;
+        }
     }
 
-    /// <summary>Raised when Core Audio reports an endpoint change.</summary>
+    /// <summary>Raised on a managed worker when Core Audio reports an endpoint change.</summary>
     public event EventHandler<AudioEndpointChangedEventArgs>? Changed;
 
     /// <inheritdoc/>
     public void Dispose() {
-        if (_disposed) {
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0) {
             return;
         }
 
-        Marshal.ThrowExceptionForHR(_enumerator.UnregisterEndpointNotificationCallback(this));
+        try {
+            Marshal.ThrowExceptionForHR(_enumerator.UnregisterEndpointNotificationCallback(this));
+        } catch {
+            Volatile.Write(ref _disposed, 0);
+            throw;
+        }
         CoreAudioNative.Release(_enumerator);
-        _disposed = true;
     }
 
     int IMMNotificationClient.OnDeviceStateChanged(string deviceId, AudioEndpointState newState) {
@@ -64,10 +74,24 @@ public sealed class AudioEndpointWatcher : IMMNotificationClient, IDisposable {
     }
 
     private void Raise(AudioEndpointChangedEventArgs args) {
-        try {
-            Changed?.Invoke(this, args);
-        } catch (Exception ex) {
-            DesktopManagerDiagnostics.Report($"Audio endpoint notification handler failed: {ex.Message}");
+        // Subscribers may dispose the watcher. Never run them inside IMMNotificationClient.
+        ThreadPool.QueueUserWorkItem(_ => Deliver(args));
+    }
+
+    private void Deliver(AudioEndpointChangedEventArgs args) {
+        EventHandler<AudioEndpointChangedEventArgs>? handlers = Changed;
+        if (handlers == null) {
+            return;
+        }
+        foreach (EventHandler<AudioEndpointChangedEventArgs> handler in handlers.GetInvocationList()) {
+            if (Volatile.Read(ref _disposed) != 0) {
+                return;
+            }
+            try {
+                handler(this, args);
+            } catch (Exception ex) {
+                DesktopManagerDiagnostics.Report($"Audio endpoint notification handler failed: {ex.Message}");
+            }
         }
     }
 }

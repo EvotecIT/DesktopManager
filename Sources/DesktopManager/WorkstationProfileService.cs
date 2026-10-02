@@ -38,16 +38,20 @@ public sealed class WorkstationProfileService {
     /// <summary>Captures connected display, personalization, taskbar, and active audio state.</summary>
     /// <returns>A complete workstation profile snapshot.</returns>
     public WorkstationProfile CaptureProfile() {
-        List<Monitor> monitors = _monitors.GetMonitors()
+        return CaptureProfile(new WorkstationProfileApplyOptions());
+    }
+
+    private WorkstationProfile CaptureProfile(WorkstationProfileApplyOptions sections) {
+        List<Monitor> monitors = sections.ApplyDisplays || sections.ApplyTaskbars ? _monitors.GetMonitors()
             .Where(monitor => monitor.IsConnected)
-            .ToList();
+            .ToList() : new List<Monitor>();
         IReadOnlyDictionary<Monitor, string> monitorStableKeys = WorkstationMonitorKeyResolver.Resolve(monitors);
-        PersonalizationSnapshot personalization = _personalization.CaptureSnapshot();
+        PersonalizationSnapshot personalization = sections.ApplyPersonalization ? _personalization.CaptureSnapshot() : new PersonalizationSnapshot();
         personalization.Monitors.Clear();
         var profile = new WorkstationProfile {
             CapturedAt = DateTimeOffset.UtcNow,
             Personalization = personalization,
-            TaskbarAutoHide = _taskbars.GetTaskbarAutoHide()
+            TaskbarAutoHide = sections.ApplyTaskbars && _taskbars.GetTaskbarAutoHide()
         };
 
         foreach (Monitor monitor in monitors) {
@@ -58,9 +62,9 @@ public sealed class WorkstationProfileService {
                 IsPrimary = monitor.IsPrimary,
                 Left = monitor.PositionLeft,
                 Top = monitor.PositionTop,
-                DisplayMode = _monitors.GetMonitorDisplayMode(monitor.DeviceId),
-                Brightness = TryGetBrightness(monitor),
-                HdrEnabled = TryGetHdrState(monitor),
+                DisplayMode = _monitors.GetMonitorDisplayMode(monitor),
+                Brightness = sections.ApplyDisplays ? TryGetBrightness(monitor) : null,
+                HdrEnabled = sections.ApplyDisplays ? TryGetHdrState(monitor) : null,
                 WallpaperPath = monitor.Wallpaper
             });
         }
@@ -68,7 +72,7 @@ public sealed class WorkstationProfileService {
         IReadOnlyDictionary<int, string> monitorKeys = monitors.ToDictionary(
             monitor => monitor.Index,
             monitor => monitorStableKeys[monitor]);
-        foreach (TaskbarInfo taskbar in _taskbars.GetTaskbars()) {
+        foreach (TaskbarInfo taskbar in sections.ApplyTaskbars ? (IEnumerable<TaskbarInfo>)_taskbars.GetTaskbars() : Array.Empty<TaskbarInfo>()) {
             if (!monitorKeys.TryGetValue(taskbar.MonitorIndex, out string? stableKey)) {
                 continue;
             }
@@ -79,7 +83,7 @@ public sealed class WorkstationProfileService {
             });
         }
 
-        foreach (AudioEndpointInfo endpoint in _audio.GetEndpoints(states: AudioEndpointState.Active)) {
+        foreach (AudioEndpointInfo endpoint in sections.ApplyAudio ? _audio.GetEndpoints(states: AudioEndpointState.Active) : Array.Empty<AudioEndpointInfo>()) {
             profile.AudioEndpoints.Add(new WorkstationAudioEndpointProfile {
                 Id = endpoint.Id,
                 Name = endpoint.Name,
@@ -123,7 +127,7 @@ public sealed class WorkstationProfileService {
         WorkstationProfile? rollback = null;
         if (effectiveOptions.RollbackOnFailure) {
             try {
-                rollback = CaptureProfile();
+                rollback = CaptureProfile(effectiveOptions);
             } catch (Exception ex) {
                 return new WorkstationProfileApplyResult(
                     false,
@@ -135,15 +139,16 @@ public sealed class WorkstationProfileService {
 
         var warnings = new List<string>();
         try {
-            ApplyCore(profile, effectiveOptions, warnings);
-            return new WorkstationProfileApplyResult(true, false, null, warnings.ToArray());
+            bool restartRequired = ApplyCore(profile, effectiveOptions, warnings);
+            return new WorkstationProfileApplyResult(!restartRequired, false, null, warnings.ToArray(), restartRequired);
         } catch (Exception ex) {
             bool rolledBack = false;
             string error = ex.Message;
             if (rollback != null) {
                 try {
-                    ApplyCore(rollback, CreateRollbackOptions(effectiveOptions), warnings);
-                    rolledBack = true;
+                    bool rollbackNeedsRestart = ApplyCore(rollback, CreateRollbackOptions(effectiveOptions), warnings);
+                    rolledBack = !rollbackNeedsRestart;
+                    if (rollbackNeedsRestart) { error += " Rollback requires a system restart."; }
                 } catch (Exception rollbackException) {
                     error += $" Rollback also failed: {rollbackException.Message}";
                 }
@@ -153,14 +158,16 @@ public sealed class WorkstationProfileService {
         }
     }
 
-    private void ApplyCore(
+    private bool ApplyCore(
         WorkstationProfile profile,
         WorkstationProfileApplyOptions options,
         ICollection<string> warnings) {
-        List<Monitor> currentMonitors = _monitors.GetMonitors()
+        bool needsMonitors = options.ApplyDisplays || options.ApplyTaskbars;
+        List<Monitor> currentMonitors = needsMonitors ? _monitors.GetMonitors()
             .Where(monitor => monitor.IsConnected)
-            .ToList();
-        IReadOnlyDictionary<string, Monitor> matches = MatchMonitors(profile.Monitors, currentMonitors, warnings);
+            .ToList() : new List<Monitor>();
+        IReadOnlyDictionary<string, Monitor> matches = needsMonitors ? MatchMonitors(profile.Monitors, currentMonitors, warnings) :
+            new Dictionary<string, Monitor>();
         string[] missing = profile.Monitors
             .Where(saved => !matches.ContainsKey(saved.StableKey))
             .Select(saved => saved.StableKey)
@@ -169,8 +176,9 @@ public sealed class WorkstationProfileService {
             throw new InvalidOperationException("Required monitors are not connected: " + string.Join(", ", missing) + ".");
         }
 
+        bool restartRequired = false;
         if (options.ApplyDisplays) {
-            _monitors.ApplyDisplayProfile(profile.Monitors, matches);
+            restartRequired = _monitors.ApplyDisplayProfile(profile.Monitors, matches).RestartRequired;
         }
         if (options.ApplyPersonalization) {
             _personalization.Restore(profile.Personalization, options.ApplyMachinePolicies);
@@ -184,6 +192,7 @@ public sealed class WorkstationProfileService {
         if (options.ApplyAudio) {
             ApplyAudio(profile.AudioEndpoints, warnings);
         }
+        return restartRequired;
     }
 
     private void ApplyMonitorDetails(

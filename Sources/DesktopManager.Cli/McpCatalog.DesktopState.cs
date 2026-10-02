@@ -323,7 +323,7 @@ internal static partial class McpCatalog {
     }
 
     internal static WorkstationProfileApplyResult RequireSuccessfulWorkstationProfileApply(WorkstationProfileApplyResult result) {
-        if (result.Succeeded) {
+        if (result.Succeeded || result.RestartRequired) {
             return result;
         }
 

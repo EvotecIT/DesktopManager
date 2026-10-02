@@ -159,6 +159,10 @@ public sealed partial class DesktopStatePanel : UserControl {
             string warnings = result.Warnings.Count == 0
                 ? string.Empty
                 : $" Warnings: {string.Join(" ", result.Warnings)}";
+            if (result.RestartRequired) {
+                ShowStatus($"Workstation profile '{name}' requires a system restart to complete.{warnings}", InfoBarSeverity.Warning);
+                return;
+            }
             if (!result.Succeeded) {
                 string error = string.IsNullOrWhiteSpace(result.Error) ? "The operation failed without an error message." : result.Error;
                 string rollback = result.RolledBack ? " Previous desktop state was restored." : string.Empty;

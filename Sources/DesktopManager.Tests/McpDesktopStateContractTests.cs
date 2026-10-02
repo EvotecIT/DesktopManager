@@ -193,6 +193,14 @@ public class McpDesktopStateContractTests {
     }
 
     [TestMethod]
+    public void McpCatalog_ProfileApplyResultContract_PreservesRestartRequiredOutcome() {
+        var result = new WorkstationProfileApplyResult(false, false, null, Array.Empty<string>(), restartRequired: true);
+        Assert.AreSame(result, DesktopManager.Cli.McpCatalog.RequireSuccessfulWorkstationProfileApply(result));
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsTrue(result.RestartRequired);
+    }
+
+    [TestMethod]
     public void McpCatalog_RadioResultContract_RejectsUnappliedMutation() {
         var result = new DesktopRadioSetResult(
             new DesktopRadioInfo("Wi-Fi", DesktopRadioKind.WiFi, DesktopRadioState.On),

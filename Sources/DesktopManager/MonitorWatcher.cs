@@ -52,7 +52,7 @@ public sealed class MonitorWatcher : IDisposable {
 
     private Dictionary<string, MonitorState> _state = new();
     internal Func<Dictionary<string, MonitorState>> StateProvider { get; set; }
-    private bool _disposed;
+    private int _disposed;
     private PowerBroadcastWindow? _powerWindow;
     private DeviceChangeWindow? _deviceWindow;
 
@@ -80,9 +80,14 @@ public sealed class MonitorWatcher : IDisposable {
 
         StateProvider = GetCurrentStates;
         _state = StateProvider();
-        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
-        _powerWindow = new PowerBroadcastWindow(this);
-        _deviceWindow = new DeviceChangeWindow(this);
+        try {
+            _powerWindow = new PowerBroadcastWindow(this);
+            _deviceWindow = new DeviceChangeWindow(this);
+            SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        } catch {
+            _powerWindow?.Dispose();
+            throw;
+        }
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e) {
@@ -112,20 +117,20 @@ public sealed class MonitorWatcher : IDisposable {
 
         _state = current;
 
-        DisplaySettingsChanged?.Invoke(this, EventArgs.Empty);
+        Raise(DisplaySettingsChanged);
         if (orientationChanged) {
-            OrientationChanged?.Invoke(this, EventArgs.Empty);
+            Raise(OrientationChanged);
         }
         if (resolutionChanged) {
-            ResolutionChanged?.Invoke(this, EventArgs.Empty);
+            Raise(ResolutionChanged);
         }
     }
 
     internal void ProcessPowerBroadcast(int state) {
         if (state == 0) {
-            MonitorPoweredOff?.Invoke(this, EventArgs.Empty);
+            Raise(MonitorPoweredOff);
         } else {
-            MonitorPoweredOn?.Invoke(this, EventArgs.Empty);
+            Raise(MonitorPoweredOn);
         }
     }
 
@@ -138,10 +143,26 @@ public sealed class MonitorWatcher : IDisposable {
             var info = Marshal.PtrToStructure<MonitorNativeMethods.DEV_BROADCAST_DEVICEINTERFACE>(lParam);
             if (info.dbcc_classguid == MonitorNativeMethods.GUID_DEVINTERFACE_MONITOR) {
                 if (connected) {
-                    MonitorConnected?.Invoke(this, EventArgs.Empty);
+                    Raise(MonitorConnected);
                 } else {
-                    MonitorDisconnected?.Invoke(this, EventArgs.Empty);
+                    Raise(MonitorDisconnected);
                 }
+            }
+        }
+    }
+
+    private void Raise(EventHandler? handlers) {
+        if (handlers == null) {
+            return;
+        }
+        foreach (EventHandler handler in handlers.GetInvocationList()) {
+            if (Volatile.Read(ref _disposed) != 0) {
+                return;
+            }
+            try {
+                handler(this, EventArgs.Empty);
+            } catch (Exception ex) {
+                DesktopManagerDiagnostics.Report($"Monitor notification handler failed: {ex.Message}");
             }
         }
     }
@@ -186,7 +207,7 @@ public sealed class MonitorWatcher : IDisposable {
     }
 
     private void Dispose(bool disposing) {
-        if (_disposed) {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
             return;
         }
 
@@ -197,7 +218,6 @@ public sealed class MonitorWatcher : IDisposable {
             GC.SuppressFinalize(this);
         }
 
-        _disposed = true;
     }
 
     private sealed class PowerBroadcastWindow : IDisposable {
@@ -207,12 +227,16 @@ public sealed class MonitorWatcher : IDisposable {
         private Thread _thread;
         private MonitorNativeMethods.WndProc? _wndProc;
         private readonly ManualResetEventSlim _ready = new(false);
+        private Exception? _startupFailure;
 
         public PowerBroadcastWindow(MonitorWatcher parent) {
             _parent = parent;
             _thread = new Thread(MessageLoop) { IsBackground = true };
             _thread.Start();
             _ready.Wait();
+            if (_startupFailure != null) {
+                throw _startupFailure;
+            }
         }
 
         private void MessageLoop() {
@@ -230,6 +254,11 @@ public sealed class MonitorWatcher : IDisposable {
                 IntPtr.Zero,
                 IntPtr.Zero,
                 IntPtr.Zero);
+            if (_hwnd == IntPtr.Zero) {
+                _startupFailure = new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                _ready.Set();
+                return;
+            }
             MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
                 Marshal.GetFunctionPointerForDelegate(_wndProc));
             var guid = GUID_MONITOR_POWER_ON;
@@ -240,7 +269,7 @@ public sealed class MonitorWatcher : IDisposable {
             _ready.Set();
 
             MonitorNativeMethods.MSG msg;
-            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) != 0) {
+            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
                 MonitorNativeMethods.TranslateMessage(ref msg);
                 MonitorNativeMethods.DispatchMessage(ref msg);
             }
@@ -256,7 +285,7 @@ public sealed class MonitorWatcher : IDisposable {
         }
 
         private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam) {
-            if (msg == (uint)WindowMessage.WM_POWERBROADCAST && wParam.ToInt32() == MonitorNativeMethods.PBT_POWERSETTINGCHANGE) {
+            if (msg == (uint)WindowMessage.WM_POWERBROADCAST && wParam.ToInt32() == MonitorNativeMethods.PBT_POWERSETTINGCHANGE && lParam != IntPtr.Zero) {
                 var setting = Marshal.PtrToStructure<MonitorNativeMethods.POWERBROADCAST_SETTING>(lParam);
                 if (setting.PowerSetting == GUID_MONITOR_POWER_ON) {
                     _parent.ProcessPowerBroadcast(setting.Data);
@@ -268,7 +297,9 @@ public sealed class MonitorWatcher : IDisposable {
         public void Dispose() {
             if (_hwnd != IntPtr.Zero) {
                 MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
-                _thread.Join();
+                if (Thread.CurrentThread != _thread && !_thread.Join(TimeSpan.FromSeconds(5))) {
+                    DesktopManagerDiagnostics.Report("Monitor power notification shutdown is still pending.");
+                }
             }
             _ready.Dispose();
         }
@@ -281,12 +312,16 @@ public sealed class MonitorWatcher : IDisposable {
         private Thread _thread;
         private MonitorNativeMethods.WndProc? _wndProc;
         private readonly ManualResetEventSlim _ready = new(false);
+        private Exception? _startupFailure;
 
         public DeviceChangeWindow(MonitorWatcher parent) {
             _parent = parent;
             _thread = new Thread(MessageLoop) { IsBackground = true };
             _thread.Start();
             _ready.Wait();
+            if (_startupFailure != null) {
+                throw _startupFailure;
+            }
         }
 
         private void MessageLoop() {
@@ -304,6 +339,11 @@ public sealed class MonitorWatcher : IDisposable {
                 IntPtr.Zero,
                 IntPtr.Zero,
                 IntPtr.Zero);
+            if (_hwnd == IntPtr.Zero) {
+                _startupFailure = new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                _ready.Set();
+                return;
+            }
             MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
                 Marshal.GetFunctionPointerForDelegate(_wndProc));
             MonitorNativeMethods.DEV_BROADCAST_DEVICEINTERFACE filter = new() {
@@ -321,7 +361,7 @@ public sealed class MonitorWatcher : IDisposable {
             _ready.Set();
 
             MonitorNativeMethods.MSG msg;
-            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) != 0) {
+            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
                 MonitorNativeMethods.TranslateMessage(ref msg);
                 MonitorNativeMethods.DispatchMessage(ref msg);
             }
@@ -350,7 +390,9 @@ public sealed class MonitorWatcher : IDisposable {
         public void Dispose() {
             if (_hwnd != IntPtr.Zero) {
                 MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
-                _thread.Join();
+                if (Thread.CurrentThread != _thread && !_thread.Join(TimeSpan.FromSeconds(5))) {
+                    DesktopManagerDiagnostics.Report("Monitor device notification shutdown is still pending.");
+                }
             }
             _ready.Dispose();
         }

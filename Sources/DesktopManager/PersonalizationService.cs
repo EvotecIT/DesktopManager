@@ -567,11 +567,11 @@ public sealed class PersonalizationService {
 
     private static void BroadcastSettingChange() {
         try {
-            MonitorNativeMethods.SendMessage(
+            MonitorNativeMethods.SendMessageTimeout(
                 MonitorNativeMethods.HWND_BROADCAST,
                 MonitorNativeMethods.WM_SETTINGCHANGE,
                 IntPtr.Zero,
-                "ImmersiveColorSet");
+                "ImmersiveColorSet", MonitorNativeMethods.SMTO_ABORTIFHUNG, 200, out _);
         } catch (Exception ex) {
             DesktopManagerDiagnostics.Report($"BroadcastSettingChange failed: {ex.Message}");
         }

@@ -2280,12 +2280,11 @@ public sealed partial class DesktopAutomationService {
             throw new InvalidOperationException($"Named target '{targetName}' does not define a capture area. Save it with width/height or widthRatio/heightRatio.");
         }
 
-        return new DesktopCapture {
-            Kind = "window-target",
-            Bitmap = ScreenshotService.CaptureRegion(target.ScreenX, target.ScreenY, target.ScreenWidth.Value, target.ScreenHeight.Value),
-            Window = target.Geometry.Window,
-            Geometry = target.Geometry
-        };
+        DesktopCapture capture = CaptureRegion(target.ScreenX, target.ScreenY, target.ScreenWidth.Value, target.ScreenHeight.Value);
+        capture.Kind = "window-target";
+        capture.Window = target.Geometry.Window;
+        capture.Geometry = target.Geometry;
+        return capture;
     }
 
     /// <summary>
@@ -3463,142 +3462,6 @@ public sealed partial class DesktopAutomationService {
         };
     }
 
-    /// <summary>
-    /// Captures the entire desktop.
-    /// </summary>
-    public DesktopCapture CaptureDesktop() {
-        return new DesktopCapture {
-            Kind = "desktop",
-            Bitmap = ScreenshotService.CaptureScreen()
-        };
-    }
-
-    /// <summary>
-    /// Captures a monitor.
-    /// </summary>
-    public DesktopCapture CaptureMonitor(int? monitorIndex = null, string? deviceId = null, string? deviceName = null) {
-        Monitor monitor = GetMonitor(index: monitorIndex, deviceId: deviceId, deviceName: deviceName)
-            ?? throw new InvalidOperationException("No matching monitor was found.");
-
-        return new DesktopCapture {
-            Kind = "monitor",
-            Bitmap = ScreenshotService.CaptureMonitor(index: monitor.Index, deviceId: monitor.DeviceId, deviceName: monitor.DeviceName),
-            MonitorIndex = monitor.Index,
-            MonitorDeviceName = monitor.DeviceName
-        };
-    }
-
-    /// <summary>
-    /// Captures a desktop region.
-    /// </summary>
-    public DesktopCapture CaptureRegion(int left, int top, int width, int height) {
-        return new DesktopCapture {
-            Kind = "region",
-            Bitmap = ScreenshotService.CaptureRegion(left, top, width, height)
-        };
-    }
-
-    /// <summary>
-    /// Captures a single matching window.
-    /// </summary>
-    public DesktopCapture CaptureWindow(WindowQueryOptions options) {
-        WindowInfo window = ResolveSingleWindow(options);
-        return new DesktopCapture {
-            Kind = "window",
-            Bitmap = ScreenshotService.CaptureWindow(window.Handle),
-            Window = window,
-            Geometry = DescribeWindowGeometry(window)
-        };
-    }
-
-    /// <summary>
-    /// Captures a specific window handle.
-    /// </summary>
-    /// <param name="windowHandle">Window handle.</param>
-    /// <returns>The captured window image.</returns>
-    public DesktopCapture CaptureWindow(IntPtr windowHandle) {
-        WindowInfo window = ResolveWindowByHandle(windowHandle);
-        return new DesktopCapture {
-            Kind = "window",
-            Bitmap = ScreenshotService.CaptureWindow(window.Handle),
-            Window = window,
-            Geometry = DescribeWindowGeometry(window)
-        };
-    }
-
-    /// <summary>
-    /// Captures a resolved control.
-    /// </summary>
-    /// <param name="control">Control to capture.</param>
-    /// <returns>The captured control image.</returns>
-    public DesktopCapture CaptureControl(WindowControlInfo control) {
-        if (control == null) {
-            throw new ArgumentNullException(nameof(control));
-        }
-
-        EnsureControlSupportsNativeStateChange(control, "captured");
-        WindowInfo window = ResolveParentWindow(control);
-        return new DesktopCapture {
-            Kind = "control",
-            Bitmap = ScreenshotService.CaptureControl(control.Handle),
-            Window = window,
-            Control = control,
-            Geometry = DescribeWindowGeometry(window)
-        };
-    }
-
-    /// <summary>
-    /// Captures a control resolved by window and control handle.
-    /// </summary>
-    /// <param name="windowHandle">Parent window handle.</param>
-    /// <param name="controlHandle">Control handle.</param>
-    /// <param name="useUiAutomation">Whether to request UI Automation discovery.</param>
-    /// <param name="includeUiAutomation">Whether to combine Win32 and UI Automation discovery.</param>
-    /// <returns>The captured control image.</returns>
-    public DesktopCapture CaptureControl(IntPtr windowHandle, IntPtr controlHandle, bool useUiAutomation = true, bool includeUiAutomation = true) {
-        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
-        if (control == null) {
-            throw new InvalidOperationException("Failed to resolve the requested control.");
-        }
-
-        return CaptureControl(control);
-    }
-
-    /// <summary>
-    /// Captures the client area of a single matching window, falling back to the full window when client bounds cannot be cropped safely.
-    /// </summary>
-    /// <param name="options">Window selection options.</param>
-    /// <returns>The captured client-area image.</returns>
-    public DesktopCapture CaptureWindowClientArea(WindowQueryOptions options) {
-        WindowInfo window = ResolveSingleWindow(options);
-        DesktopWindowGeometry geometry = DescribeWindowGeometry(window);
-        using Bitmap windowBitmap = ScreenshotService.CaptureWindow(window.Handle);
-        Bitmap clientBitmap = CreateClientAreaBitmap(windowBitmap, geometry) ?? (Bitmap)windowBitmap.Clone();
-        return new DesktopCapture {
-            Kind = "window-client",
-            Bitmap = clientBitmap,
-            Window = window,
-            Geometry = geometry
-        };
-    }
-
-    /// <summary>
-    /// Captures the client area of a specific window handle, falling back to the full window when client bounds cannot be cropped safely.
-    /// </summary>
-    /// <param name="windowHandle">Window handle.</param>
-    /// <returns>The captured client-area image.</returns>
-    public DesktopCapture CaptureWindowClientArea(IntPtr windowHandle) {
-        WindowInfo window = ResolveWindowByHandle(windowHandle);
-        DesktopWindowGeometry geometry = DescribeWindowGeometry(window);
-        using Bitmap windowBitmap = ScreenshotService.CaptureWindow(window.Handle);
-        Bitmap clientBitmap = CreateClientAreaBitmap(windowBitmap, geometry) ?? (Bitmap)windowBitmap.Clone();
-        return new DesktopCapture {
-            Kind = "window-client",
-            Bitmap = clientBitmap,
-            Window = window,
-            Geometry = geometry
-        };
-    }
 
     /// <summary>
     /// Saves the current layout to the specified path.
@@ -3810,7 +3673,7 @@ public sealed partial class DesktopAutomationService {
         };
     }
 
-    private static Bitmap? CreateClientAreaBitmap(Bitmap windowBitmap, DesktopWindowGeometry geometry) {
+    private static Bitmap? CreateClientAreaBitmap(Bitmap windowBitmap, DesktopWindowGeometry geometry, Rectangle? screenBounds = null) {
         if (windowBitmap == null) {
             throw new ArgumentNullException(nameof(windowBitmap));
         }
@@ -3819,8 +3682,8 @@ public sealed partial class DesktopAutomationService {
             throw new ArgumentNullException(nameof(geometry));
         }
 
-        int cropLeft = geometry.ClientLeft - geometry.WindowLeft;
-        int cropTop = geometry.ClientTop - geometry.WindowTop;
+        int cropLeft = geometry.ClientLeft - (screenBounds?.Left ?? geometry.WindowLeft);
+        int cropTop = geometry.ClientTop - (screenBounds?.Top ?? geometry.WindowTop);
         Rectangle cropBounds = Rectangle.Intersect(
             new Rectangle(cropLeft, cropTop, geometry.ClientWidth, geometry.ClientHeight),
             new Rectangle(0, 0, windowBitmap.Width, windowBitmap.Height));
@@ -3829,13 +3692,14 @@ public sealed partial class DesktopAutomationService {
         }
 
         Bitmap croppedBitmap = new(cropBounds.Width, cropBounds.Height);
-        using Graphics graphics = Graphics.FromImage(croppedBitmap);
-        graphics.DrawImage(
-            windowBitmap,
-            new Rectangle(0, 0, cropBounds.Width, cropBounds.Height),
-            cropBounds,
-            GraphicsUnit.Pixel);
-        return croppedBitmap;
+        try {
+            using Graphics graphics = Graphics.FromImage(croppedBitmap);
+            graphics.DrawImage(windowBitmap, new Rectangle(0, 0, cropBounds.Width, cropBounds.Height), cropBounds, GraphicsUnit.Pixel);
+            return croppedBitmap;
+        } catch {
+            croppedBitmap.Dispose();
+            throw;
+        }
     }
 
     private IReadOnlyList<WindowInfo> RefreshWindows(IReadOnlyList<WindowInfo> windows) {

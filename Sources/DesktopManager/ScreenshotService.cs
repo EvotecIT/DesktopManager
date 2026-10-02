@@ -82,6 +82,10 @@ public static class ScreenshotService {
     /// <param name="height">Height of the region.</param>
     /// <returns>Bitmap with the screenshot.</returns>
     public static Bitmap CaptureRegion(int left, int top, int width, int height) {
+        return CaptureRegion(left, top, width, height, out _);
+    }
+
+    internal static Bitmap CaptureRegion(int left, int top, int width, int height, out Rectangle capturedBounds) {
         if (width <= 0 || height <= 0) {
             throw new ArgumentException("Width and height must be greater than zero");
         }
@@ -93,22 +97,19 @@ public static class ScreenshotService {
         bounds = GetVirtualScreenBounds();
 #endif
         // Check if the requested region is within the virtual screen bounds
-        int requestedRight = left + width;
-        int requestedBottom = top + height;
+        long requestedRight = (long)left + width;
+        long requestedBottom = (long)top + height;
         int boundsRight = bounds.Left + bounds.Width;
         int boundsBottom = bounds.Top + bounds.Height;
-        
         // First try to capture as-is if it's within bounds
-        bool isWithinBounds = left >= bounds.Left && top >= bounds.Top && 
+        bool isWithinBounds = left >= bounds.Left && top >= bounds.Top &&
                              requestedRight <= boundsRight && requestedBottom <= boundsBottom;
-        
         if (!isWithinBounds) {
             // For monitor capture, try to intersect with virtual screen bounds to handle coordinate system mismatches
             int adjustedLeft = Math.Max(left, bounds.Left);
             int adjustedTop = Math.Max(top, bounds.Top);
-            int adjustedRight = Math.Min(requestedRight, boundsRight);
-            int adjustedBottom = Math.Min(requestedBottom, boundsBottom);
-            
+            int adjustedRight = (int)Math.Min(requestedRight, boundsRight);
+            int adjustedBottom = (int)Math.Min(requestedBottom, boundsBottom);
             // If there's still a valid intersection, use it
             if (adjustedLeft < adjustedRight && adjustedTop < adjustedBottom) {
                 left = adjustedLeft;
@@ -116,15 +117,21 @@ public static class ScreenshotService {
                 width = adjustedRight - adjustedLeft;
                 height = adjustedBottom - adjustedTop;
             } else {
-                throw new ArgumentOutOfRangeException(nameof(left), 
+                throw new ArgumentOutOfRangeException(nameof(left),
                     $"Region ({left}, {top}, {width}x{height}) is outside the bounds of the virtual screen ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
             }
         }
 
+        capturedBounds = new Rectangle(left, top, width, height);
         Bitmap bitmap = new Bitmap(width, height);
-        using Graphics g = Graphics.FromImage(bitmap);
-        g.CopyFromScreen(left, top, 0, 0, new Size(width, height));
-        return bitmap;
+        try {
+            using Graphics g = Graphics.FromImage(bitmap);
+            g.CopyFromScreen(left, top, 0, 0, new Size(width, height));
+            return bitmap;
+        } catch {
+            bitmap.Dispose();
+            throw;
+        }
     }
 
     /// <summary>
@@ -133,6 +140,14 @@ public static class ScreenshotService {
     /// <param name="hwnd">Window handle.</param>
     /// <returns>Bitmap with the screenshot.</returns>
     public static Bitmap CaptureWindow(IntPtr hwnd) {
+        return CaptureWindowDetailed(hwnd, new WindowCaptureOptions { AllowDesktopFallback = true }).Bitmap;
+    }
+
+    /// <summary>Captures a window with provenance. By default, desktop fallback is disabled.</summary>
+    /// <param name="hwnd">Target window handle.</param>
+    /// <param name="options">Capture policy, including explicit desktop fallback.</param>
+    /// <returns>A disposable image with backend, bounds, and fallback information.</returns>
+    public static WindowCaptureResult CaptureWindowDetailed(IntPtr hwnd, WindowCaptureOptions? options = null) {
         if (hwnd == IntPtr.Zero) {
             throw new ArgumentException("Invalid window handle", nameof(hwnd));
         }
@@ -148,21 +163,36 @@ public static class ScreenshotService {
         }
 
         Bitmap? bitmap = TryPrintWindow(hwnd, width, height);
-        if (bitmap != null) {
-            if (LooksSuspiciouslyBlack(bitmap)) {
-                Bitmap fallbackBitmap = CaptureRegion(rect.Left, rect.Top, width, height);
-                if (!LooksSuspiciouslyBlack(fallbackBitmap)) {
-                    bitmap.Dispose();
-                    return fallbackBitmap;
-                }
-
-                fallbackBitmap.Dispose();
+        try {
+            bool dark = bitmap != null && LooksSuspiciouslyBlack(bitmap);
+            if (bitmap != null && (!dark || options?.AllowDesktopFallback != true)) {
+                return new WindowCaptureResult(bitmap, WindowCaptureBackend.PrintWindow,
+                    new Rectangle(rect.Left, rect.Top, width, height), null, dark);
             }
-
-            return bitmap;
+            if (options?.AllowDesktopFallback != true) {
+                throw new InvalidOperationException("PrintWindow did not supply an image and desktop fallback is disabled.");
+            }
+            Bitmap? fallback = CaptureRegion(rect.Left, rect.Top, width, height);
+            try {
+                bool fallbackDark = LooksSuspiciouslyBlack(fallback);
+                if (bitmap != null && fallbackDark) {
+                    return new WindowCaptureResult(bitmap, WindowCaptureBackend.PrintWindow,
+                        new Rectangle(rect.Left, rect.Top, width, height), null, dark);
+                }
+                Rectangle desktop = GetVirtualScreenBounds();
+                var result = new WindowCaptureResult(fallback, WindowCaptureBackend.Desktop,
+                    new Rectangle(Math.Max(rect.Left, desktop.Left), Math.Max(rect.Top, desktop.Top), fallback.Width, fallback.Height),
+                    bitmap == null ? "PrintWindowFailed" : "PrintWindowWasDark", fallbackDark);
+                bitmap?.Dispose();
+                fallback = null;
+                return result;
+            } finally {
+                fallback?.Dispose();
+            }
+        } catch {
+            bitmap?.Dispose();
+            throw;
         }
-
-        return CaptureRegion(rect.Left, rect.Top, width, height);
     }
 
     /// <summary>
@@ -192,28 +222,34 @@ public static class ScreenshotService {
 #endif
     }
 
-#if !NETFRAMEWORK
-    private static Rectangle GetVirtualScreenBounds() {
+    internal static Rectangle GetVirtualScreenBounds() {
+#if NETFRAMEWORK
+        return SystemInformation.VirtualScreen;
+#else
         int left = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_XVIRTUALSCREEN);
         int top = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_YVIRTUALSCREEN);
         int width = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CXVIRTUALSCREEN);
         int height = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CYVIRTUALSCREEN);
         return new Rectangle(left, top, width, height);
-    }
 #endif
+    }
 
     private static Bitmap? TryPrintWindow(IntPtr hwnd, int width, int height) {
         Bitmap bitmap = new Bitmap(width, height);
-        using Graphics graphics = Graphics.FromImage(bitmap);
-
-        IntPtr hdc = graphics.GetHdc();
         try {
-            if (MonitorNativeMethods.PrintWindow(hwnd, hdc, MonitorNativeMethods.PW_RENDERFULLCONTENT) ||
-                MonitorNativeMethods.PrintWindow(hwnd, hdc, 0)) {
-                return bitmap;
+            using Graphics graphics = Graphics.FromImage(bitmap);
+            IntPtr hdc = graphics.GetHdc();
+            try {
+                if (MonitorNativeMethods.PrintWindow(hwnd, hdc, MonitorNativeMethods.PW_RENDERFULLCONTENT) ||
+                    MonitorNativeMethods.PrintWindow(hwnd, hdc, 0)) {
+                    return bitmap;
+                }
+            } finally {
+                graphics.ReleaseHdc(hdc);
             }
-        } finally {
-            graphics.ReleaseHdc(hdc);
+        } catch {
+            bitmap.Dispose();
+            throw;
         }
 
         bitmap.Dispose();
@@ -344,7 +380,7 @@ public static class ScreenshotService {
             return true;
         }
 
-        BitmapPixelBuffer pixels = BitmapPixelBuffer.Create(bitmap);
+        using var pixels = new LockedBitmap(bitmap);
         int horizontalStep = Math.Max(1, pixels.Width / 64);
         int verticalStep = Math.Max(1, pixels.Height / 64);
         int sampleCount = 0;
@@ -417,8 +453,9 @@ public static class ScreenshotService {
             };
         }
 
-        BitmapPixelBuffer baselinePixels = BitmapPixelBuffer.Create(baseline);
-        BitmapPixelBuffer currentPixels = BitmapPixelBuffer.Create(current);
+        using var baselinePixels = new LockedBitmap(baseline);
+        using var currentLock = ReferenceEquals(baseline, current) ? null : new LockedBitmap(current);
+        LockedBitmap currentPixels = currentLock ?? baselinePixels;
         int sampleColumns = Math.Min(maxSampleColumns, baselinePixels.Width);
         int sampleRows = Math.Min(maxSampleRows, baselinePixels.Height);
         int sampleCount = 0;

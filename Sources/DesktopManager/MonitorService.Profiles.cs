@@ -21,6 +21,14 @@ public partial class MonitorService {
     public MonitorDisplayMode GetMonitorDisplayMode(string deviceId) {
         Monitor monitor = ResolveDisplayMonitor(deviceId);
         DEVMODE mode = ReadDisplayMode(monitor.DeviceName);
+        return ToDisplayMode(mode);
+    }
+
+    internal MonitorDisplayMode GetMonitorDisplayMode(Monitor monitor) {
+        return ToDisplayMode(ReadDisplayMode(monitor.DeviceName));
+    }
+
+    private static MonitorDisplayMode ToDisplayMode(DEVMODE mode) {
         return new MonitorDisplayMode {
             Width = mode.dmPelsWidth,
             Height = mode.dmPelsHeight,
@@ -33,6 +41,13 @@ public partial class MonitorService {
     /// <param name="deviceId">The monitor device ID.</param>
     /// <param name="mode">The explicit display mode to apply.</param>
     public void SetMonitorDisplayMode(string deviceId, MonitorDisplayMode mode) {
+        if (SetMonitorDisplayModeDetailed(deviceId, mode).RestartRequired) {
+            throw new DisplayRestartRequiredException();
+        }
+    }
+
+    /// <summary>Applies a display mode and reports whether Windows requires a restart.</summary>
+    public DisplayModeApplyResult SetMonitorDisplayModeDetailed(string deviceId, MonitorDisplayMode mode) {
         ValidateDisplayMode(mode);
         Monitor monitor = ResolveDisplayMonitor(deviceId);
         DEVMODE nativeMode = ReadDisplayMode(monitor.DeviceName);
@@ -43,10 +58,10 @@ public partial class MonitorService {
             IntPtr.Zero,
             ChangeDisplaySettingsFlags.CDS_UPDATEREGISTRY,
             IntPtr.Zero);
-        EnsureDisplayChangeSucceeded(result, monitor.DeviceName);
+        return InterpretDisplayChange(result, monitor.DeviceName);
     }
 
-    internal void ApplyDisplayProfile(
+    internal DisplayModeApplyResult ApplyDisplayProfile(
         IReadOnlyList<WorkstationMonitorProfile> profileMonitors,
         IReadOnlyDictionary<string, Monitor> matches) {
         if (profileMonitors == null) {
@@ -56,6 +71,7 @@ public partial class MonitorService {
             throw new ArgumentNullException(nameof(matches));
         }
 
+        bool restartRequired = false;
         foreach (WorkstationMonitorProfile profile in profileMonitors) {
             if (!matches.TryGetValue(profile.StableKey, out Monitor? monitor)) {
                 continue;
@@ -79,7 +95,7 @@ public partial class MonitorService {
                 IntPtr.Zero,
                 flags,
                 IntPtr.Zero);
-            EnsureDisplayChangeSucceeded(staged, monitor.DeviceName);
+            restartRequired |= InterpretDisplayChange(staged, monitor.DeviceName).RestartRequired;
         }
 
         DisplayChangeConfirmation applied = MonitorNativeMethods.ChangeDisplaySettingsEx(
@@ -88,7 +104,8 @@ public partial class MonitorService {
             IntPtr.Zero,
             ChangeDisplaySettingsFlags.CDS_NONE,
             IntPtr.Zero);
-        EnsureDisplayChangeSucceeded(applied, "the staged display profile");
+        restartRequired |= InterpretDisplayChange(applied, "the staged display profile").RestartRequired;
+        return new DisplayModeApplyResult(restartRequired);
     }
 
     private Monitor ResolveDisplayMonitor(string deviceId) {
@@ -143,9 +160,10 @@ public partial class MonitorService {
         }
     }
 
-    private static void EnsureDisplayChangeSucceeded(DisplayChangeConfirmation result, string target) {
+    internal static DisplayModeApplyResult InterpretDisplayChange(DisplayChangeConfirmation result, string target) {
         if (result != DisplayChangeConfirmation.Successful && result != DisplayChangeConfirmation.Restart) {
             throw new InvalidOperationException($"Unable to apply display settings for {target}. Error: {result}.");
         }
+        return new DisplayModeApplyResult(result == DisplayChangeConfirmation.Restart);
     }
 }

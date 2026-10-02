@@ -2613,6 +2613,11 @@ internal static partial class DesktopOperations {
         string path = DesktopStateStore.ResolveCapturePath(prefix, outputPath);
         capture.Save(path);
         return new ScreenshotResult {
+            CaptureBackend = capture.CaptureBackend?.ToString(),
+            CaptureFallbackReason = capture.CaptureFallbackReason,
+            IsDarkCapture = capture.IsDarkCapture,
+            CapturedLeft = capture.CapturedScreenBounds?.Left,
+            CapturedTop = capture.CapturedScreenBounds?.Top,
             Kind = capture.Kind,
             Path = path,
             Width = capture.Width,

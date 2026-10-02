@@ -51,7 +51,9 @@ public sealed class CmdletRestoreDesktopWorkstationProfile : PSCmdlet {
             ApplyTaskbars = !SkipTaskbar,
             RollbackOnFailure = !NoRollback
         });
-        if (!result.Succeeded) {
+        if (result.RestartRequired) {
+            WriteWarning("Windows accepted the display settings, but a system restart is required to complete the workstation profile.");
+        } else if (!result.Succeeded) {
             ThrowTerminatingError(CreateApplyFailureError(Name, result));
         }
 

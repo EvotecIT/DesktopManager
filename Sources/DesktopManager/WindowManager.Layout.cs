@@ -111,60 +111,10 @@ public partial class WindowManager
                 ValidateLayout(layout);
             }
 
-            var current = GetWindows();
-            foreach (var target in layout.Windows) {
-                // Try to find window with exact match first
-                var window = current.FirstOrDefault(w => w.ProcessId == target.ProcessId && w.Title == target.Title);
-                
-                // If not found, try fallback matching by title only (in case ProcessId changed)
-                if (window == null) {
-                    window = current.FirstOrDefault(w => w.Title == target.Title);
-                }
-                
-                // If still not found, try by process ID only (in case title changed slightly)
-                if (window == null) {
-                    window = current.FirstOrDefault(w => w.ProcessId == target.ProcessId);
-                }
-                
-                if (window != null) {
-                    // Debug info for layout restoration
-                    System.Diagnostics.Debug.WriteLine($"Restoring window: Handle={window.Handle:X8}, PID={window.ProcessId}, Title='{window.Title}'");
-                    System.Diagnostics.Debug.WriteLine($"Target position: Left={target.Left}, Top={target.Top}, Width={target.Width}, Height={target.Height}");
-                    
-                    // restore window to allow repositioning
-                    RestoreWindow(window);
-                    
-                    // Verify window can be repositioned before trying
-                    var beforePosition = GetWindowPosition(window);
-                    System.Diagnostics.Debug.WriteLine($"Before SetWindowPosition: Left={beforePosition.Left}, Top={beforePosition.Top}");
-                    
-                    SetWindowPosition(window, target.Left, target.Top, target.Width, target.Height);
-                    
-                    // Verify the position was actually set
-                    var afterPosition = GetWindowPosition(window);
-                    System.Diagnostics.Debug.WriteLine($"After SetWindowPosition: Left={afterPosition.Left}, Top={afterPosition.Top}");
-                    
-                    if (afterPosition.Left != target.Left || afterPosition.Top != target.Top) {
-                        System.Diagnostics.Debug.WriteLine($"WARNING: Position setting failed! Expected ({target.Left}, {target.Top}), got ({afterPosition.Left}, {afterPosition.Top})");
-                    }
-                    if (target.State.HasValue) {
-                        switch (target.State.Value) {
-                            case WindowState.Minimize:
-                                MinimizeWindow(window);
-                                break;
-                            case WindowState.Maximize:
-                                MaximizeWindow(window);
-                                break;
-                            case WindowState.Normal:
-                                // already restored above
-                                break;
-                            case WindowState.Close:
-                                CloseWindow(window);
-                                break;
-                        }
-                        window.State = target.State;
-                    }
-                }
+            IReadOnlyList<WindowLayoutApplyResult> results = ApplyLayout(layout);
+            WindowLayoutApplyResult? failed = results.FirstOrDefault(result => result.Error != null);
+            if (failed != null) {
+                throw new InvalidOperationException(failed.Error);
             }
         }
         private static void ValidateLayout(WindowLayout layout) {

@@ -111,11 +111,13 @@ public partial class MonitorService {
             throw new ArgumentNullException(nameof(path));
         }
 
-        MonitorNativeMethods.SystemParametersInfo(
+        if (!MonitorNativeMethods.SystemParametersInfo(
             MonitorNativeMethods.SPI_SETDESKWALLPAPER,
             0,
             path,
-            MonitorNativeMethods.SPIF_UPDATEINIFILE | MonitorNativeMethods.SPIF_SENDWININICHANGE);
+            MonitorNativeMethods.SPIF_UPDATEINIFILE | MonitorNativeMethods.SPIF_SENDWININICHANGE)) {
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        }
     }
 
     /// <summary>
