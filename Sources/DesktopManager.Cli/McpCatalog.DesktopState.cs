@@ -323,7 +323,7 @@ internal static partial class McpCatalog {
     }
 
     internal static WorkstationProfileApplyResult RequireSuccessfulWorkstationProfileApply(WorkstationProfileApplyResult result) {
-        if (result.Succeeded || result.RestartRequired) {
+        if (result.Succeeded || result.RestartRequired && string.IsNullOrWhiteSpace(result.Error)) {
             return result;
         }
 
@@ -333,6 +333,7 @@ internal static partial class McpCatalog {
         if (result.RolledBack) {
             details.Add("Previous desktop state was restored.");
         }
+        if (result.RestartRequired) { details.Add("Display changes also require a system restart."); }
         if (result.Warnings.Count > 0) {
             details.Add($"Warnings: {string.Join(" ", result.Warnings)}");
         }

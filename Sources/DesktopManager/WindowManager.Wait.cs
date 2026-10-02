@@ -69,7 +69,8 @@ public partial class WindowManager {
         Stopwatch elapsed = Stopwatch.StartNew();
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
-            List<WindowInfo> windows = GetWindows(options);
+            List<WindowInfo> windows = await Task.Run(() => GetWindowsCore(options, cancellationToken,
+                () => GetWindowObservationBudget(timeoutMilliseconds, elapsed, cancellationToken)), cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             if (windows.Count > 0) { return all ? windows : new[] { windows[0] }; }
             if (timeoutMilliseconds > 0 && elapsed.ElapsedMilliseconds >= timeoutMilliseconds) {
@@ -83,6 +84,14 @@ public partial class WindowManager {
     private static void ValidateWindowWait(int timeoutMilliseconds, int intervalMilliseconds) {
         if (timeoutMilliseconds < 0) { throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds)); }
         if (intervalMilliseconds <= 0) { throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds)); }
+    }
+
+    private static int GetWindowObservationBudget(int timeoutMilliseconds, Stopwatch elapsed, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (timeoutMilliseconds == 0) { return 1000; }
+        long remaining = timeoutMilliseconds - elapsed.ElapsedMilliseconds;
+        if (remaining <= 0) { throw new TimeoutException($"Timed out after {timeoutMilliseconds}ms waiting for a matching window."); }
+        return (int)Math.Min(1000, remaining);
     }
 
     private static int WindowWaitDelay(int timeoutMilliseconds, int intervalMilliseconds, long elapsedMilliseconds) {

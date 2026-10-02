@@ -68,12 +68,13 @@ public static class WindowInputService {
 
         bool operationFailed = false;
         try {
+            IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
             ClipboardHelper.SetText(text, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
             if (settings.ActivateWindow) {
                 TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
             }
 
-            SendPaste(ResolvePreferredTextHandle(window.Handle), settings.InputRetryCount, settings.ActivationRetryDelayMilliseconds);
+            SendPaste(targetHandle, settings.InputRetryCount, settings.ActivationRetryDelayMilliseconds);
         } catch {
             operationFailed = true;
             throw;
@@ -527,10 +528,16 @@ public static class WindowInputService {
         var enumerator = new ControlEnumerator();
         List<WindowControlInfo> controls = enumerator.EnumerateControlMetadata(windowHandle);
 
-        return controls.Find(control => control.IsPassword == false && control.ClassName.Equals("RichEditD2DPT", StringComparison.OrdinalIgnoreCase))
-            ?? controls.Find(control => control.IsPassword == false && control.ClassName.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase))
-            ?? controls.Find(control => control.IsPassword == false && control.ClassName.IndexOf("RichEdit", StringComparison.OrdinalIgnoreCase) >= 0)
-            ?? controls.Find(control => control.IsPassword == false && control.ClassName.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0);
+        List<WindowControlInfo> editors = controls.FindAll(control => control.IsPassword == false &&
+            (control.ClassName.Equals("NotepadTextBox", StringComparison.OrdinalIgnoreCase) ||
+                control.ClassName.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0));
+        IntPtr focused = WindowActivationService.GetFocusedControlHandle(windowHandle);
+        WindowControlInfo? focusedEditor = editors.Find(control => control.Handle == focused);
+        if (focusedEditor != null) { return focusedEditor; }
+        if (editors.Count > 1) {
+            throw new InvalidOperationException("Several editable controls match and no focused editor is available. Target a control explicitly.");
+        }
+        return editors.Count == 1 ? editors[0] : null;
     }
 
     private static IntPtr ResolvePreferredTextHandle(IntPtr windowHandle) {

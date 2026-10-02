@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.Threading;
 
 namespace DesktopManager;
 
@@ -66,6 +67,10 @@ public partial class WindowManager {
         /// <param name="options">Window query options.</param>
         /// <returns>A list of WindowInfo objects.</returns>
         public List<WindowInfo> GetWindows(WindowQueryOptions options) {
+            return GetWindowsCore(options, CancellationToken.None, null);
+        }
+
+        private List<WindowInfo> GetWindowsCore(WindowQueryOptions options, CancellationToken cancellationToken, Func<int>? observationBudget) {
             if (options == null) {
                 throw new ArgumentNullException(nameof(options));
             }
@@ -92,6 +97,8 @@ public partial class WindowManager {
             var windows = new List<WindowInfo>();
             List<Monitor>? connectedMonitors = null;
             for (int index = 0; index < handles.Count; index++) {
+                cancellationToken.ThrowIfCancellationRequested();
+                observationBudget?.Invoke();
                 var handle = handles[index];
                 if (options.ActiveWindow && handle != activeWindowHandle) {
                     continue;
@@ -146,7 +153,10 @@ public partial class WindowManager {
                     }
                 }
 
-                var title = WindowTextHelper.GetWindowText(handle);
+                var title = observationBudget == null ? WindowTextHelper.GetWindowText(handle) :
+                    WindowTextHelper.GetWindowTextForObservation(handle, observationBudget);
+                cancellationToken.ThrowIfCancellationRequested();
+                observationBudget?.Invoke();
 
                 // For process-specific queries, include windows even with empty titles
                 // For name-based queries, skip empty titles unless using wildcard "*"

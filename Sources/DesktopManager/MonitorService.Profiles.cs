@@ -61,9 +61,10 @@ public partial class MonitorService {
         return InterpretDisplayChange(result, monitor.DeviceName);
     }
 
-    internal DisplayModeApplyResult ApplyDisplayProfile(
+    internal void ApplyDisplayProfile(
         IReadOnlyList<WorkstationMonitorProfile> profileMonitors,
-        IReadOnlyDictionary<string, Monitor> matches) {
+        IReadOnlyDictionary<string, Monitor> matches,
+        ref bool restartRequired) {
         if (profileMonitors == null) {
             throw new ArgumentNullException(nameof(profileMonitors));
         }
@@ -71,7 +72,6 @@ public partial class MonitorService {
             throw new ArgumentNullException(nameof(matches));
         }
 
-        bool restartRequired = false;
         foreach (WorkstationMonitorProfile profile in profileMonitors) {
             if (!matches.TryGetValue(profile.StableKey, out Monitor? monitor)) {
                 continue;
@@ -105,7 +105,6 @@ public partial class MonitorService {
             ChangeDisplaySettingsFlags.CDS_NONE,
             IntPtr.Zero);
         restartRequired |= InterpretDisplayChange(applied, "the staged display profile").RestartRequired;
-        return new DisplayModeApplyResult(restartRequired);
     }
 
     private Monitor ResolveDisplayMonitor(string deviceId) {

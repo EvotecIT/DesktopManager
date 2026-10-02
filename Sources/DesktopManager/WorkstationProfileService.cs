@@ -138,30 +138,35 @@ public sealed class WorkstationProfileService {
         }
 
         var warnings = new List<string>();
+        bool restartRequired = false;
         try {
-            bool restartRequired = ApplyCore(profile, effectiveOptions, warnings);
+            ApplyCore(profile, effectiveOptions, warnings, ref restartRequired);
             return new WorkstationProfileApplyResult(!restartRequired, false, null, warnings.ToArray(), restartRequired);
         } catch (Exception ex) {
             bool rolledBack = false;
             string error = ex.Message;
             if (rollback != null) {
+                bool rollbackNeedsRestart = false;
                 try {
-                    bool rollbackNeedsRestart = ApplyCore(rollback, CreateRollbackOptions(effectiveOptions), warnings);
+                    ApplyCore(rollback, CreateRollbackOptions(effectiveOptions), warnings, ref rollbackNeedsRestart);
                     rolledBack = !rollbackNeedsRestart;
                     if (rollbackNeedsRestart) { error += " Rollback requires a system restart."; }
                 } catch (Exception rollbackException) {
                     error += $" Rollback also failed: {rollbackException.Message}";
+                } finally {
+                    restartRequired |= rollbackNeedsRestart;
                 }
             }
 
-            return new WorkstationProfileApplyResult(false, rolledBack, error, warnings.ToArray());
+            return new WorkstationProfileApplyResult(false, rolledBack, error, warnings.ToArray(), restartRequired);
         }
     }
 
-    private bool ApplyCore(
+    private void ApplyCore(
         WorkstationProfile profile,
         WorkstationProfileApplyOptions options,
-        ICollection<string> warnings) {
+        ICollection<string> warnings,
+        ref bool restartRequired) {
         bool needsMonitors = options.ApplyDisplays || options.ApplyTaskbars;
         List<Monitor> currentMonitors = needsMonitors ? _monitors.GetMonitors()
             .Where(monitor => monitor.IsConnected)
@@ -176,9 +181,8 @@ public sealed class WorkstationProfileService {
             throw new InvalidOperationException("Required monitors are not connected: " + string.Join(", ", missing) + ".");
         }
 
-        bool restartRequired = false;
         if (options.ApplyDisplays) {
-            restartRequired = _monitors.ApplyDisplayProfile(profile.Monitors, matches).RestartRequired;
+            _monitors.ApplyDisplayProfile(profile.Monitors, matches, ref restartRequired);
         }
         if (options.ApplyPersonalization) {
             _personalization.Restore(profile.Personalization, options.ApplyMachinePolicies);
@@ -192,7 +196,6 @@ public sealed class WorkstationProfileService {
         if (options.ApplyAudio) {
             ApplyAudio(profile.AudioEndpoints, warnings);
         }
-        return restartRequired;
     }
 
     private void ApplyMonitorDetails(

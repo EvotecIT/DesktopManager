@@ -42,15 +42,18 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
+        UiAutomationStaDispatcher dispatcher = UiAutomationStaDispatcher.Current!;
         object subtree = Enum.Parse(_treeScopeType!, "Subtree", ignoreCase: false);
         var cleanup = new List<Action>();
         IDisposable signalGuard = CreateGuardedEventSignal(signal, out Action guardedSignal);
         Action structureChangedSignal = CreateStructureChangedSignal(guardedSignal);
+        if (!dispatcher.TryRetainSubscription()) { signalGuard.Dispose(); return null; }
         TryAddTextChangedSubscription(automationType, rootElement, subtree, guardedSignal, cleanup);
         TryAddStructureChangedSubscription(automationType, rootElement, subtree, structureChangedSignal, cleanup);
         TryAddPropertyChangedSubscription(automationType, rootElement, subtree, guardedSignal, cleanup);
         if (cleanup.Count == 0) {
             signalGuard.Dispose();
+            dispatcher.ReleaseSubscription();
             return null;
         }
 
@@ -205,7 +208,6 @@ internal sealed partial class UiAutomationControlService {
             _cleanup = cleanup;
             _signalGuard = signalGuard;
             _dispatcher = UiAutomationStaDispatcher.Current ?? throw new InvalidOperationException("Event subscriptions require a provider worker.");
-            _dispatcher.RetainSubscription();
         }
 
         public void Dispose() {
@@ -225,7 +227,7 @@ internal sealed partial class UiAutomationControlService {
 
             try {
                 var completion = new TaskCompletionSource<bool>();
-                _dispatcher.Post(_ => {
+                _dispatcher.PostSubscriptionCleanup(_ => {
                     try {
                         RunCleanup();
                     } finally {

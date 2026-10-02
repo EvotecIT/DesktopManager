@@ -11,6 +11,18 @@ namespace DesktopManager;
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class WindowTextHelper {
+    internal static string GetWindowTextForObservation(IntPtr handle, Func<int> observationBudget) {
+        IntPtr sent = MonitorNativeMethods.SendMessageTimeout(handle, 0x000E, IntPtr.Zero, IntPtr.Zero,
+            MonitorNativeMethods.SMTO_ABORTIFHUNG, (uint)observationBudget(), out IntPtr length);
+        if (sent == IntPtr.Zero) { return string.Empty; }
+        int capacity = (int)Math.Min(Math.Max(length.ToInt64() + 1, 256), DesktopTextObservationOptions.MaximumTextLength);
+        var builder = new StringBuilder(capacity);
+        sent = MonitorNativeMethods.SendMessageTimeout(handle, MonitorNativeMethods.WM_GETTEXT,
+            new IntPtr(capacity), builder, MonitorNativeMethods.SMTO_ABORTIFHUNG,
+            (uint)observationBudget(), out _);
+        return sent == IntPtr.Zero ? string.Empty : builder.ToString();
+    }
+
     /// <summary>
     /// Gets the window title for the specified handle.
     /// </summary>

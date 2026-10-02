@@ -159,14 +159,15 @@ public sealed partial class DesktopStatePanel : UserControl {
             string warnings = result.Warnings.Count == 0
                 ? string.Empty
                 : $" Warnings: {string.Join(" ", result.Warnings)}";
-            if (result.RestartRequired) {
+            if (result.RestartRequired && string.IsNullOrWhiteSpace(result.Error)) {
                 ShowStatus($"Workstation profile '{name}' requires a system restart to complete.{warnings}", InfoBarSeverity.Warning);
                 return;
             }
             if (!result.Succeeded) {
                 string error = string.IsNullOrWhiteSpace(result.Error) ? "The operation failed without an error message." : result.Error;
                 string rollback = result.RolledBack ? " Previous desktop state was restored." : string.Empty;
-                ShowStatus($"Could not apply workstation profile '{name}': {error}{rollback}{warnings}", InfoBarSeverity.Error);
+                string restart = result.RestartRequired ? " Display changes also require a system restart." : string.Empty;
+                ShowStatus($"Could not apply workstation profile '{name}': {error}{rollback}{restart}{warnings}", InfoBarSeverity.Error);
                 return;
             }
 

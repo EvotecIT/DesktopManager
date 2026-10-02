@@ -701,7 +701,7 @@ DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0`, `ne
 
 ### Input, waits, and provider health
 
-`TypeText` and `PasteText` insert at an editable control's current selection. They do not replace its whole value to repair an unexpected result. Use `WindowControlService.SetText` when replacement is intended. Paste, native clicks, and character messages are delivered once. `InputRetryCount` applies only when `SendInput` confirms zero input was delivered. A `NativeOperationOutcomeUnknownException` means the target may already have changed; observe its state before deciding whether to retry. Requested focus and clipboard-text restoration also runs when delivery fails.
+`TypeText` and `PasteText` insert at an editable control's current selection. They do not replace its whole value to repair an unexpected result. Background text delivery prefers the target's focused editor and rejects multiple eligible editors when none is focused. Use `WindowControlService.SetText` when replacement is intended. Paste, native clicks, and character messages are delivered once. `InputRetryCount` applies only when `SendInput` confirms zero input was delivered. A `NativeOperationOutcomeUnknownException` means the target may already have changed; observe its state before deciding whether to retry. Requested focus and clipboard-text restoration also runs when delivery fails.
 
 Asynchronous waits support cancellation on every library target. A zero timeout waits indefinitely until a match appears or cancellation is requested:
 
@@ -710,7 +710,7 @@ using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 WindowInfo window = await manager.WaitWindowAsync("*Notepad*", cancellationToken: cancellation.Token);
 ```
 
-UI Automation uses a separate STA worker per target process, with at most 16 workers and 64 queued operations per worker. One blocked provider therefore leaves other processes available while capacity remains. In-flight native calls cannot be safely canceled or replayed and retain their worker until they return. `DesktopAutomationDiagnostics.GetUiAutomationHealth()` reports pending work and blocked calls without contacting the providers. Worker shutdown is bounded, and new work fails when the worker or queue limit is reached.
+UI Automation uses a separate STA worker per target process, with at most 16 workers and 64 queued operations per worker. Each worker permits up to 64 active event subscriptions with reserved cleanup capacity, so a full operation queue cannot lose cleanup. One blocked provider therefore leaves other processes available while capacity remains. In-flight native calls cannot be safely canceled or replayed and retain their worker until they return. `DesktopAutomationDiagnostics.GetUiAutomationHealth()` reports pending work and blocked calls without contacting the providers. Worker shutdown is bounded, and new work fails when the worker or queue limit is reached.
 
 ### Window capture provenance
 

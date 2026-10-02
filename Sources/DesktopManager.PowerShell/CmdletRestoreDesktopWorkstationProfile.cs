@@ -53,7 +53,8 @@ public sealed class CmdletRestoreDesktopWorkstationProfile : PSCmdlet {
         });
         if (result.RestartRequired) {
             WriteWarning("Windows accepted the display settings, but a system restart is required to complete the workstation profile.");
-        } else if (!result.Succeeded) {
+        }
+        if (!result.Succeeded && (!result.RestartRequired || !string.IsNullOrWhiteSpace(result.Error))) {
             ThrowTerminatingError(CreateApplyFailureError(Name, result));
         }
 
@@ -76,6 +77,7 @@ public sealed class CmdletRestoreDesktopWorkstationProfile : PSCmdlet {
         if (result.RolledBack) {
             details.Add("Previous desktop state was restored.");
         }
+        if (result.RestartRequired) { details.Add("Display changes also require a system restart."); }
         if (result.Warnings.Count > 0) {
             details.Add($"Warnings: {string.Join(" ", result.Warnings)}");
         }

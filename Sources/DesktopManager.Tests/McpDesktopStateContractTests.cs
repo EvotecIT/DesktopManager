@@ -182,7 +182,7 @@ public class McpDesktopStateContractTests {
             succeeded: false,
             rolledBack: true,
             error: "A required monitor is missing.",
-            warnings: new[] { "Audio state was not changed." });
+            warnings: new[] { "Audio state was not changed." }, restartRequired: true);
 
         DesktopManager.Cli.CommandLineException exception = Assert.ThrowsExactly<DesktopManager.Cli.CommandLineException>(
             () => DesktopManager.Cli.McpCatalog.RequireSuccessfulWorkstationProfileApply(result));
@@ -190,6 +190,7 @@ public class McpDesktopStateContractTests {
         StringAssert.Contains(exception.Message, "A required monitor is missing.");
         StringAssert.Contains(exception.Message, "Previous desktop state was restored.");
         StringAssert.Contains(exception.Message, "Audio state was not changed.");
+        StringAssert.Contains(exception.Message, "system restart");
     }
 
     [TestMethod]

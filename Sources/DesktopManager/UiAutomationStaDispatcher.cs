@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,9 +17,11 @@ internal sealed class UiAutomationOperationInFlightException : NativeOperationOu
 internal sealed class UiAutomationStaDispatcher : IDisposable {
     internal const int DefaultInvocationTimeoutMilliseconds = 15000;
     internal const int QueueCapacity = 64;
+    internal const int SubscriptionCapacity = 64;
     [ThreadStatic] internal static UiAutomationStaDispatcher? Current;
     private readonly object _sync = new();
     private readonly BlockingCollection<IWorkItem> _queue = new(QueueCapacity);
+    private readonly Queue<IWorkItem> _cleanup = new();
     private readonly Thread _thread;
     private IWorkItem? _active;
     private int _disposed;
@@ -32,10 +35,16 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
 
     internal bool IsCurrentThread => Current == this;
     internal bool IsBlocked => Volatile.Read(ref _active)?.IsAbandonedInFlight == true;
-    internal bool IsIdle => Volatile.Read(ref _active) == null && _queue.Count == 0;
-    internal int PendingCount => _queue.Count;
+    internal bool IsIdle => Volatile.Read(ref _active) == null && PendingCount == 0;
+    internal int PendingCount { get { lock (_sync) { return _queue.Count + _cleanup.Count; } } }
     internal int SubscriptionCount => Volatile.Read(ref _subscriptions);
-    internal void RetainSubscription() => Interlocked.Increment(ref _subscriptions);
+    internal bool TryRetainSubscription() {
+        while (true) {
+            int count = Volatile.Read(ref _subscriptions);
+            if (count >= SubscriptionCapacity) { return false; }
+            if (Interlocked.CompareExchange(ref _subscriptions, count + 1, count) == count) { return true; }
+        }
+    }
     internal void ReleaseSubscription() => Interlocked.Decrement(ref _subscriptions);
 
     internal T Invoke<T>(Func<UiAutomationControlService, T> operation) {
@@ -54,6 +63,17 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
     internal void Post(Action<UiAutomationControlService> operation) {
         if (operation == null) { throw new ArgumentNullException(nameof(operation)); }
         Add(new FireAndForgetWorkItem(operation));
+    }
+
+    // One cleanup per retained subscription. Reserving before registration bounds this queue
+    // independently of ordinary operations and guarantees cleanup admission under saturation.
+    internal void PostSubscriptionCleanup(Action<UiAutomationControlService> operation) {
+        lock (_sync) {
+            if (_disposed != 0) { throw new ObjectDisposedException(nameof(UiAutomationStaDispatcher)); }
+            _cleanup.Enqueue(new FireAndForgetWorkItem(operation));
+            // A full queue already wakes the worker. Otherwise enqueue a wake marker.
+            if (_queue.Count == 0) { _queue.TryAdd(new FireAndForgetWorkItem(_ => { })); }
+        }
     }
 
     private void Add(IWorkItem item) {
@@ -81,6 +101,7 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
         try {
             var service = new UiAutomationControlService();
             foreach (IWorkItem item in _queue.GetConsumingEnumerable()) {
+                DrainCleanup(service);
                 Volatile.Write(ref _active, item);
                 try {
                     if (Volatile.Read(ref _disposed) != 0) { item.Cancel(); }
@@ -88,11 +109,26 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
                 } finally {
                     Volatile.Write(ref _active, null);
                 }
+                DrainCleanup(service);
             }
+            DrainCleanup(service);
         } finally {
             Current = null;
             // Only the worker owns disposal; a timed-out shutdown may still be consuming.
             _queue.Dispose();
+        }
+    }
+
+    private void DrainCleanup(UiAutomationControlService service) {
+        while (true) {
+            IWorkItem item;
+            lock (_sync) {
+                if (_cleanup.Count == 0) { return; }
+                item = _cleanup.Dequeue();
+            }
+            Volatile.Write(ref _active, item);
+            try { item.Execute(service); }
+            finally { Volatile.Write(ref _active, null); }
         }
     }
 

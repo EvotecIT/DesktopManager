@@ -61,7 +61,7 @@ public partial class WindowManager {
                 }
                 WindowPosition saved = match.SavedWindow;
                 RestoreWindow(live);
-                SetWindowPosition(live, saved.Left, saved.Top, saved.Width, saved.Height);
+                SetWindowRectangle(live, saved.Left, saved.Top, saved.Width, saved.Height);
                 WindowPosition actual = GetWindowPosition(live);
                 if (actual.Left != saved.Left || actual.Top != saved.Top || actual.Width != saved.Width || actual.Height != saved.Height) {
                     throw new InvalidOperationException("The target did not accept the requested bounds.");
