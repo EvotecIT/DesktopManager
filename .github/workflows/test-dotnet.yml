@@ -71,9 +71,3 @@ jobs:
         with:
           name: coverage-reports-windows-net8
           path: '**/coverage.cobertura.xml'
-
-      - name: Upload coverage to Codecov
-        if: matrix.label == 'net8'
-        uses: codecov/codecov-action@v7
-        with:
-          files: '**/coverage.cobertura.xml'
