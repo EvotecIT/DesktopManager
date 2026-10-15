@@ -10,7 +10,7 @@ Install the complete portable Windows CLI archive and add its directory to the c
 
 Mutation flags belong in the MCP server's arguments. Use `--allow-mutations` with a narrow `--allow-process` pattern when the task needs interaction. Focused fallback input requires `--allow-foreground-input`; system settings additionally require `--allow-system-settings`. See the [MCP contract](DesktopManager.Mcp.md).
 
-The optional IntelligenceX helper scripts support development verification with a separate source checkout and an app-owned automation contract. They are not part of the general application's startup path. Keep screenshots and control evidence alongside any app-owned result; neither an input acknowledgment nor a pipe response alone establishes visible behavior.
+The public skills use only the declared DesktopManager MCP server. Optional source-checkout verification scripts live separately in `Build/Verification/Chat` and are excluded from the distributed plugin. The IntelligenceX helpers require a separate source checkout and an app-owned automation contract. Keep screenshots and control evidence alongside any app-owned result; neither an input acknowledgment nor a pipe response alone establishes visible behavior.
 
 ## Build and qualify
 

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <TargetFrameworks>$(DesktopManagerNet8WindowsTfm);$(DesktopManagerNet10WindowsTfm)</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
