@@ -40,7 +40,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -58,13 +58,13 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Check out the shared packer
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: EvotecIT/PSPublishModule
-          ref: 3c6f7eca78796f3e2c885a40416101d706bd4ebd
+          ref: 02767768a88ab638efde74c060d39a6100a577f3
           path: .powerforge-agent-plugin-build
           persist-credentials: false
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           global-json-file: .powerforge-agent-plugin-build/global.json
       - name: Build the shared CLI
@@ -84,13 +84,13 @@ jobs:
           $packer = '.powerforge-agent-plugin-build/PowerForge.Cli/bin/Release/net10.0/PowerForge.Cli.dll'
           dotnet $packer dotnet publish --config powerforge.dotnetpublish.json --target DesktopManager.Cli.net10 --rid win-x64 --framework net10.0-windows10.0.19041.0 --style PortableCompat
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: desktopmanager-agent-plugin
           path: ${{ runner.temp }}/desktopmanager-agent-plugin/*
           if-no-files-found: error
           retention-days: 7
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: desktopmanager-windows-cli
           path: |
@@ -108,11 +108,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: desktopmanager-agent-plugin
           path: agent-plugin
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: desktopmanager-windows-cli
           path: windows-cli
@@ -121,8 +121,33 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
+          set -euo pipefail
           mkdir release-assets
           cp agent-plugin/*.zip agent-plugin/*.sha256 release-assets/
-          find windows-cli -type f \( -name '*.zip' -o -name '*.mcpb' \) -exec cp -t release-assets -- {} +
-          (cd release-assets && sha256sum -- *.zip *.mcpb > SHA256SUMS.txt)
+          find windows-cli -type f \( -name '*.zip' -o -name '*.mcpb' \) -print0 | while IFS= read -r -d '' asset; do
+            target="release-assets/$(basename "$asset")"
+            if [[ -e "$target" ]]; then
+              echo "::error::Duplicate release filename: $(basename "$asset")"
+              exit 1
+            fi
+            cp "$asset" "$target"
+          done
+          (cd release-assets && for checksum in *.sha256; do sha256sum --check "$checksum"; done && sha256sum -- *.zip *.mcpb > SHA256SUMS.txt)
           gh release upload "$RELEASE_TAG" release-assets/* --repo "$GITHUB_REPOSITORY"
+
+  publish-distribution:
+    if: ${{ github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktopmanager-windows-verification-v') }}
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: desktopmanager-agent-plugin
+          path: agent-plugin
+      - uses: EvotecIT/PSPublishModule/.github/actions/agent-plugin-publish@02767768a88ab638efde74c060d39a6100a577f3
+        with:
+          archive: agent-plugin
+          github-token: ${{ secrets.GITHUB_TOKEN }}
