@@ -39,7 +39,8 @@ jobs:
           $galleryUrl = 'https://www.powershellgallery.com/api/v2'
           $gallery = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
           if (-not $gallery) {
-            Register-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
+            Register-PSRepository -Default
+            Set-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
           } else {
             Set-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
           }
@@ -104,7 +105,8 @@ jobs:
           $galleryUrl = 'https://www.powershellgallery.com/api/v2'
           $gallery = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
           if (-not $gallery) {
-            Register-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
+            Register-PSRepository -Default
+            Set-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
           } else {
             Set-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
           }
@@ -151,7 +153,8 @@ jobs:
           $galleryUrl = 'https://www.powershellgallery.com/api/v2'
           $gallery = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
           if (-not $gallery) {
-            Register-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
+            Register-PSRepository -Default
+            Set-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
           } else {
             Set-PSRepository -Name PSGallery -SourceLocation $galleryUrl -InstallationPolicy Trusted
           }
