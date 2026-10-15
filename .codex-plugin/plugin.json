@@ -1,0 +1,41 @@
+{
+  "name": "desktopmanager-windows-verification",
+  "version": "0.2.0",
+  "description": "Inspect Windows desktop apps and verify requested interactions with screenshots and control evidence.",
+  "author": {
+    "name": "Evotec Services sp. z o.o.",
+    "email": "contact@evotec.pl",
+    "url": "https://evotec.xyz"
+  },
+  "homepage": "https://github.com/EvotecIT/DesktopManager",
+  "repository": "https://github.com/EvotecIT/DesktopManager",
+  "license": "MIT",
+  "keywords": [
+    "desktopmanager",
+    "windows",
+    "desktop",
+    "automation",
+    "mcp",
+    "verification"
+  ],
+  "interface": {
+    "displayName": "DesktopManager Windows Verification",
+    "shortDescription": "Inspect Windows apps and verify desktop interactions.",
+    "longDescription": "Inspect Windows windows and controls, capture screenshots, and verify authorized actions through a local MCP server. Runs in an interactive Windows session and starts read-only.",
+    "developerName": "Evotec Services sp. z o.o.",
+    "category": "Coding",
+    "websiteURL": "https://github.com/EvotecIT/DesktopManager",
+    "defaultPrompt": [
+      "Inspect this Windows app and capture its current state.",
+      "Verify this desktop workflow with screenshots and control evidence."
+    ],
+    "capabilities": [
+      "mcp",
+      "skills",
+      "desktop-inspection",
+      "desktop-verification"
+    ]
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

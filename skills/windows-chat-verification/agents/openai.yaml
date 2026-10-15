@@ -1,0 +1,4 @@
+interface:
+  display_name: "Windows Chat Verification"
+  short_description: "Verify Windows chat apps with DesktopManager evidence."
+  default_prompt: "Use $windows-chat-verification to inspect this Windows chat app and verify the requested interaction."
