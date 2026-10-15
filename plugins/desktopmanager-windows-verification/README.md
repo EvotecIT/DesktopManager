@@ -54,7 +54,7 @@ Manual MCP setup supplies tools; load the plugin bundle to receive its skills to
 
 ## Interaction scope
 
-The server starts read-only. To enable an authorized workflow, add `--allow-mutations`, `--allow-process`, and the intended process pattern to the server's argument list. Focused fallback input additionally requires `--allow-foreground-input`. System settings require `--allow-system-settings`. Restart the server after configuration changes. Grant only the capability needed for the requested task.
+The server starts read-only. Screenshot capture and desktop interaction require `--allow-mutations`. To enable an authorized workflow, add that flag, `--allow-process`, and the intended process pattern to the server's argument list. Include the matching explicit `processName` on process-filtered mutating calls. Focused fallback input additionally requires the host's `--allow-foreground-input` flag and `allowForegroundInput: true` on each call using the fallback. System settings require `--allow-system-settings`. Restart the server after configuration changes. Grant only the capability needed for the requested task.
 
 The portable connection invokes the CLI directly. `DESKTOPMANAGER_MCP_*` variables belong to the optional source-checkout bootstrap script; this connection uses CLI arguments instead.
 
