@@ -6,6 +6,8 @@ Inspect Windows apps and verify requested interactions with screenshots and cont
 
 Use an interactive Windows session and install the complete portable DesktopManager CLI archive produced by the repository's PowerForge build. Add its directory to the PATH inherited by the client, then run `desktopmanager --help` and `desktopmanager mcp serve --json` from another directory. A library NuGet package does not install the CLI. The plugin does not compile code during startup or require a source checkout.
 
+Clients supporting native MCPB packages can install the separate Windows server bundle instead. It includes its executable and starts read-only without PATH setup. That server bundle and this plugin's two skills are separate components.
+
 Restart an already running desktop client after changing PATH. Windows elevation and desktop-session boundaries still apply. A cloud-only conversation cannot inspect your Windows desktop.
 
 ## Codex

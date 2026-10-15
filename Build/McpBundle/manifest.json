@@ -1,0 +1,26 @@
+{
+  "manifest_version": "0.3",
+  "name": "desktopmanager-windows-verification",
+  "display_name": "DesktopManager Windows Verification",
+  "version": "0.2.0",
+  "description": "Inspect Windows x64 desktop applications through a local, read-only-by-default MCP server.",
+  "author": { "name": "EvotecIT", "email": "support@evotec.pl" },
+  "repository": { "type": "git", "url": "https://github.com/EvotecIT/DesktopManager" },
+  "homepage": "https://github.com/EvotecIT/DesktopManager",
+  "documentation": "https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Mcp.md",
+  "support": "https://github.com/EvotecIT/DesktopManager/issues",
+  "icon": "icon.png",
+  "license": "MIT",
+  "compatibility": { "platforms": ["win32"] },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/desktopmanager.exe",
+    "mcp_config": {
+      "command": "${__dirname}/server/desktopmanager.exe",
+      "args": ["mcp", "serve"]
+    }
+  },
+  "tools_generated": true,
+  "prompts_generated": true,
+  "keywords": ["windows", "desktop", "automation", "verification", "mcp"]
+}

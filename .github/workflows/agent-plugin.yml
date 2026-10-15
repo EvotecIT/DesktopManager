@@ -11,6 +11,8 @@ on:
       - 'Sources/DesktopManager.Cli/**'
       - 'Sources/DesktopManager/**'
       - 'powerforge.dotnetpublish.json'
+      - 'Build/McpBundle/**'
+      - 'Directory.Build.props'
       - '.github/workflows/agent-plugin.yml'
   push:
     branches: [v2-speedygonzales]
@@ -22,7 +24,11 @@ on:
       - 'Sources/DesktopManager.Cli/**'
       - 'Sources/DesktopManager/**'
       - 'powerforge.dotnetpublish.json'
+      - 'Build/McpBundle/**'
+      - 'Directory.Build.props'
       - '.github/workflows/agent-plugin.yml'
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -30,12 +36,27 @@ permissions:
 
 jobs:
   package:
+    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'desktopmanager-windows-verification-v') }}
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
+      - name: Validate agent release identity
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $plugin = Get-Content plugins/desktopmanager-windows-verification/plugin.json -Raw | ConvertFrom-Json
+          $bundle = Get-Content Build/McpBundle/manifest.json -Raw | ConvertFrom-Json
+          if ($bundle.version -ne $plugin.version) { throw 'Plugin and MCPB versions must match.' }
+          if ($env:RELEASE_TAG) {
+            if ($env:RELEASE_TAG -ne "desktopmanager-windows-verification-v$($plugin.version)") { throw 'Release tag must match the plugin version.' }
+            git merge-base --is-ancestor HEAD origin/v2-speedygonzales
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Check out the shared packer
         uses: actions/checkout@v7
         with:
@@ -61,7 +82,7 @@ jobs:
         shell: pwsh
         run: |
           $packer = '.powerforge-agent-plugin-build/PowerForge.Cli/bin/Release/net10.0/PowerForge.Cli.dll'
-          dotnet $packer dotnet publish --config powerforge.dotnetpublish.json --target DesktopManager.Cli.net10 --rid win-x64 --framework net10.0-windows10.0.19041.0 --style PortableCompat --no-publish-sign
+          dotnet $packer dotnet publish --config powerforge.dotnetpublish.json --target DesktopManager.Cli.net10 --rid win-x64 --framework net10.0-windows10.0.19041.0 --style PortableCompat
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
@@ -76,5 +97,29 @@ jobs:
             Artefacts/PowerForge/DesktopManager/**/*.zip
             Artefacts/PowerForge/DesktopManager/SHA256SUMS.txt
             Artefacts/PowerForge/DesktopManager/manifest.json
+            Artefacts/PowerForge/Mcp/*.mcpb
           if-no-files-found: error
           retention-days: 7
+
+  attach-release:
+    if: ${{ github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktopmanager-windows-verification-v') }}
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktopmanager-agent-plugin
+          path: agent-plugin
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktopmanager-windows-cli
+          path: windows-cli
+      - name: Attach immutable agent release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$RELEASE_TAG" agent-plugin/*.zip agent-plugin/*.sha256 --repo "$GITHUB_REPOSITORY"
+          find windows-cli -type f \( -name '*.zip' -o -name '*.mcpb' -o -name 'SHA256SUMS.txt' \) -print0 | xargs -0 gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
