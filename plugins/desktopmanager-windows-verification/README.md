@@ -70,7 +70,7 @@ Read the [Privacy and local data handling policy](https://github.com/EvotecIT/De
 
 The server runs locally and returns window text and control data to the MCP client. Screenshot tools save captures locally and return their paths and metadata. The client may read those files and send their contents, or other tool results, to its model provider under its own settings and policies. An interactive desktop can contain private information; keep inspection and captures focused on the requested application and use synthetic apps for shared examples.
 
-Evotec does not operate a hosted backend for this plugin. Local screenshots and user-requested evidence files remain until the user or the calling client removes them; the server does not automatically expire those files. Model-provider retention depends on the client and provider the user selects. Remove captures when they are no longer needed, and contact contact@evotec.pl with questions about the plugin's data handling.
+Evotec does not operate a hosted backend for this plugin. Successfully saved local screenshots and capture artifacts remain until the user or calling client removes them; the MCP capture path does not automatically expire these files. Model-provider retention depends on the client and provider the user selects. Remove captures when they are no longer needed, and contact contact@evotec.pl with questions about the plugin's data handling.
 
 Desktop actions affect the current Windows session when enabled. An authorized interaction with a chat app can send its message to the app's configured provider or recipient. Do not publish real desktop captures or credentials with diagnostics.
 
