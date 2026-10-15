@@ -1,0 +1,80 @@
+name: Agent Plugin Package
+
+on:
+  pull_request:
+    branches: [v2-speedygonzales]
+    paths:
+      - 'plugins/**'
+      - '.agents/plugins/**'
+      - '.claude-plugin/**'
+      - 'LICENSE'
+      - 'Sources/DesktopManager.Cli/**'
+      - 'Sources/DesktopManager/**'
+      - 'powerforge.dotnetpublish.json'
+      - '.github/workflows/agent-plugin.yml'
+  push:
+    branches: [v2-speedygonzales]
+    paths:
+      - 'plugins/**'
+      - '.agents/plugins/**'
+      - '.claude-plugin/**'
+      - 'LICENSE'
+      - 'Sources/DesktopManager.Cli/**'
+      - 'Sources/DesktopManager/**'
+      - 'powerforge.dotnetpublish.json'
+      - '.github/workflows/agent-plugin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check out the shared packer
+        uses: actions/checkout@v7
+        with:
+          repository: EvotecIT/PSPublishModule
+          ref: 3c6f7eca78796f3e2c885a40416101d706bd4ebd
+          path: .powerforge-agent-plugin-build
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: .powerforge-agent-plugin-build/global.json
+      - name: Build the shared CLI
+        working-directory: .powerforge-agent-plugin-build
+        run: dotnet build PowerForge.Cli/PowerForge.Cli.csproj -c Release -f net10.0 --nologo
+      - name: Validate and package the plugin
+        shell: pwsh
+        run: |
+          $packer = '.powerforge-agent-plugin-build/PowerForge.Cli/bin/Release/net10.0/PowerForge.Cli.dll'
+          dotnet $packer agent-plugin validate --source plugins/desktopmanager-windows-verification
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet $packer agent-plugin pack --source plugins/desktopmanager-windows-verification --out "$env:RUNNER_TEMP/desktopmanager-agent-plugin"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build the portable Windows CLI
+        shell: pwsh
+        run: |
+          $packer = '.powerforge-agent-plugin-build/PowerForge.Cli/bin/Release/net10.0/PowerForge.Cli.dll'
+          dotnet $packer dotnet publish --config powerforge.dotnetpublish.json --target DesktopManager.Cli.net10 --rid win-x64 --framework net10.0-windows10.0.19041.0 --style PortableCompat --no-publish-sign
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktopmanager-agent-plugin
+          path: ${{ runner.temp }}/desktopmanager-agent-plugin/*
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktopmanager-windows-cli
+          path: |
+            Artefacts/PowerForge/DesktopManager/**/*.zip
+            Artefacts/PowerForge/DesktopManager/SHA256SUMS.txt
+            Artefacts/PowerForge/DesktopManager/manifest.json
+          if-no-files-found: error
+          retention-days: 7

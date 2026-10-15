@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DesktopManager\DesktopManager.csproj" />
+    <None Include="..\..\LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

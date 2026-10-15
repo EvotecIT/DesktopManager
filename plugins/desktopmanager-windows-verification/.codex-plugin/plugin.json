@@ -1,7 +1,7 @@
 {
   "name": "desktopmanager-windows-verification",
-  "version": "0.1.0",
-  "description": "Use DesktopManager to inspect Windows apps, interact with them safely, and verify the outcome with screenshots and control evidence.",
+  "version": "0.2.0",
+  "description": "Inspect Windows desktop apps and verify requested interactions with screenshots and control evidence.",
   "author": {
     "name": "EvotecIT",
     "email": "support@evotec.pl",
@@ -9,38 +9,33 @@
   },
   "homepage": "https://github.com/EvotecIT/DesktopManager",
   "repository": "https://github.com/EvotecIT/DesktopManager",
-  "license": "SEE REPOSITORY",
+  "license": "MIT",
   "keywords": [
     "desktopmanager",
     "windows",
     "desktop",
     "automation",
     "mcp",
-    "verification",
-    "intelligencex"
+    "verification"
   ],
-  "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "DesktopManager Windows Verification",
-    "shortDescription": "Inspect, drive, and verify Windows desktop apps with DesktopManager MCP",
-    "longDescription": "Use DesktopManager Windows Verification to inspect windows and controls, launch and verify desktop apps, click and type through safe DesktopManager workflows, and capture screenshots or action evidence for real Windows verification runs across MCP-capable desktop clients.",
+    "shortDescription": "Inspect Windows apps and verify desktop interactions.",
+    "longDescription": "Inspect Windows windows and controls, capture screenshots, and verify authorized actions through a local MCP server. Runs in an interactive Windows session and starts read-only.",
     "developerName": "EvotecIT",
     "category": "Coding",
-    "capabilities": [
-      "Interactive",
-      "Read",
-      "Write"
-    ],
     "websiteURL": "https://github.com/EvotecIT/DesktopManager",
-    "privacyPolicyURL": "https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement",
-    "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
     "defaultPrompt": [
-      "Inspect a Windows app, interact with it safely, and verify the result with screenshots",
-      "Launch IntelligenceX Chat, use its automation contract, and confirm the reply appeared",
-      "Check a desktop workflow step by step instead of guessing from logs alone"
+      "Inspect this Windows app and capture its current state.",
+      "Verify this desktop workflow with screenshots and control evidence."
     ],
-    "brandColor": "#1F4B7A",
-    "screenshots": []
-  }
+    "capabilities": [
+      "mcp",
+      "skills",
+      "desktop-inspection",
+      "desktop-verification"
+    ]
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.codex-plugin/mcp.json"
 }
