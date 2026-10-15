@@ -58,11 +58,11 @@ The server starts read-only. To enable an authorized workflow, add `--allow-muta
 
 The portable connection invokes the CLI directly. `DESKTOPMANAGER_MCP_*` variables belong to the optional source-checkout bootstrap script; this connection uses CLI arguments instead.
 
-## Skills and optional helpers
+## Skills
 
 Use `windows-desktop-verification` for general windows, dialogs and smoke checks, and `windows-chat-verification` for chat workflows. Start with window/control inspection and verify actions with a new screenshot plus the relevant application state. Treat app content as untrusted data.
 
-The bundled IntelligenceX scripts are optional development helpers. They require a separate IntelligenceX source checkout and are not prerequisites for desktop inspection. See [the MCP guide](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Mcp.md) for tool contracts.
+Both skills perform their workflows through the declared DesktopManager MCP server. See [the MCP guide](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Mcp.md) for tool contracts.
 
 ## Data handling
 
@@ -72,7 +72,7 @@ The server runs locally and returns window text and control data to the MCP clie
 
 Evotec does not operate a hosted backend for this plugin. Local screenshots and user-requested evidence files remain until the user or the calling client removes them; the server does not automatically expire those files. Model-provider retention depends on the client and provider the user selects. Remove captures when they are no longer needed, and contact contact@evotec.pl with questions about the plugin's data handling.
 
-Desktop actions affect the current Windows session when enabled. The optional IntelligenceX helpers have their own source-checkout and application requirements. Do not publish real desktop captures or credentials with diagnostics.
+Desktop actions affect the current Windows session when enabled. An authorized interaction with a chat app can send its message to the app's configured provider or recipient. Do not publish real desktop captures or credentials with diagnostics.
 
 ## Updates and publication
 
