@@ -2,6 +2,12 @@
 
 Inspect Windows apps and verify requested interactions with screenshots and control evidence. The plugin bundles a general Windows verification skill, a chat-app verification skill, and the local DesktopManager MCP connection.
 
+Try these requests with a synthetic app or a window you are authorized to inspect:
+
+- "List the visible windows and describe the controls in my test app."
+- "Capture my test app's window and check whether its error dialog is visible."
+- "After I enable interaction for my test app, enter this sample text and verify the resulting state with a screenshot."
+
 ## Requirements
 
 Use an interactive Windows session and install the complete portable DesktopManager CLI archive produced by the repository's PowerForge build. Add its directory to the PATH inherited by the client, then run `desktopmanager --help` and `desktopmanager mcp serve --json` from another directory. A library NuGet package does not install the CLI. The plugin does not compile code during startup or require a source checkout.
@@ -60,7 +66,11 @@ The bundled IntelligenceX scripts are optional development helpers. They require
 
 ## Data handling
 
+Read the [Privacy and local data handling policy](https://github.com/EvotecIT/DesktopManager/blob/agent-plugin/README.md#data-handling) before inspecting an application that contains personal information.
+
 The server runs locally and returns window text and control data to the MCP client. Screenshot tools save captures locally and return their paths and metadata. The client may read those files and send their contents, or other tool results, to its model provider under its own settings and policies. An interactive desktop can contain private information; keep inspection and captures focused on the requested application and use synthetic apps for shared examples.
+
+Evotec does not operate a hosted backend for this plugin. Local screenshots and user-requested evidence files remain until the user or the calling client removes them; the server does not automatically expire those files. Model-provider retention depends on the client and provider the user selects. Remove captures when they are no longer needed, and contact contact@evotec.pl with questions about the plugin's data handling.
 
 Desktop actions affect the current Windows session when enabled. The optional IntelligenceX helpers have their own source-checkout and application requirements. Do not publish real desktop captures or credentials with diagnostics.
 

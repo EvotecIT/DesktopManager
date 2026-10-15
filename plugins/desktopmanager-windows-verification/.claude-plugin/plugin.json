@@ -1,6 +1,6 @@
 {
   "name": "desktopmanager-windows-verification",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Inspect Windows desktop apps and verify requested interactions with screenshots and control evidence.",
   "author": {
     "name": "Evotec Services sp. z o.o.",
