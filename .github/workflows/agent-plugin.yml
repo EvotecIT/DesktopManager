@@ -121,5 +121,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          gh release upload "$RELEASE_TAG" agent-plugin/*.zip agent-plugin/*.sha256 --repo "$GITHUB_REPOSITORY"
-          find windows-cli -type f \( -name '*.zip' -o -name '*.mcpb' -o -name 'SHA256SUMS.txt' \) -print0 | xargs -0 gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
+          mkdir release-assets
+          cp agent-plugin/*.zip agent-plugin/*.sha256 release-assets/
+          find windows-cli -type f \( -name '*.zip' -o -name '*.mcpb' \) -exec cp -t release-assets -- {} +
+          (cd release-assets && sha256sum -- *.zip *.mcpb > SHA256SUMS.txt)
+          gh release upload "$RELEASE_TAG" release-assets/* --repo "$GITHUB_REPOSITORY"

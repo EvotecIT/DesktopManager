@@ -53,7 +53,7 @@ $server = [ordered]@{
         transport = @{ type = 'stdio' }
     })
 }
-$destination = [IO.Path]::GetFullPath($OutputPath)
+$destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination)) | Out-Null
 [IO.File]::WriteAllText($destination, ($server | ConvertTo-Json -Depth 8) + "`n", [Text.UTF8Encoding]::new($false))
 $destination
