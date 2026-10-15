@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <DesktopManagerWindowsTargetVersion>10.0.19041.0</DesktopManagerWindowsTargetVersion>
     <DesktopManagerNet8WindowsTfm>net8.0-windows$(DesktopManagerWindowsTargetVersion)</DesktopManagerNet8WindowsTfm>
     <DesktopManagerNet10WindowsTfm>net10.0-windows$(DesktopManagerWindowsTargetVersion)</DesktopManagerNet10WindowsTfm>

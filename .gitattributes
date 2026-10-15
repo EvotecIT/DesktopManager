@@ -1,0 +1,2 @@
+# PowerForge compares generated plugin compatibility manifests byte for byte.
+plugins/desktopmanager-windows-verification/**/*.json text eol=lf

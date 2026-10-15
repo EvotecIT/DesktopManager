@@ -1,12 +1,11 @@
 {
   "mcpServers": {
     "desktopmanager": {
-      "command": "pwsh",
+      "type": "stdio",
+      "command": "desktopmanager",
       "args": [
-        "-NoLogo",
-        "-NoProfile",
-        "-File",
-        "./scripts/start-desktopmanager-mcp.ps1"
+        "mcp",
+        "serve"
       ]
     }
   }

@@ -1,110 +1,48 @@
-# DesktopManager Windows Verification Plugin
+# DesktopManager agent plugin distribution
 
-DesktopManager now includes a repo-local Windows verification plugin scaffold for Windows verification workflows through MCP-capable desktop clients.
+The [Windows verification plugin](../plugins/desktopmanager-windows-verification/README.md) bundles two user skills and the local DesktopManager MCP connection. Contributor skills in `.agents/skills` guide work on DesktopManager source; they are not distributed as user workflows.
 
-## Location
+`plugins/desktopmanager-windows-verification/plugin.json` and `mcp.json` are canonical. PowerForge generates the Codex and Claude compatibility files. The repository supplies both `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` for direct installation.
 
-- plugin root:
-  `plugins/desktopmanager-windows-verification`
-- marketplace entry:
-  `.agents/plugins/marketplace.json`
+## Runtime and access
 
-## What The Plugin Includes
+Install the complete portable Windows CLI archive and add its directory to the client's PATH. The plugin starts `desktopmanager mcp serve`, with read-only defaults. It does not build source or require an IntelligenceX checkout. The Windows/WPF target is not supported by .NET's `PackAsTool`; the library's NuGet package is not an MCP executable installer.
 
-- `.codex-plugin/plugin.json`
-- `.mcp.json`
-- `skills/windows-chat-verification/`
-- `scripts/start-desktopmanager-mcp.ps1`
-- `scripts/start-intelligencex-chat.ps1`
-- `scripts/run-intelligencex-chat-smoke.ps1`
+Mutation flags belong in the MCP server's arguments. Use `--allow-mutations` with a narrow `--allow-process` pattern when the task needs interaction. Focused fallback input requires `--allow-foreground-input`; system settings additionally require `--allow-system-settings`. See the [MCP contract](DesktopManager.Mcp.md).
 
-## Current Intent
+The optional IntelligenceX helper scripts support development verification with a separate source checkout and an app-owned automation contract. They are not part of the general application's startup path. Keep screenshots and control evidence alongside any app-owned result; neither an input acknowledgment nor a pipe response alone establishes visible behavior.
 
-The first public target is local Windows verification through `DesktopManager` MCP, especially:
+## Build and qualify
 
-- opening a desktop app
-- inspecting windows and controls
-- typing into a visible prompt area
-- sending a message
-- verifying the visible result with screenshots and control evidence
-
-## Build Requirement
-
-The MCP bootstrap script intentionally avoids building during MCP startup so stdio stays clean.
-
-Build the CLI first:
+Use the existing PowerForge entrypoint to produce the CLI:
 
 ```powershell
-dotnet build .\Sources\DesktopManager.Cli\DesktopManager.Cli.csproj -c Debug
+./Build/Build-Project.ps1 -BuildModule:$false -Target DesktopManager.Cli.net10 -Runtimes win-x64 -SkipInstallers
 ```
 
-or
+The CLI target has no signing profile. Treat its validation output as unsigned. Apply any required release-signing policy before public delivery; ordinary validation does not authorize access to a hardware-backed key.
 
-```powershell
-.\Build\Build-Project.ps1 -BuildModule:$false
+Use a source build of PowerForge containing `agent-plugin`, as described by its CLI documentation. From this checkout, invoke that CLI with:
+
+```text
+agent-plugin sync --source plugins/desktopmanager-windows-verification
+agent-plugin validate --source plugins/desktopmanager-windows-verification
+agent-plugin pack --source plugins/desktopmanager-windows-verification --out Artefacts/AgentPlugins
 ```
 
-## Mutation Controls
+These are PowerForge subcommands, not standalone executables. Increment the plugin version for every published bundle change. Keep the plugin name and marketplace selector stable. Preserve existing versioned ZIPs and verify the sidecar independently.
 
-DesktopManager stays inspect-first by default. Use environment variables before starting the MCP client session when the workflow needs interaction:
+Qualify the copied CLI and plugin outside the source tree: initialize MCP, list its tools, check read-only defaults and mutation rejection, inspect a synthetic test application, capture its window, and verify an explicitly enabled interaction. Install from fresh Codex and Claude profiles. Reload the portable plugin in Cursor and confirm both skills and its MCP server. Verify the update path for an existing installation. An unavailable client or unexercised interaction remains a qualification gap.
 
-```powershell
-$env:DESKTOPMANAGER_MCP_ALLOW_MUTATIONS = '1'
-$env:DESKTOPMANAGER_MCP_ALLOW_PROCESS = 'IntelligenceX.Chat.App'
-```
+The Agent Plugin Package workflow packages the plugin, portable CLI and native MCPB bundle as CI artifacts. A `desktopmanager-windows-verification-v<version>` release attaches those artifacts after checking version agreement and default-branch ancestry. PowerForge's shared publication action also verifies the plugin ZIP and publishes its contents at the root of the generated `agent-plugin` branch. The product branch owns the sources; do not edit the generated branch. Publication preserves history and rejects rollback or changed same-version payloads. Public delivery requires a fresh installation from the published files; CI artifacts alone do not establish it.
 
-Only enable focused fallback input when the app requires it:
+The MCPB bundle contains the Windows x64 executable, license and icon, and starts read-only without a source checkout, .NET SDK or PATH setup. It supplies the server; the separate agent plugin supplies its two skills. Open the `.mcpb` file in a client supporting binary MCP bundles.
 
-```powershell
-$env:DESKTOPMANAGER_MCP_ALLOW_FOREGROUND_INPUT = '1'
-```
+## Directory submissions
 
-## IntelligenceX
+- **OpenAI:** [desktop-only local MCP submissions](https://developers.openai.com/plugins/deploy/desktop-only) require an approved partner and an allowlisted publishing organization. Complete identity verification, confirm the runtime packaging requirements, upload the qualified ZIP, resolve findings, and submit for review. Publish after approval and verify the exact-name listing. The current plugin expects an installed CLI; confirm whether review requires a bundle containing the server and dependencies before submitting.
+- **Claude:** the repository marketplace supports direct Claude Code installation. Wider discovery uses the [Anthropic directory portal](https://claude.ai/directory/manage), following [the publication guide](https://code.claude.com/docs/en/plugins/publish). Submit repository `EvotecIT/DesktopManager`, branch `agent-plugin`, with the repository root as the plugin path. Validate this small generated branch against the directory's [whole-archive checklist](https://claude.com/docs/plugins/pre-submission-checklist). Check Windows/local-execution component support for each Claude surface. The directory portal and `claude-plugins-official` have different admission routes.
+- **Cursor:** test the portable bundle under `~/.cursor/plugins/local/desktopmanager-windows-verification`, then submit the generated `agent-plugin` branch through [marketplace submission](https://cursor.com/marketplace/publish), following [Cursor's plugin documentation](https://cursor.com/docs/plugins). A local copy and a reviewed marketplace listing are separate.
+- **MCP Registry:** publish the qualified native MCPB package first. Run `Build/McpBundle/New-RegistryMetadata.ps1` against that exact artifact to generate `server.json` with its bundled version, immutable release URL and SHA-256. Validate the generated file against the official schema, then run the official `mcp-publisher publish` command as an authorized EvotecIT publisher and verify `io.github.EvotecIT/desktopmanager` in the Registry API. The ordinary library package is not a runnable `dnx` server.
 
-The plugin includes a helper script for a sibling `IntelligenceX` checkout:
-
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\start-intelligencex-chat.ps1
-```
-
-That gives the client a clean way to launch the app before using DesktopManager MCP for inspect, act, and verify loops.
-
-When you want a repeatable baseline artifact bundle against the real app instead of an interactive session, run:
-
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\run-intelligencex-chat-smoke.ps1
-```
-
-Add `-ProbeForegroundTyping` when you want the smoke script to attempt a focused typing probe and save the resulting verification payload alongside the screenshots and control diagnostics.
-
-For `IntelligenceX.Chat`, the preferred real-app verification path is now automation mode plus the app-owned control pipe, because the visible WebView composer is still not a dependable UIA surface. That flow adds stable `status`, `new_conversation`, `send_prompt`, `wait_for_idle`, `list_conversations`, and `get_transcript_tail` checks to the artifact bundle:
-
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\run-intelligencex-chat-smoke.ps1 -AutomationMode -ProbeAutomationContract
-```
-
-The smoke artifacts then include both DesktopManager evidence and app-owned contract evidence such as:
-
-- `automation-status-before.json`
-- `automation-send-prompt.json`
-- `automation-wait-for-idle.json`
-- `automation-status-after.json`
-- `automation-conversations-after.json`
-- `automation-transcript-tail.json`
-
-If you want the app-owned route without the full smoke harness, use:
-
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\invoke-intelligencex-chat-automation.ps1 -Command status -LaunchIfNeeded
-```
-
-That helper script can launch `IntelligenceX.Chat` in automation mode if needed and then call:
-
-- `ping`
-- `status`
-- `new_conversation`
-- `send_prompt`
-- `wait_for_idle`
-- `get_transcript_tail`
-- `list_conversations`
-- `switch_conversation`
+Prepare concise metadata, publisher-owned privacy information, support contact, supported Windows versions, runtime/interactive-session requirements, synthetic review scenarios, checksums and an immutable source revision. Do not use GitHub's privacy policy as the product's policy or include real desktop captures with private information. Keep submission identifiers, feedback, approved versions and verified listing URLs in the release handoff.

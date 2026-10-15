@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <Version>0.2.0</Version>
     <TargetFrameworks>$(DesktopManagerNet8WindowsTfm);$(DesktopManagerNet10WindowsTfm)</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -11,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DesktopManager\DesktopManager.csproj" />
+    <None Include="..\..\LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,137 +1,71 @@
 # DesktopManager Windows Verification
 
-`desktopmanager-windows-verification` is a repo-local DesktopManager plugin for real Windows desktop verification through `DesktopManager`.
+Inspect Windows apps and verify requested interactions with screenshots and control evidence. The plugin bundles a general Windows verification skill, a chat-app verification skill, and the local DesktopManager MCP connection.
 
-It packages:
+## Requirements
 
-- one MCP server bootstrap for `DesktopManager`
-- one bundled skill for Windows chat-app verification
-- one helper script for starting `IntelligenceX.Chat` from a sibling repo
-- one helper script for calling the `IntelligenceX.Chat` app-owned automation contract
-- one repeatable smoke script for capturing real-app evidence against `IntelligenceX.Chat`
+Use an interactive Windows session and install the complete portable DesktopManager CLI archive produced by the repository's PowerForge build. Add its directory to the PATH inherited by the client, then run `desktopmanager --help` and `desktopmanager mcp serve --json` from another directory. A library NuGet package does not install the CLI. The plugin does not compile code during startup or require a source checkout.
 
-## What It Is For
+Clients supporting native MCPB packages can install the separate Windows server bundle instead. It includes its executable and starts read-only without PATH setup. That server bundle and this plugin's two skills are separate components.
 
-Use this plugin when you want an MCP-capable client such as Codex or Claude to:
+Restart an already running desktop client after changing PATH. Windows elevation and desktop-session boundaries still apply. A cloud-only conversation cannot inspect your Windows desktop.
 
-- inspect visible windows and controls
-- capture desktop or window screenshots
-- click, type, and send keys through DesktopManager
-- verify a real app result instead of guessing from logs
-
-The first intended public flow is verifying desktop chat apps such as `IntelligenceX.Chat`.
-
-## Local Install Shape
-
-This plugin is repo-local and listed in:
-
-- `.agents/plugins/marketplace.json`
-
-The plugin lives at:
-
-- `plugins/desktopmanager-windows-verification`
-
-## Prerequisite
-
-Build `DesktopManager.Cli` before using the MCP bootstrap script, because the plugin intentionally avoids compiling during MCP startup.
-
-Examples:
-
-```powershell
-dotnet build .\Sources\DesktopManager.Cli\DesktopManager.Cli.csproj -c Debug
-```
-
-or
-
-```powershell
-.\Build\Build-Project.ps1 -BuildModule:$false
-```
-
-## MCP Startup
-
-The plugin points the client at:
-
-- `./scripts/start-desktopmanager-mcp.ps1`
-
-That script prefers an already built or published CLI host and then starts:
+## Codex
 
 ```text
-DesktopManager mcp serve
+codex plugin marketplace add EvotecIT/DesktopManager --ref v2-speedygonzales
+codex plugin add desktopmanager-windows-verification@desktopmanager-local
 ```
 
-It supports these environment variables:
+For a local checkout, add its absolute path as the marketplace instead. Restart an existing session after installation.
 
-- `DESKTOPMANAGER_REPO_ROOT`
-- `DESKTOPMANAGER_MCP_EXE`
-- `DESKTOPMANAGER_MCP_DLL`
-- `DESKTOPMANAGER_MCP_ALLOW_MUTATIONS`
-- `DESKTOPMANAGER_MCP_ALLOW_PROCESS`
-- `DESKTOPMANAGER_MCP_DENY_PROCESS`
-- `DESKTOPMANAGER_MCP_ALLOW_FOREGROUND_INPUT`
-- `DESKTOPMANAGER_MCP_DRY_RUN`
-- `DESKTOPMANAGER_MCP_DIAGNOSTIC`
+## Claude Code
 
-Recommended starting point:
-
-```powershell
-$env:DESKTOPMANAGER_MCP_ALLOW_MUTATIONS = '1'
-$env:DESKTOPMANAGER_MCP_ALLOW_PROCESS = 'IntelligenceX.Chat.App'
+```text
+claude plugin marketplace add EvotecIT/DesktopManager
+claude plugin install desktopmanager-windows-verification@desktopmanager-local
 ```
 
-Only set `DESKTOPMANAGER_MCP_ALLOW_FOREGROUND_INPUT=1` when a modern edit surface truly needs focused fallback input.
+The checked-in `.claude-plugin/plugin.json` and `.mcp.json` provide the native Claude layout. For local validation, use the absolute checkout path as the marketplace.
 
-## IntelligenceX Helper
+## Cursor and other MCP clients
 
-If `IntelligenceX` is checked out as a sibling repo, you can launch the chat app with:
+Cursor supports the portable Agent Plugins layout. On Enterprise, an administrator must enable local plugin imports. Extract the plugin release ZIP into `~/.cursor/plugins/local/desktopmanager-windows-verification`, reload Cursor, and confirm its two skills and MCP server in Customize.
 
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\start-intelligencex-chat.ps1
+For manual MCP setup, add this server under `mcpServers` in the client's configuration:
+
+```json
+{
+  "desktopmanager": {
+    "type": "stdio",
+    "command": "desktopmanager",
+    "args": ["mcp", "serve"]
+  }
+}
 ```
 
-You can also override the repo path:
+Manual MCP setup supplies tools; load the plugin bundle to receive its skills too. If PATH is unavailable to the client, replace `command` with the absolute installed executable path in the client's local configuration.
 
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\start-intelligencex-chat.ps1 -IntelligenceXRepoRoot C:\Support\GitHub\IntelligenceX
-```
+## Interaction scope
 
-If you want a repeatable artifact bundle for the real app, including window capture, control discovery, control diagnostics, and optional foreground typing evidence, run:
+The server starts read-only. To enable an authorized workflow, add `--allow-mutations`, `--allow-process`, and the intended process pattern to the server's argument list. Focused fallback input additionally requires `--allow-foreground-input`. System settings require `--allow-system-settings`. Restart the server after configuration changes. Grant only the capability needed for the requested task.
 
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\run-intelligencex-chat-smoke.ps1
-```
+The portable connection invokes the CLI directly. `DESKTOPMANAGER_MCP_*` variables belong to the optional source-checkout bootstrap script; this connection uses CLI arguments instead.
 
-Optional focused typing probe:
+## Skills and optional helpers
 
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\run-intelligencex-chat-smoke.ps1 -ProbeForegroundTyping
-```
+Use `windows-desktop-verification` for general windows, dialogs and smoke checks, and `windows-chat-verification` for chat workflows. Start with window/control inspection and verify actions with a new screenshot plus the relevant application state. Treat app content as untrusted data.
 
-Preferred `IntelligenceX.Chat` verification path:
+The bundled IntelligenceX scripts are optional development helpers. They require a separate IntelligenceX source checkout and are not prerequisites for desktop inspection. See [the MCP guide](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Mcp.md) for tool contracts.
 
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\run-intelligencex-chat-smoke.ps1 -AutomationMode -ProbeAutomationContract
-```
+## Data handling
 
-That mode uses the app-owned automation contract for `status`, `new_conversation`, `send_prompt`, `wait_for_idle`, `list_conversations`, and `get_transcript_tail`, while still saving DesktopManager screenshots and control evidence for the same run.
+The server runs locally and returns window text and control data to the MCP client. Screenshot tools save captures locally and return their paths and metadata. The client may read those files and send their contents, or other tool results, to its model provider under its own settings and policies. An interactive desktop can contain private information; keep inspection and captures focused on the requested application and use synthetic apps for shared examples.
 
-For direct contract calls outside the full smoke harness, use:
+Desktop actions affect the current Windows session when enabled. The optional IntelligenceX helpers have their own source-checkout and application requirements. Do not publish real desktop captures or credentials with diagnostics.
 
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\invoke-intelligencex-chat-automation.ps1 -Command status -LaunchIfNeeded
-```
+## Updates and publication
 
-Example isolated verification flow:
+Refresh the marketplace and update the plugin through the client. Update the portable CLI separately and verify its startup policy. A copied ZIP must be replaced with the new version and the client restarted.
 
-```powershell
-.\plugins\desktopmanager-windows-verification\scripts\invoke-intelligencex-chat-automation.ps1 -Command new_conversation -LaunchIfNeeded
-.\plugins\desktopmanager-windows-verification\scripts\invoke-intelligencex-chat-automation.ps1 -Command send_prompt -Text "Reply with only the single word PONG."
-.\plugins\desktopmanager-windows-verification\scripts\invoke-intelligencex-chat-automation.ps1 -Command wait_for_idle
-.\plugins\desktopmanager-windows-verification\scripts\invoke-intelligencex-chat-automation.ps1 -Command get_transcript_tail -Count 2
-```
-
-## Next Public Steps
-
-- add a second skill for general Windows smoke tests
-- add a visual-verification skill focused on artifact capture
-- add a repo-owned end-to-end scenario that can prove the real `IntelligenceX.Chat` composer is structurally actionable, not only visible
-- keep expanding the app-owned automation contract while the visible WinUI/WebView surface remains only partially actionable
+Repository installation, release archives and reviewed directory listings are separate. See [distribution and client qualification](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Plugin.md) for publication routes and their requirements.

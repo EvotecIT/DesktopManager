@@ -1,0 +1,12 @@
+{
+  "name": "desktopmanager-local",
+  "owner": { "name": "EvotecIT" },
+  "metadata": { "description": "Windows desktop inspection and verification through DesktopManager." },
+  "plugins": [
+    {
+      "name": "desktopmanager-windows-verification",
+      "source": "./plugins/desktopmanager-windows-verification",
+      "description": "Inspect Windows apps and verify authorized interactions with screenshots and control evidence."
+    }
+  ]
+}

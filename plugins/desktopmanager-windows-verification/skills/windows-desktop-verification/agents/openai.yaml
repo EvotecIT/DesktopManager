@@ -1,0 +1,4 @@
+interface:
+  display_name: "Windows Desktop Verification"
+  short_description: "Inspect Windows apps and verify requested UI actions."
+  default_prompt: "Use $windows-desktop-verification to inspect this Windows app and verify the requested workflow."

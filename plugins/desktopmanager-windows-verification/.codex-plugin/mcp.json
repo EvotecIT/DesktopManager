@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "desktopmanager": {
+      "type": "stdio",
+      "command": "desktopmanager",
+      "args": [
+        "mcp",
+        "serve"
+      ]
+    }
+  }
+}
