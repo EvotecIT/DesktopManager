@@ -104,7 +104,7 @@ internal sealed class McpServer {
                     },
                     serverInfo = new {
                         name = "DesktopManager.Cli",
-                        version = "0.1.0"
+                        version = typeof(McpServer).Assembly.GetName().Version!.ToString(3)
                     },
                     safetyPolicy = _safetyPolicy.ToModel(),
                     instructions = _safetyPolicy.BuildInstructions()

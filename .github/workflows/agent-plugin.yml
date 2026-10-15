@@ -13,6 +13,7 @@ on:
       - 'powerforge.dotnetpublish.json'
       - 'Build/McpBundle/**'
       - 'Directory.Build.props'
+      - 'Assets/Icons/DesktopManager.png'
       - '.github/workflows/agent-plugin.yml'
   push:
     branches: [v2-speedygonzales]
@@ -26,6 +27,7 @@ on:
       - 'powerforge.dotnetpublish.json'
       - 'Build/McpBundle/**'
       - 'Directory.Build.props'
+      - 'Assets/Icons/DesktopManager.png'
       - '.github/workflows/agent-plugin.yml'
   release:
     types: [published]
@@ -52,6 +54,8 @@ jobs:
           $plugin = Get-Content plugins/desktopmanager-windows-verification/plugin.json -Raw | ConvertFrom-Json
           $bundle = Get-Content Build/McpBundle/manifest.json -Raw | ConvertFrom-Json
           if ($bundle.version -ne $plugin.version) { throw 'Plugin and MCPB versions must match.' }
+          $project = [xml](Get-Content Sources/DesktopManager.Cli/DesktopManager.Cli.csproj -Raw)
+          if ($project.Project.PropertyGroup.Version -ne $plugin.version) { throw 'CLI and plugin versions must match.' }
           if ($env:RELEASE_TAG) {
             if ($env:RELEASE_TAG -ne "desktopmanager-windows-verification-v$($plugin.version)") { throw 'Release tag must match the plugin version.' }
             git merge-base --is-ancestor HEAD origin/v2-speedygonzales
@@ -61,7 +65,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: EvotecIT/PSPublishModule
-          ref: 02767768a88ab638efde74c060d39a6100a577f3
+          ref: 8fa3f36cb23ad3cb166634ba923e20dac80676e1
           path: .powerforge-agent-plugin-build
           persist-credentials: false
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -84,6 +88,13 @@ jobs:
           $packer = '.powerforge-agent-plugin-build/PowerForge.Cli/bin/Release/net10.0/PowerForge.Cli.dll'
           dotnet $packer dotnet publish --config powerforge.dotnetpublish.json --target DesktopManager.Cli.net10 --rid win-x64 --framework net10.0-windows10.0.19041.0 --style PortableCompat
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $request = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release-validation","version":"1.0.0"}}}'
+          $response = $request | & './Artefacts/PowerForge/Mcp/win-x64/server/desktopmanager.exe' mcp serve
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $initialized = $response | ConvertFrom-Json
+          $plugin = Get-Content plugins/desktopmanager-windows-verification/plugin.json -Raw | ConvertFrom-Json
+          if ($initialized.result.serverInfo.version -ne $plugin.version) { throw 'Packaged MCP server version must match the plugin.' }
+          if (-not $initialized.result.safetyPolicy.readOnly) { throw 'Packaged MCP server must start read-only.' }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: desktopmanager-agent-plugin
@@ -147,7 +158,7 @@ jobs:
         with:
           name: desktopmanager-agent-plugin
           path: agent-plugin
-      - uses: EvotecIT/PSPublishModule/.github/actions/agent-plugin-publish@02767768a88ab638efde74c060d39a6100a577f3
+      - uses: EvotecIT/PSPublishModule/.github/actions/agent-plugin-publish@8fa3f36cb23ad3cb166634ba923e20dac80676e1
         with:
           archive: agent-plugin
           github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -37,6 +37,7 @@ For manual MCP setup, add this server under `mcpServers` in the client's configu
 ```json
 {
   "desktopmanager": {
+    "type": "stdio",
     "command": "desktopmanager",
     "args": ["mcp", "serve"]
   }
