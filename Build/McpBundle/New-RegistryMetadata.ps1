@@ -23,9 +23,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $PackagePath).Path)
+$resolvedPackagePath = (Resolve-Path -LiteralPath $PackagePath).Path
+if ([IO.Path]::GetFileName($resolvedPackagePath) -ne 'desktopmanager-mcp-win-x64.mcpb') {
+    throw 'Expected the published asset filename desktopmanager-mcp-win-x64.mcpb.'
+}
+$archive = [IO.Compression.ZipFile]::OpenRead($resolvedPackagePath)
 try {
-    $reader = [IO.StreamReader]::new($archive.GetEntry('manifest.json').Open())
+    $entry = $archive.GetEntry('manifest.json')
+    if ($null -eq $entry) { throw 'The MCPB archive is missing manifest.json.' }
+    $reader = [IO.StreamReader]::new($entry.Open())
     try {
         $manifest = $reader.ReadToEnd() | ConvertFrom-Json
     } finally {
@@ -49,7 +55,7 @@ $server = [ordered]@{
     packages = @(@{
         registryType = 'mcpb'
         identifier = "https://github.com/EvotecIT/DesktopManager/releases/download/desktopmanager-windows-verification-v$($manifest.version)/desktopmanager-mcp-win-x64.mcpb"
-        fileSha256 = (Get-FileHash -LiteralPath $PackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        fileSha256 = (Get-FileHash -LiteralPath $resolvedPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
         transport = @{ type = 'stdio' }
     })
 }

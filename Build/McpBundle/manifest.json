@@ -4,7 +4,7 @@
   "display_name": "DesktopManager Windows Verification",
   "version": "0.2.0",
   "description": "Inspect Windows x64 desktop applications through a local, read-only-by-default MCP server.",
-  "author": { "name": "EvotecIT", "email": "support@evotec.pl" },
+  "author": { "name": "Evotec Services sp. z o.o.", "email": "contact@evotec.pl", "url": "https://evotec.xyz" },
   "repository": { "type": "git", "url": "https://github.com/EvotecIT/DesktopManager" },
   "homepage": "https://github.com/EvotecIT/DesktopManager",
   "documentation": "https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Mcp.md",

@@ -30,7 +30,7 @@ The checked-in `.claude-plugin/plugin.json` and `.mcp.json` provide the native C
 
 ## Cursor and other MCP clients
 
-Cursor supports the portable Agent Plugins layout. Extract the plugin release ZIP into `~/.cursor/plugins/local/desktopmanager-windows-verification`, reload Cursor, and confirm its two skills and MCP server in Customize.
+Cursor supports the portable Agent Plugins layout. On Enterprise, an administrator must enable local plugin imports. Extract the plugin release ZIP into `~/.cursor/plugins/local/desktopmanager-windows-verification`, reload Cursor, and confirm its two skills and MCP server in Customize.
 
 For manual MCP setup, add this server under `mcpServers` in the client's configuration:
 

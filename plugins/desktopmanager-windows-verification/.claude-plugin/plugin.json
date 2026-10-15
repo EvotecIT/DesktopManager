@@ -3,9 +3,9 @@
   "version": "0.2.0",
   "description": "Inspect Windows desktop apps and verify requested interactions with screenshots and control evidence.",
   "author": {
-    "name": "EvotecIT",
-    "email": "support@evotec.pl",
-    "url": "https://github.com/EvotecIT"
+    "name": "Evotec Services sp. z o.o.",
+    "email": "contact@evotec.pl",
+    "url": "https://evotec.xyz"
   },
   "homepage": "https://github.com/EvotecIT/DesktopManager",
   "repository": "https://github.com/EvotecIT/DesktopManager",
