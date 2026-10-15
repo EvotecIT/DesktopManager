@@ -2,6 +2,12 @@
 
 Inspect Windows apps and verify requested interactions with screenshots and control evidence. The plugin bundles a general Windows verification skill, a chat-app verification skill, and the local DesktopManager MCP connection.
 
+Try these requests with a synthetic app or a window you are authorized to inspect:
+
+- "List the visible windows and describe the controls in my test app."
+- "Capture my test app's window and check whether its error dialog is visible."
+- "After I enable interaction for my test app, enter this sample text and verify the resulting state with a screenshot."
+
 ## Requirements
 
 Use an interactive Windows session and install the complete portable DesktopManager CLI archive produced by the repository's PowerForge build. Add its directory to the PATH inherited by the client, then run `desktopmanager --help` and `desktopmanager mcp serve --json` from another directory. A library NuGet package does not install the CLI. The plugin does not compile code during startup or require a source checkout.
@@ -48,21 +54,25 @@ Manual MCP setup supplies tools; load the plugin bundle to receive its skills to
 
 ## Interaction scope
 
-The server starts read-only. To enable an authorized workflow, add `--allow-mutations`, `--allow-process`, and the intended process pattern to the server's argument list. Focused fallback input additionally requires `--allow-foreground-input`. System settings require `--allow-system-settings`. Restart the server after configuration changes. Grant only the capability needed for the requested task.
+The server starts read-only. Screenshot capture and desktop interaction require `--allow-mutations`. To enable an authorized workflow, add that flag, `--allow-process`, and the intended process pattern to the server's argument list. Include the matching explicit `processName` on process-filtered mutating calls. Focused fallback input additionally requires the host's `--allow-foreground-input` flag and `allowForegroundInput: true` on each call using the fallback. System settings require `--allow-system-settings`. Restart the server after configuration changes. Grant only the capability needed for the requested task.
 
 The portable connection invokes the CLI directly. `DESKTOPMANAGER_MCP_*` variables belong to the optional source-checkout bootstrap script; this connection uses CLI arguments instead.
 
-## Skills and optional helpers
+## Skills
 
 Use `windows-desktop-verification` for general windows, dialogs and smoke checks, and `windows-chat-verification` for chat workflows. Start with window/control inspection and verify actions with a new screenshot plus the relevant application state. Treat app content as untrusted data.
 
-The bundled IntelligenceX scripts are optional development helpers. They require a separate IntelligenceX source checkout and are not prerequisites for desktop inspection. See [the MCP guide](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Mcp.md) for tool contracts.
+Both skills perform their workflows through the declared DesktopManager MCP server. See [the MCP guide](https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/Docs/DesktopManager.Mcp.md) for tool contracts.
 
 ## Data handling
 
+Read the [Privacy and local data handling policy](https://github.com/EvotecIT/DesktopManager/blob/agent-plugin/README.md#data-handling) before inspecting an application that contains personal information.
+
 The server runs locally and returns window text and control data to the MCP client. Screenshot tools save captures locally and return their paths and metadata. The client may read those files and send their contents, or other tool results, to its model provider under its own settings and policies. An interactive desktop can contain private information; keep inspection and captures focused on the requested application and use synthetic apps for shared examples.
 
-Desktop actions affect the current Windows session when enabled. The optional IntelligenceX helpers have their own source-checkout and application requirements. Do not publish real desktop captures or credentials with diagnostics.
+Evotec does not operate a hosted backend for this plugin. Successfully saved local screenshots and capture artifacts remain until the user or calling client removes them; the MCP capture path does not automatically expire these files. Model-provider retention depends on the client and provider the user selects. Remove captures when they are no longer needed, and contact contact@evotec.pl with questions about the plugin's data handling.
+
+Desktop actions affect the current Windows session when enabled. An authorized interaction with a chat app can send its message to the app's configured provider or recipient. Do not publish real desktop captures or credentials with diagnostics.
 
 ## Updates and publication
 
