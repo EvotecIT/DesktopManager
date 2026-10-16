@@ -25,6 +25,7 @@ public partial class MonitorService {
             throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not enter a per-monitor DPI context.");
         }
 
+        bool completed = false;
         try {
             List<DisplayPathSnapshot> displayPaths = native.EnumerateDisplayPaths();
             List<DisplayPathSnapshot> attachedPaths = GetAttachedSnapshotPaths(displayPaths);
@@ -58,6 +59,7 @@ public partial class MonitorService {
                         }
                         snapshots.Add(CreateMonitorSnapshot(native, i, slot.DeviceId, path, path?.AdapterBounds ?? slot.Bounds));
                     }
+                    completed = true;
                     return snapshots.AsReadOnly();
                 }
             } catch (DesktopManagerException) {
@@ -71,10 +73,15 @@ public partial class MonitorService {
                 // Native display-interface identifiers have not been confirmed by the wallpaper COM service.
                 fallback.Add(CreateMonitorSnapshot(native, path.AdapterMonitorIndex ?? fallback.Count, string.Empty, path, path.AdapterBounds!.Value));
             }
+            completed = true;
             return fallback.AsReadOnly();
         } finally {
             if (native.SetThreadDpiAwarenessContext(previous) == IntPtr.Zero) {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not restore the calling thread's DPI context.");
+                int error = Marshal.GetLastWin32Error();
+                if (completed) {
+                    throw new Win32Exception(error, "Could not restore the calling thread's DPI context.");
+                }
+                DesktopManagerDiagnostics.Report($"Could not restore the calling thread's DPI context after a snapshot failure: {error}");
             }
         }
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -16,6 +17,7 @@ internal static class LockScreenNative {
     private static readonly Guid RandomAccessStreamId = new Guid("905A0FE1-BC53-11DF-8C49-001E4FC686DA");
     private static readonly Guid StreamId = new Guid("0000000C-0000-0000-C000-000000000046");
     private static readonly Guid AsyncInfoId = new Guid("00000036-0000-0000-C000-000000000046");
+    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(30);
 
     internal static void SetImage(string path) => RunInMta(() => {
         IntPtr factory = IntPtr.Zero;
@@ -101,24 +103,52 @@ internal static class LockScreenNative {
 #else
         Check(Marshal.QueryInterface(action, ref iid, out info));
 #endif
+        bool operationCompleted = false;
         try {
             var getStatus = Method<GetInt32>(info, 7);
-            int status;
-            do {
-                Check(getStatus(info, out status));
-                if (status == 0) {
-                    Thread.Sleep(10);
-                }
-            } while (status == 0);
+            WaitForCompletion(() => {
+                Check(getStatus(info, out int status));
+                operationCompleted = status != 0;
+                return status;
+            }, () => Check(Method<Invoke>(info, 9)(info)), OperationTimeout);
 
             // GetResults carries the native error/cancellation HRESULT; returning from
             // SetImageStreamAsync alone does not mean the image was accepted.
             Check(Method<Invoke>(action, 8)(action));
         } finally {
-            // IAsyncInfo::Close is legal after terminal status. Do not mask GetResults errors.
-            Method<Invoke>(info, 10)(info);
+            if (operationCompleted) {
+                try {
+                    Check(Method<Invoke>(info, 10)(info));
+                } catch (Exception ex) {
+                    // Preserve GetResults errors if close also fails.
+                    DesktopManagerDiagnostics.Report($"Closing a lock screen operation failed: {ex.Message}");
+                }
+            } else {
+                // IAsyncInfo::Close is invalid until the canceled operation reaches a terminal state.
+                DesktopManagerDiagnostics.Report("A timed-out lock screen operation was canceled; its IAsyncInfo handle was released without Close.");
+            }
             Release(info);
         }
+    }
+
+    internal static void WaitForCompletion(Func<int> getStatus, Action cancel, TimeSpan timeout) {
+        var stopwatch = Stopwatch.StartNew();
+        int status;
+        do {
+            status = getStatus();
+            if (status != 0) {
+                return;
+            }
+            if (stopwatch.Elapsed >= timeout) {
+                try {
+                    cancel();
+                } catch (Exception ex) {
+                    DesktopManagerDiagnostics.Report($"Canceling a timed-out lock screen operation failed: {ex.Message}");
+                }
+                throw new TimeoutException("The lock screen operation did not complete before the configured timeout.");
+            }
+            Thread.Sleep(10);
+        } while (true);
     }
 
     private static void CopyToFile(IntPtr stream, FileStream file) {

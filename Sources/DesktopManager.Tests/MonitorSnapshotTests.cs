@@ -184,6 +184,24 @@ public sealed class MonitorSnapshotTests {
     }
 
     [TestMethod]
+    public void GetMonitorSnapshots_RestoreFailsAfterReadFailure_PreservesOriginalException() {
+        var native = new SnapshotNative { FailEnumeration = true, FailRestore = true };
+
+        InvalidOperationException exception = Assert.ThrowsExactly<InvalidOperationException>(
+            () => new MonitorService(new ReadOnlyDesktopManager()).GetMonitorSnapshots(native));
+
+        Assert.AreEqual("Native enumeration failed.", exception.Message);
+    }
+
+    [TestMethod]
+    public void GetMonitorSnapshots_RestoreFailsAfterSuccessfulRead_ReportsRestoreError() {
+        var native = new SnapshotNative { FailRestore = true };
+
+        Assert.ThrowsExactly<Win32Exception>(
+            () => new MonitorService(new ReadOnlyDesktopManager()).GetMonitorSnapshots(native));
+    }
+
+    [TestMethod]
     public void GetMonitorSnapshots_ContextChangeFails_DoesNotEnumerateVirtualizedData() {
         var native = new SnapshotNative { RejectContext = true, FailEnumeration = true };
 
@@ -258,9 +276,13 @@ public sealed class MonitorSnapshotTests {
         internal bool FailEnumeration;
         internal bool FailDpi;
         internal bool RejectContext;
+        internal bool FailRestore;
 
         internal override IntPtr SetThreadDpiAwarenessContext(IntPtr context) {
             if (RejectContext) {
+                return IntPtr.Zero;
+            }
+            if (FailRestore && context == new IntPtr(-1) && Context == new IntPtr(-3)) {
                 return IntPtr.Zero;
             }
             IntPtr previous = Context;
