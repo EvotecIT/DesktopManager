@@ -10,7 +10,7 @@ namespace DesktopManager;
 /// Reads the current Windows interactive-session state.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class DesktopSessionService {
+public sealed partial class DesktopSessionService {
     private const int WtsUserName = 5;
     private const int WtsWinStationName = 6;
     private const int WtsDomainName = 7;
@@ -43,14 +43,18 @@ public sealed class DesktopSessionService {
     }
 
     private static string QueryString(int sessionId, int informationClass) {
-        if (!WTSQuerySessionInformation(IntPtr.Zero, sessionId, informationClass, out IntPtr buffer, out int bytes)) {
-            return string.Empty;
-        }
-
+        IntPtr buffer = IntPtr.Zero;
         try {
-            return bytes <= 1 ? string.Empty : Marshal.PtrToStringUni(buffer) ?? string.Empty;
+            if (!WTSQuerySessionInformation(IntPtr.Zero, sessionId, informationClass, out buffer, out int bytes)
+                || buffer == IntPtr.Zero || bytes <= 1) {
+                return string.Empty;
+            }
+
+            return Marshal.PtrToStringUni(buffer) ?? string.Empty;
         } finally {
-            WTSFreeMemory(buffer);
+            if (buffer != IntPtr.Zero) {
+                WTSFreeMemory(buffer);
+            }
         }
     }
 

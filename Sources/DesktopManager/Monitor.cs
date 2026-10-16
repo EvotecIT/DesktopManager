@@ -60,7 +60,7 @@ public class Monitor {
     public string Wallpaper { get; internal set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the wallpaper position of the monitor.
+    /// Gets or sets the captured wallpaper position, which Windows shares across all monitors.
     /// </summary>
     public DesktopWallpaperPosition WallpaperPosition { get; internal set; }
 

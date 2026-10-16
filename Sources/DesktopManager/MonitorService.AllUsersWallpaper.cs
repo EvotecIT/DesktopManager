@@ -23,6 +23,7 @@ public partial class MonitorService {
     /// <param name="wallpaperPath">Path to the wallpaper image.</param>
     /// <param name="position">Wallpaper position to store for users.</param>
     /// <param name="includeDefaultProfile">Whether to update the default user profile.</param>
+    /// <remarks>Updates profile settings; does not enter or refresh other signed-in users' desktop sessions.</remarks>
     public void SetWallpaperForAllUsers(string wallpaperPath, DesktopWallpaperPosition position, bool includeDefaultProfile = true) {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             throw new PlatformNotSupportedException("Wallpaper updates are supported only on Windows.");
