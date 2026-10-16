@@ -1,94 +1,122 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DesktopManager.Tests;
 
 [TestClass]
-/// <summary>
-/// Test class for logon wallpaper functionality.
-/// </summary>
-[SupportedOSPlatform("windows10.0.10240.0")]
 public class LogonWallpaperTests {
+    private sealed class FakeBackend : ILogonWallpaperBackend {
+        internal Exception? ImageError;
+        internal Exception? PolicyError;
+        internal string? ImagePath;
+        internal string? PolicyPath;
+        internal string Image = "exported-image.png";
+        internal string Policy = "configured-policy.jpg";
+
+        public void SetImage(string path) {
+            if (ImageError != null) { throw ImageError; }
+            ImagePath = path;
+        }
+        public string GetImage() {
+            if (ImageError != null) { throw ImageError; }
+            return Image;
+        }
+        public void SetPolicy(string path) {
+            if (PolicyError != null) { throw PolicyError; }
+            PolicyPath = path;
+        }
+        public string GetPolicy() {
+            if (PolicyError != null) { throw PolicyError; }
+            return Policy;
+        }
+    }
+
     [TestMethod]
-    /// <summary>
-    /// Ensure SetLogonWallpaper does not throw for existing file.
-    /// </summary>
-    public void SetLogonWallpaper_NoThrow() {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires Windows");
-        }
-        TestHelper.RequireSystemDesktopChanges();
+    public void SetLogonWallpaper_WinRtSuccess_ReportsPerUserAndDoesNotWritePolicy() {
+        WithImage((path, backend, service) => {
+            // Policy would fail even for an elevated caller. A successful per-user
+            // operation must neither check nor depend on machine-policy access.
+            backend.PolicyError = new UnauthorizedAccessException("policy denied");
+            LogonWallpaperResult result = service.Set(path, allowPolicyFallback: true);
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(LogonWallpaperMechanism.WindowsRuntime, result.Mechanism);
+            Assert.IsNull(result.WindowsRuntimeError);
+            Assert.IsNull(result.ErrorMessage);
+            Assert.AreEqual(Path.GetFullPath(path), backend.ImagePath);
+            Assert.IsNull(backend.PolicyPath);
+        });
+    }
 
-        if (Type.GetType("Windows.System.UserProfile.LockScreen, Windows, ContentType=WindowsRuntime") == null ||
-            Type.GetType("Windows.Storage.StorageFile, Windows, ContentType=WindowsRuntime") == null) {
-            Assert.Inconclusive("Required Windows Runtime types not available");
-        }
+    [TestMethod]
+    public void SetLogonWallpaper_PerUserFailure_DoesNotWritePolicyWithoutOptIn() {
+        WithImage((path, backend, service) => {
+            backend.ImageError = new COMException("WinRT denied");
+            LogonWallpaperResult result = service.Set(path, allowPolicyFallback: false);
+            Assert.IsFalse(result.Succeeded);
+            Assert.AreEqual(LogonWallpaperMechanism.None, result.Mechanism);
+            Assert.AreEqual("WinRT denied", result.ErrorMessage);
+            Assert.AreEqual("WinRT denied", result.WindowsRuntimeError);
+            Assert.IsNull(backend.PolicyPath);
+        });
+    }
 
-        var service = new MonitorService(new FakeDesktopManager());
-        string temp = Path.GetTempFileName();
-        File.WriteAllBytes(temp, new byte[] { 1 });
+    [TestMethod]
+    public void SetLogonWallpaper_OptInPolicy_ReportsPolicyAndOriginalFailure() {
+        WithImage((path, backend, service) => {
+            backend.ImageError = new EntryPointNotFoundException("WinRT unavailable");
+            LogonWallpaperResult result = service.Set(path, allowPolicyFallback: true);
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(LogonWallpaperMechanism.PersonalizationPolicy, result.Mechanism);
+            Assert.AreEqual("WinRT unavailable", result.WindowsRuntimeError);
+            Assert.IsNull(result.ErrorMessage);
+            Assert.AreEqual(Path.GetFullPath(path), backend.PolicyPath);
+        });
+    }
+
+    [TestMethod]
+    public void SetLogonWallpaper_DeniedPolicy_ReportsFailureWithoutClaimingApplication() {
+        WithImage((path, backend, service) => {
+            backend.ImageError = new COMException("image denied");
+            backend.PolicyError = new UnauthorizedAccessException("policy denied");
+            LogonWallpaperResult result = service.Set(path, allowPolicyFallback: true);
+            Assert.IsFalse(result.Succeeded);
+            Assert.AreEqual(LogonWallpaperMechanism.None, result.Mechanism);
+            Assert.AreEqual("image denied", result.WindowsRuntimeError);
+            Assert.AreEqual("policy denied", result.ErrorMessage);
+        });
+    }
+
+    [TestMethod]
+    public void SetLogonWallpaper_InvalidInput_FailsBeforeEitherNativeWrite() {
+        var backend = new FakeBackend();
+        var service = new LogonWallpaperService(backend);
+        Assert.ThrowsExactly<ArgumentNullException>(() => service.Set(" ", true));
+        Assert.ThrowsExactly<FileNotFoundException>(() => service.Set(
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".png"), true));
+        Assert.IsNull(backend.ImagePath);
+        Assert.IsNull(backend.PolicyPath);
+    }
+
+    [TestMethod]
+    public void GetLogonWallpaper_ReturnsImageOrPolicyOrEmptyOnFailure() {
+        var backend = new FakeBackend();
+        var service = new LogonWallpaperService(backend);
+        Assert.AreEqual(backend.Image, service.Get());
+        backend.ImageError = new COMException("image unavailable");
+        Assert.AreEqual(backend.Policy, service.Get());
+        backend.PolicyError = new UnauthorizedAccessException("policy unavailable");
+        Assert.AreEqual(string.Empty, service.Get());
+    }
+
+    private static void WithImage(Action<string, FakeBackend, LogonWallpaperService> test) {
+        string path = Path.GetTempFileName();
         try {
-            service.SetLogonWallpaper(temp);
+            var backend = new FakeBackend();
+            test(path, backend, new LogonWallpaperService(backend));
         } finally {
-            File.Delete(temp);
+            File.Delete(path);
         }
-    }
-
-    [TestMethod]
-    /// <summary>
-    /// Ensure SetLogonWallpaper throws when not elevated.
-    /// </summary>
-    public void SetLogonWallpaper_ThrowsWhenNotElevated() {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires Windows");
-        }
-        TestHelper.RequireSystemDesktopChanges();
-
-        if (PrivilegeChecker.IsElevated) {
-            Assert.Inconclusive("Test requires non-elevated context");
-        }
-
-        if (Type.GetType("Windows.System.UserProfile.LockScreen, Windows, ContentType=WindowsRuntime") == null ||
-            Type.GetType("Windows.Storage.StorageFile, Windows, ContentType=WindowsRuntime") == null) {
-            Assert.Inconclusive("Required Windows Runtime types not available");
-        }
-
-        var service = new MonitorService(new FakeDesktopManager());
-        string temp = Path.GetTempFileName();
-        File.WriteAllBytes(temp, new byte[] { 1 });
-        try {
-            Assert.ThrowsExactly<InvalidOperationException>(() => service.SetLogonWallpaper(temp));
-        } finally {
-            File.Delete(temp);
-        }
-    }
-
-    [TestMethod]
-    /// <summary>
-    /// Ensure SetLogonWallpaper throws when Windows Runtime types are missing.
-    /// </summary>
-    public void SetLogonWallpaper_ThrowsOnMissingRuntime() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires non-Windows");
-        }
-
-        var service = new MonitorService(new FakeDesktopManager());
-        Assert.ThrowsExactly<PlatformNotSupportedException>(() => service.SetLogonWallpaper("path"));
-    }
-
-    [TestMethod]
-    /// <summary>
-    /// Ensure GetLogonWallpaper throws when Windows Runtime types are missing.
-    /// </summary>
-    public void GetLogonWallpaper_ThrowsOnMissingRuntime() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires non-Windows");
-        }
-
-        var service = new MonitorService(new FakeDesktopManager());
-        Assert.AreEqual(string.Empty, service.GetLogonWallpaper());
     }
 }

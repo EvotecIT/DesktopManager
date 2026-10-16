@@ -81,6 +81,18 @@ public class Monitors {
         return _monitorService.GetMonitorsConnected();
     }
 
+    /// <summary>Captures fresh, read-only monitor identities, physical pixel bounds and effective per-monitor DPI.</summary>
+    /// <returns>Snapshots in wallpaper index order, retaining entries whose device path is unavailable.</returns>
+    /// <remarks>
+    /// Requires Windows 10 version 1607 or Windows Server 2016 or later. The caller's thread DPI context
+    /// is restored and no desktop settings are changed. DPI and scale are null when unavailable.
+    /// Indices are valid for the current topology and enumeration source, not permanent hardware identifiers.
+    /// See <see cref="MonitorService.GetMonitorSnapshots()"/> for failure behavior.
+    /// </remarks>
+    public IReadOnlyList<MonitorSnapshot> GetMonitorSnapshots() {
+        return _monitorService.GetMonitorSnapshots();
+    }
+
     /// <summary>
     /// Gets the current connected monitor topology using stable identities and visual row/column ordering.
     /// </summary>
@@ -225,7 +237,7 @@ public class Monitors {
     }
 
     /// <summary>
-    /// Gets the current wallpaper position.
+    /// Gets the wallpaper position shared by all monitors in the current user's desktop.
     /// </summary>
     /// <returns>The current wallpaper position.</returns>
     public DesktopWallpaperPosition GetWallpaperPosition() {
@@ -233,7 +245,7 @@ public class Monitors {
     }
 
     /// <summary>
-    /// Sets the wallpaper position.
+    /// Sets the wallpaper position for all monitors in the current user's desktop.
     /// </summary>
     /// <param name="position">The wallpaper position to set.</param>
     public void SetWallpaperPosition(DesktopWallpaperPosition position) {
@@ -279,6 +291,15 @@ public class Monitors {
     [SupportedOSPlatform("windows10.0.10240.0")]
     public void SetLogonWallpaper(string imagePath) {
         _monitorService.SetLogonWallpaper(imagePath);
+    }
+
+    /// <summary>Sets the current account's lock screen and reports the mechanism or failure.</summary>
+    /// <param name="imagePath">Path to an existing image file.</param>
+    /// <param name="allowPolicyFallback">Whether to fall back to the machine policy, which requires elevation.</param>
+    /// <returns>The operation result. A policy write does not confirm a visible change.</returns>
+    [SupportedOSPlatform("windows10.0.10240.0")]
+    public LogonWallpaperResult SetLogonWallpaperWithResult(string imagePath, bool allowPolicyFallback = false) {
+        return _monitorService.SetLogonWallpaperWithResult(imagePath, allowPolicyFallback);
     }
 
     /// <summary>

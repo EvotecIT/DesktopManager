@@ -66,6 +66,35 @@ It has following features:
 - Inspect a window's virtual desktop and move it to a known desktop through the public Windows virtual-desktop API
 - Inspect and manage Plug and Play devices and Driver Store packages through documented native Windows APIs
 
+### Wallpaper consumers
+
+Applications such as [PowerBGInfo](https://github.com/EvotecIT/PowerBGInfo) can read monitor geometry,
+display scale and the signed-in session user directly from the library:
+
+```csharp
+using DesktopManager;
+
+var monitors = new Monitors();
+foreach (var display in monitors.GetMonitorSnapshots()) {
+    Console.WriteLine($"{display.Index}: {display.DeviceName}, " +
+        $"{display.Width} x {display.Height}, scale {display.Scale}");
+}
+
+var user = new DesktopSessionService().GetSessionUser();
+Console.WriteLine(user?.AccountName ?? "Unknown");
+```
+
+Snapshots contain physical pixel bounds and per-monitor DPI even when the caller is not DPI aware.
+The calling thread's DPI context is restored. Indexes describe the current display topology; read
+them again after docking or reconnecting. Missing wallpaper device paths on session hosts are retained.
+
+`Monitors.SetLogonWallpaperWithResult(imagePath)` sets the current account's lock screen through
+Windows Runtime on .NET Framework, modern .NET and netstandard consumers. The result reports success,
+the mechanism used and any failure. Machine policy fallback requires an explicit
+`allowPolicyFallback: true` and elevation. The existing `SetLogonWallpaper` method keeps its automatic
+policy fallback. See [Wallpaper consumer APIs](Docs/Wallpaper.Consumers.md) for examples, OS requirements,
+policy limits and session deployment behavior.
+
 ### Desktop state and controls
 
 The workstation profile is the high-level entrypoint when you want to move between repeatable setups. It captures connected monitor modes and placement, monitor wallpaper and supported brightness/HDR state, active audio endpoint state and default roles, personalization, and taskbars. Applying a profile matches monitors by stable identity, stages display changes together, and rolls back the selected sections when a required step fails. Machine-wide personalization policies are captured but only restored when explicitly requested.
