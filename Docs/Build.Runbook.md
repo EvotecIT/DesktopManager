@@ -112,7 +112,7 @@ Publish a specific CLI runtime:
 ## Notes
 
 - `Build-Module.ps1` is the only NuGet and PowerShell module release entrypoint in this repo. Its publish order is NuGet, PowerShell Gallery, then the GitHub module release.
-- The NuGet package remains on the `3.6.x` version line while the PowerShell module remains on `4.x`; the coordinated release does not overwrite either version source.
+- `Build-Module.ps1` resolves the NuGet package version from the `DesktopManager` project build and synchronizes the PowerShell module to that same version for the coordinated release.
 - `Build-Project.ps1 -Plan` plans CLI, app, and installer work and skips the package/module build.
 - The CLI publish targets package `Sources/DesktopManager.Cli/DesktopManager.Cli.csproj` as `desktopmanager.exe` for both `net8.0-windows` and `net10.0-windows`.
 - The daily app publish target packages `Sources/DesktopManager.App/DesktopManager.App.csproj` as an unpackaged, self-contained WinUI app under `DesktopManager.App`.
