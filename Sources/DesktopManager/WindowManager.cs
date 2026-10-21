@@ -12,6 +12,7 @@ namespace DesktopManager;
 /// <summary>
 /// Provides methods to manage windows, including getting window information and controlling window states.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public partial class WindowManager {
         private readonly Lazy<Monitors> _lazyMonitors;
         private Monitors _monitors => _lazyMonitors.Value;

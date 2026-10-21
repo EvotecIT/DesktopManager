@@ -9,6 +9,7 @@ namespace DesktopManager;
 /// <summary>
 /// Service providing access to taskbar manipulation per monitor.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public class TaskbarService {
     private readonly Monitors _monitors;
 

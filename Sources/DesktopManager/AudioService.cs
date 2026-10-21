@@ -10,6 +10,7 @@ namespace DesktopManager;
 /// <summary>
 /// Service to manage system audio devices.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public class AudioService {
     private readonly IPolicyConfigClient _policy;
 

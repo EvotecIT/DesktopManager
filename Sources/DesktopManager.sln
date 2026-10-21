@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopManager.App", "Deskt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopManager.HotkeyHost", "DesktopManager.HotkeyHost\DesktopManager.HotkeyHost.csproj", "{0BFB94F7-9923-439D-A941-BD7EE45809D6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopManager.Portable.Tests", "DesktopManager.Portable.Tests\DesktopManager.Portable.Tests.csproj", "{CF1EE217-BC86-4982-90AA-2F121DF687F2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,18 @@ Global
 		{0BFB94F7-9923-439D-A941-BD7EE45809D6}.Release|x64.Build.0 = Release|Any CPU
 		{0BFB94F7-9923-439D-A941-BD7EE45809D6}.Release|x86.ActiveCfg = Release|Any CPU
 		{0BFB94F7-9923-439D-A941-BD7EE45809D6}.Release|x86.Build.0 = Release|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Debug|x64.Build.0 = Debug|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Debug|x86.Build.0 = Debug|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Release|x64.ActiveCfg = Release|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Release|x64.Build.0 = Release|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Release|x86.ActiveCfg = Release|Any CPU
+		{CF1EE217-BC86-4982-90AA-2F121DF687F2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -16,7 +16,7 @@ internal class FakeDesktopManager : IDesktopManager {
     /// <summary>Number of device paths available.</summary>
     public uint DevicePathCount = 1;
     public int MonitorEnumerationCalls;
-    public Action? BeforeMonitorEnumeration;
+    public Action? BeforeMonitorEnumeration = null;
 
     /// <summary>Value used when testing background color operations.</summary>
     public uint BackgroundColor;

@@ -75,7 +75,7 @@ public partial class MonitorService {
         public DateTimeOffset Updated { get; }
     }
 
-    private void SetWallpaperInternal(string monitorId, string wallpaperPath, bool addToHistory) {
+    private void SetWallpaperInternal(string monitorId, string wallpaperPath, bool addToHistory, bool allowSystemFallback = true) {
         if (string.IsNullOrWhiteSpace(monitorId)) {
             throw new ArgumentNullException(nameof(monitorId));
         }
@@ -87,9 +87,9 @@ public partial class MonitorService {
 
         try {
             Execute(() => _desktopManager.SetWallpaper(monitorId, wallpaperPath), nameof(IDesktopManager.SetWallpaper));
-        } catch (DesktopManagerException) {
+        } catch (DesktopManagerException) when (allowSystemFallback) {
             SetSystemWallpaper(wallpaperPath);
-        } catch (COMException) {
+        } catch (COMException) when (allowSystemFallback) {
             SetSystemWallpaper(wallpaperPath);
         }
 
@@ -139,6 +139,14 @@ public partial class MonitorService {
     /// <param name="wallpaperPath">The path to the wallpaper image.</param>
     public void SetWallpaper(string monitorId, string wallpaperPath) {
         SetWallpaperInternal(monitorId, wallpaperPath, true);
+    }
+
+    /// <summary>Sets one named display's image and propagates native failures without falling back to every display.</summary>
+    /// <param name="monitorId">The nonempty wallpaper device path for the intended display.</param>
+    /// <param name="wallpaperPath">The local wallpaper image path.</param>
+    /// <remarks>Use this operation when widening a failed target to the whole session is unacceptable.</remarks>
+    public void SetWallpaperForDisplayStrict(string monitorId, string wallpaperPath) {
+        SetWallpaperInternal(monitorId, wallpaperPath, true, allowSystemFallback: false);
     }
 
     /// <summary>
@@ -425,6 +433,20 @@ public partial class MonitorService {
         }
 
         return GetSystemWallpaper();
+    }
+
+    /// <summary>Reads one named display's current image without returning stale cache or another display's session-wide fallback.</summary>
+    /// <param name="monitorId">The nonempty wallpaper device path for the intended display.</param>
+    /// <returns>The current image path, or an empty string if no image is assigned.</returns>
+    public string GetWallpaperForDisplayStrict(string monitorId) {
+        if (string.IsNullOrWhiteSpace(monitorId)) {
+            throw new ArgumentNullException(nameof(monitorId));
+        }
+        var path = Execute(() => _desktopManager.GetWallpaper(monitorId), nameof(IDesktopManager.GetWallpaper)) ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(path)) {
+            UpdateWallpaperCache(monitorId, path);
+        }
+        return path;
     }
 
     /// <summary>

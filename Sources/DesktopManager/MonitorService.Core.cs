@@ -12,6 +12,7 @@ namespace DesktopManager;
 /// <summary>
 /// Service for managing monitors and their settings.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public partial class MonitorService {
     private const int ENUM_CURRENT_SETTINGS = -1;
     private readonly Lazy<IDesktopManager> _lazyDesktopManager;

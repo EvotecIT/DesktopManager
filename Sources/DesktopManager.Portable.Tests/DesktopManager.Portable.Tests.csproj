@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../DesktopManager.Tests/FakeDesktopManager.cs" Link="Fixtures/FakeDesktopManager.cs" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.5.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.5.1" />
+    <!-- Keep the older asset's internal platform-attribute polyfill separate from System.Runtime in this friend assembly. -->
+    <ProjectReference Include="../DesktopManager/DesktopManager.csproj" Aliases="DesktopLibrary" />
+  </ItemGroup>
+</Project>

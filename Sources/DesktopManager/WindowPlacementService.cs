@@ -8,6 +8,7 @@ namespace DesktopManager;
 /// <summary>
 /// Executes reusable reliable window placement operations for apps, command-line tools, and PowerShell surfaces.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed class WindowPlacementService {
     private readonly WindowManager _windowManager;
     private readonly Monitors _monitors;

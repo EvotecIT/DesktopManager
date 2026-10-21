@@ -14,6 +14,7 @@ namespace DesktopManager;
 /// <summary>
 /// Provides higher-level desktop automation orchestration on top of WindowManager and related services.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed partial class DesktopAutomationService {
     private const int PreferredWindowRediscoveryMilliseconds = 1000;
     private readonly WindowManager _windowManager;

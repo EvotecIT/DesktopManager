@@ -21,6 +21,7 @@ public sealed class UiAutomationProviderHealth {
 }
 
 /// <summary>Provides read-only health information for the library's provider workers.</summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public static class DesktopAutomationDiagnostics {
     /// <summary>Returns the current UI Automation worker states without calling providers.</summary>
     public static IReadOnlyList<UiAutomationProviderHealth> GetUiAutomationHealth() {
