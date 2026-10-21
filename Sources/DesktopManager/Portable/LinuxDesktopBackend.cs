@@ -127,7 +127,17 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
     }
 
     private string RunKde(string action, string? displayId, string? uri, int fillMode) {
-        var request = JsonSerializer.Serialize(new { action, displayId, uri, fillMode });
+        // Write the fixed schema directly so request construction does not require runtime reflection.
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer)) {
+            writer.WriteStartObject();
+            writer.WriteString("action", action);
+            writer.WriteString("displayId", displayId);
+            writer.WriteString("uri", uri);
+            writer.WriteNumber("fillMode", fillMode);
+            writer.WriteEndObject();
+        }
+        var request = Encoding.UTF8.GetString(buffer.ToArray());
         return _runner.Run(FindDesktopCommand() ?? throw new InvalidOperationException("qdbus6 or qdbus is unavailable."),
             "org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript", "var request = " + request + ";\n" + KdeScript.Value);
     }

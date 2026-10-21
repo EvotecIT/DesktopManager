@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace DesktopManager.Portable.Tests;
 
@@ -132,6 +133,40 @@ public sealed class PortableDesktopTests {
         var state = Linux(runner, DesktopEnvironment("KDE")).GetWallpaper("screen:0");
         Assert.AreEqual(DesktopOperationStatus.Unsupported, state.Status);
         Assert.IsNull(state.FilePath);
+    }
+
+    [TestMethod]
+    public void KdeRequests_PreserveTargetsUrisAndTypedNullableFields() {
+        WithImage(path => {
+            var runner = new FakeRunner {
+                Execute = arguments => {
+                    CollectionAssert.AreEqual(new[] { "org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript" }, arguments.Take(3).ToArray());
+                    const string prefix = "var request = ";
+                    StringAssert.StartsWith(arguments[3], prefix);
+                    var end = arguments[3].IndexOf(";\n", StringComparison.Ordinal);
+                    Assert.IsGreaterThan(prefix.Length, end);
+                    using var document = JsonDocument.Parse(arguments[3].Substring(prefix.Length, end - prefix.Length));
+                    var payload = document.RootElement;
+                    Assert.AreEqual(4, payload.EnumerateObject().Count());
+                    Assert.AreEqual(JsonValueKind.Number, payload.GetProperty("fillMode").ValueKind);
+                    if (payload.GetProperty("action").GetString() == "read") {
+                        Assert.AreEqual(JsonValueKind.Null, payload.GetProperty("displayId").ValueKind);
+                        Assert.AreEqual(JsonValueKind.Null, payload.GetProperty("uri").ValueKind);
+                        Assert.AreEqual(0, payload.GetProperty("fillMode").GetInt32());
+                        return "{\"supported\":true,\"path\":null,\"fillMode\":2}";
+                    }
+                    Assert.AreEqual("apply", payload.GetProperty("action").GetString());
+                    Assert.AreEqual("screen:3", payload.GetProperty("displayId").GetString());
+                    Assert.AreEqual(new Uri(path).AbsoluteUri, payload.GetProperty("uri").GetString());
+                    Assert.AreEqual(1, payload.GetProperty("fillMode").GetInt32());
+                    return "true";
+                }
+            };
+            var service = new PortableDesktopService(Linux(runner, DesktopEnvironment("KDE")));
+            Assert.IsTrue(service.GetWallpaper().Succeeded);
+            Assert.IsTrue(service.ApplyWallpaper(new DesktopWallpaperRequest { FilePath = path, DisplayId = "screen:3", Position = DesktopWallpaperPosition.Fit }).Succeeded);
+            Assert.AreEqual(2, runner.Calls.Count);
+        });
     }
 
     [TestMethod]
