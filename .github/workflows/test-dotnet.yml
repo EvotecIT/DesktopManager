@@ -20,6 +20,25 @@ env:
   BUILD_CONFIGURATION: 'Release'
 
 jobs:
+  test-portable:
+    name: 'Portable desktop / ${{ matrix.os }}'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test portable desktop contracts without changing wallpaper
+        run: dotnet test Sources/DesktopManager.Portable.Tests/DesktopManager.Portable.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --property:EnableWindowsTargeting=true --logger trx --results-directory artifacts/portable-tests
+
   test-windows:
     name: 'Windows / ${{ matrix.label }}'
     runs-on: windows-latest

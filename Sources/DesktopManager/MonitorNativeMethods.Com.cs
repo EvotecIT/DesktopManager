@@ -6,6 +6,7 @@ namespace DesktopManager;
 /// <summary>
 /// COM initialization related native methods.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public static partial class MonitorNativeMethods {
     /// <summary>Apartment threaded COM initialization flag.</summary>
     public const uint COINIT_APARTMENTTHREADED = 0x2;

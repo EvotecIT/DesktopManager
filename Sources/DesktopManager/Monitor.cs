@@ -6,6 +6,7 @@ namespace DesktopManager;
 /// <summary>
 /// Represents a monitor and provides methods to interact with it.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public class Monitor {
     private readonly MonitorService _monitorService;
 

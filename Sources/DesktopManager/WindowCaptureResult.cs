@@ -18,6 +18,7 @@ public enum WindowCaptureBackend {
 }
 
 /// <summary>Owns a captured bitmap and records its source and screen bounds.</summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed class WindowCaptureResult : IDisposable {
     internal WindowCaptureResult(Bitmap bitmap, WindowCaptureBackend backend, Rectangle bounds, string? fallbackReason, bool isDark) {
         Bitmap = bitmap;

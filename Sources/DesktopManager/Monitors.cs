@@ -8,6 +8,7 @@ namespace DesktopManager;
 /// <summary>
 /// Provides methods to manage and interact with monitors, including getting monitor information and setting wallpapers.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public class Monitors {
     private readonly Lazy<MonitorService> _lazyMonitorService;
     private List<Monitor>? _cachedMonitors;
@@ -109,6 +110,13 @@ public class Monitors {
     /// <param name="wallpaperPath">The file path of the wallpaper image.</param>
     public void SetWallpaper(string monitorId, string wallpaperPath) {
         _monitorService.SetWallpaper(monitorId, wallpaperPath);
+    }
+
+    /// <summary>Sets one named display's image without a session-wide fallback when the native call fails.</summary>
+    /// <param name="monitorId">The nonempty wallpaper device path for the intended display.</param>
+    /// <param name="wallpaperPath">The local wallpaper image path.</param>
+    public void SetWallpaperForDisplayStrict(string monitorId, string wallpaperPath) {
+        _monitorService.SetWallpaperForDisplayStrict(monitorId, wallpaperPath);
     }
 
     /// <summary>
@@ -216,6 +224,13 @@ public class Monitors {
     /// <returns>The file path of the wallpaper image.</returns>
     public string GetWallpaper(string monitorId) {
         return _monitorService.GetWallpaper(monitorId);
+    }
+
+    /// <summary>Reads one named display's current image without stale-cache or session-wide fallback.</summary>
+    /// <param name="monitorId">The nonempty wallpaper device path for the intended display.</param>
+    /// <returns>The current image path, or an empty string if no image is assigned.</returns>
+    public string GetWallpaperForDisplayStrict(string monitorId) {
+        return _monitorService.GetWallpaperForDisplayStrict(monitorId);
     }
 
     /// <summary>

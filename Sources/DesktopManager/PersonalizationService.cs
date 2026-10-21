@@ -9,6 +9,7 @@ namespace DesktopManager;
 /// <summary>
 /// Provides personalization orchestration for lock screen and desktop settings.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed class PersonalizationService {
     private const string PersonalizationPolicyPath = @"SOFTWARE\Policies\Microsoft\Windows\Personalization";
     private const string CloudContentPolicyPath = @"SOFTWARE\Policies\Microsoft\Windows\CloudContent";

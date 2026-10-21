@@ -7,6 +7,7 @@ namespace DesktopManager;
 /// <summary>
 /// Provides methods for enumerating child window controls.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public class ControlEnumerator {
     private const long EditStylePassword = 0x0020;
     private const int NativeReadTimeoutMilliseconds = 1000;

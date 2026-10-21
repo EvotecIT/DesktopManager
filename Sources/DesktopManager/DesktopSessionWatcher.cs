@@ -6,6 +6,7 @@ namespace DesktopManager;
 /// <summary>
 /// Observes meaningful changes to the current interactive session without polling idle-time changes.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed class DesktopSessionWatcher : IDisposable {
     [ThreadStatic]
     private static DesktopSessionWatcher? _activePollWatcher;

@@ -1348,6 +1348,7 @@ public sealed class DesktopResolvedControlTarget {
 /// <summary>
 /// Represents a screenshot capture produced by DesktopManager.
 /// </summary>
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed class DesktopCapture : IDisposable {
     /// <summary>Gets or sets the API supplying window pixels, when applicable.</summary>
     public WindowCaptureBackend? CaptureBackend { get; set; }
