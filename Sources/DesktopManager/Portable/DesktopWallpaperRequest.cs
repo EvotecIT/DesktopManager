@@ -41,7 +41,7 @@ public class DesktopOperationResult {
 public sealed class DesktopWallpaperState : DesktopOperationResult {
     internal DesktopWallpaperState(DesktopOperationStatus status, string message, string? filePath = null, DesktopWallpaperPosition? position = null)
         : base(status, message) {
-        FilePath = filePath;
+        FilePath = string.IsNullOrWhiteSpace(filePath) ? null : filePath;
         Position = position;
     }
 

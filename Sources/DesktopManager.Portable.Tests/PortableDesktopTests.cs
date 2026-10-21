@@ -6,6 +6,24 @@ namespace DesktopManager.Portable.Tests;
 [TestClass]
 public sealed class PortableDesktopTests {
     [TestMethod]
+    public void WallpaperState_NormalizesMissingPathsAndPreservesOtherResultFields() {
+        foreach (var missingPath in new string?[] { null, string.Empty, " \t\r\n" }) {
+            var state = new DesktopWallpaperState(DesktopOperationStatus.Success, "No image assigned.", missingPath, DesktopWallpaperPosition.Fit);
+            Assert.IsNull(state.FilePath);
+            Assert.AreEqual(DesktopOperationStatus.Success, state.Status);
+            Assert.AreEqual("No image assigned.", state.Message);
+            Assert.AreEqual(DesktopWallpaperPosition.Fit, state.Position);
+        }
+
+        const string existingPath = "/photos/ background with spaces.png ";
+        var assigned = new DesktopWallpaperState(DesktopOperationStatus.Failed, "Read failed.", existingPath, DesktopWallpaperPosition.Center);
+        Assert.AreEqual(existingPath, assigned.FilePath);
+        Assert.AreEqual(DesktopOperationStatus.Failed, assigned.Status);
+        Assert.AreEqual("Read failed.", assigned.Message);
+        Assert.AreEqual(DesktopWallpaperPosition.Center, assigned.Position);
+    }
+
+    [TestMethod]
     public void HeadlessSession_DoesNotOfferWallpaperOperations() {
         var runner = new FakeRunner();
         var backend = Linux(runner, new Dictionary<string, string> { ["XDG_CURRENT_DESKTOP"] = "GNOME" });
