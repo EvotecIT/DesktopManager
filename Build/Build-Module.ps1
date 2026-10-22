@@ -26,6 +26,7 @@ Build-Module -ModuleName 'DesktopManager' {
         Tags                   = @('windows', 'image', 'wallpaper', 'monitor')
         ProjectUri             = 'https://github.com/EvotecIT/DesktopManager'
         IconUri                = 'https://evotec.xyz/wp-content/uploads/2022/12/DesktopManager.png'
+        LicenseUri             = 'https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/LICENSE'
         DotNetFrameworkVersion = '4.7.2'
     }
     New-ConfigurationManifest @manifest
