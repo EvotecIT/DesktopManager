@@ -37,6 +37,8 @@ public sealed class WindowLayoutPlan {
     internal WindowLayoutPlan(IReadOnlyList<WindowLayoutMatch> windows) { Windows = windows; }
     /// <summary>Gets each saved window's proposed target or matching limitation.</summary>
     public IReadOnlyList<WindowLayoutMatch> Windows { get; }
+    /// <summary>Gets preview limitations, including unavailable virtual desktop targets when inspection was requested.</summary>
+    public List<string> Warnings { get; } = new();
 }
 
 /// <summary>Reports one window's layout application, including skipped matches and failures.</summary>

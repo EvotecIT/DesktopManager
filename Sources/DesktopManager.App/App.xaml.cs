@@ -12,6 +12,9 @@ public sealed partial class App : Application {
     private readonly bool _ownsSingleInstance;
     private Window? _window;
 
+    // Explicit alternate workspace keeps recovery snapshots and the hotkey profile together.
+    internal static string? WorkspaceDirectory { get; private set; }
+
     /// <summary>
     /// Initializes the DesktopManager application.
     /// </summary>
@@ -27,7 +30,14 @@ public sealed partial class App : Application {
             return;
         }
 
-        bool startMinimized = ShouldStartMinimized(args.Arguments, Environment.GetCommandLineArgs());
+        string[] processArguments = Environment.GetCommandLineArgs();
+        for (int index = 1; index < processArguments.Length; index++) {
+            if (processArguments[index] == "--workspace-directory") {
+                if (index + 1 >= processArguments.Length) { throw new ArgumentException("--workspace-directory requires a path."); }
+                WorkspaceDirectory = Path.GetFullPath(processArguments[++index]);
+            }
+        }
+        bool startMinimized = ShouldStartMinimized(args.Arguments, processArguments);
         _window = new MainWindow();
         _window.Activate();
         if (startMinimized && _window is MainWindow mainWindow) {

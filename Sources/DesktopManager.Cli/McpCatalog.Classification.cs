@@ -71,7 +71,8 @@ internal static partial class McpCatalog {
         "configure_taskbar",
         "apply_workstation_profile",
         "set_radio_state",
-        "set_airplane_mode"
+        "set_airplane_mode",
+        "restore_workspace"
     };
 
     private static readonly HashSet<string> ForegroundInputFallbackToolNames = new(StringComparer.Ordinal) {

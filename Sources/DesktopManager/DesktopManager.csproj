@@ -75,6 +75,8 @@
   </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.md" />
+        <None Include="..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" />
         <None Include="..\..\Assets\Icons\DesktopManager.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>

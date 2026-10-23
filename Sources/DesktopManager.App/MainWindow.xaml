@@ -541,6 +541,9 @@
             <TabViewItem Header="Desktop state">
                 <local:DesktopStatePanel />
             </TabViewItem>
+            <TabViewItem Header="Workspace">
+                <local:WorkspaceRecoveryPanel x:Name="WorkspacePanel" />
+            </TabViewItem>
         </TabView>
     </Grid>
 </Window>

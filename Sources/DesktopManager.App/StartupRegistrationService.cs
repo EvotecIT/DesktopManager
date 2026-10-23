@@ -5,7 +5,6 @@ namespace DesktopManager.App;
 internal static class StartupRegistrationService {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string ValueName = "DesktopManager";
-    private const string MinimizedArgument = "--minimized";
 
     public static bool IsEnabled() {
         using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
@@ -37,8 +36,6 @@ internal static class StartupRegistrationService {
 
     private static string GetCommand(bool startMinimized) {
         string executable = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
-        return startMinimized
-            ? $"\"{executable}\" {MinimizedArgument}"
-            : $"\"{executable}\"";
+        return Core.StartupCommand.Build(executable, startMinimized, App.WorkspaceDirectory);
     }
 }

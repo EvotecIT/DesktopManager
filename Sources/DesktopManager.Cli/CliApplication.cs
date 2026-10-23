@@ -33,6 +33,7 @@ internal static class CliApplication {
 
             return group switch {
                 "desktop" => DesktopCommands.Run(action, parsed),
+                "workspace" => WorkspaceCommands.Run(action, parsed),
                 "window" => WindowCommands.Run(action, parsed),
                 "control" => ControlCommands.Run(action, parsed),
                 "monitor" => MonitorCommands.Run(action, parsed),
@@ -99,6 +100,7 @@ internal static class CliApplication {
             "visual" => true,
             "control-target" => true,
             "layout" => true,
+            "workspace" => true,
             "snapshot" => true,
             "diagnostic" => true,
             "workflow" => true,
@@ -129,6 +131,7 @@ internal static class CliApplication {
             "visual" => HelpText.GetVisualHelp(),
             "control-target" => HelpText.GetControlTargetHelp(),
             "layout" => HelpText.GetLayoutHelp(),
+            "workspace" => WorkspaceCommands.Help,
             "snapshot" => HelpText.GetSnapshotHelp(),
             "diagnostic" => HelpText.GetDiagnosticHelp(),
             "workflow" => HelpText.GetWorkflowHelp(),

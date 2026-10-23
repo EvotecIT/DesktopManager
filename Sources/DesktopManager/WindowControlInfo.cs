@@ -6,6 +6,13 @@ namespace DesktopManager;
 /// Represents a child window control.
 /// </summary>
 public class WindowControlInfo {
+    internal WindowControlInfo WithBounds(System.Drawing.Rectangle bounds) {
+        var copy = (WindowControlInfo)MemberwiseClone();
+        copy.Left = bounds.Left; copy.Top = bounds.Top;
+        copy.Width = bounds.Width; copy.Height = bounds.Height;
+        return copy;
+    }
+
     /// <summary>Handle of the parent window that exposed this control.</summary>
     public IntPtr ParentWindowHandle { get; internal set; }
     /// <summary>Handle of the control.</summary>

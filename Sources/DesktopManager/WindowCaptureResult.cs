@@ -31,7 +31,7 @@ public sealed class WindowCaptureResult : IDisposable {
     public Bitmap Bitmap { get; }
     /// <summary>Gets the source of the captured pixels.</summary>
     public WindowCaptureBackend Backend { get; }
-    /// <summary>Gets the screen rectangle represented by the bitmap.</summary>
+    /// <summary>Gets the physical screen rectangle represented by the bitmap on Windows 10 1607 and later.</summary>
     public Rectangle ScreenBounds { get; }
     /// <summary>Gets why desktop fallback was used, or null for PrintWindow output.</summary>
     public string? FallbackReason { get; }

@@ -112,7 +112,11 @@ public class ScreenshotServiceTests {
         TestHelper.RequireOwnedWindowUiTests();
         using WinFormsWindowHarness harness = WinFormsWindowHarness.Create("Screenshot Window Harness");
 
-        Assert.IsTrue(MonitorNativeMethods.GetWindowRect(harness.Window.Handle, out RECT rect));
+        IntPtr previous = MonitorNativeMethods.SetThreadDpiAwarenessContext(new IntPtr(-3));
+        Assert.AreNotEqual(IntPtr.Zero, previous);
+        RECT rect;
+        try { Assert.IsTrue(MonitorNativeMethods.GetWindowRect(harness.Window.Handle, out rect)); }
+        finally { MonitorNativeMethods.SetThreadDpiAwarenessContext(previous); }
         using var bmp = ScreenshotService.CaptureWindow(harness.Window.Handle);
         Assert.AreEqual(rect.Right - rect.Left, bmp.Width);
         Assert.AreEqual(rect.Bottom - rect.Top, bmp.Height);
@@ -516,7 +520,11 @@ public class ScreenshotServiceTests {
         var edit = controls.FirstOrDefault(c => c.Handle == textBox.Handle);
         Assert.IsNotNull(edit, "Edit control not found");
 
-        Assert.IsTrue(MonitorNativeMethods.GetWindowRect(edit.Handle, out RECT rect));
+        IntPtr previous = MonitorNativeMethods.SetThreadDpiAwarenessContext(new IntPtr(-3));
+        Assert.AreNotEqual(IntPtr.Zero, previous);
+        RECT rect;
+        try { Assert.IsTrue(MonitorNativeMethods.GetWindowRect(edit.Handle, out rect)); }
+        finally { MonitorNativeMethods.SetThreadDpiAwarenessContext(previous); }
         using var bmp = ScreenshotService.CaptureControl(edit.Handle);
         Assert.AreEqual(rect.Right - rect.Left, bmp.Width);
         Assert.AreEqual(rect.Bottom - rect.Top, bmp.Height);
