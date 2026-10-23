@@ -44,6 +44,10 @@ function backgroundColor(options) {
     return '#' + hex(rgb.redComponent) + hex(rgb.greenComponent) + hex(rgb.blueComponent);
 }
 
+function existingLocalImageUrl(url) {
+    return url && !url.isNil() && url.isFileURL && $.NSFileManager.defaultManager.fileExistsAtPath(url.path);
+}
+
 function run(args) {
     var action = args[0];
     var selected = findScreens(args[1] || null);
@@ -69,7 +73,7 @@ function run(args) {
         return JSON.stringify(selected.map(function (screen) {
             var originalUrl = $.NSWorkspace.sharedWorkspace.desktopImageURLForScreen(screen);
             var originalOptions = $.NSWorkspace.sharedWorkspace.desktopImageOptionsForScreen(screen);
-            if (!originalUrl || originalUrl.isNil() || !originalOptions || originalOptions.isNil()) {
+            if (!existingLocalImageUrl(originalUrl) || !originalOptions || originalOptions.isNil()) {
                 throw new Error('The active screen does not expose a restorable native image URL and options.');
             }
             var archive = $.NSKeyedArchiver.archivedDataWithRootObject(originalOptions);
@@ -85,7 +89,7 @@ function run(args) {
             var matches = selected.filter(function (screen) { return displayId(screen) === entry.id; });
             if (matches.length !== 1) { throw new Error('An original macOS screen is unavailable; no images were restored.'); }
             var nativeUrl = $.NSURL.URLWithString($(entry.url));
-            if (!nativeUrl || nativeUrl.isNil() || !nativeUrl.isFileURL || !$.NSFileManager.defaultManager.fileExistsAtPath(nativeUrl.path)) {
+            if (!existingLocalImageUrl(nativeUrl)) {
                 throw new Error('An original macOS image is unavailable; no images were restored.');
             }
             var data = $.NSData.alloc.initWithBase64EncodedStringOptions($(entry.options), 0);

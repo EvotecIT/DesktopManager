@@ -284,18 +284,32 @@ public sealed class StrictWindowsWallpaperTests {
     }
 
     [TestMethod]
-    public void WindowsSelectedSolidColor_WithoutRetainedImagesRestoresItsEmptyAssignmentsAfterInactiveSources() {
+    public void WindowsSelectedSolidColor_DoesNotInferSafeRecoveryFromEmptyComPaths() {
         var native = new CheckpointDesktopManager(string.Empty);
         var selection = new RecordingSelection { Mode = 1 };
         var service = new PortableDesktopService(new WindowsDesktopBackend(new MonitorService(native), () => Snapshots("display"), () => true, selection));
         using var checkpoint = service.CaptureWallpaperState();
-        Assert.IsTrue(checkpoint.Succeeded, checkpoint.Message);
-        selection.Mode = 0;
-        var restored = service.RestoreWallpaperState(checkpoint);
-        Assert.IsTrue(restored.Succeeded, restored.Message);
-        Assert.AreEqual(("display", string.Empty), native.SetWallpaperCalls.Single());
+        Assert.AreEqual(DesktopOperationStatus.Unsupported, checkpoint.Status);
+        Assert.AreEqual(0, native.SetWallpaperCalls.Count);
+        Assert.AreEqual(0, native.SetSlideshowCalls.Count);
         Assert.AreEqual(1, selection.Mode);
-        Assert.AreEqual("items,image", string.Join(",", native.RestoreOrder.TakeLast(2)));
+    }
+
+    [TestMethod]
+    public void WindowsSelectedImage_RestoresItsAssignmentAfterInactiveSources() {
+        WithImageAndHistory((path, _) => {
+            var native = new CheckpointDesktopManager(path);
+            var selection = new RecordingSelection { Mode = 0 };
+            var service = new PortableDesktopService(new WindowsDesktopBackend(new MonitorService(native), () => Snapshots("display"), () => true, selection));
+            using var checkpoint = service.CaptureWallpaperState();
+            Assert.IsTrue(checkpoint.Succeeded, checkpoint.Message);
+            selection.Mode = 1;
+            var restored = service.RestoreWallpaperState(checkpoint);
+            Assert.IsTrue(restored.Succeeded, restored.Message);
+            Assert.AreEqual(("display", path), native.SetWallpaperCalls.Single());
+            Assert.AreEqual(0, selection.Mode);
+            Assert.AreEqual("items,image", string.Join(",", native.RestoreOrder.TakeLast(2)));
+        });
     }
 
     [TestMethod]

@@ -47,7 +47,8 @@ the adapter does not resolve the effective image inside a package. Ordinary KDE 
 For composition, inspect `previous.Background` and `previous.ImageOpacity` as well as the image and fit.
 `Background` describes a solid color or a horizontal/vertical gradient. Its primary color is the solid,
 left or top color; its secondary color is the right or bottom color of a gradient. Windows and macOS
-return `#RRGGBB`; GNOME returns the configured CSS color string. Unsupported color syntax needs a
+return `#RRGGBB`; GNOME returns the configured CSS color string, and KDE returns its native configuration
+color string. Unsupported color syntax needs a
 diagnostic in the consuming renderer. A null background or opacity means unknown; it is not a default
 black color or a promise of full opacity. Disabled retained images are not exposed as `FilePath`.
 
@@ -99,9 +100,10 @@ is reported as incomplete restoration while the adapter attempts the remaining s
 
 Windows captures native per-monitor images (including an empty image), shared fit/color, slideshow
 items/options and enabled state. Its selected Explorer background mode is captured separately from
-retained COM paths. A solid-color desktop with retained picture assignments returns `Unsupported`
-for checkpoint capture: restoring those paths alone can display a hidden photo, while clearing them
-can discard its retained configuration. Spotlight and absent/unknown selected modes are also
+retained COM paths. Selected solid-color desktops return `Unsupported` for checkpoint capture:
+Windows can expose either empty or retained picture paths for the same solid desktop. Restoring
+retained paths can display a hidden photo, while clearing them can discard retained configuration;
+empty COM paths do not establish that recovery is safe. Spotlight and absent/unknown selected modes are also
 unsupported checkpoints. A successful wallpaper read can still describe a solid background even
 when its checkpoint cannot be qualified. Explicit image application synchronizes Explorer's selected
 image mode after the native assignment. This Windows mode integration requires native qualification
@@ -110,7 +112,12 @@ on the target Windows version; registry values alone do not prove visible accept
 GNOME captures the effective light/dark URI and picture-options
 values, including `none`; it restores effective values, not the distinction between schema defaults
 and explicit user overrides. KDE captures the current activity's plugins and static image/fit keys,
-including key absence. macOS captures active screen image URLs and full native AppKit options;
+including key absence. Enabled GNOME images and active KDE image plugins require an existing local
+image file at capture and again before restoration. Unresolved KDE package directories are unsupported
+checkpoints. Empty GNOME image URIs and disabled images do not require a file; unused image settings
+of a different KDE plugin do not prevent its capture. macOS checks that each captured image URL is
+local and exists before accepting a checkpoint, then repeats that check before restoration.
+It captures active screen image URLs and full native AppKit options;
 it does not enumerate all Spaces or identify a switch to another Space. Do not switch Spaces while
 using a checkpoint. Missing original files, changed topology or a changed session can prevent restoration.
 

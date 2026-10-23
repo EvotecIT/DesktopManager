@@ -20,13 +20,15 @@ public partial class MonitorService {
             return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported,
                 "An absent, unknown or Spotlight Windows background mode cannot be restored through a static image checkpoint.", "windows", owner);
         }
+        if (mode == 1) {
+            // Real Windows probes returned both empty and retained paths for the same selected
+            // solid desktop. Empty COM paths cannot prove that no latent picture state exists.
+            return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported,
+                "Selected Windows solid-color backgrounds do not expose a qualified checkpoint for their retained picture configuration.", "windows", owner);
+        }
         var manager = _desktopManager;
         var ids = ReadCheckpointMonitorIds(geometry);
         var paths = ids.Select(id => manager.GetWallpaper(id) ?? string.Empty).ToArray();
-        if (mode == 1 && paths.Any(path => path.Length > 0)) {
-            return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported,
-                "The solid-color desktop retains native image assignments. Their visible mode and retained assignments cannot be faithfully restored through this checkpoint.", "windows", owner);
-        }
         if (paths.Any(path => path.Length > 0 && !File.Exists(path))) {
             return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported,
                 "An assigned Windows monitor image must expose an existing file before a native checkpoint can be restored.", "windows", owner);

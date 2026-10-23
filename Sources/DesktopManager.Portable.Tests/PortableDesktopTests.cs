@@ -387,7 +387,7 @@ public sealed class PortableDesktopTests {
             var environment = DesktopEnvironment("GNOME");
             var runner = new FakeRunner { Execute = args => args[0] == "list-keys" ? "picture-uri\npicture-uri-dark\n"
                 : args[0] == "writable" ? (locked && args[2] == "picture-uri-dark" ? "false" : "true")
-                : args[0] == "get" ? "'original'" : throw new InvalidOperationException("No write is permitted.") };
+                : args[0] == "get" ? (args[2] == "picture-options" ? "'none'" : "'original'") : throw new InvalidOperationException("No write is permitted.") };
             var service = new PortableDesktopService(Linux(runner, environment));
             var snapshot = service.CaptureWallpaperState();
             Assert.IsTrue(snapshot.Succeeded, snapshot.Message);
@@ -405,7 +405,7 @@ public sealed class PortableDesktopTests {
         var runner = new FakeRunner { Execute = args => {
             if (args[0] == "list-keys") { return "picture-uri\npicture-uri-dark\n"; }
             if (args[0] == "writable") { return "true"; }
-            if (args[0] == "get") { return restoring ? "'unrestored'" : "'original'"; }
+            if (args[0] == "get") { return restoring ? "'unrestored'" : args[2] == "picture-options" ? "'none'" : "'original'"; }
             if (args[2] == "picture-uri") { throw new InvalidOperationException("Native write failed."); }
             return string.Empty;
         } };
@@ -418,6 +418,93 @@ public sealed class PortableDesktopTests {
         CollectionAssert.AreEqual(new[] { "picture-uri", "picture-uri-dark", "picture-options" },
             runner.Calls.Where(call => call[0] == "set").Select(call => call[2]).ToArray());
         StringAssert.Contains(result.Message, "readback");
+    }
+
+    [TestMethod]
+    public void GnomeCheckpoint_RequiresTheActiveSourceAtCaptureAndAgainBeforeRestore() {
+        WithImage(path => {
+            var originalUri = "'" + new Uri(path).AbsoluteUri.Replace("'", "\\'") + "'";
+            var values = new Dictionary<string, string> { ["picture-uri"] = originalUri,
+                ["picture-uri-dark"] = "'file:///missing-unused-dark.jpg'", ["picture-options"] = "'scaled'" };
+            var runner = new FakeRunner { Execute = args => {
+                if (args[0] == "list-keys") { return string.Join("\n", values.Keys); }
+                if (args[0] == "writable") { return "true"; }
+                if (args[2] == "color-scheme") { return "'default'"; }
+                if (args[0] == "get") { return values[args[2]]; }
+                values[args[2]] = args[3];
+                return string.Empty;
+            } };
+            var service = new PortableDesktopService(Linux(runner));
+            using var checkpoint = service.CaptureWallpaperState();
+            Assert.IsTrue(checkpoint.Succeeded, checkpoint.Message);
+            File.Delete(path);
+            Assert.AreEqual(DesktopOperationStatus.Unavailable, service.RestoreWallpaperState(checkpoint).Status);
+            using var missing = service.CaptureWallpaperState();
+            Assert.AreEqual(DesktopOperationStatus.Unsupported, missing.Status);
+            Assert.IsFalse(runner.Calls.Any(call => call[0] == "set"));
+        });
+    }
+
+    [TestMethod]
+    public void GnomeCheckpoint_EmptyImageUriRemainsRestorableWithAnEnabledFit() {
+        var values = new Dictionary<string, string> { ["picture-uri"] = "''", ["picture-options"] = "'scaled'" };
+        var runner = new FakeRunner { Execute = args => {
+            if (args[0] == "list-keys") { return "picture-uri\npicture-options\n"; }
+            if (args[0] == "writable") { return "true"; }
+            if (args[0] == "get") { return values[args[2]]; }
+            values[args[2]] = args[3];
+            return string.Empty;
+        } };
+        var service = new PortableDesktopService(Linux(runner));
+        using var checkpoint = service.CaptureWallpaperState();
+        Assert.IsTrue(checkpoint.Succeeded, checkpoint.Message);
+        values["picture-uri"] = "'file:///temporary.png'";
+        var restored = service.RestoreWallpaperState(checkpoint);
+        Assert.IsTrue(restored.Succeeded, restored.Message);
+        Assert.AreEqual("''", values["picture-uri"]);
+        Assert.AreEqual("'scaled'", values["picture-options"]);
+    }
+
+    [TestMethod]
+    public void KdeCheckpoint_RequiresActiveImageSourcesButNotUnusedOtherPluginImages() {
+        WithImage(path => {
+            foreach (var plugin in new[] { "org.kde.image", "org.kde.color" }) {
+                var payload = JsonSerializer.Serialize(new { activity = "work", desktops = new[] {
+                    new { id = 12, screen = 0, plugin, image = new Uri(path).AbsoluteUri, imagePresent = true, fillMode = 2, fillPresent = true }
+                } });
+                var runner = new FakeRunner { Execute = args => args[3].Contains("\"action\":\"restore\"") ? "true" : payload };
+                var service = new PortableDesktopService(Linux(runner, DesktopEnvironment("KDE")));
+                using var checkpoint = service.CaptureWallpaperState();
+                Assert.IsTrue(checkpoint.Succeeded, checkpoint.Message);
+                File.Delete(path);
+                var restored = service.RestoreWallpaperState(checkpoint);
+                using var missing = service.CaptureWallpaperState();
+                if (plugin == "org.kde.image") {
+                    Assert.AreEqual(DesktopOperationStatus.Unavailable, restored.Status);
+                    Assert.AreEqual(DesktopOperationStatus.Unsupported, missing.Status);
+                    Assert.IsFalse(runner.Calls.Any(call => call[3].Contains("\"action\":\"restore\"")));
+                } else {
+                    Assert.IsTrue(restored.Succeeded, restored.Message);
+                    Assert.IsTrue(missing.Succeeded, missing.Message);
+                }
+                File.WriteAllBytes(path, new byte[] { 1 });
+            }
+        });
+    }
+
+    [TestMethod]
+    public void KdeCheckpoint_PackageDirectoryDoesNotMasqueradeAsAResolvedImageFile() {
+        WithImage(path => {
+            var payload = JsonSerializer.Serialize(new { activity = "work", desktops = new[] {
+                new { id = 12, screen = 0, plugin = "org.kde.image", image = new Uri(Path.GetDirectoryName(path)!).AbsoluteUri,
+                    imagePresent = true, fillMode = 2, fillPresent = true }
+            } });
+            var runner = new FakeRunner { Execute = _ => payload };
+            using var checkpoint = new PortableDesktopService(Linux(runner, DesktopEnvironment("KDE"))).CaptureWallpaperState();
+            Assert.AreEqual(DesktopOperationStatus.Unsupported, checkpoint.Status);
+            StringAssert.Contains(checkpoint.Message, "packages");
+            Assert.AreEqual(1, runner.Calls.Count);
+        });
     }
 
     private static LinuxDesktopBackend Linux(FakeRunner runner, Dictionary<string, string>? values = null) {

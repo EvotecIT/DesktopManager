@@ -8,7 +8,7 @@ public sealed class DesktopWallpaperBackground {
         SecondaryColor = secondaryColor;
     }
 
-    /// <summary>Gets the solid, left or top color. Windows and macOS use #RRGGBB; GNOME returns its native CSS color string. Consumers must report unsupported color syntax instead of guessing.</summary>
+    /// <summary>Gets the solid, left or top color. Windows and macOS use #RRGGBB; GNOME returns its native CSS color string and KDE its native configuration color string. Consumers must report unsupported color syntax instead of guessing.</summary>
     public string PrimaryColor { get; }
     /// <summary>Gets the right or bottom gradient color, or null for a solid background.</summary>
     public string? SecondaryColor { get; }
