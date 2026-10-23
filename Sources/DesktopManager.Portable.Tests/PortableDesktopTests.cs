@@ -425,7 +425,7 @@ public sealed class PortableDesktopTests {
         WithImage(path => {
             var originalUri = "'" + new Uri(path).AbsoluteUri.Replace("'", "\\'") + "'";
             var values = new Dictionary<string, string> { ["picture-uri"] = originalUri,
-                ["picture-uri-dark"] = "'file:///missing-unused-dark.jpg'", ["picture-options"] = "'scaled'" };
+                ["picture-uri-dark"] = originalUri, ["picture-options"] = "'scaled'" };
             var runner = new FakeRunner { Execute = args => {
                 if (args[0] == "list-keys") { return string.Join("\n", values.Keys); }
                 if (args[0] == "writable") { return "true"; }
@@ -443,6 +443,58 @@ public sealed class PortableDesktopTests {
             Assert.AreEqual(DesktopOperationStatus.Unsupported, missing.Status);
             Assert.IsFalse(runner.Calls.Any(call => call[0] == "set"));
         });
+    }
+
+    [TestMethod]
+    public void GnomeCheckpoint_RequiresInactiveDarkSourcesBeforeCaptureAndRestore() {
+        WithImage(light => WithImage(dark => {
+            var values = new Dictionary<string, string> { ["picture-uri"] = "'" + new Uri(light).AbsoluteUri.Replace("'", "\\'") + "'",
+                ["picture-uri-dark"] = "'" + new Uri(dark).AbsoluteUri.Replace("'", "\\'") + "'", ["picture-options"] = "'scaled'" };
+            var runner = new FakeRunner { Execute = args => {
+                if (args[0] == "list-keys") { return string.Join("\n", values.Keys); }
+                if (args[0] == "writable") { return "true"; }
+                if (args[2] == "color-scheme") { return "'default'"; }
+                if (args[0] == "get") { return values[args[2]]; }
+                values[args[2]] = args[3];
+                return string.Empty;
+            } };
+            var service = new PortableDesktopService(Linux(runner));
+            using var checkpoint = service.CaptureWallpaperState();
+            Assert.IsTrue(checkpoint.Succeeded, checkpoint.Message);
+            File.Delete(dark);
+            Assert.AreEqual(DesktopOperationStatus.Unavailable, service.RestoreWallpaperState(checkpoint).Status);
+            using var missing = service.CaptureWallpaperState();
+            Assert.AreEqual(DesktopOperationStatus.Unsupported, missing.Status);
+            Assert.IsFalse(runner.Calls.Any(call => call[0] == "set"));
+        }));
+    }
+
+    [TestMethod]
+    public void MacCheckpoint_ReportsUnqualifiedNativeSelectionWithoutReturningARestorableToken() {
+        var runner = new FakeRunner { Execute = args => args[0] == "-f" ? Environment.UserName
+            : "{\"unsupported\":\"HEIC aerial or unknown-fit selection cannot be faithfully restored.\"}" };
+        var service = new PortableDesktopService(new MacDesktopBackend(runner, _ => null));
+        using var checkpoint = service.CaptureWallpaperState();
+        Assert.AreEqual(DesktopOperationStatus.Unsupported, checkpoint.Status);
+        StringAssert.Contains(checkpoint.Message, "HEIC");
+        Assert.IsFalse(service.RestoreWallpaperState(checkpoint).Succeeded);
+        Assert.IsFalse(runner.Calls.Any(call => call.Contains("restore") || call.Contains("apply")));
+    }
+
+    [TestMethod]
+    public void KdeCheckpoint_DynamicPluginsCannotBecomeStaticColorCheckpoints() {
+        foreach (var plugin in new[] { "org.kde.slideshow", "third.party.video", "" }) {
+            var payload = JsonSerializer.Serialize(new { activity = "work", desktops = new[] {
+                new { id = 12, screen = 0, plugin, image = "", imagePresent = false, fillMode = 2, fillPresent = false }
+            } });
+            var runner = new FakeRunner { Execute = _ => payload };
+            var service = new PortableDesktopService(Linux(runner, DesktopEnvironment("KDE")));
+            using var checkpoint = service.CaptureWallpaperState();
+            Assert.AreEqual(DesktopOperationStatus.Unsupported, checkpoint.Status, plugin);
+            StringAssert.Contains(checkpoint.Message, "plugins");
+            Assert.IsFalse(service.RestoreWallpaperState(checkpoint).Succeeded);
+            Assert.AreEqual(1, runner.Calls.Count);
+        }
     }
 
     [TestMethod]

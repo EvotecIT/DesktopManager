@@ -23,7 +23,7 @@ internal sealed partial class LinuxDesktopBackend {
         }
         if (!GnomeCheckpointSourceAvailable(values)) {
             return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported,
-                "The active GNOME image must expose an existing local file before its checkpoint can be restored.", _backend, this);
+                "Every nonempty GNOME light/dark image must expose an existing local file before its checkpoint can be restored.", _backend, this);
         }
         var bus = _environment("DBUS_SESSION_BUS_ADDRESS");
         var display = _environment("DISPLAY");
@@ -41,7 +41,7 @@ internal sealed partial class LinuxDesktopBackend {
         }
         if (!KdeCheckpointSourcesAvailable(document.RootElement)) {
             return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported,
-                "The active KDE image must expose an existing local file before its checkpoint can be restored; unresolved packages are unsupported.", _backend, this);
+                "KDE checkpoints require the static image or color plugin and existing local image files; dynamic plugins and unresolved packages are unsupported.", _backend, this);
         }
         var bus = _environment("DBUS_SESSION_BUS_ADDRESS");
         var display = _environment("DISPLAY");
@@ -70,15 +70,21 @@ internal sealed partial class LinuxDesktopBackend {
 
     private bool GnomeCheckpointSourceAvailable(Dictionary<string, string> values) {
         if (DecodeGVariantString(values["picture-options"]) == "none") { return true; }
-        var source = DecodeGVariantString(values[GnomeImageKey()]);
-        if (source.Length == 0) { return true; }
-        var path = LocalPath(source);
-        return path != null && File.Exists(path);
+        foreach (var key in new[] { "picture-uri", "picture-uri-dark" }) {
+            if (!values.TryGetValue(key, out var variant)) { continue; }
+            var source = DecodeGVariantString(variant);
+            if (source.Length == 0) { continue; }
+            var path = LocalPath(source);
+            if (path == null || !File.Exists(path)) { return false; }
+        }
+        return true;
     }
 
     private static bool KdeCheckpointSourcesAvailable(JsonElement checkpoint) {
         foreach (var desktop in checkpoint.GetProperty("desktops").EnumerateArray()) {
-            if (desktop.GetProperty("plugin").GetString() != "org.kde.image") { continue; }
+            var plugin = desktop.GetProperty("plugin").GetString();
+            if (plugin == "org.kde.color") { continue; }
+            if (plugin != "org.kde.image") { return false; }
             var path = LocalPath(desktop.GetProperty("image").GetString());
             if (path == null || !File.Exists(path)) { return false; }
         }
@@ -95,7 +101,7 @@ internal sealed partial class LinuxDesktopBackend {
         }
         if (!GnomeCheckpointSourceAvailable(values)) {
             return new DesktopOperationResult(DesktopOperationStatus.Unavailable,
-                "The original active GNOME image is unavailable; no settings were restored.");
+                "An original GNOME light/dark image is unavailable; no settings were restored.");
         }
         foreach (var key in keys) {
             if (RunGSettings("writable", BackgroundSchema, key).Trim() != "true") {

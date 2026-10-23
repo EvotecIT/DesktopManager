@@ -297,8 +297,11 @@ public sealed class StrictWindowsWallpaperTests {
 
     [TestMethod]
     public void WindowsSelectedImage_RestoresItsAssignmentAfterInactiveSources() {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            Assert.Inconclusive("This proof requires a real nonempty Windows Shell item array.");
+        }
         WithImageAndHistory((path, _) => {
-            var native = new CheckpointDesktopManager(path);
+            var native = new CheckpointDesktopManager(path) { CaptureSlideshowItems = true, SlideshowReadResult = 1 };
             var selection = new RecordingSelection { Mode = 0 };
             var service = new PortableDesktopService(new WindowsDesktopBackend(new MonitorService(native), () => Snapshots("display"), () => true, selection));
             using var checkpoint = service.CaptureWallpaperState();
@@ -308,7 +311,8 @@ public sealed class StrictWindowsWallpaperTests {
             Assert.IsTrue(restored.Succeeded, restored.Message);
             Assert.AreEqual(("display", path), native.SetWallpaperCalls.Single());
             Assert.AreEqual(0, selection.Mode);
-            Assert.AreEqual("items,image", string.Join(",", native.RestoreOrder.TakeLast(2)));
+            Assert.AreEqual("clear,items,image", string.Join(",", native.RestoreOrder));
+            Assert.AreEqual((uint)1, native.RestoredItemCount);
         });
     }
 
@@ -368,10 +372,14 @@ public sealed class StrictWindowsWallpaperTests {
 
     private sealed class CheckpointDesktopManager : global::DesktopManager.Tests.FakeDesktopManager, IDesktopManager {
         private readonly Dictionary<string, string> _paths = new Dictionary<string, string>();
+        private readonly string _slideshowPath;
         internal bool RejectRestore { get; set; }
+        internal bool CaptureSlideshowItems { get; set; }
+        internal uint RestoredItemCount { get; private set; }
         internal uint SlideshowReadResult { get; set; }
         internal List<string> RestoreOrder { get; } = new List<string>();
         internal CheckpointDesktopManager(string path) {
+            _slideshowPath = path;
             DevicePaths[0] = "display";
             _paths["display"] = path;
         }
@@ -382,8 +390,27 @@ public sealed class StrictWindowsWallpaperTests {
             if (RejectRestore) { throw new COMException("Native image restore failed."); }
             _paths[id] = path;
         }
-        uint IDesktopManager.GetSlideshow(out IntPtr pointer) { pointer = IntPtr.Zero; return SlideshowReadResult; }
-        void IDesktopManager.SetSlideshow(IntPtr pointer) { SetSlideshowCalls.Add(pointer); RestoreOrder.Add("items"); }
+        uint IDesktopManager.GetSlideshow(out IntPtr pointer) {
+            pointer = IntPtr.Zero;
+            if (CaptureSlideshowItems) {
+                Marshal.ThrowExceptionForHR(MonitorNativeMethods.SHParseDisplayName(_slideshowPath, IntPtr.Zero, out var item, 0, out _));
+                try {
+                    Marshal.ThrowExceptionForHR(MonitorNativeMethods.SHCreateShellItemArrayFromIDLists(1, new[] { item }, out pointer));
+                } finally { Marshal.FreeCoTaskMem(item); }
+            }
+            return SlideshowReadResult;
+        }
+        void IDesktopManager.SetSlideshow(IntPtr pointer) {
+            SetSlideshowCalls.Add(pointer);
+            RestoreOrder.Add(pointer == IntPtr.Zero ? "clear" : "items");
+            if (pointer != IntPtr.Zero) {
+                var array = (MonitorNativeMethods.IShellItemArray)Marshal.GetObjectForIUnknown(pointer);
+                try {
+                    Marshal.ThrowExceptionForHR(array.GetCount(out var count));
+                    RestoredItemCount = count;
+                } finally { Marshal.ReleaseComObject(array); }
+            }
+        }
         void IDesktopManager.Enable(bool enable) {
             EnableCalled = true;
             SlideshowState = enable ? SlideshowState | DesktopSlideshowState.Enabled : SlideshowState & ~DesktopSlideshowState.Enabled;

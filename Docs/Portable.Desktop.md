@@ -112,12 +112,15 @@ on the target Windows version; registry values alone do not prove visible accept
 GNOME captures the effective light/dark URI and picture-options
 values, including `none`; it restores effective values, not the distinction between schema defaults
 and explicit user overrides. KDE captures the current activity's plugins and static image/fit keys,
-including key absence. Enabled GNOME images and active KDE image plugins require an existing local
-image file at capture and again before restoration. Unresolved KDE package directories are unsupported
-checkpoints. Empty GNOME image URIs and disabled images do not require a file; unused image settings
-of a different KDE plugin do not prevent its capture. macOS checks that each captured image URL is
-local and exists before accepting a checkpoint, then repeats that check before restoration.
-It captures active screen image URLs and full native AppKit options;
+including key absence. When GNOME images are enabled, every nonempty light/dark URI must resolve to
+an existing local image at capture and again before restoration, so a color-scheme change cannot select
+an already unavailable original. Empty URIs and disabled images do not require a file. KDE checkpoints
+support the static image and color plugins; other dynamic or unknown plugins and unresolved image-package
+directories return `Unsupported`. An unused image setting of the static color plugin needs no file.
+macOS checks that each captured image URL is local and exists before accepting a checkpoint, then repeats
+that check before restoration. Only static PNG/JPEG/BMP/TIFF sources with explicit native fit are eligible.
+HEIC, aerial/dynamic selections and unknown fit return `Unsupported`: native URL/options replay does not
+restore the aerial or all-Spaces selection. An eligible checkpoint captures active screen URLs and full AppKit options;
 it does not enumerate all Spaces or identify a switch to another Space. Do not switch Spaces while
 using a checkpoint. Missing original files, changed topology or a changed session can prevent restoration.
 

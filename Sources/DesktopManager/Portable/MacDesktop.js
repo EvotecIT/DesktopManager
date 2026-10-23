@@ -70,16 +70,25 @@ function run(args) {
     }
     if (!selected.length) { throw new Error('The requested macOS display is not available.'); }
     if (action === 'capture') {
-        return JSON.stringify(selected.map(function (screen) {
+        var captured = [];
+        for (var captureIndex = 0; captureIndex < selected.length; captureIndex++) {
+            var screen = selected[captureIndex];
             var originalUrl = $.NSWorkspace.sharedWorkspace.desktopImageURLForScreen(screen);
             var originalOptions = $.NSWorkspace.sharedWorkspace.desktopImageOptionsForScreen(screen);
             if (!existingLocalImageUrl(originalUrl) || !originalOptions || originalOptions.isNil()) {
                 throw new Error('The active screen does not expose a restorable native image URL and options.');
             }
+            // AppKit's URL/options omit aerial/dynamic selection and all-Spaces state.
+            // Native probes showed that replaying an existing HEIC URL is not faithful recovery.
+            var originalPath = String(ObjC.unwrap(originalUrl.path));
+            if (!/\.(png|jpe?g|bmp|tiff?)$/i.test(originalPath) || position(originalOptions) === null) {
+                return JSON.stringify({unsupported: 'Only static PNG/JPEG/BMP/TIFF backgrounds with explicit AppKit fit are eligible for URL/options checkpoints. HEIC, aerial/dynamic and unknown-fit selections are unsupported.'});
+            }
             var archive = $.NSKeyedArchiver.archivedDataWithRootObject(originalOptions);
-            return {id: displayId(screen), url: ObjC.unwrap(originalUrl.absoluteString),
-                options: ObjC.unwrap(archive.base64EncodedStringWithOptions(0))};
-        }));
+            captured.push({id: displayId(screen), url: ObjC.unwrap(originalUrl.absoluteString),
+                options: ObjC.unwrap(archive.base64EncodedStringWithOptions(0))});
+        }
+        return JSON.stringify(captured);
     }
     if (action === 'restore') {
         // The opaque archive came from this service's own in-memory checkpoint; no file or external archive is loaded.

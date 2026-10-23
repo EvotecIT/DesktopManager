@@ -100,6 +100,10 @@ internal sealed class MacDesktopBackend : IPortableDesktopBackend, IDesktopWallp
         }
         var checkpoint = Invoke("capture", string.Empty);
         using (var document = JsonDocument.Parse(checkpoint)) {
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("unsupported", out var reason) && reason.ValueKind == JsonValueKind.String) {
+                return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported, reason.GetString()!, "macos", this);
+            }
             if (document.RootElement.ValueKind != JsonValueKind.Array || document.RootElement.GetArrayLength() == 0) {
                 throw new FormatException("AppKit did not return a screen checkpoint.");
             }
