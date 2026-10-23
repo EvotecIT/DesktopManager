@@ -9,11 +9,11 @@ internal static partial class McpCatalog {
     private static readonly HashSet<string> SystemSettingsToolNames = new(StringComparer.Ordinal) {
         "set_taskbar_position",
         "configure_audio_endpoint", "invoke_system_action", "configure_keep_awake", "apply_personalization", "configure_taskbar",
-        "apply_workstation_profile", "set_radio_state", "set_airplane_mode"
+        "apply_workstation_profile", "set_radio_state", "set_airplane_mode", "restore_workspace"
     };
 
     private static readonly HashSet<string> ExperimentalToolNames = new(StringComparer.Ordinal) {
-        "get_airplane_mode", "set_airplane_mode"
+        "get_airplane_mode", "set_airplane_mode", "get_workspace_desktops", "capture_workspace", "preview_workspace", "restore_workspace"
     };
 
     public static bool RequiresSystemSettingsAccess(string name) => SystemSettingsToolNames.Contains(name);

@@ -8,7 +8,14 @@ public partial class WindowManager {
     /// <summary>Plans one-to-one layout matches without moving windows. Ambiguous targets are skipped.</summary>
     public WindowLayoutPlan PlanLayout(WindowLayout layout) {
         if (layout == null) { throw new ArgumentNullException(nameof(layout)); }
-        return BuildLayoutPlan(layout, GetWindows().Select(GetWindowPosition).ToArray());
+        WindowPosition[] current = GetWindows().Select(GetWindowPosition).ToArray();
+        if (layout.Windows != null && layout.Windows.Any(window => window != null && !string.IsNullOrEmpty(window.ExplorerFolderPath))) {
+            Dictionary<IntPtr, string> folders = WorkspaceExplorerFolders.Read();
+            foreach (WindowPosition window in current) {
+                if (folders.TryGetValue(window.Handle, out string? folder)) { window.ExplorerFolderPath = folder; }
+            }
+        }
+        return BuildLayoutPlan(layout, current);
     }
 
     internal static WindowLayoutPlan BuildLayoutPlan(WindowLayout layout, IReadOnlyList<WindowPosition> current) {
@@ -41,7 +48,8 @@ public partial class WindowManager {
 
     private static bool IdentityMatches(WindowPosition saved, WindowPosition window) {
         return (string.IsNullOrEmpty(saved.ProcessName) || string.Equals(saved.ProcessName, window.ProcessName, StringComparison.OrdinalIgnoreCase)) &&
-            (string.IsNullOrEmpty(saved.ClassName) || string.Equals(saved.ClassName, window.ClassName, StringComparison.Ordinal));
+            (string.IsNullOrEmpty(saved.ClassName) || string.Equals(saved.ClassName, window.ClassName, StringComparison.Ordinal)) &&
+            (string.IsNullOrEmpty(saved.ExplorerFolderPath) || string.Equals(saved.ExplorerFolderPath, window.ExplorerFolderPath, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Applies uniquely matched layout entries and reports each result. Uncertain or missing targets are skipped.</summary>
@@ -49,12 +57,18 @@ public partial class WindowManager {
         WindowLayoutPlan plan = PlanLayout(layout);
         var results = new List<WindowLayoutApplyResult>();
         foreach (WindowLayoutMatch match in plan.Windows) {
-            if (match.Window == null) {
-                results.Add(new WindowLayoutApplyResult(match, false, null));
-                continue;
-            }
-            try {
+            results.Add(ApplyLayoutMatch(match));
+        }
+        return results.AsReadOnly();
+    }
+
+    // Recovery reuses the already computed one-to-one plan rather than rematching each entry.
+    private WindowLayoutApplyResult ApplyLayoutMatch(WindowLayoutMatch match) {
+        if (match.Window == null) { return new WindowLayoutApplyResult(match, false, null); }
+        try {
                 WindowPosition live = GetWindowPosition(match.Window);
+                if (!string.IsNullOrEmpty(match.Window.ExplorerFolderPath) &&
+                        WorkspaceExplorerFolders.Read().TryGetValue(live.Handle, out string? folder)) { live.ExplorerFolderPath = folder; }
                 if (live.ProcessId != match.Window.ProcessId || !IdentityMatches(match.Window, live) ||
                         WindowTextHelper.GetWindowText(live.Handle) != match.Window.Title) {
                     throw new InvalidOperationException("The target window identity changed after layout planning.");
@@ -71,11 +85,9 @@ public partial class WindowManager {
                 if (saved.State.HasValue && GetWindowPosition(live).State != saved.State) {
                     throw new InvalidOperationException("The target did not accept the requested window state.");
                 }
-                results.Add(new WindowLayoutApplyResult(match, true, null));
-            } catch (Exception ex) {
-                results.Add(new WindowLayoutApplyResult(match, false, ex.Message));
-            }
+                return new WindowLayoutApplyResult(match, true, null);
+        } catch (Exception ex) {
+            return new WindowLayoutApplyResult(match, false, ex.Message);
         }
-        return results.AsReadOnly();
     }
 }

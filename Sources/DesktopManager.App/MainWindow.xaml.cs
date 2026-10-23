@@ -35,7 +35,8 @@ public sealed partial class MainWindow : Window {
         InitializeComponent();
 
         Title = "DesktopManager";
-        _profilePath = HotkeyProfileStore.GetDefaultProfilePath();
+        _profilePath = App.WorkspaceDirectory == null ? HotkeyProfileStore.GetDefaultProfilePath() :
+            Path.Combine(App.WorkspaceDirectory, "hotkeys.json");
         ActionLogList.ItemsSource = _logEntries;
         AdvancedColorList.ItemsSource = _advancedColorOptions;
         RulesList.ItemsSource = _ruleOptions;
@@ -48,6 +49,7 @@ public sealed partial class MainWindow : Window {
         LoadProfileRecoverably();
         LoadProfileIntoView();
         StartRuntime();
+        WorkspacePanel.StartRuntime();
     }
 
     private void ReloadButton_Click(object sender, RoutedEventArgs e) {
@@ -446,6 +448,7 @@ public sealed partial class MainWindow : Window {
     }
 
     private void MainWindow_Closed(object sender, WindowEventArgs args) {
+        WorkspacePanel.Dispose();
         _runtime.Dispose();
         DisposeTray();
     }

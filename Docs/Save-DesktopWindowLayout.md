@@ -11,7 +11,7 @@ Saves the current desktop window layout to a file.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Save-DesktopWindowLayout [-Path] <string> [-WhatIf] [-Confirm] [<CommonParameters>]
+Save-DesktopWindowLayout [-Path] <string> [-IncludeVirtualDesktops] [-IncludeExplorerFolders] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -26,6 +26,38 @@ Save-DesktopWindowLayout -Path 'C:\Path'
 
 
 ## PARAMETERS
+
+### -IncludeExplorerFolders
+Capture Explorer filesystem folder paths for matching and optional reopening.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -IncludeVirtualDesktops
+Capture virtual desktops, pins and wallpapers using the experimental Windows 11 shell contract.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
 
 ### -Path
 Path where the layout should be stored.

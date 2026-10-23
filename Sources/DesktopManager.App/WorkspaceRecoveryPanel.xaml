@@ -1,0 +1,50 @@
+<UserControl
+    x:Class="DesktopManager.App.WorkspaceRecoveryPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="20" Spacing="16" MaxWidth="1000" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Workspace recovery" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="Save your window layout, preview matches, then restore the windows that can be identified safely." TextWrapping="Wrap" />
+                <TextBlock x:Name="SnapshotStatusText" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock x:Name="SnapshotPathText" TextWrapping="Wrap" IsTextSelectionEnabled="True" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <InfoBar x:Name="StatusInfo" IsOpen="False" IsClosable="True" />
+            <Border Padding="16" CornerRadius="8" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Snapshot contents" FontSize="16" FontWeight="SemiBold" />
+                    <CheckBox x:Name="VirtualDesktopsCheck" Content="Include virtual desktops, pins and wallpapers (experimental)" />
+                    <CheckBox x:Name="ExplorerFoldersCheck" Content="Include Explorer folder paths" />
+                    <TextBlock Text="Virtual desktop operations use an undocumented Windows 11 shell contract. Unsupported builds report a limitation. Your current desktop is never switched." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="CaptureButton" Content="Capture workspace" Click="CaptureButton_Click" />
+                        <Button x:Name="PreviewButton" Content="Preview matches" Click="PreviewButton_Click" />
+                        <Button x:Name="InspectDesktopsButton" Content="Inspect desktops" Click="InspectDesktopsButton_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Padding="16" CornerRadius="8" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Restore options" FontSize="16" FontWeight="SemiBold" />
+                    <CheckBox x:Name="ReopenExplorerCheck" Content="Reopen missing Explorer folders" />
+                    <CheckBox x:Name="ApplicationPinsCheck" Content="Allow application-wide pin changes (affects every window of the app)" />
+                    <CheckBox x:Name="WallpapersCheck" Content="Restore saved per-desktop wallpapers on this manual restore" />
+                    <TextBlock Text="Other applications must already be running. Missing or ambiguous windows are skipped. Intentional duplicate wallpapers and slideshow settings are preserved." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <Button x:Name="RestoreButton" HorizontalAlignment="Left" Content="Restore workspace" Click="RestoreButton_Click" />
+                </StackPanel>
+            </Border>
+            <Border Padding="16" CornerRadius="8" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Automatic recovery" FontSize="16" FontWeight="SemiBold" />
+                    <CheckBox x:Name="RestoreOnStartupCheck" Content="Restore when DesktopManager starts" />
+                    <CheckBox x:Name="AutoCaptureCheck" Content="Capture every five minutes after successful recovery or a manual capture" />
+                    <TextBlock Text="Use the existing Startup switch to launch DesktopManager at Windows sign-in. Startup recovery waits for missing windows for up to 22 seconds. Periodic capture pauses after incomplete recovery and never replaces a snapshot with fewer windows." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <Button x:Name="SaveSettingsButton" HorizontalAlignment="Left" Content="Save recovery settings" Click="SaveSettingsButton_Click" />
+                </StackPanel>
+            </Border>
+            <TextBlock Text="Results" FontSize="16" FontWeight="SemiBold" />
+            <TextBox x:Name="ResultsText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="100" MaxHeight="360" AutomationProperties.Name="Workspace recovery results" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

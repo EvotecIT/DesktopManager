@@ -9,9 +9,14 @@ schema: 2.0.0
 Gets supported virtual-desktop state for a top-level window.
 
 ## SYNTAX
-### __AllParameterSets
+### Window (Default)
 ```powershell
 Get-DesktopVirtualDesktop [-Handle] <IntPtr> [<CommonParameters>]
+```
+
+### List
+```powershell
+Get-DesktopVirtualDesktop -List -Experimental [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -25,19 +30,57 @@ Get-DesktopVirtualDesktop -Handle 'Value'
 ```
 
 
+### EXAMPLE 2
+```powershell
+Get-DesktopVirtualDesktop -List -Experimental
+```
+
+
 ## PARAMETERS
+
+### -Experimental
+Acknowledge the undocumented, build-dependent shell contract used for desktop enumeration.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: List
+Aliases: None
+Possible values:
+
+Required: True
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
 
 ### -Handle
 The top-level window handle.
 
 ```yaml
 Type: IntPtr
-Parameter Sets: __AllParameterSets
+Parameter Sets: Window
 Aliases: None
 Possible values:
 
 Required: True
 Position: 0
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -List
+List live virtual desktop identities, names and wallpapers through the experimental shell contract.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: List
+Aliases: None
+Possible values:
+
+Required: True
+Position: named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

@@ -29,6 +29,7 @@ Groups:
   visual     Save visual baselines and inspect screenshot text
   control-target Save and resolve reusable control selector targets
   layout     Save, apply, and list named layouts
+  workspace  Capture, preview and restore desktop-aware workspace layouts
   snapshot   Save, restore, and list named snapshots
   diagnostic Read DesktopManager diagnostic artifacts
   workflow   Run higher-level desktop workflows

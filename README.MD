@@ -637,6 +637,9 @@ MonitorWatcherExample.Run(TimeSpan.FromSeconds(30));
 
 #### Example in PowerShell - Saving and Restoring Window Layout
 
+For optional virtual desktop assignments, pins, Explorer folders and explicit
+per-desktop wallpaper restoration, see [Workspace recovery](Docs/Workspace.Recovery.md).
+
 ```powershell
 Save-DesktopWindowLayout -Path './layout.json'
 # ... move windows around ...

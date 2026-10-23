@@ -5,6 +5,10 @@ namespace DesktopManager.Cli;
 internal static partial class McpCatalog {
     public static bool TryCallTool(string name, JsonElement arguments, out object result, out string? error) {
         try {
+            if (TryCallWorkspaceTool(name, arguments, out result)) {
+                error = null;
+                return true;
+            }
             if (TryCallDesktopStateTool(name, arguments, out result)) {
                 error = null;
                 return true;
