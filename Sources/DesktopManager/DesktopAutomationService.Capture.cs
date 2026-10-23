@@ -83,10 +83,14 @@ public sealed partial class DesktopAutomationService {
         EnsureControlSupportsNativeStateChange(control, "captured");
         WindowInfo window = ResolveParentWindow(control);
         DesktopWindowGeometry geometry = DescribeWindowGeometry(window);
+        if (!MonitorNativeMethods.GetWindowRect(control.Handle, out RECT rect)) {
+            throw new InvalidOperationException("Failed to get control bounds.");
+        }
+        WindowControlInfo physicalControl = control.WithBounds(new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top));
         WindowCaptureResult result = ScreenshotService.CaptureWindowDetailed(control.Handle,
             new WindowCaptureOptions { AllowDesktopFallback = true });
         return new DesktopCapture {
-            Kind = "control", Bitmap = result.Bitmap, Window = window, Control = control, Geometry = geometry,
+            Kind = "control", Bitmap = result.Bitmap, Window = window, Control = physicalControl, Geometry = geometry,
             CaptureBackend = result.Backend, CapturedScreenBounds = result.ScreenBounds,
             CaptureFallbackReason = result.FallbackReason, IsDarkCapture = result.IsDark
         };

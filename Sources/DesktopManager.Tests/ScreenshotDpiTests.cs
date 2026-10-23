@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -48,13 +49,34 @@ public sealed class ScreenshotDpiTests {
                 Assert.AreEqual(full.Geometry.ClientLeft, client.CapturedScreenBounds!.Value.Left);
                 Assert.AreEqual(full.Geometry.ClientTop, client.CapturedScreenBounds.Value.Top);
                 AssertUnaware();
-                using DesktopCapture control = automation.CaptureControl(new WindowControlInfo {
-                    Handle = button.Handle, ParentWindowHandle = harness.Window.Handle
-                });
+                WindowControlInfo descriptor = new ControlEnumerator().EnumerateControls(harness.Window.Handle).Single(item => item.Handle == button.Handle);
+                descriptor.ParentWindowHandle = harness.Window.Handle;
+                int originalWidth = descriptor.Width;
+                using DesktopCapture control = automation.CaptureControl(descriptor);
                 Assert.AreEqual(physicalControl.Right - physicalControl.Left, control.Bitmap.Width);
                 Assert.AreEqual(physicalControl.Bottom - physicalControl.Top, control.Bitmap.Height);
                 Assert.AreEqual(full.Geometry.WindowWidth, control.Geometry!.WindowWidth);
+                Assert.AreEqual(physicalControl.Left, control.Control!.Left);
+                Assert.AreEqual(physicalControl.Top, control.Control.Top);
+                Assert.AreEqual(control.Bitmap.Width, control.Control.Width);
+                Assert.AreEqual(control.Bitmap.Height, control.Control.Height);
+                Assert.AreEqual(originalWidth, descriptor.Width, "Capture must not rewrite a caller's enumerated descriptor.");
+                Assert.AreNotSame(descriptor, control.Control);
+                using DesktopCapture byHandle = automation.CaptureControl(harness.Window.Handle, button.Handle, useUiAutomation: false, includeUiAutomation: false);
+                Assert.AreEqual(control.CapturedScreenBounds, byHandle.CapturedScreenBounds);
+                Assert.AreEqual(control.Control.Width, byHandle.Control!.Width);
                 AssertUnaware();
+                string targetName = "dpi-owned-" + Guid.NewGuid().ToString("N");
+                string targetPath = DesktopStateStore.GetTargetPath(targetName);
+                try {
+                    automation.SaveWindowTarget(targetName, new DesktopWindowTargetDefinition {
+                        X = 0, Y = 0, WidthRatio = 1, HeightRatio = 1, ClientArea = true
+                    });
+                    using DesktopCapture target = automation.CaptureWindowTarget(new WindowQueryOptions { Handle = harness.Window.Handle }, targetName);
+                    Assert.AreEqual(client.CapturedScreenBounds, target.CapturedScreenBounds);
+                    Assert.AreEqual(client.Bitmap.Size, target.Bitmap.Size);
+                    AssertUnaware();
+                } finally { File.Delete(targetPath); }
                 Assert.ThrowsExactly<InvalidOperationException>(() => ScreenshotService.CaptureWindowDetailed(new IntPtr(-100)));
                 AssertUnaware();
                 Assert.ThrowsExactly<InvalidOperationException>(() => automation.CaptureWindow(new IntPtr(-100)));
