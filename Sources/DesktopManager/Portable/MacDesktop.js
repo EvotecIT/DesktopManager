@@ -24,6 +24,7 @@ function findScreens(id) {
 }
 
 function position(options) {
+    if (!options || options.isNil()) { return null; }
     var scaling = options.objectForKey($.NSWorkspaceDesktopImageScalingKey);
     var clipping = options.objectForKey($.NSWorkspaceDesktopImageAllowClippingKey);
     if (!scaling || scaling.isNil()) { return null; }
@@ -31,6 +32,16 @@ function position(options) {
     if (scale === 2) { return 0; }
     if (scale === 1) { return 2; }
     return clipping && !clipping.isNil() && Boolean(ObjC.unwrap(clipping)) ? 4 : 3;
+}
+
+function backgroundColor(options) {
+    if (!options || options.isNil()) { return null; }
+    var color = options.objectForKey($.NSWorkspaceDesktopImageFillColorKey);
+    if (!color || color.isNil()) { return null; }
+    var rgb = color.colorUsingColorSpace($.NSColorSpace.sRGBColorSpace);
+    if (!rgb || rgb.isNil()) { return null; }
+    function hex(value) { return ('0' + Math.round(Math.max(0, Math.min(1, Number(value))) * 255).toString(16)).slice(-2); }
+    return '#' + hex(rgb.redComponent) + hex(rgb.greenComponent) + hex(rgb.blueComponent);
 }
 
 function run(args) {
@@ -54,20 +65,60 @@ function run(args) {
         }));
     }
     if (!selected.length) { throw new Error('The requested macOS display is not available.'); }
+    if (action === 'capture') {
+        return JSON.stringify(selected.map(function (screen) {
+            var originalUrl = $.NSWorkspace.sharedWorkspace.desktopImageURLForScreen(screen);
+            var originalOptions = $.NSWorkspace.sharedWorkspace.desktopImageOptionsForScreen(screen);
+            if (!originalUrl || originalUrl.isNil() || !originalOptions || originalOptions.isNil()) {
+                throw new Error('The active screen does not expose a restorable native image URL and options.');
+            }
+            var archive = $.NSKeyedArchiver.archivedDataWithRootObject(originalOptions);
+            return {id: displayId(screen), url: ObjC.unwrap(originalUrl.absoluteString),
+                options: ObjC.unwrap(archive.base64EncodedStringWithOptions(0))};
+        }));
+    }
+    if (action === 'restore') {
+        // The opaque archive came from this service's own in-memory checkpoint; no file or external archive is loaded.
+        var checkpoint = JSON.parse(args[2]);
+        if (checkpoint.length !== selected.length) { throw new Error('The macOS screen topology changed; no images were restored.'); }
+        var restore = checkpoint.map(function (entry) {
+            var matches = selected.filter(function (screen) { return displayId(screen) === entry.id; });
+            if (matches.length !== 1) { throw new Error('An original macOS screen is unavailable; no images were restored.'); }
+            var nativeUrl = $.NSURL.URLWithString($(entry.url));
+            if (!nativeUrl || nativeUrl.isNil() || !nativeUrl.isFileURL || !$.NSFileManager.defaultManager.fileExistsAtPath(nativeUrl.path)) {
+                throw new Error('An original macOS image is unavailable; no images were restored.');
+            }
+            var data = $.NSData.alloc.initWithBase64EncodedStringOptions($(entry.options), 0);
+            var nativeOptions = $.NSKeyedUnarchiver.unarchiveObjectWithData(data);
+            if (!nativeOptions || nativeOptions.isNil()) { throw new Error('The native macOS image options could not be restored.'); }
+            return {screen: matches[0], url: nativeUrl, options: nativeOptions};
+        });
+        var failures = [];
+        restore.forEach(function (entry) {
+            var error = Ref();
+            if (!$.NSWorkspace.sharedWorkspace.setDesktopImageURLForScreenOptionsError(entry.url, entry.screen, entry.options, error)) {
+                failures.push(error[0] ? ObjC.unwrap(error[0].localizedDescription) : 'AppKit rejected a restored screen.');
+            }
+        });
+        if (failures.length) { throw new Error('macOS restoration was incomplete: ' + failures.join('; ')); }
+        return 'true';
+    }
     if (action === 'read') {
         var screen = selected[0];
         var url = $.NSWorkspace.sharedWorkspace.desktopImageURLForScreen(screen);
         var options = $.NSWorkspace.sharedWorkspace.desktopImageOptionsForScreen(screen);
-        return JSON.stringify({path: url && !url.isNil() ? ObjC.unwrap(url.path) : null, position: position(options)});
+        return JSON.stringify({path: url && !url.isNil() ? ObjC.unwrap(url.path) : null, position: position(options), color: backgroundColor(options)});
     }
     if (action === 'apply') {
         var fit = Number(args[3]);
         var scaling = fit === 0 ? 2 : (fit === 2 ? 1 : 3);
-        var settings = $.NSMutableDictionary.dictionary;
-        settings.setObjectForKey($(scaling), $.NSWorkspaceDesktopImageScalingKey);
-        settings.setObjectForKey($(fit === 4 || fit === 2), $.NSWorkspaceDesktopImageAllowClippingKey);
         var url = $.NSURL.fileURLWithPath($(args[2]));
         selected.forEach(function (screen) {
+            // Preserve per-screen options such as the letterbox color; only fit is requested here.
+            var original = $.NSWorkspace.sharedWorkspace.desktopImageOptionsForScreen(screen);
+            var settings = original && !original.isNil() ? original.mutableCopy : $.NSMutableDictionary.dictionary;
+            settings.setObjectForKey($(scaling), $.NSWorkspaceDesktopImageScalingKey);
+            settings.setObjectForKey($(fit === 4 || fit === 2), $.NSWorkspaceDesktopImageAllowClippingKey);
             var error = Ref();
             if (!$.NSWorkspace.sharedWorkspace.setDesktopImageURLForScreenOptionsError(url, screen, settings, error)) {
                 throw new Error(error[0] ? ObjC.unwrap(error[0].localizedDescription) : 'AppKit could not set the desktop image.');

@@ -67,6 +67,15 @@ public static partial class MonitorNativeMethods
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern int SHCreateItemFromParsingName(string pszPath, IntPtr pbc, ref Guid riid, out IntPtr ppv);
 
+    /// <summary>Resolves a local Shell path to an owned absolute item identifier list.</summary>
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    internal static extern int SHParseDisplayName(string path, IntPtr bindingContext, out IntPtr itemIdList, uint requestedAttributes, out uint attributes);
+
+    /// <summary>Creates a native Shell item array; input identifier lists remain owned by the caller.</summary>
+    [DllImport("shell32.dll", ExactSpelling = true)]
+    internal static extern int SHCreateShellItemArrayFromIDLists(uint count,
+        [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IntPtr[] itemIdLists, out IntPtr array);
+
     /// <summary>
     /// Interface for an array of COM objects.
     /// </summary>
@@ -94,6 +103,18 @@ public static partial class MonitorNativeMethods
     [ComImport, Guid("5632b1a4-e38a-400a-928a-d4cd63230295"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IObjectCollection : IObjectArray
     {
+        // Classic COM interop lays out this interface independently; explicitly reserve
+        // the inherited native slots before AddObject, or it calls GetCount with the wrong ABI.
+        /// <summary>Gets the number of objects in the collection.</summary>
+        new uint GetCount();
+
+        /// <summary>Retrieves an object's requested interface by index.</summary>
+        /// <param name="uiIndex">Index of the object.</param>
+        /// <param name="riid">Requested interface identifier.</param>
+        /// <returns>The requested COM object.</returns>
+        [return: MarshalAs(UnmanagedType.Interface)]
+        new object GetAt(uint uiIndex, ref Guid riid);
+
         /// <summary>Adds an object to the collection.</summary>
         /// <param name="pv">The object to add.</param>
         void AddObject([MarshalAs(UnmanagedType.Interface)] object pv);

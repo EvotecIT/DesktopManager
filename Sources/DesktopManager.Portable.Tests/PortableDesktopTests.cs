@@ -31,7 +31,55 @@ public sealed class PortableDesktopTests {
         Assert.IsFalse(backend.GetCapabilities().CanSetWallpaper);
         Assert.IsFalse(backend.GetSession().HasGraphicalSession);
         Assert.AreEqual(DesktopOperationStatus.Unavailable, backend.GetWallpaper(null).Status);
+        Assert.AreEqual(0, backend.GetWallpaperTargets().Count);
+        Assert.AreEqual(0, backend.GetCapabilities().SupportedWallpaperPositions.Count);
         Assert.AreEqual(0, runner.Calls.Count);
+    }
+
+    [TestMethod]
+    public void WallpaperTargets_AreDiscoverableWithoutInventingLinuxPixelGeometry() {
+        var gnome = new PortableDesktopService(Linux(new FakeRunner()));
+        var desktop = gnome.GetWallpaperTargets().Single();
+        Assert.IsTrue(gnome.GetCapabilities().CanEnumerateWallpaperTargets);
+        Assert.IsNull(desktop.DisplayId);
+        Assert.IsNull(desktop.Display);
+
+        var runner = new FakeRunner {
+            Execute = args => {
+                StringAssert.Contains(args[3], "\"action\":\"targets\"");
+                return "[{\"displayId\":\"screen:2\",\"activity\":\"work\"},{\"displayId\":\"screen:7\",\"activity\":\"work\"}]";
+            }
+        };
+        var kde = new PortableDesktopService(Linux(runner, DesktopEnvironment("KDE")));
+        var targets = kde.GetWallpaperTargets();
+        Assert.IsFalse(kde.GetCapabilities().CanEnumerateDisplays);
+        CollectionAssert.AreEqual(new[] { "screen:2", "screen:7" }, targets.Select(target => target.DisplayId).ToArray());
+        CollectionAssert.AreEqual(new[] { 0, 1 }, targets.Select(target => target.Index).ToArray());
+        Assert.IsTrue(targets.All(target => target.ScopeId == "work" && target.Display == null));
+        Assert.AreEqual(1, runner.Calls.Count);
+    }
+
+    [TestMethod]
+    public void KdeWallpaperTargets_RejectMalformedOrDuplicateNativeIdentities() {
+        foreach (var payload in new[] {
+            "[{\"displayId\":\"screen:-1\",\"activity\":\"work\"}]",
+            "[{\"displayId\":\"screen:2\",\"activity\":\"work\"},{\"displayId\":\"screen:2\",\"activity\":\"work\"}]"
+        }) {
+            var runner = new FakeRunner { Execute = _ => payload };
+            Assert.ThrowsExactly<FormatException>(() => Linux(runner, DesktopEnvironment("KDE")).GetWallpaperTargets());
+        }
+    }
+
+    [TestMethod]
+    public void SupportedWallpaperPositions_DescribePlatformLimitsAndAreImmutable() {
+        var kde = Linux(new FakeRunner(), DesktopEnvironment("KDE")).GetCapabilities();
+        CollectionAssert.AreEquivalent(new[] { DesktopWallpaperPosition.Center, DesktopWallpaperPosition.Tile,
+            DesktopWallpaperPosition.Stretch, DesktopWallpaperPosition.Fit, DesktopWallpaperPosition.Fill }, kde.SupportedWallpaperPositions.ToArray());
+        Assert.ThrowsExactly<NotSupportedException>(() => ((IList<DesktopWallpaperPosition>)kde.SupportedWallpaperPositions)[0] = DesktopWallpaperPosition.Span);
+        var runner = new FakeRunner { Execute = _ => Environment.UserName };
+        var mac = new MacDesktopBackend(runner, _ => null).GetCapabilities();
+        CollectionAssert.AreEquivalent(new[] { DesktopWallpaperPosition.Center, DesktopWallpaperPosition.Stretch,
+            DesktopWallpaperPosition.Fit, DesktopWallpaperPosition.Fill }, mac.SupportedWallpaperPositions.ToArray());
     }
 
     [TestMethod]
@@ -92,6 +140,43 @@ public sealed class PortableDesktopTests {
     }
 
     [TestMethod]
+    public void GnomeBackground_ReadsSolidAndGradientColorsWithoutInventingAnImage() {
+        foreach (var shading in new[] { "solid", "horizontal", "vertical" }) {
+            var runner = new FakeRunner { Execute = args => args[0] == "list-keys"
+                ? "primary-color\nsecondary-color\ncolor-shading-type\npicture-opacity\n"
+                : args[2] == "picture-options" ? "'none'"
+                : args[2] == "color-shading-type" ? "'" + shading + "'"
+                : args[2] == "primary-color" ? "'#123456'"
+                : args[2] == "secondary-color" ? "'#abcdef'"
+                : args[2] == "picture-opacity" ? "35"
+                : throw new InvalidOperationException("A disabled background image must not be read.") };
+            var state = new PortableDesktopService(Linux(runner)).GetWallpaper();
+            Assert.IsTrue(state.Succeeded, state.Message);
+            Assert.IsNull(state.FilePath);
+            Assert.AreEqual(0.0, state.ImageOpacity);
+            Assert.AreEqual("#123456", state.Background!.PrimaryColor);
+            Assert.AreEqual(shading == "solid" ? null : "#abcdef", state.Background.SecondaryColor);
+            Assert.AreEqual(shading, state.Background.Shading.ToString().ToLowerInvariant());
+            Assert.IsFalse(runner.Calls.Any(call => call[0] == "set"));
+        }
+    }
+
+    [TestMethod]
+    public void GnomeRetainedOpacity_IsNotPresentedAsEffectiveShellOpacity() {
+        foreach (var percentage in new[] { "35", "101" }) {
+            var runner = new FakeRunner { Execute = args => args[0] == "list-keys" ? "picture-uri\npicture-opacity\n"
+                : args[2] == "picture-options" ? "'scaled'"
+                : args[2] == "picture-opacity" ? percentage
+                : "'file:///photos/original.jpg'" };
+            var state = new PortableDesktopService(Linux(runner)).GetWallpaper();
+            Assert.IsTrue(state.Succeeded, state.Message);
+            Assert.IsNull(state.ImageOpacity);
+            Assert.AreEqual("/photos/original.jpg", state.FilePath);
+            Assert.IsFalse(runner.Calls.Any(call => call.Length > 2 && call[2] == "picture-opacity"));
+        }
+    }
+
+    [TestMethod]
     public void GnomeLockedSetting_RejectsTheWholeUpdateBeforeWriting() {
         WithImage(path => {
             var runner = new FakeRunner {
@@ -147,6 +232,28 @@ public sealed class PortableDesktopTests {
         var state = Linux(runner, DesktopEnvironment("KDE")).GetWallpaper("screen:0");
         Assert.AreEqual(DesktopOperationStatus.Unsupported, state.Status);
         Assert.IsNull(state.FilePath);
+    }
+
+    [TestMethod]
+    public void KdeBlurredMargins_AreUnsupportedForFitAndCenterWithoutRejectingFill() {
+        foreach (var fill in new[] { 1, 2, 6 }) {
+            foreach (var blur in new[] { false, true }) {
+                var runner = new FakeRunner { Execute = _ => JsonSerializer.Serialize(new {
+                    supported = true, path = "/photos/current.jpg", fillMode = fill, blur, color = "#112233"
+                }) };
+                var state = new PortableDesktopService(Linux(runner, DesktopEnvironment("KDE"))).GetWallpaper("screen:0");
+                if (blur && fill != 2) {
+                    Assert.AreEqual(DesktopOperationStatus.Unsupported, state.Status);
+                    Assert.IsNull(state.FilePath);
+                    Assert.IsNull(state.Background);
+                    StringAssert.Contains(state.Message, "blurred");
+                } else {
+                    Assert.IsTrue(state.Succeeded, state.Message);
+                    Assert.AreEqual("#112233", state.Background!.PrimaryColor);
+                }
+                Assert.AreEqual(1, runner.Calls.Count, "Readback must not write configuration.");
+            }
+        }
     }
 
     [TestMethod]
@@ -246,6 +353,71 @@ public sealed class PortableDesktopTests {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY")) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"))) {
             Assert.IsFalse(capabilities.CanSetWallpaper);
         }
+    }
+
+    [TestMethod]
+    public void GnomeCheckpoint_RestoresBothOriginalUrisAndDisabledFitWithoutReadingImageFiles() {
+        var values = new Dictionary<string, string> {
+            ["picture-uri"] = "'file:///photos/original%20light.jpg'",
+            ["picture-uri-dark"] = "'file:///photos/original%20dark.jpg'",
+            ["picture-options"] = "'none'"
+        };
+        var original = new Dictionary<string, string>(values);
+        var runner = new FakeRunner { Execute = args => {
+            if (args[0] == "list-keys") { return string.Join("\n", values.Keys); }
+            if (args[0] == "writable") { return "true"; }
+            if (args[0] == "get") { return values[args[2]]; }
+            values[args[2]] = args[3];
+            return string.Empty;
+        } };
+        var service = new PortableDesktopService(Linux(runner));
+        var snapshot = service.CaptureWallpaperState();
+        Assert.IsTrue(snapshot.Succeeded, snapshot.Message);
+        Assert.IsFalse(runner.Calls.Any(call => call[0] == "set"));
+        foreach (var key in values.Keys.ToArray()) { values[key] = "'changed'"; }
+        var restored = service.RestoreWallpaperState(snapshot);
+        Assert.IsTrue(restored.Succeeded, restored.Message);
+        foreach (var key in original.Keys) { Assert.AreEqual(original[key], values[key], key); }
+    }
+
+    [TestMethod]
+    public void GnomeCheckpoint_RefusesForeignServiceChangedSessionAndLockedSettingsBeforeWriting() {
+        foreach (var rejection in new[] { "foreign", "session", "locked" }) {
+            var locked = false;
+            var environment = DesktopEnvironment("GNOME");
+            var runner = new FakeRunner { Execute = args => args[0] == "list-keys" ? "picture-uri\npicture-uri-dark\n"
+                : args[0] == "writable" ? (locked && args[2] == "picture-uri-dark" ? "false" : "true")
+                : args[0] == "get" ? "'original'" : throw new InvalidOperationException("No write is permitted.") };
+            var service = new PortableDesktopService(Linux(runner, environment));
+            var snapshot = service.CaptureWallpaperState();
+            Assert.IsTrue(snapshot.Succeeded, snapshot.Message);
+            if (rejection == "foreign") { service = new PortableDesktopService(Linux(runner, environment)); }
+            if (rejection == "session") { environment["DBUS_SESSION_BUS_ADDRESS"] = "another-bus"; }
+            if (rejection == "locked") { locked = true; }
+            Assert.IsFalse(service.RestoreWallpaperState(snapshot).Succeeded, rejection);
+            Assert.IsFalse(runner.Calls.Any(call => call[0] == "set"), rejection);
+        }
+    }
+
+    [TestMethod]
+    public void GnomeCheckpoint_AttemptsRemainingKeysAndReportsFailedNativeReadback() {
+        var restoring = false;
+        var runner = new FakeRunner { Execute = args => {
+            if (args[0] == "list-keys") { return "picture-uri\npicture-uri-dark\n"; }
+            if (args[0] == "writable") { return "true"; }
+            if (args[0] == "get") { return restoring ? "'unrestored'" : "'original'"; }
+            if (args[2] == "picture-uri") { throw new InvalidOperationException("Native write failed."); }
+            return string.Empty;
+        } };
+        var service = new PortableDesktopService(Linux(runner));
+        var snapshot = service.CaptureWallpaperState();
+        Assert.IsTrue(snapshot.Succeeded, snapshot.Message);
+        restoring = true;
+        var result = service.RestoreWallpaperState(snapshot);
+        Assert.AreEqual(DesktopOperationStatus.Failed, result.Status);
+        CollectionAssert.AreEqual(new[] { "picture-uri", "picture-uri-dark", "picture-options" },
+            runner.Calls.Where(call => call[0] == "set").Select(call => call[2]).ToArray());
+        StringAssert.Contains(result.Message, "readback");
     }
 
     private static LinuxDesktopBackend Linux(FakeRunner runner, Dictionary<string, string>? values = null) {

@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace DesktopManager;
 
-internal sealed class MacDesktopBackend : IPortableDesktopBackend {
+internal sealed class MacDesktopBackend : IPortableDesktopBackend, IDesktopWallpaperSnapshotBackend {
     private readonly IDesktopCommandRunner _runner;
     private readonly Func<string, string?> _environment;
     private static readonly Lazy<string> Script = new Lazy<string>(ReadScript);
@@ -18,7 +18,8 @@ internal sealed class MacDesktopBackend : IPortableDesktopBackend {
         var available = _runner.FindExecutable("/usr/bin/osascript") != null && GetSession().HasGraphicalSession;
         return new DesktopCapabilities("macos", available, true, true, true, true,
             available ? "Public AppKit desktop images for the current user's active Spaces/screens. Tile, Span, all-Spaces enumeration and lock screen changes are unsupported."
-                : "The logged-in macOS console user's graphical session and /usr/bin/osascript are required.");
+                : "The logged-in macOS console user's graphical session and /usr/bin/osascript are required.",
+            supportedPositions: new[] { DesktopWallpaperPosition.Center, DesktopWallpaperPosition.Stretch, DesktopWallpaperPosition.Fit, DesktopWallpaperPosition.Fill });
     }
 
     public IReadOnlyList<DesktopDisplayInfo> GetDisplays() {
@@ -41,6 +42,14 @@ internal sealed class MacDesktopBackend : IPortableDesktopBackend {
             });
         }
         return displays;
+    }
+
+    public IReadOnlyList<DesktopWallpaperTarget> GetWallpaperTargets() {
+        var targets = new List<DesktopWallpaperTarget>();
+        foreach (var display in GetDisplays()) {
+            targets.Add(new DesktopWallpaperTarget { DisplayId = display.Id, Index = targets.Count, Name = display.DeviceName, Display = display });
+        }
+        return targets;
     }
 
     public DesktopUserSession GetSession() {
@@ -70,9 +79,11 @@ internal sealed class MacDesktopBackend : IPortableDesktopBackend {
         using var document = JsonDocument.Parse(Invoke("read", displayId ?? string.Empty));
         var path = document.RootElement.GetProperty("path");
         var position = document.RootElement.GetProperty("position");
+        var color = document.RootElement.TryGetProperty("color", out var nativeColor) && nativeColor.ValueKind == JsonValueKind.String ? nativeColor.GetString() : null;
         return new DesktopWallpaperState(DesktopOperationStatus.Success, "Current active macOS desktop image.",
             path.ValueKind == JsonValueKind.String ? path.GetString() : null,
-            position.ValueKind == JsonValueKind.Number ? (DesktopWallpaperPosition?)position.GetInt32() : null);
+            position.ValueKind == JsonValueKind.Number ? (DesktopWallpaperPosition?)position.GetInt32() : null,
+            color == null ? null : new DesktopWallpaperBackground(color, DesktopBackgroundShading.Solid), 1);
     }
 
     public DesktopOperationResult ApplyWallpaper(DesktopWallpaperRequest request) {
@@ -81,6 +92,26 @@ internal sealed class MacDesktopBackend : IPortableDesktopBackend {
         }
         Invoke("apply", request.DisplayId ?? string.Empty, request.FilePath, ((int)request.Position).ToString(System.Globalization.CultureInfo.InvariantCulture));
         return new DesktopOperationResult(DesktopOperationStatus.Success, "AppKit accepted the image for the selected current desktops; management policy may override it.");
+    }
+
+    public DesktopWallpaperSnapshot CaptureWallpaperState() {
+        if (!GetCapabilities().IsAvailable) {
+            return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unavailable, "A local macOS graphical session is required.", "macos", this);
+        }
+        var checkpoint = Invoke("capture", string.Empty);
+        using (var document = JsonDocument.Parse(checkpoint)) {
+            if (document.RootElement.ValueKind != JsonValueKind.Array || document.RootElement.GetArrayLength() == 0) {
+                throw new FormatException("AppKit did not return a screen checkpoint.");
+            }
+        }
+        return new DesktopWallpaperSnapshot(DesktopOperationStatus.Success, "Captured active macOS screen image URLs and complete AppKit options.", "macos", this, () => {
+            if (!GetCapabilities().IsAvailable) {
+                return new DesktopOperationResult(DesktopOperationStatus.Unavailable, "The local macOS graphical session is unavailable.");
+            }
+            var result = Invoke("restore", string.Empty, checkpoint);
+            return new DesktopOperationResult(result.Trim() == "true" ? DesktopOperationStatus.Success : DesktopOperationStatus.Failed,
+                result.Trim() == "true" ? "AppKit restored active screen URLs and options; native visual acceptance remains separate." : "AppKit did not confirm complete restoration.");
+        });
     }
 
     private string Invoke(params string[] arguments) {

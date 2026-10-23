@@ -44,6 +44,80 @@ GNOME reports a successful read with no image path when `picture-options` is `no
 URI remains configured. KDE image-package directories return `Unsupported` with a diagnostic;
 the adapter does not resolve the effective image inside a package. Ordinary KDE image files remain readable.
 
+For composition, inspect `previous.Background` and `previous.ImageOpacity` as well as the image and fit.
+`Background` describes a solid color or a horizontal/vertical gradient. Its primary color is the solid,
+left or top color; its secondary color is the right or bottom color of a gradient. Windows and macOS
+return `#RRGGBB`; GNOME returns the configured CSS color string. Unsupported color syntax needs a
+diagnostic in the consuming renderer. A null background or opacity means unknown; it is not a default
+black color or a promise of full opacity. Disabled retained images are not exposed as `FilePath`.
+
+## Targets and preserving fit
+
+Wallpaper targets and physical pixel geometry are separate capabilities. `GetWallpaperTargets()`
+discovers a GNOME desktop-wide target and the current KDE activity's `screen:<number>` targets even
+when `GetDisplays()` cannot provide qualified image dimensions. A target's `Display` is null in that
+case: the caller must supply dimensions. `DisplayId == null` means desktop-wide assignment.
+
+`SupportedWallpaperPositions` reports the exact accepted modes for the current backend. To preserve
+the existing fit, read each target's state and use its known `Position`; do not silently replace an
+unknown or unsupported mode with Fill. Windows fit is global, even for a targeted image assignment.
+KDE targets also carry a `ScopeId`. Pass it as `ExpectedScopeId` to reject an activity change before
+the first assignment rather than painting a newly selected activity.
+
+```csharp
+foreach (DesktopWallpaperTarget target in desktop.GetWallpaperTargets()) {
+    DesktopWallpaperState current = desktop.GetWallpaper(target.DisplayId);
+    Console.WriteLine($"{target.Name}: {current.Status}; fit: {current.Position}");
+    // Generate an image only after deciding how to handle missing source, color or geometry.
+    // An eventual assignment uses target.DisplayId, target.ScopeId and current.Position.
+}
+```
+
+## Bounded restoration
+
+For a temporary operation, capture native state before the first write and restore it in `finally`:
+
+```csharp
+using DesktopWallpaperSnapshot checkpoint = desktop.CaptureWallpaperState();
+if (!checkpoint.Succeeded) {
+    throw new InvalidOperationException(checkpoint.Message);
+}
+try {
+    // Perform the explicitly requested temporary assignment and inspect its result.
+} finally {
+    DesktopOperationResult restored = desktop.RestoreWallpaperState(checkpoint);
+    if (!restored.Succeeded) {
+        Console.Error.WriteLine($"{restored.Status}: {restored.Message}");
+    }
+}
+```
+
+The checkpoint is opaque, in memory and disposable. Restore it through the same service instance
+while its original graphical session and targets are available. It is not a persisted backup or
+a reboot recovery format. A failed preflight avoids writes; a native failure after writes begin
+is reported as incomplete restoration while the adapter attempts the remaining settings.
+
+Windows captures native per-monitor images (including an empty image), shared fit/color, slideshow
+items/options and enabled state. Its selected Explorer background mode is captured separately from
+retained COM paths. A solid-color desktop with retained picture assignments returns `Unsupported`
+for checkpoint capture: restoring those paths alone can display a hidden photo, while clearing them
+can discard its retained configuration. Spotlight and absent/unknown selected modes are also
+unsupported checkpoints. A successful wallpaper read can still describe a solid background even
+when its checkpoint cannot be qualified. Explicit image application synchronizes Explorer's selected
+image mode after the native assignment. This Windows mode integration requires native qualification
+on the target Windows version; registry values alone do not prove visible acceptance.
+
+GNOME captures the effective light/dark URI and picture-options
+values, including `none`; it restores effective values, not the distinction between schema defaults
+and explicit user overrides. KDE captures the current activity's plugins and static image/fit keys,
+including key absence. macOS captures active screen image URLs and full native AppKit options;
+it does not enumerate all Spaces or identify a switch to another Space. Do not switch Spaces while
+using a checkpoint. Missing original files, changed topology or a changed session can prevent restoration.
+
+Successful restoration describes native completion/readback as reported by the backend. Explorer
+can finish its wallpaper transition after readback has settled. Validate the visible result separately;
+an immediate screenshot can still show the outgoing image.
+
 ## Platform capabilities
 
 | Backend | Displays | Wallpaper scope | Fit modes and limits |
@@ -96,6 +170,8 @@ failure can still interrupt a multi-key update; the result must be checked.
 KDE uses the existing `qdbus6` or `qdbus` platform command and Plasma's documented desktop scripting
 API. Readback reports unsupported when the selected desktop uses a non-image wallpaper plugin;
 assigning an image explicitly selects the static image plugin. Other activities are unchanged.
+Targeted application checks the supplied current-activity scope and all selected desktops' lock state
+before writes. KDE image-package resolution and automatic physical geometry remain unsupported.
 Desktop administration policy can disable scripting.
 
 Platform subprocesses run without a shell. Argument data is passed separately from scripts, their

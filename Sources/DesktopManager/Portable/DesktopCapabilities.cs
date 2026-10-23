@@ -2,7 +2,8 @@ namespace DesktopManager;
 
 /// <summary>Describes the current desktop backend without changing desktop settings.</summary>
 public sealed class DesktopCapabilities {
-    internal DesktopCapabilities(string backendId, bool available, bool displays, bool wallpaper, bool perDisplay, bool position, string message) {
+    internal DesktopCapabilities(string backendId, bool available, bool displays, bool wallpaper, bool perDisplay, bool position, string message,
+        bool wallpaperTargets = false, DesktopWallpaperPosition[]? supportedPositions = null) {
         BackendId = backendId;
         IsAvailable = available;
         CanEnumerateDisplays = available && displays;
@@ -10,6 +11,10 @@ public sealed class DesktopCapabilities {
         CanReadWallpaper = available && wallpaper;
         SupportsPerDisplayWallpaper = available && perDisplay;
         SupportsWallpaperPosition = available && position;
+        CanEnumerateWallpaperTargets = available && (wallpaperTargets || displays);
+        SupportedWallpaperPositions = Array.AsReadOnly(available && position
+            ? (DesktopWallpaperPosition[])(supportedPositions ?? Enum.GetValues(typeof(DesktopWallpaperPosition))).Clone()
+            : Array.Empty<DesktopWallpaperPosition>());
         Message = message;
     }
 
@@ -19,6 +24,10 @@ public sealed class DesktopCapabilities {
     public bool IsAvailable { get; }
     /// <summary>Gets whether this backend can enumerate display geometry.</summary>
     public bool CanEnumerateDisplays { get; }
+    /// <summary>Gets whether wallpaper targets can be discovered independently of physical display geometry.</summary>
+    public bool CanEnumerateWallpaperTargets { get; }
+    /// <summary>Gets the fit modes accepted by this backend in the current session. An unavailable backend returns an empty list.</summary>
+    public IReadOnlyList<DesktopWallpaperPosition> SupportedWallpaperPositions { get; }
     /// <summary>Gets whether this backend can request a desktop wallpaper change.</summary>
     public bool CanSetWallpaper { get; }
     /// <summary>Gets whether this backend can read the current wallpaper path.</summary>
