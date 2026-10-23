@@ -102,9 +102,9 @@ public class WindowInfo {
     public int Bottom { get; set; }
 
     /// <summary>
-    /// Gets or sets the monitor index on which this window is primarily located.
+    /// Gets or sets the monitor index on which this window is primarily located, or -1 when unknown.
     /// </summary>
-    public int MonitorIndex { get; set; }
+    public int MonitorIndex { get; set; } = -1;
 
     /// <summary>
     /// Gets or sets the monitor device ID on which this window is primarily located.

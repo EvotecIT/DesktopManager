@@ -78,6 +78,20 @@ public sealed class PortableDesktopTests {
     }
 
     [TestMethod]
+    public void GnomeDisabledImage_DoesNotExposeTheRetainedLightOrDarkUri() {
+        var runner = new FakeRunner {
+            Execute = arguments => arguments[0] == "list-keys" ? "picture-uri\npicture-uri-dark\npicture-options\n"
+                : arguments[2] == "color-scheme" ? "'prefer-dark'"
+                : arguments[2] == "picture-options" ? "'none'"
+                : "'file:///home/alice/Pictures/hidden.jpg'"
+        };
+        var state = new PortableDesktopService(Linux(runner)).GetWallpaper();
+        Assert.AreEqual(DesktopOperationStatus.Success, state.Status);
+        Assert.IsNull(state.FilePath, "An image disabled by GNOME must not become a consumer's background.");
+        Assert.IsNull(state.Position);
+    }
+
+    [TestMethod]
     public void GnomeLockedSetting_RejectsTheWholeUpdateBeforeWriting() {
         WithImage(path => {
             var runner = new FakeRunner {
@@ -133,6 +147,27 @@ public sealed class PortableDesktopTests {
         var state = Linux(runner, DesktopEnvironment("KDE")).GetWallpaper("screen:0");
         Assert.AreEqual(DesktopOperationStatus.Unsupported, state.Status);
         Assert.IsNull(state.FilePath);
+    }
+
+    [TestMethod]
+    public void KdeRead_PackageDirectoryIsUnsupportedButOrdinaryImageRemainsReadable() {
+        WithImage(path => {
+            foreach (var source in new[] { path, Path.GetDirectoryName(path)! }) {
+                var runner = new FakeRunner {
+                    Execute = _ => JsonSerializer.Serialize(new { supported = true, path = new Uri(source).AbsoluteUri, fillMode = 2 })
+                };
+                var state = new PortableDesktopService(Linux(runner, DesktopEnvironment("KDE"))).GetWallpaper("screen:0");
+                if (Directory.Exists(source)) {
+                    Assert.AreEqual(DesktopOperationStatus.Unsupported, state.Status);
+                    Assert.IsNull(state.FilePath);
+                    StringAssert.Contains(state.Message, "package");
+                } else {
+                    Assert.IsTrue(state.Succeeded, state.Message);
+                    Assert.AreEqual(source, state.FilePath);
+                    Assert.AreEqual(DesktopWallpaperPosition.Fill, state.Position);
+                }
+            }
+        });
     }
 
     [TestMethod]

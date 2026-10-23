@@ -1,3 +1,9 @@
+## Unreleased
+
+- Report no image when GNOME background images are disabled, and explain unsupported KDE image-package sources instead of returning a directory as an image file.
+- Preserve normal restore bounds and minimized-from-maximized state in ordinary window layout saves and restores.
+- Resolve current-monitor placement from Windows monitor association, with largest-intersection and nearest-monitor fallback for detached observations.
+
 ## 4.6.0 - 2026.10.23
 
 - Add workspace capture, preview and recovery with virtual-desktop assignments, window and application pins, Explorer folder identity and explicit per-desktop wallpapers.

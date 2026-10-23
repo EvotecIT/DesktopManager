@@ -40,6 +40,9 @@ The caller owns image generation, refresh scheduling, image retention, and decid
 is appropriate. A successful result means that the native API or desktop command completed. It does
 not prove that a management policy allowed the visible change. Readback reports a path; it does not
 promise that an image decoder supports that file's format. For example, macOS may return a HEIC image.
+GNOME reports a successful read with no image path when `picture-options` is `none`, even if an image
+URI remains configured. KDE image-package directories return `Unsupported` with a diagnostic;
+the adapter does not resolve the effective image inside a package. Ordinary KDE image files remain readable.
 
 ## Platform capabilities
 

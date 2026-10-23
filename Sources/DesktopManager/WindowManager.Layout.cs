@@ -72,7 +72,7 @@ public partial class WindowManager
         /// <exception cref="System.IO.IOException">Thrown when writing to the file fails.</exception>
         public void SaveLayout(string path) {
             var layout = new WindowLayout {
-                Windows = GetWindows().Select(GetWindowPosition).ToList()
+                Windows = GetWindows().Select(GetWindowPosition).Where(WorkspaceWindowPlacement.TryCapture).ToList()
             };
             var json = System.Text.Json.JsonSerializer.Serialize(layout,
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = true });

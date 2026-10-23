@@ -235,14 +235,7 @@ public sealed class WindowPlacementService {
 
     private Monitor ResolveCurrentMonitor(WindowInfo window) {
         List<Monitor> monitors = _monitors.GetMonitors(connectedOnly: true, refresh: true);
-        Monitor? monitor = monitors.FirstOrDefault(candidate => candidate.Index == window.MonitorIndex) ??
-            monitors.FirstOrDefault(candidate =>
-                window.Left >= candidate.PositionLeft &&
-                window.Left < candidate.PositionRight &&
-                window.Top >= candidate.PositionTop &&
-                window.Top < candidate.PositionBottom);
-
-        return monitor ?? monitors.FirstOrDefault() ?? throw new InvalidOperationException("No connected monitors were found.");
+        return WindowMonitorResolver.Resolve(window, monitors) ?? throw new InvalidOperationException("No connected monitors were found.");
     }
 
     private void ApplyPlacement(WindowInfo window, Monitor? monitor, WindowPlacementRequest request, List<WindowPlacementSnapshot> snapshots, int attempt) {

@@ -10,6 +10,27 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class WindowPlacementServiceTests {
     [TestMethod]
+    public void CurrentMonitor_CenterInStaggeredGap_UsesLargestIntersectionInsteadOfStaleIndex() {
+        Monitor first = CreateMonitor(0, 0, 0, 1920, 1080);
+        Monitor second = CreateMonitor(1, 1920, 900, 3840, 1980);
+        var window = new WindowInfo { Left = 1900, Top = 400, Right = 2700, Bottom = 1200, MonitorIndex = 0 };
+
+        Assert.AreSame(second, WindowMonitorResolver.Resolve(window, new[] { first, second }));
+    }
+
+    [TestMethod]
+    public void CurrentMonitor_OffScreen_UsesNearestValidMonitorAndKeepsMissingIdentityUnknown() {
+        Monitor first = CreateMonitor(0, 0, 0, 1920, 1080);
+        Monitor second = CreateMonitor(1, -1920, 0, 0, 1080);
+        Monitor empty = CreateMonitor(2, 0, 0, 0, 0);
+        var window = new WindowInfo { Left = -2500, Top = 200, Right = -2300, Bottom = 500 };
+
+        Assert.AreEqual(-1, window.MonitorIndex);
+        Assert.AreSame(second, WindowMonitorResolver.Resolve(window, new[] { empty, first, second }));
+        Assert.IsNull(WindowMonitorResolver.Resolve(window, new[] { empty }));
+    }
+
+    [TestMethod]
     /// <summary>
     /// Side-by-side monitors with different heights should still resolve as one row.
     /// </summary>
