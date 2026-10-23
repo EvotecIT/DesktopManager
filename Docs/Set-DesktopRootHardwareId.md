@@ -21,7 +21,7 @@ Replaces the hardware identifier list of an exact ROOT-enumerated device.
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopRootHardwareId -HardwareId @('Value')
+Set-DesktopRootHardwareId -InstanceId 'Value' -HardwareId @('Value')
 ```
 
 

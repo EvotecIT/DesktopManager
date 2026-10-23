@@ -38,7 +38,7 @@ Allows changing the resolution and orientation of a monitor identified by index 
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopResolution -DeviceId 'Value'
+Set-DesktopResolution -Width 1 -Height 1
 ```
 
 

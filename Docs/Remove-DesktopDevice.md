@@ -21,7 +21,7 @@ By default the device subtree is removed. Use DeviceOnly to uninstall only the s
 
 ### EXAMPLE 1
 ```powershell
-Remove-DesktopDevice -DeviceOnly
+Remove-DesktopDevice -InstanceId 'Value'
 ```
 
 

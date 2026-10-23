@@ -21,7 +21,7 @@ Prevents selected Windows idle power behaviors for a bounded duration.
 
 ### EXAMPLE 1
 ```powershell
-Start-DesktopKeepAwake -AwayMode
+Start-DesktopKeepAwake -Duration 'Value'
 ```
 
 

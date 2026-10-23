@@ -21,7 +21,7 @@ Force requests absolute disable semantics. Windows can still reject critical or 
 
 ### EXAMPLE 1
 ```powershell
-Disable-DesktopDevice -Force
+Disable-DesktopDevice -InstanceId 'Value'
 ```
 
 

@@ -21,7 +21,7 @@ Sets an explicit global airplane-mode state through an undocumented experimental
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopAirplaneMode -Experimental
+Set-DesktopAirplaneMode -State 'Value' -Experimental
 ```
 
 

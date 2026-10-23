@@ -21,7 +21,7 @@ Creates a ROOT-enumerated device and installs an INF package for it.
 
 ### EXAMPLE 1
 ```powershell
-New-DesktopRootDevice -InfPath 'C:\Path'
+New-DesktopRootDevice -InfPath 'C:\Path' -HardwareId 'Value'
 ```
 
 

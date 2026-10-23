@@ -21,7 +21,7 @@ Sets an explicit state through the supported Windows radio API.
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopRadio -Name 'Name'
+Set-DesktopRadio -Kind 'Value' -State 'Value'
 ```
 
 

@@ -21,7 +21,7 @@ Moves a top-level window to a known virtual desktop.
 
 ### EXAMPLE 1
 ```powershell
-Move-DesktopWindowToVirtualDesktop -DesktopId 'Value'
+Move-DesktopWindowToVirtualDesktop -Handle 'Value' -DesktopId 'Value'
 ```
 
 

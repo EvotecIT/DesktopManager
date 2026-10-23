@@ -1,3 +1,13 @@
+## 4.6.0 - 2026.10.23
+
+- Add workspace capture, preview and recovery with virtual-desktop assignments, window and application pins, Explorer folder identity and explicit per-desktop wallpapers.
+- Add the Workspace app tab with optional startup recovery and guarded periodic snapshots. PowerShell, CLI and MCP share the recovery engine.
+- Preserve window identity across startup retries and skip missing desktops, incomplete Explorer views and windows that close during capture.
+- Return physical-pixel screenshots and consistent control geometry from DPI-unaware callers.
+- Native virtual-desktop extensions are qualified on Windows build family 26300. Build families 26100 and 26200 still require runtime qualification.
+
+The Windows CLI and MCP plugin release is 0.2.2.
+
 ## 3.1.0 - 2025.07.20
 
 Added;

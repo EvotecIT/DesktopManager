@@ -21,7 +21,7 @@ Every named filter service must already exist. An empty Service list removes the
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopDeviceClassFilter -ClassGuid 'Value'
+Set-DesktopDeviceClassFilter -ClassGuid 'Value' -Kind 'Value' -Service @('Value')
 ```
 
 

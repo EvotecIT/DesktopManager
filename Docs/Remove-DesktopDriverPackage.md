@@ -21,7 +21,7 @@ Removes an exact published third-party package from the Driver Store.
 
 ### EXAMPLE 1
 ```powershell
-Remove-DesktopDriverPackage -Force
+Remove-DesktopDriverPackage -PublishedInfName 'Name'
 ```
 
 

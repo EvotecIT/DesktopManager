@@ -21,7 +21,7 @@ Exports one exact third-party package from the Driver Store.
 
 ### EXAMPLE 1
 ```powershell
-Export-DesktopDriverPackage -Destination 'Value'
+Export-DesktopDriverPackage -PublishedInfName 'Name' -Destination 'Value'
 ```
 
 

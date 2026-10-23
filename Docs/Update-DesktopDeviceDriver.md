@@ -21,7 +21,7 @@ Updates present devices matching an exact hardware identifier from an INF packag
 
 ### EXAMPLE 1
 ```powershell
-Update-DesktopDeviceDriver -InfPath 'C:\Path'
+Update-DesktopDeviceDriver -InfPath 'C:\Path' -HardwareId 'Value'
 ```
 
 
