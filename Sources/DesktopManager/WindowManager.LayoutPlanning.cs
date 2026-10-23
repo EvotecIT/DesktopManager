@@ -73,19 +73,7 @@ public partial class WindowManager {
                         WindowTextHelper.GetWindowText(live.Handle) != match.Window.Title) {
                     throw new InvalidOperationException("The target window identity changed after layout planning.");
                 }
-                WindowPosition saved = match.SavedWindow;
-                RestoreWindow(live);
-                SetWindowRectangle(live, saved.Left, saved.Top, saved.Width, saved.Height);
-                WindowPosition actual = GetWindowPosition(live);
-                if (actual.Left != saved.Left || actual.Top != saved.Top || actual.Width != saved.Width || actual.Height != saved.Height) {
-                    throw new InvalidOperationException("The target did not accept the requested bounds.");
-                }
-                if (saved.State == WindowState.Minimize) { MinimizeWindow(live); }
-                else if (saved.State == WindowState.Maximize) { MaximizeWindow(live); }
-                if (saved.State.HasValue && GetWindowPosition(live).State != saved.State) {
-                    throw new InvalidOperationException("The target did not accept the requested window state.");
-                }
-                return new WindowLayoutApplyResult(match, true, null);
+                return WorkspaceWindowPlacement.Apply(this, match);
         } catch (Exception ex) {
             return new WindowLayoutApplyResult(match, false, ex.Message);
         }

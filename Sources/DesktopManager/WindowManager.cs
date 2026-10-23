@@ -438,24 +438,12 @@ public partial class WindowManager {
                 windowInfo.Bottom = rect.Bottom;
 
                 IReadOnlyList<Monitor> monitors = connectedMonitors ?? _monitors.GetMonitors(connectedOnly: true, refresh: true);
-                foreach (var monitor in monitors) {
-                    RECT monitorRect = monitor.Rect;
-                    if (monitorRect.Right <= monitorRect.Left || monitorRect.Bottom <= monitorRect.Top) {
-                        continue;
-                    }
-
-                    // Check if window center point is within monitor bounds
-                    int windowCenterX = (rect.Left + rect.Right) / 2;
-                    int windowCenterY = (rect.Top + rect.Bottom) / 2;
-
-                    if (windowCenterX >= monitorRect.Left && windowCenterX < monitorRect.Right &&
-                        windowCenterY >= monitorRect.Top && windowCenterY < monitorRect.Bottom) {
-                        windowInfo.MonitorIndex = monitor.Index;
-                        windowInfo.MonitorDeviceId = monitor.DeviceId;
-                        windowInfo.MonitorDeviceName = monitor.DeviceName;
-                        windowInfo.IsOnPrimaryMonitor = monitor.IsPrimary;
-                        break;
-                    }
+                Monitor? monitor = WindowMonitorResolver.Resolve(windowInfo, monitors);
+                if (monitor != null) {
+                    windowInfo.MonitorIndex = monitor.Index;
+                    windowInfo.MonitorDeviceId = monitor.DeviceId;
+                    windowInfo.MonitorDeviceName = monitor.DeviceName;
+                    windowInfo.IsOnPrimaryMonitor = monitor.IsPrimary;
                 }
             }
 

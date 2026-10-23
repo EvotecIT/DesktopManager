@@ -62,9 +62,12 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
             if (!string.IsNullOrEmpty(displayId)) {
                 return new DesktopWallpaperState(DesktopOperationStatus.Unsupported, "GNOME background settings do not select individual displays.");
             }
+            var fit = DecodeGVariantString(RunGSettings("get", BackgroundSchema, "picture-options"));
+            if (fit == "none") {
+                return new DesktopWallpaperState(DesktopOperationStatus.Success, "GNOME background images are disabled.");
+            }
             var key = GnomeImageKey();
             var path = DecodeGVariantString(RunGSettings("get", BackgroundSchema, key));
-            var fit = DecodeGVariantString(RunGSettings("get", BackgroundSchema, "picture-options"));
             return new DesktopWallpaperState(DesktopOperationStatus.Success, "Current GNOME background for the active light/dark style.",
                 LocalPath(path), GnomePosition(fit));
         }
@@ -75,8 +78,13 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
         if (!document.RootElement.GetProperty("supported").GetBoolean()) {
             return new DesktopWallpaperState(DesktopOperationStatus.Unsupported, document.RootElement.GetProperty("message").GetString() ?? "Unsupported KDE wallpaper plugin.");
         }
+        var kdePath = LocalPath(document.RootElement.GetProperty("path").GetString());
+        if (kdePath != null && Directory.Exists(kdePath)) {
+            return new DesktopWallpaperState(DesktopOperationStatus.Unsupported,
+                "The current KDE wallpaper is an image package; resolving its effective image file is unsupported.");
+        }
         return new DesktopWallpaperState(DesktopOperationStatus.Success, "Current KDE static wallpaper for the current activity.",
-            LocalPath(document.RootElement.GetProperty("path").GetString()), KdePosition(document.RootElement.GetProperty("fillMode").GetInt32()));
+            kdePath, KdePosition(document.RootElement.GetProperty("fillMode").GetInt32()));
     }
 
     public DesktopOperationResult ApplyWallpaper(DesktopWallpaperRequest request) {
