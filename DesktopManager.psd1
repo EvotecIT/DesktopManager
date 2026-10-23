@@ -18,7 +18,8 @@
             RequireLicenseAcceptance   = $false
             Tags                       = @('windows', 'image', 'wallpaper', 'monitor')
             ExternalModuleDependencies = @()
-        }
+            LicenseUri                 = 'https://github.com/EvotecIT/DesktopManager/blob/v2-speedygonzales/LICENSE'
+}
     }
     RootModule             = 'DesktopManager.psm1'
     RequiredModules        = @()

@@ -106,7 +106,7 @@ The workstation profile is the high-level entrypoint when you want to move betwe
 
 ```powershell
 Save-DesktopWorkstationProfile -Name 'office'
-Get-DesktopAudioEndpoint -DataFlow Render -State Active
+Get-DesktopAudioEndpoint -DataFlow Render -ActiveOnly
 Get-DesktopPowerStatus
 Get-DesktopSession
 Get-DesktopRadio
@@ -617,14 +617,14 @@ manager.ActivateWindow(window);
 Use `Register-DesktopMonitorEvent` to react when monitors are plugged in or the display configuration changes.
 
 ```powershell
-Register-DesktopMonitorEvent -Duration 30 -Action { Write-Host 'Display settings changed' }
+Register-DesktopMonitorEvent -Duration (New-TimeSpan -Seconds 30) -Action { Write-Host 'Display settings changed' }
 ```
 
 Use `Register-DesktopOrientationEvent` or `Register-DesktopResolutionEvent` to handle orientation or resolution changes individually.
 
 ```powershell
-Register-DesktopResolutionEvent -Duration 30 -Action { Write-Host 'Resolution changed' }
-Register-DesktopOrientationEvent -Duration 30 -Action { Write-Host 'Orientation changed' }
+Register-DesktopResolutionEvent -Duration (New-TimeSpan -Seconds 30) -Action { Write-Host 'Resolution changed' }
+Register-DesktopOrientationEvent -Duration (New-TimeSpan -Seconds 30) -Action { Write-Host 'Orientation changed' }
 ```
 
 #### Example in C# - Monitoring Display Changes
