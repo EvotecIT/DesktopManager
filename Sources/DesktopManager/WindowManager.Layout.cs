@@ -117,7 +117,7 @@ public partial class WindowManager
                 throw new InvalidOperationException(failed.Error);
             }
         }
-        private static void ValidateLayout(WindowLayout layout) {
+        internal static void ValidateLayout(WindowLayout layout) {
             if (layout.Windows == null) {
                 throw new InvalidDataException("Layout does not contain any windows.");
             }

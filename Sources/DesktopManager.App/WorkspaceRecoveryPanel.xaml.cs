@@ -108,7 +108,7 @@ public sealed partial class WorkspaceRecoveryPanel : UserControl, IDisposable {
                 ReopenExplorerFolders = startup ? _settings.ReopenExplorerFolders : ReopenExplorerCheck.IsChecked == true,
                 RestoreWallpapers = !startup && WallpapersCheck.IsChecked == true
             }, maximumAttempts: 12, cancellationToken: _lifetime.Token);
-            _automaticCaptureReady = result.Windows.All(window => window.PositionApplied && window.VirtualDesktopApplied != false && window.Error == null) && result.Warnings.Count == 0;
+            _automaticCaptureReady = result.IsComplete;
             ResultsText.Text = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             ShowStatus(_automaticCaptureReady ? "Workspace restored." : "Recovery is incomplete. Review the results; periodic capture is paused.",
                 _automaticCaptureReady ? InfoBarSeverity.Success : InfoBarSeverity.Warning);

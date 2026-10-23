@@ -91,6 +91,24 @@ public sealed class WorkspaceRecoveryNativeTests {
             Assert.IsTrue(result.Windows.Single().PositionApplied, result.Windows.Single().Error);
             AssertCurrentDesktop(manager, currentId);
 
+            // Capture an actual maximized-then-minimized window, reset its native history,
+            // restore the snapshot, then prove the user's next restore is maximized.
+            saved.VirtualDesktopId = currentId;
+            saved.State = WindowState.Maximize;
+            result = recovery.Restore(layout, new WorkspaceRestoreOptions { RestoreVirtualDesktops = true });
+            Assert.IsTrue(result.IsComplete, result.Windows.Single().Error);
+            MonitorNativeMethods.ShowWindow(harness.Window.Handle, 7);
+            saved = recovery.Capture().Windows.Single(window => window.Handle == harness.Window.Handle);
+            Assert.AreEqual(WindowState.Minimize, saved.State);
+            Assert.IsTrue(saved.RestoreToMaximized);
+            layout.Windows[0] = saved;
+            MonitorNativeMethods.ShowWindow(harness.Window.Handle, 4);
+            result = recovery.Restore(layout);
+            Assert.IsTrue(result.IsComplete, result.Windows.Single().Error);
+            MonitorNativeMethods.ShowWindow(harness.Window.Handle, 9);
+            Assert.AreEqual(WindowState.Maximize, windows.GetWindowPosition(harness.Window).State);
+            AssertCurrentDesktop(manager, currentId);
+
             using (var bitmap = new Bitmap(16, 16)) {
                 using Graphics graphics = Graphics.FromImage(bitmap);
                 graphics.Clear(Color.DarkSlateBlue);

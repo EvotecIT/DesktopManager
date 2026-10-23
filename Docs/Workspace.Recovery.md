@@ -20,6 +20,8 @@ shell contract. The adapter checks Windows build families 26100, 26200 and 26300
 and the exact required COM interface IDs. An unsupported build or unavailable
 interface produces a capture warning or a reported restore failure. The stable
 `VirtualDesktopService` remains limited to Microsoft's public window operations.
+Native recovery is qualified on build family 26300. The 26100 and 26200 adapters
+have interface guards but still need runtime qualification on those Windows builds.
 
 Capture includes application windows on inactive virtual desktops. Layouts store
 desktop GUIDs; deleting or recreating a desktop does not redirect its windows to
@@ -33,8 +35,9 @@ identity is checked again before mutation. Applications must already be running;
 DesktopManager does not relaunch arbitrary executables or restore their documents.
 
 The workspace engine preserves a minimized or maximized window's normal bounds,
-including taskbar workspace-coordinate conversion. It does not request a switch
-of the active virtual desktop.
+including taskbar workspace-coordinate conversion and whether a minimized window
+should restore maximized. Placement suppresses window activation to preserve the
+active virtual desktop.
 
 ## Explicit optional actions
 
@@ -88,6 +91,8 @@ keeps recovery files and a separate hotkey profile together:
 DesktopManager.App.exe --workspace-directory "C:\Workspaces\Coding"
 ```
 
+The app's Startup switch preserves this directory in its Windows logon command.
+
 ## CLI and MCP
 
 ```text
@@ -126,3 +131,11 @@ WorkspaceRestoreResult result = await recovery.RestoreAsync(layout,
 `ExperimentalVirtualDesktopService` instances are thread-affine and disposable.
 The recovery service opens and closes a shell connection within each synchronous
 attempt, so asynchronous startup retries do not retain a COM object across awaits.
+
+## Window screenshots
+
+Window, control and client-area screenshots use physical pixel dimensions on
+Windows 10 version 1607 and later, including when PowerShell or the CLI is DPI
+unaware. Window resolution, geometry and capture run in a temporary per-monitor
+DPI context. The caller's thread context is restored on success and failure;
+process-wide DPI settings are unchanged.

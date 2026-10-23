@@ -126,6 +126,40 @@ public sealed class WorkspaceRecoveryTests {
     }
 
     [TestMethod]
+    public async Task StartupRecovery_DoesNotAssignAnExistingWindowToTwoSavedEntries() {
+        var windows = new FakeWindows(Window("Editor", 10, 1));
+        var service = new WorkspaceRecoveryService(windows, () => throw new AssertFailedException());
+        WorkspaceRestoreResult result = await service.RestoreAsync(Layout(Window("Editor", 10, 0), Window("Editor", 99, 0)), maximumAttempts: 2, retryDelaySeconds: 1);
+        Assert.AreEqual(1, windows.Applied.Count);
+        Assert.IsTrue(result.Windows[0].PositionApplied);
+        Assert.AreEqual(WindowLayoutMatchStatus.Missing, result.Windows[1].MatchStatus);
+        Assert.IsFalse(result.IsComplete);
+    }
+
+    [TestMethod]
+    public async Task StartupRecovery_AllowsRecycledHandleFromANewProcess() {
+        var windows = new FakeWindows(Window("Editor", 10, 1));
+        windows.NextCapture = () => new[] { Window("Editor", 11, 1) };
+        var service = new WorkspaceRecoveryService(windows, () => throw new AssertFailedException());
+        WorkspaceRestoreResult result = await service.RestoreAsync(Layout(Window("Editor", 10, 0), Window("Editor", 99, 0)), maximumAttempts: 2, retryDelaySeconds: 1);
+        Assert.AreEqual(2, windows.Applied.Count);
+        Assert.IsTrue(result.IsComplete);
+    }
+
+    [TestMethod]
+    public void Restore_WallpaperFailureKeepsRecoveryIncompleteWhenWindowsSucceed() {
+        var desktop = new FakeDesktops(Guid.NewGuid());
+        var layout = Layout(Window("Editor", 10, 0));
+        layout.Desktops.Add(new VirtualDesktopInfo { Id = Guid.NewGuid(), WallpaperPath = @"C:\Missing.jpg" });
+        WorkspaceRestoreResult result = new WorkspaceRecoveryService(new FakeWindows(Window("Editor", 10, 1)), () => desktop)
+            .Restore(layout, new WorkspaceRestoreOptions { RestoreWallpapers = true });
+        Assert.IsTrue(result.Windows.Single().PositionApplied);
+        Assert.IsFalse(result.Wallpapers.Single().Applied);
+        Assert.IsFalse(result.IsComplete);
+        Assert.AreEqual(0, desktop.Wallpapers.Count);
+    }
+
+    [TestMethod]
     public async Task StartupRecovery_CancellationPreventsNativeActions() {
         var windows = new FakeWindows(Window("Editor", 10, 1));
         var service = new WorkspaceRecoveryService(windows, () => throw new AssertFailedException());
@@ -145,6 +179,18 @@ public sealed class WorkspaceRecoveryTests {
         Assert.AreEqual(position.VirtualDesktopId, restored.Windows[0].VirtualDesktopId);
         Assert.AreEqual(position.PinMode, restored.Windows[0].PinMode);
         Assert.AreEqual(IntPtr.Zero, restored.Windows[0].Handle);
+    }
+
+    [TestMethod]
+    public void LayoutRead_OptionalValidationPreservesLegacyIdentityRequirements() {
+        string path = Path.GetTempFileName();
+        try {
+            WorkspaceRecoveryService.Write(path, Layout(Window("Editor", 0, 0)));
+            Assert.AreEqual(0u, WorkspaceRecoveryService.Read(path).Windows.Single().ProcessId);
+            Assert.ThrowsExactly<InvalidDataException>(() => WorkspaceRecoveryService.Read(path, validate: true));
+            WorkspaceRecoveryService.Write(path, Layout(Window("", 10, 0)));
+            Assert.ThrowsExactly<InvalidDataException>(() => WorkspaceRecoveryService.Read(path, validate: true));
+        } finally { File.Delete(path); }
     }
 
     [TestMethod]

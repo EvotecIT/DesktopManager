@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 
 namespace DesktopManager;
 
@@ -49,7 +50,7 @@ public sealed partial class DesktopAutomationService {
 
     /// <summary>Captures a matching window using an explicit capture policy.</summary>
     public DesktopCapture CaptureWindow(WindowQueryOptions options, WindowCaptureOptions? captureOptions) {
-        return CaptureResolvedWindow(ResolveSingleWindow(options), captureOptions);
+        return WindowCaptureDpiContext.Execute(() => CaptureResolvedWindow(ResolveSingleWindow(options), captureOptions));
     }
 
     /// <summary>Captures a window handle with legacy desktop fallback and capture provenance.</summary>
@@ -59,7 +60,7 @@ public sealed partial class DesktopAutomationService {
 
     /// <summary>Captures a window handle using an explicit capture policy.</summary>
     public DesktopCapture CaptureWindow(IntPtr windowHandle, WindowCaptureOptions? captureOptions) {
-        return CaptureResolvedWindow(ResolveWindowByHandle(windowHandle), captureOptions);
+        return WindowCaptureDpiContext.Execute(() => CaptureResolvedWindow(ResolveWindowByHandle(windowHandle), captureOptions));
     }
 
     private DesktopCapture CaptureResolvedWindow(WindowInfo window, WindowCaptureOptions? options) {
@@ -74,6 +75,10 @@ public sealed partial class DesktopAutomationService {
 
     /// <summary>Captures a resolved native control with capture provenance.</summary>
     public DesktopCapture CaptureControl(WindowControlInfo control) {
+        return WindowCaptureDpiContext.Execute(() => CaptureControlCore(control));
+    }
+
+    private DesktopCapture CaptureControlCore(WindowControlInfo control) {
         if (control == null) { throw new ArgumentNullException(nameof(control)); }
         EnsureControlSupportsNativeStateChange(control, "captured");
         WindowInfo window = ResolveParentWindow(control);
@@ -89,19 +94,21 @@ public sealed partial class DesktopAutomationService {
 
     /// <summary>Captures a control resolved by its parent window and handle.</summary>
     public DesktopCapture CaptureControl(IntPtr windowHandle, IntPtr controlHandle, bool useUiAutomation = true, bool includeUiAutomation = true) {
-        WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
-        if (control == null) { throw new InvalidOperationException("Failed to resolve the requested control."); }
-        return CaptureControl(control);
+        return WindowCaptureDpiContext.Execute(() => {
+            WindowControlInfo? control = GetControl(windowHandle, controlHandle, useUiAutomation, includeUiAutomation);
+            if (control == null) { throw new InvalidOperationException("Failed to resolve the requested control."); }
+            return CaptureControlCore(control);
+        });
     }
 
     /// <summary>Captures a window's client area, retaining full-window pixels if client bounds cannot be cropped.</summary>
     public DesktopCapture CaptureWindowClientArea(WindowQueryOptions options) {
-        return CaptureClientArea(ResolveSingleWindow(options));
+        return WindowCaptureDpiContext.Execute(() => CaptureClientArea(ResolveSingleWindow(options)));
     }
 
     /// <summary>Captures a window handle's client area, retaining full-window pixels if client bounds cannot be cropped.</summary>
     public DesktopCapture CaptureWindowClientArea(IntPtr windowHandle) {
-        return CaptureClientArea(ResolveWindowByHandle(windowHandle));
+        return WindowCaptureDpiContext.Execute(() => CaptureClientArea(ResolveWindowByHandle(windowHandle)));
     }
 
     private DesktopCapture CaptureClientArea(WindowInfo window) {
@@ -120,4 +127,30 @@ public sealed partial class DesktopAutomationService {
             CaptureFallbackReason = capture.CaptureFallbackReason, IsDarkCapture = capture.IsDarkCapture
         };
     }
+
+    /// <summary>
+    /// Captures the area described by a named window target against a matching window.
+    /// </summary>
+    public DesktopCapture CaptureWindowTarget(WindowQueryOptions options, string targetName) {
+        return WindowCaptureDpiContext.Execute(() => CaptureWindowTargetCore(options, targetName));
+    }
+
+    private DesktopCapture CaptureWindowTargetCore(WindowQueryOptions options, string targetName) {
+        if (options == null) {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        DesktopResolvedWindowTarget target = ResolveWindowTargets(options, targetName, all: false).FirstOrDefault()
+            ?? throw new InvalidOperationException($"Named target '{targetName}' could not be resolved against a matching window.");
+        if (!target.ScreenWidth.HasValue || !target.ScreenHeight.HasValue) {
+            throw new InvalidOperationException($"Named target '{targetName}' does not define a capture area. Save it with width/height or widthRatio/heightRatio.");
+        }
+
+        DesktopCapture capture = CaptureRegion(target.ScreenX, target.ScreenY, target.ScreenWidth.Value, target.ScreenHeight.Value);
+        capture.Kind = "window-target";
+        capture.Window = target.Geometry.Window;
+        capture.Geometry = target.Geometry;
+        return capture;
+    }
+
 }

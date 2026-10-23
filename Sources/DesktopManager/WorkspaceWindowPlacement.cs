@@ -22,6 +22,8 @@ internal static class WorkspaceWindowPlacement {
     private static extern bool SetWindowPlacement(IntPtr window, ref Placement placement);
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromRect(ref RECT rectangle, uint flags);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr window, int index, int value);
 
     internal static void Capture(WindowPosition window) {
         Placement placement = Read(window.Handle);
@@ -41,18 +43,47 @@ internal static class WorkspaceWindowPlacement {
                 Right = match.SavedWindow.Right, Bottom = match.SavedWindow.Bottom
             }, toScreen: false);
             placement.Flags = match.SavedWindow.RestoreToMaximized ? 2 : 0;
-            placement.ShowCommand = match.SavedWindow.State == WindowState.Minimize ? 7 :
+            placement.ShowCommand = match.SavedWindow.State == WindowState.Minimize ? (match.SavedWindow.RestoreToMaximized ? 2 : 7) :
                 match.SavedWindow.State == WindowState.Maximize ? 3 : 4;
-            if (!SetWindowPlacement(target.Handle, ref placement)) { throw new Win32Exception(Marshal.GetLastWin32Error()); }
+            IntPtr style = MonitorNativeMethods.GetWindowLongPtr(target.Handle, MonitorNativeMethods.GWL_EXSTYLE);
+            const long noActivate = 0x08000000;
+            bool suppressActivation = (style.ToInt64() & noActivate) == 0;
+            try {
+                // Maximizing and restoring a maximized minimized window otherwise activate it,
+                // which can switch the user's virtual desktop. Remove only our temporary bit.
+                if (suppressActivation) { SetNoActivate(target.Handle, true); }
+                if (!SetWindowPlacement(target.Handle, ref placement)) { throw new Win32Exception(Marshal.GetLastWin32Error()); }
+            } finally {
+                if (suppressActivation) { SetNoActivate(target.Handle, false); }
+            }
             WindowPosition actual = manager.GetWindowPosition(target);
             Capture(actual);
             if (actual.Left != match.SavedWindow.Left || actual.Top != match.SavedWindow.Top ||
                     actual.Width != match.SavedWindow.Width || actual.Height != match.SavedWindow.Height ||
-                    (match.SavedWindow.State.HasValue && actual.State != match.SavedWindow.State)) {
+                    (match.SavedWindow.State.HasValue && actual.State != match.SavedWindow.State) ||
+                    (match.SavedWindow.State == WindowState.Minimize && actual.RestoreToMaximized != match.SavedWindow.RestoreToMaximized)) {
                 throw new InvalidOperationException("The target did not accept the saved normal bounds and window state.");
             }
             return new WindowLayoutApplyResult(match, true, null);
         } catch (Exception ex) { return new WindowLayoutApplyResult(match, false, ex.Message); }
+    }
+
+    private static void SetNoActivate(IntPtr window, bool enabled) {
+        const long flag = 0x08000000;
+        if (!MonitorNativeMethods.TryGetWindowLongPtr(window, MonitorNativeMethods.GWL_EXSTYLE, out IntPtr current)) {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not read the target's activation style.");
+        }
+        long style = enabled ? current.ToInt64() | flag : current.ToInt64() & ~flag;
+        if (IntPtr.Size == 8) {
+            MonitorNativeMethods.SetWindowLongPtr(window, MonitorNativeMethods.GWL_EXSTYLE, new IntPtr(style));
+        } else {
+            SetWindowLong32(window, MonitorNativeMethods.GWL_EXSTYLE, unchecked((int)style));
+        }
+        int error = Marshal.GetLastWin32Error();
+        if (!MonitorNativeMethods.TryGetWindowLongPtr(window, MonitorNativeMethods.GWL_EXSTYLE, out IntPtr actual) ||
+                ((actual.ToInt64() & flag) != 0) != enabled) {
+            throw new Win32Exception(error, "Could not set or restore the target's activation style.");
+        }
     }
 
     private static Placement Read(IntPtr window) {

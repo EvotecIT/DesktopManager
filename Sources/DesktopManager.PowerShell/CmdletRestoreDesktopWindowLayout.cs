@@ -48,13 +48,13 @@ public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {
     /// </summary>
     protected override void BeginProcessing() {
         if (Preview) {
-            WriteObject(new WorkspaceRecoveryService().Plan(WorkspaceRecoveryService.Read(Path), RestoreVirtualDesktops));
+            WriteObject(new WorkspaceRecoveryService().Plan(WorkspaceRecoveryService.Read(Path, Validate), RestoreVirtualDesktops));
             return;
         }
         var automation = new DesktopAutomationService();
         if (ShouldProcess($"Layout file '{Path}'", "Restore desktop window layout")) {
             if (RestoreVirtualDesktops || RestoreApplicationPins || RestoreWallpapers || ReopenExplorerFolders || PassThru) {
-                WorkspaceRestoreResult result = new WorkspaceRecoveryService().Restore(WorkspaceRecoveryService.Read(Path), new WorkspaceRestoreOptions {
+                WorkspaceRestoreResult result = new WorkspaceRecoveryService().Restore(WorkspaceRecoveryService.Read(Path, Validate), new WorkspaceRestoreOptions {
                     RestoreVirtualDesktops = RestoreVirtualDesktops,
                     RestoreApplicationPins = RestoreApplicationPins,
                     RestoreWallpapers = RestoreWallpapers,

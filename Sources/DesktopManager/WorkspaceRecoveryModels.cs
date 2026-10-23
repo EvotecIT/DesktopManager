@@ -44,6 +44,7 @@ public sealed class WorkspaceRestoreOptions {
 
 /// <summary>Reports a saved window's recovery without hiding skipped matches or failed actions.</summary>
 public sealed class WorkspaceWindowResult {
+    internal WindowPosition? ResolvedWindow { get; set; }
     /// <summary>Gets or sets the saved title.</summary>
     public string Title { get; set; } = string.Empty;
     /// <summary>Gets or sets the matching decision.</summary>
@@ -68,6 +69,10 @@ public sealed class VirtualDesktopWallpaperResult {
 
 /// <summary>Reports all workspace actions and limitations.</summary>
 public sealed class WorkspaceRestoreResult {
+    /// <summary>Gets whether every requested action succeeded without warnings. Incomplete recovery must not enable automatic snapshot replacement.</summary>
+    public bool IsComplete => Warnings.Count == 0 &&
+        Windows.TrueForAll(window => window.PositionApplied && window.VirtualDesktopApplied != false && window.Error == null) &&
+        Wallpapers.TrueForAll(wallpaper => wallpaper.Applied && wallpaper.Error == null);
     /// <summary>Gets the individual window outcomes.</summary>
     public List<WorkspaceWindowResult> Windows { get; } = new();
     /// <summary>Gets the individual wallpaper outcomes.</summary>

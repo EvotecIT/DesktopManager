@@ -19,15 +19,17 @@ public sealed partial class WorkspaceRecoveryService {
         var result = new WorkspaceRestoreResult();
         var pending = layout.Windows.Select((window, index) => new KeyValuePair<int, WindowPosition>(index, window)).ToList();
         var outcomes = new WorkspaceWindowResult[layout.Windows.Count];
+        var reserved = new List<WindowPosition>();
         for (int attempt = 0; attempt < maximumAttempts; attempt++) {
             cancellationToken.ThrowIfCancellationRequested();
             var candidate = new WindowLayout { Windows = pending.Select(item => item.Value).ToList(), Desktops = layout.Desktops };
-            WorkspaceRestoreResult current = Restore(candidate, new WorkspaceRestoreOptions {
+            WorkspaceRestoreResult current = RestoreCore(candidate, new WorkspaceRestoreOptions {
                 RestoreVirtualDesktops = options.RestoreVirtualDesktops,
                 RestoreApplicationPins = options.RestoreApplicationPins,
-                ReopenExplorerFolders = options.ReopenExplorerFolders,
+                ReopenExplorerFolders = attempt == 0 && options.ReopenExplorerFolders,
                 RestoreWallpapers = attempt == 0 && options.RestoreWallpapers
-            });
+            }, reserved);
+            reserved.AddRange(current.Windows.Where(window => window.ResolvedWindow != null).Select(window => window.ResolvedWindow!));
             result.Wallpapers.AddRange(current.Wallpapers);
             foreach (string warning in current.Warnings) { if (!result.Warnings.Contains(warning)) { result.Warnings.Add(warning); } }
             for (int index = 0; index < pending.Count; index++) { outcomes[pending[index].Key] = current.Windows[index]; }

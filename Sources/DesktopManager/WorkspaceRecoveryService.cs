@@ -53,19 +53,31 @@ public sealed partial class WorkspaceRecoveryService {
     }
 
     /// <summary>Reads a layout without changing windows. Legacy layouts need no migration.</summary>
-    public static WindowLayout Read(string path) {
+    public static WindowLayout Read(string path, bool validate = false) {
         WindowLayout? layout;
         try { layout = JsonSerializer.Deserialize<WindowLayout>(File.ReadAllText(path)); }
         catch (JsonException ex) { throw new InvalidDataException("The workspace file is not a valid window layout.", ex); }
         if (layout == null) { throw new InvalidDataException("The workspace file contains no layout."); }
         Validate(layout);
+        if (validate) { WindowManager.ValidateLayout(layout); }
         return layout;
     }
 
     /// <summary>Previews one-to-one window matches without launching applications or changing windows.</summary>
     public WindowLayoutPlan Plan(WindowLayout layout, bool inspectVirtualDesktops = false) {
+        return PlanCore(layout, inspectVirtualDesktops, null);
+    }
+
+    private WindowLayoutPlan PlanCore(WindowLayout layout, bool inspectVirtualDesktops, IReadOnlyList<WindowPosition>? reserved) {
         Validate(layout);
-        WindowLayoutPlan plan = WindowManager.BuildLayoutPlan(layout, _windows.Capture(layout.Windows.Any(window => !string.IsNullOrEmpty(window.ExplorerFolderPath))));
+        IReadOnlyList<WindowPosition> live = _windows.Capture(layout.Windows.Any(window => !string.IsNullOrEmpty(window.ExplorerFolderPath)));
+        // Keep a window assigned across the whole startup operation, not merely within one attempt.
+        // Process and thread identity prevent a recycled HWND in another process/thread being excluded.
+        if (reserved != null) {
+            live = live.Where(window => !reserved.Any(previous => previous.Handle == window.Handle &&
+                previous.ProcessId == window.ProcessId && previous.ThreadId == window.ThreadId)).ToArray();
+        }
+        WindowLayoutPlan plan = WindowManager.BuildLayoutPlan(layout, live);
         plan.Warnings.AddRange(layout.CaptureWarnings);
         if (inspectVirtualDesktops) {
             try {
@@ -82,6 +94,10 @@ public sealed partial class WorkspaceRecoveryService {
 
     /// <summary>Restores uniquely matched windows and explicitly selected optional state. Missing or ambiguous targets are reported and skipped.</summary>
     public WorkspaceRestoreResult Restore(WindowLayout layout, WorkspaceRestoreOptions? options = null) {
+        return RestoreCore(layout, options, null);
+    }
+
+    private WorkspaceRestoreResult RestoreCore(WindowLayout layout, WorkspaceRestoreOptions? options, IReadOnlyList<WindowPosition>? reserved) {
         Validate(layout);
         options ??= new WorkspaceRestoreOptions();
         if (options.RestoreApplicationPins && !options.RestoreVirtualDesktops) {
@@ -91,7 +107,7 @@ public sealed partial class WorkspaceRecoveryService {
         result.Warnings.AddRange(layout.CaptureWarnings);
         if (options.RestoreWallpapers && layout.Desktops.Count == 0) { result.Warnings.Add("This layout contains no saved virtual desktop wallpapers."); }
         if (options.ReopenExplorerFolders) { ReopenFolders(layout, result); }
-        WindowLayoutPlan plan = Plan(layout);
+        WindowLayoutPlan plan = PlanCore(layout, false, reserved);
         IWorkspaceDesktopApi? desktops = null;
         string? desktopError = null;
         IReadOnlyList<VirtualDesktopInfo> liveDesktops = Array.Empty<VirtualDesktopInfo>();
@@ -101,7 +117,7 @@ public sealed partial class WorkspaceRecoveryService {
                 catch (Exception ex) { desktopError = ex.Message; }
             }
             foreach (WindowLayoutMatch match in plan.Windows) {
-                var item = new WorkspaceWindowResult { Title = match.SavedWindow.Title, MatchStatus = match.Status };
+                var item = new WorkspaceWindowResult { Title = match.SavedWindow.Title, MatchStatus = match.Status, ResolvedWindow = match.Window };
                 result.Windows.Add(item);
                 if (match.Window == null) { continue; }
                 // Revalidate the live HWND before any desktop, pin or geometry mutation.
@@ -182,6 +198,7 @@ internal sealed class WorkspaceWindowApi : IWorkspaceWindowApi {
         foreach (WindowInfo window in _manager.GetWindows(new WindowQueryOptions { IncludeCloaked = true, IncludeOwned = false, IncludeEmptyTitles = false })) {
             try {
                 WindowPosition position = _manager.GetWindowPosition(window);
+                position.ThreadId = window.ThreadId;
                 WorkspaceWindowPlacement.Capture(position);
                 if (folders.TryGetValue(window.Handle, out string? folder)) { position.ExplorerFolderPath = folder; }
                 result.Add(position);

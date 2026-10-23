@@ -51,7 +51,5 @@ Explorer reopening is opt-in. Other applications must already be running. Wallpa
         }
     }
 
-    internal static bool IsComplete(WorkspaceRestoreResult result) => result.Warnings.Count == 0 &&
-        result.Windows.All(window => window.PositionApplied && window.VirtualDesktopApplied != false && window.Error == null) &&
-        result.Wallpapers.All(wallpaper => wallpaper.Applied);
+    internal static bool IsComplete(WorkspaceRestoreResult result) => result.IsComplete;
 }

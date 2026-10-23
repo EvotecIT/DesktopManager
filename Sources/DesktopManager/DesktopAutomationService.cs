@@ -2268,27 +2268,6 @@ public sealed partial class DesktopAutomationService {
     }
 
     /// <summary>
-    /// Captures the area described by a named window target against a matching window.
-    /// </summary>
-    public DesktopCapture CaptureWindowTarget(WindowQueryOptions options, string targetName) {
-        if (options == null) {
-            throw new ArgumentNullException(nameof(options));
-        }
-
-        DesktopResolvedWindowTarget target = ResolveWindowTargets(options, targetName, all: false).FirstOrDefault()
-            ?? throw new InvalidOperationException($"Named target '{targetName}' could not be resolved against a matching window.");
-        if (!target.ScreenWidth.HasValue || !target.ScreenHeight.HasValue) {
-            throw new InvalidOperationException($"Named target '{targetName}' does not define a capture area. Save it with width/height or widthRatio/heightRatio.");
-        }
-
-        DesktopCapture capture = CaptureRegion(target.ScreenX, target.ScreenY, target.ScreenWidth.Value, target.ScreenHeight.Value);
-        capture.Kind = "window-target";
-        capture.Window = target.Geometry.Window;
-        capture.Geometry = target.Geometry;
-        return capture;
-    }
-
-    /// <summary>
     /// Clicks a saved target relative to each matching window.
     /// </summary>
     public IReadOnlyList<WindowInfo> ClickWindowTarget(WindowQueryOptions options, string targetName, MouseButton button, bool activate, bool all = false) {
