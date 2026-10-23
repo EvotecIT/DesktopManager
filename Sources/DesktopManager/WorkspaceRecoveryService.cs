@@ -199,7 +199,7 @@ internal sealed class WorkspaceWindowApi : IWorkspaceWindowApi {
             try {
                 WindowPosition position = _manager.GetWindowPosition(window);
                 position.ThreadId = window.ThreadId;
-                WorkspaceWindowPlacement.Capture(position);
+                if (!WorkspaceWindowPlacement.TryCapture(position)) { continue; }
                 if (folders.TryGetValue(window.Handle, out string? folder)) { position.ExplorerFolderPath = folder; }
                 result.Add(position);
             } catch (InvalidOperationException) { /* Window closed during capture. */ }

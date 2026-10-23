@@ -11,6 +11,11 @@ namespace DesktopManager.Tests;
 #endif
 public sealed class WorkspaceRecoveryTests {
     [TestMethod]
+    public void PlacementCapture_ClosedWindowIsSkippedDuringSnapshot() {
+        Assert.IsFalse(WorkspaceWindowPlacement.TryCapture(new WindowPosition { Handle = new IntPtr(-100) }));
+    }
+
+    [TestMethod]
     public void Capture_DesktopOptInPreservesGuidAndPinState() {
         Guid desktopId = Guid.NewGuid();
         var windows = new FakeWindows(Window("Editor", 10, 1));

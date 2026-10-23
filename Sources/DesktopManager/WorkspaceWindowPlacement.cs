@@ -34,6 +34,15 @@ internal static class WorkspaceWindowPlacement {
         }
     }
 
+    internal static bool TryCapture(WindowPosition window) {
+        try { Capture(window); return true; }
+        catch (Win32Exception) when (MonitorNativeMethods.GetWindowThreadProcessId(window.Handle, out _) == 0) {
+            // Enumeration and GetWindowPlacement are separate calls; splash windows can close between them.
+            // Keep genuine failures for still-live windows visible rather than silently dropping their state.
+            return false;
+        }
+    }
+
     internal static WindowLayoutApplyResult Apply(WindowManager manager, WindowLayoutMatch match) {
         try {
             WindowPosition target = match.Window!;
