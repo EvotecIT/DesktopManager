@@ -102,6 +102,21 @@ public sealed class LinuxDisplayQualificationTests {
     }
 
     [TestMethod]
+    [DataRow("GNOME")]
+    [DataRow("KDE")]
+    public void MissingRequiredDesktopCommand_KeepsEnumerationConsistentWithUnavailableCapabilities(string desktop) {
+        var runner = new DisplayRunner(NativeLayout) { HasWallpaperCommand = false };
+        var service = Service(runner, desktop);
+
+        Assert.AreEqual(0, service.GetDisplays().Count);
+        var capabilities = service.GetCapabilities();
+        Assert.IsFalse(capabilities.CanEnumerateDisplays);
+        Assert.IsFalse(capabilities.IsAvailable);
+        Assert.AreEqual(0, service.GetWallpaperTargets().Count);
+        Assert.AreEqual(0, runner.DisplayReads);
+    }
+
+    [TestMethod]
     public void FailedNativeDisplayQuery_RemainsAnObservableReadFailure() {
         var runner = new DisplayRunner(NativeLayout) { QueryFailure = new IOException("XRandR could not read this display.") };
         var service = Service(runner, "GNOME");
@@ -122,10 +137,12 @@ public sealed class LinuxDisplayQualificationTests {
 
     private sealed class DisplayRunner(string layout) : IDesktopCommandRunner {
         internal bool HasXrandr { get; set; } = true;
+        internal bool HasWallpaperCommand { get; set; } = true;
         internal int DisplayReads { get; private set; }
         internal IOException? QueryFailure { get; set; }
 
-        public string? FindExecutable(params string[] names) => names[0] == "xrandr" && !HasXrandr ? null : "/platform/" + names[0];
+        public string? FindExecutable(params string[] names) => (names[0] == "xrandr" ? HasXrandr : HasWallpaperCommand)
+            ? "/platform/" + names[0] : null;
 
         public string Run(string executable, params string[] arguments) {
             if (executable.EndsWith("/xrandr", StringComparison.Ordinal)) {

@@ -15,18 +15,15 @@ public sealed class WindowsNativeActivationTests {
 
         var existing = (IDesktopManager)Activator.CreateInstance(Type.GetTypeFromCLSID(
             new Guid("C2CF3110-460E-4fc1-B9D0-8A1C0C9CC4BD"))!)!;
-        try {
-            var expected = Enumerable.Range(0, (int)existing.GetMonitorDevicePathCount())
-                .Select(index => existing.GetMonitorDevicePathAt((uint)index)).FirstOrDefault(id => !string.IsNullOrWhiteSpace(id));
-            if (expected == null) {
-                Assert.Inconclusive("An addressable native wallpaper monitor is required for discovery qualification.");
-            }
-            var actual = new Monitors().GetMonitors();
-
-            Assert.IsTrue(actual.Any(monitor => string.Equals(monitor.DeviceId, expected, StringComparison.OrdinalIgnoreCase)),
-                "Monitor discovery must reuse the native COM identity through its interface, even when another caller created its RCW first.");
-        } finally {
-            Marshal.ReleaseComObject(existing);
+        var expected = Enumerable.Range(0, (int)existing.GetMonitorDevicePathCount())
+            .Select(index => existing.GetMonitorDevicePathAt((uint)index)).FirstOrDefault(id => !string.IsNullOrWhiteSpace(id));
+        if (expected == null) {
+            Assert.Inconclusive("An addressable native wallpaper monitor is required for discovery qualification.");
         }
+        var actual = new Monitors().GetMonitors();
+
+        Assert.IsTrue(actual.Any(monitor => string.Equals(monitor.DeviceId, expected, StringComparison.OrdinalIgnoreCase)),
+            "Monitor discovery must reuse the native COM identity through its interface, even when another caller created its RCW first.");
+        GC.KeepAlive(existing);
     }
 }

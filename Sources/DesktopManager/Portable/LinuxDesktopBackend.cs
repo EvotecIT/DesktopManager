@@ -54,6 +54,7 @@ internal sealed partial class LinuxDesktopBackend : IPortableDesktopBackend, IDe
     }
 
     public IReadOnlyList<DesktopDisplayInfo> GetDisplays() {
+        if (FindDesktopCommand() == null) { return Array.Empty<DesktopDisplayInfo>(); }
         var display = ReadQualifiedX11Display();
         return display == null ? Array.Empty<DesktopDisplayInfo>() : new[] { display };
     }
