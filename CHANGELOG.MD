@@ -1,8 +1,16 @@
-## Unreleased
+## 4.6.1 - 2026.10.24
 
 - Report no image when GNOME background images are disabled, and explain unsupported KDE image-package sources instead of returning a directory as an image file.
 - Preserve normal restore bounds and minimized-from-maximized state in ordinary window layout saves and restores.
 - Resolve current-monitor placement from Windows monitor association, with largest-intersection and nearest-monitor fallback for detached observations.
+- Discover portable wallpaper targets independently of physical display geometry and expose native fit, background color and shading metadata.
+- Report GNOME Shell's effective full image opacity without trusting its ignored retained opacity setting.
+- Expose optional physical dimensions for a qualified single-display X11 layout through `xrandr`; transformed, rotated, reflected, panning, multi-display and Wayland layouts still require explicit dimensions.
+- Add disposable, session-bound wallpaper checkpoints with explicit rejection of sources or selected modes that cannot be faithfully restored. See `Docs/Portable.Desktop.md` for platform limits.
+- Correct the Windows Shell slideshow array ABI and retain checkpoint COM references safely across caller apartments.
+- Reuse the native wallpaper COM interface when another caller has already activated its managed wrapper, preserving monitor discovery in that process.
+
+The Windows CLI and MCP plugin release is 0.2.3.
 
 ## 4.6.0 - 2026.10.23
 

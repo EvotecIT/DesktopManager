@@ -30,10 +30,11 @@ internal sealed partial class LinuxDesktopBackend : IPortableDesktopBackend, IDe
         }
         var command = FindDesktopCommand();
         var available = GetSession().HasGraphicalSession && command != null;
-        return new DesktopCapabilities(_backend, available, false, true, _backend == "kde", true,
+        var qualifiedDisplay = available ? TryReadQualifiedX11Display() : null;
+        return new DesktopCapabilities(_backend, available, qualifiedDisplay != null, true, _backend == "kde", true,
             !available ? "A graphical user session, its D-Bus session bus, and " + (_backend == "gnome" ? "gsettings" : "qdbus6 or qdbus") + " are required."
-                : _backend == "gnome" ? "GNOME user background settings; per-display images are unsupported. Specify image dimensions; physical display enumeration is not qualified for X11 transforms or Wayland."
-                : "KDE static image wallpapers in the current activity. Explicit targets use screen:<number>. Specify image dimensions; physical display enumeration is unavailable.",
+                : _backend == "gnome" ? "GNOME user background settings; per-display images are unsupported. Optional XRandR geometry requires one unrotated, origin-aligned X11 output with an identity transform and matching native mode. Other layouts require explicit image dimensions."
+                : "KDE static image wallpapers in the current activity. Explicit targets use screen:<number>. Optional XRandR geometry requires one unrotated, origin-aligned X11 output with an identity transform and matching native mode; other layouts require explicit dimensions.",
             wallpaperTargets: true, supportedPositions: _backend == "kde"
                 ? new[] { DesktopWallpaperPosition.Center, DesktopWallpaperPosition.Tile, DesktopWallpaperPosition.Stretch, DesktopWallpaperPosition.Fit, DesktopWallpaperPosition.Fill }
                 : null);
@@ -53,7 +54,8 @@ internal sealed partial class LinuxDesktopBackend : IPortableDesktopBackend, IDe
     }
 
     public IReadOnlyList<DesktopDisplayInfo> GetDisplays() {
-        return Array.Empty<DesktopDisplayInfo>();
+        var display = ReadQualifiedX11Display();
+        return display == null ? Array.Empty<DesktopDisplayInfo>() : new[] { display };
     }
 
     public IReadOnlyList<DesktopWallpaperTarget> GetWallpaperTargets() {
@@ -61,7 +63,7 @@ internal sealed partial class LinuxDesktopBackend : IPortableDesktopBackend, IDe
             return Array.Empty<DesktopWallpaperTarget>();
         }
         if (_backend == "gnome") {
-            return new[] { new DesktopWallpaperTarget { Name = "GNOME desktop (all displays)" } };
+            return new[] { new DesktopWallpaperTarget { Name = "GNOME desktop (all displays)", Display = TryReadQualifiedX11Display() } };
         }
         using var document = JsonDocument.Parse(RunKde("targets", null, null, 0));
         var targets = new List<DesktopWallpaperTarget>();
@@ -75,6 +77,7 @@ internal sealed partial class LinuxDesktopBackend : IPortableDesktopBackend, IDe
                 ScopeId = item.GetProperty("activity").GetString()
             });
         }
+        if (targets.Count == 1) { targets[0].Display = TryReadQualifiedX11Display(); }
         return targets;
     }
 
