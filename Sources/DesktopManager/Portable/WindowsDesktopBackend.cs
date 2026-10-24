@@ -9,7 +9,7 @@ internal sealed class WindowsDesktopBackend : IPortableDesktopBackend, IDesktopW
     private readonly Func<bool> _isInteractive;
     private readonly WindowsWallpaperSelection? _selection;
 
-    internal WindowsDesktopBackend() : this(new MonitorService(() => (IDesktopManager)new DesktopManagerWrapper()), selection: new WindowsWallpaperSelection()) { }
+    internal WindowsDesktopBackend() : this(new MonitorService(DesktopManagerWrapper.Create), selection: new WindowsWallpaperSelection()) { }
 
     internal WindowsDesktopBackend(MonitorService monitors, Func<IReadOnlyList<MonitorSnapshot>>? snapshots = null, Func<bool>? isInteractive = null,
         WindowsWallpaperSelection? selection = null) {

@@ -18,7 +18,7 @@ public class Monitors {
     /// Initializes a new instance of the <see cref="Monitors"/> class.
     /// </summary>
     public Monitors()
-        : this(() => (IDesktopManager)new DesktopManagerWrapper()) {
+        : this(DesktopManagerWrapper.Create) {
     }
 
     internal Monitors(Func<IDesktopManager> desktopManagerFactory) {

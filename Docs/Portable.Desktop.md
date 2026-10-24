@@ -51,13 +51,21 @@ return `#RRGGBB`; GNOME returns the configured CSS color string, and KDE returns
 color string. Unsupported color syntax needs a
 diagnostic in the consuming renderer. A null background or opacity means unknown; it is not a default
 black color or a promise of full opacity. Disabled retained images are not exposed as `FilePath`.
+GNOME Shell reports full opacity for an enabled image and zero for a disabled image. Its retained
+`picture-opacity` setting is ignored by the shell; native GNOME Shell 46 X11 checks confirmed the
+same image pixels at retained values 0, 50 and 100. This describes the settled desktop background,
+not overview effects or an image transition.
 
 ## Targets and preserving fit
 
 Wallpaper targets and physical pixel geometry are separate capabilities. `GetWallpaperTargets()`
 discovers a GNOME desktop-wide target and the current KDE activity's `screen:<number>` targets even
 when `GetDisplays()` cannot provide qualified image dimensions. A target's `Display` is null in that
-case: the caller must supply dimensions. `DisplayId == null` means desktop-wide assignment.
+case: the caller must supply dimensions. Optional `xrandr` discovery qualifies one origin-aligned,
+unrotated and unreflected X11 output only when its identity transform, framebuffer and current native mode agree.
+It is never installed automatically. A qualified single display is attached to the corresponding
+GNOME target or the sole current-activity KDE target. Other layouts keep targets without guessed
+geometry. `DisplayId == null` means desktop-wide assignment.
 
 `SupportedWallpaperPositions` reports the exact accepted modes for the current backend. To preserve
 the existing fit, read each target's state and use its known `Position`; do not silently replace an
@@ -134,17 +142,18 @@ an immediate screenshot can still show the outgoing image.
 | --- | --- | --- | --- |
 | Windows | Existing DesktopManager physical-pixel snapshots | Current user's displays; optional addressable display ID | Existing Center, Tile, Stretch, Fit, Fill and Span modes; Windows shares the fit setting across monitors |
 | macOS | Public AppKit screens and CoreGraphics pixel dimensions | Current user's active Spaces/screens; optional display ID | Center, Stretch, Fit and Fill; Tile, Span and enumerating all Spaces are unsupported |
-| GNOME on X11 or Wayland | Physical display enumeration is not qualified; supply image dimensions | Current user background; individual display assignment is unsupported | GNOME's centered, tiled, stretched, scaled, zoom and spanned settings |
-| KDE Plasma | Physical display enumeration is unavailable; supply image dimensions | Current activity; optional native `screen:<number>` target | Static image wallpaper; Center, Tile, Stretch, Fit and Fill; Span is unsupported |
+| GNOME on X11 or Wayland | Optional qualified single-display X11 geometry; other layouts require image dimensions | Current user background; individual display assignment is unsupported | GNOME's centered, tiled, stretched, scaled, zoom and spanned settings |
+| KDE Plasma | Optional qualified single-display X11 geometry; other layouts require image dimensions | Current activity; optional native `screen:<number>` target | Static image wallpaper; Center, Tile, Stretch, Fit and Fill; Span is unsupported |
 | Other or headless sessions | Empty when unavailable | Explicit unavailable/unsupported result | File rendering can run independently of desktop integration |
 
 Display IDs describe the current topology. Refresh discovery after docking, reconnecting, or changing
 displays. `Left` and `Top` retain the platform's desktop coordinate system: macOS uses points and an
 upward Y axis; Windows and X11 retain their native desktop coordinates. `Width` and `Height` are image
 pixel dimensions. Do not assume that subtracting desktop coordinates reproduces the image dimensions
-on scaled displays. Linux display geometry is not exposed: X11 transforms and scaling can make
-`xrandr` desktop geometry differ from the physical image pixel size, and Wayland needs its own
-qualified display protocol.
+on scaled displays. Linux geometry remains unavailable for multiple connected outputs, rotation, reflection,
+panning, non-desktop outputs, unqualified transforms or mismatched native modes. The optional
+single-display X11 query does not report a UI scale factor. Wayland needs its own qualified display
+protocol; XWayland geometry is not treated as physical pixels.
 
 `GetDisplays` returns an empty list when enumeration is unsupported. A failed native read throws so
 callers can report a diagnostic instead of inventing a monitor. `GetWallpaper` and `ApplyWallpaper`

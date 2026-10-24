@@ -18,7 +18,7 @@ public sealed class WorkstationProfileService {
     /// <summary>Initializes a workstation profile service over the current interactive desktop.</summary>
     public WorkstationProfileService()
         : this(
-            new MonitorService((IDesktopManager)new DesktopManagerWrapper()),
+            new MonitorService(DesktopManagerWrapper.Create()),
             new PersonalizationService(),
             new AudioService(),
             new TaskbarService()) {

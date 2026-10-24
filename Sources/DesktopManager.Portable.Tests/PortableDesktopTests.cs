@@ -162,15 +162,15 @@ public sealed class PortableDesktopTests {
     }
 
     [TestMethod]
-    public void GnomeRetainedOpacity_IsNotPresentedAsEffectiveShellOpacity() {
-        foreach (var percentage in new[] { "35", "101" }) {
+    public void GnomeEnabledImages_AreOpaqueAndIgnoreRetainedOpacity() {
+        foreach (var percentage in new[] { "0", "35", "100", "101" }) {
             var runner = new FakeRunner { Execute = args => args[0] == "list-keys" ? "picture-uri\npicture-opacity\n"
                 : args[2] == "picture-options" ? "'scaled'"
                 : args[2] == "picture-opacity" ? percentage
                 : "'file:///photos/original.jpg'" };
             var state = new PortableDesktopService(Linux(runner)).GetWallpaper();
             Assert.IsTrue(state.Succeeded, state.Message);
-            Assert.IsNull(state.ImageOpacity);
+            Assert.AreEqual(1.0, state.ImageOpacity);
             Assert.AreEqual("/photos/original.jpg", state.FilePath);
             Assert.IsFalse(runner.Calls.Any(call => call.Length > 2 && call[2] == "picture-opacity"));
         }
@@ -586,7 +586,7 @@ public sealed class PortableDesktopTests {
     private sealed class FakeRunner : IDesktopCommandRunner {
         internal Func<string[], string> Execute { get; set; } = _ => string.Empty;
         internal List<string[]> Calls { get; } = new List<string[]>();
-        public string? FindExecutable(params string[] names) => "/platform/" + names[0];
+        public string? FindExecutable(params string[] names) => names[0] == "xrandr" ? null : "/platform/" + names[0];
         public string Run(string executable, params string[] arguments) {
             Calls.Add(arguments);
             return Execute(arguments);
