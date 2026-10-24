@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace DesktopManager;
 
-internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
+internal sealed partial class LinuxDesktopBackend : IPortableDesktopBackend, IDesktopWallpaperSnapshotBackend {
     private const string BackgroundSchema = "org.gnome.desktop.background";
     private readonly IDesktopCommandRunner _runner;
     private readonly Func<string, string?> _environment;
@@ -33,7 +33,10 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
         return new DesktopCapabilities(_backend, available, false, true, _backend == "kde", true,
             !available ? "A graphical user session, its D-Bus session bus, and " + (_backend == "gnome" ? "gsettings" : "qdbus6 or qdbus") + " are required."
                 : _backend == "gnome" ? "GNOME user background settings; per-display images are unsupported. Specify image dimensions; physical display enumeration is not qualified for X11 transforms or Wayland."
-                : "KDE static image wallpapers in the current activity. Explicit targets use screen:<number>. Specify image dimensions; physical display enumeration is unavailable.");
+                : "KDE static image wallpapers in the current activity. Explicit targets use screen:<number>. Specify image dimensions; physical display enumeration is unavailable.",
+            wallpaperTargets: true, supportedPositions: _backend == "kde"
+                ? new[] { DesktopWallpaperPosition.Center, DesktopWallpaperPosition.Tile, DesktopWallpaperPosition.Stretch, DesktopWallpaperPosition.Fit, DesktopWallpaperPosition.Fill }
+                : null);
     }
 
     public DesktopUserSession GetSession() {
@@ -53,6 +56,28 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
         return Array.Empty<DesktopDisplayInfo>();
     }
 
+    public IReadOnlyList<DesktopWallpaperTarget> GetWallpaperTargets() {
+        if (!GetCapabilities().IsAvailable) {
+            return Array.Empty<DesktopWallpaperTarget>();
+        }
+        if (_backend == "gnome") {
+            return new[] { new DesktopWallpaperTarget { Name = "GNOME desktop (all displays)" } };
+        }
+        using var document = JsonDocument.Parse(RunKde("targets", null, null, 0));
+        var targets = new List<DesktopWallpaperTarget>();
+        foreach (var item in document.RootElement.EnumerateArray()) {
+            var id = item.GetProperty("displayId").GetString();
+            if (id == null || !ValidKdeDisplayId(id) || targets.Any(target => target.DisplayId == id)) {
+                throw new FormatException("KDE returned an invalid or duplicate wallpaper target.");
+            }
+            targets.Add(new DesktopWallpaperTarget {
+                DisplayId = id, Index = targets.Count, Name = "KDE " + id,
+                ScopeId = item.GetProperty("activity").GetString()
+            });
+        }
+        return targets;
+    }
+
     public DesktopWallpaperState GetWallpaper(string? displayId) {
         var capabilities = GetCapabilities();
         if (!capabilities.IsAvailable) {
@@ -63,13 +88,14 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
                 return new DesktopWallpaperState(DesktopOperationStatus.Unsupported, "GNOME background settings do not select individual displays.");
             }
             var fit = DecodeGVariantString(RunGSettings("get", BackgroundSchema, "picture-options"));
+            var background = ReadGnomeBackground(out var opacity);
             if (fit == "none") {
-                return new DesktopWallpaperState(DesktopOperationStatus.Success, "GNOME background images are disabled.");
+                return new DesktopWallpaperState(DesktopOperationStatus.Success, "GNOME background images are disabled.", background: background, imageOpacity: 0);
             }
             var key = GnomeImageKey();
             var path = DecodeGVariantString(RunGSettings("get", BackgroundSchema, key));
             return new DesktopWallpaperState(DesktopOperationStatus.Success, "Current GNOME background for the active light/dark style.",
-                LocalPath(path), GnomePosition(fit));
+                LocalPath(path), GnomePosition(fit), background, opacity);
         }
         if (!ValidKdeDisplayId(displayId)) {
             return new DesktopWallpaperState(DesktopOperationStatus.Unsupported, "KDE targets use screen:<nonnegative number>.");
@@ -78,13 +104,20 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
         if (!document.RootElement.GetProperty("supported").GetBoolean()) {
             return new DesktopWallpaperState(DesktopOperationStatus.Unsupported, document.RootElement.GetProperty("message").GetString() ?? "Unsupported KDE wallpaper plugin.");
         }
+        var fillMode = document.RootElement.GetProperty("fillMode").GetInt32();
+        if ((fillMode == 1 || fillMode == 6) && document.RootElement.TryGetProperty("blur", out var blur) && blur.GetBoolean()) {
+            return new DesktopWallpaperState(DesktopOperationStatus.Unsupported,
+                "KDE blurred wallpaper margins cannot be reconstructed as a solid background.");
+        }
         var kdePath = LocalPath(document.RootElement.GetProperty("path").GetString());
         if (kdePath != null && Directory.Exists(kdePath)) {
             return new DesktopWallpaperState(DesktopOperationStatus.Unsupported,
                 "The current KDE wallpaper is an image package; resolving its effective image file is unsupported.");
         }
+        var kdeColor = document.RootElement.TryGetProperty("color", out var color) && color.ValueKind == JsonValueKind.String ? color.GetString() : null;
         return new DesktopWallpaperState(DesktopOperationStatus.Success, "Current KDE static wallpaper for the current activity.",
-            kdePath, KdePosition(document.RootElement.GetProperty("fillMode").GetInt32()));
+            kdePath, KdePosition(fillMode),
+            kdeColor == null ? null : new DesktopWallpaperBackground(kdeColor, DesktopBackgroundShading.Solid), 1);
     }
 
     public DesktopOperationResult ApplyWallpaper(DesktopWallpaperRequest request) {
@@ -105,7 +138,7 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
             if (request.Position == DesktopWallpaperPosition.Span || !ValidKdeDisplayId(request.DisplayId)) {
                 return new DesktopOperationResult(DesktopOperationStatus.Unsupported, "KDE does not support Span in this adapter; targets use screen:<nonnegative number>.");
             }
-            var result = RunKde("apply", request.DisplayId, uri, KdeFit(request.Position));
+            var result = RunKde("apply", request.DisplayId, uri, KdeFit(request.Position), request.ExpectedScopeId);
             if (!string.Equals(result.Trim(), "true", StringComparison.Ordinal)) {
                 return new DesktopOperationResult(DesktopOperationStatus.Failed, "KDE did not confirm the wallpaper operation.");
             }
@@ -134,7 +167,7 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
         return "picture-uri";
     }
 
-    private string RunKde(string action, string? displayId, string? uri, int fillMode) {
+    private string RunKde(string action, string? displayId, string? uri, int fillMode, string? expectedScopeId = null, string? checkpoint = null) {
         // Write the fixed schema directly so request construction does not require runtime reflection.
         using var buffer = new MemoryStream();
         using (var writer = new Utf8JsonWriter(buffer)) {
@@ -143,6 +176,14 @@ internal sealed class LinuxDesktopBackend : IPortableDesktopBackend {
             writer.WriteString("displayId", displayId);
             writer.WriteString("uri", uri);
             writer.WriteNumber("fillMode", fillMode);
+            if (expectedScopeId != null) {
+                writer.WriteString("expectedScopeId", expectedScopeId);
+            }
+            if (checkpoint != null) {
+                writer.WritePropertyName("checkpoint");
+                using var document = JsonDocument.Parse(checkpoint);
+                document.RootElement.WriteTo(writer);
+            }
             writer.WriteEndObject();
         }
         var request = Encoding.UTF8.GetString(buffer.ToArray());

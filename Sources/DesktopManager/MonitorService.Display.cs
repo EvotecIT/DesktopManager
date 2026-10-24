@@ -501,11 +501,10 @@ public partial class MonitorService {
             throw new ArgumentNullException(nameof(wallpaperPaths));
         }
 
-        EnsureDesktopWallpaperEnabled();
-
         IntPtr arrayPtr = IntPtr.Zero;
         try {
             arrayPtr = CreateShellItemArray(wallpaperPaths);
+            EnsureDesktopWallpaperEnabled();
             Execute(() => _desktopManager.SetSlideshow(arrayPtr), nameof(IDesktopManager.SetSlideshow));
             if (options.HasValue || slideshowTick.HasValue) {
                 var current = GetWallpaperSlideshow();
@@ -591,6 +590,8 @@ public partial class MonitorService {
         }
 
         if (hresult != 0 || arrayPtr == IntPtr.Zero) {
+            // The Shell can return S_FALSE and still transfer an owned, inactive array.
+            if (arrayPtr != IntPtr.Zero) { Marshal.Release(arrayPtr); }
             return Array.Empty<string>();
         }
 
@@ -644,47 +645,36 @@ public partial class MonitorService {
     }
 
     private static IntPtr CreateShellItemArray(IEnumerable<string> paths) {
-        Guid clsidEnum = new("2d3468c1-36a7-43b6-ac24-d3f02fd9607a");
-        Guid iidShellItem = new("43826D1E-E718-42EE-BC55-A1E261C37BFE");
-        Guid iidShellItemArray = new("b63ea76d-1f85-456f-a19c-48159efa858b");
-
-        Type collectionType = Type.GetTypeFromCLSID(clsidEnum)
-            ?? throw new InvalidOperationException("IObjectCollection CLSID not available.");
-        object? instance = Activator.CreateInstance(collectionType);
-        if (instance is not MonitorNativeMethods.IObjectCollection collection) {
-            throw new InvalidOperationException("IObjectCollection instance not available.");
-        }
-
+        var itemIdLists = new List<IntPtr>();
         try {
             foreach (var path in paths) {
                 if (string.IsNullOrEmpty(path)) continue;
-                int hr = MonitorNativeMethods.SHCreateItemFromParsingName(path, IntPtr.Zero, ref iidShellItem, out IntPtr item);
+                var fullPath = Path.GetFullPath(path);
+                int hr = MonitorNativeMethods.SHParseDisplayName(fullPath, IntPtr.Zero, out var item, 0, out _);
+                if (item != IntPtr.Zero) { itemIdLists.Add(item); }
                 if (hr != 0) {
                     try {
                         Marshal.ThrowExceptionForHR(hr);
                     } catch (Exception ex) {
-                        throw new InvalidOperationException($"SHCreateItemFromParsingName failed for '{path}'", ex);
+                        throw new InvalidOperationException($"The Shell could not resolve slideshow path '{path}'.", ex);
                     }
                 }
-                object obj = Marshal.GetObjectForIUnknown(item);
-                try {
-                    collection.AddObject(obj);
-                } finally {
-                    Marshal.ReleaseComObject(obj);
-                    Marshal.Release(item);
+                if (item == IntPtr.Zero) {
+                    throw new InvalidOperationException("The Shell returned no slideshow item identifier.");
                 }
             }
-
-            IntPtr unk = Marshal.GetIUnknownForObject(collection);
-#if NET10_0_OR_GREATER
-            Marshal.QueryInterface(unk, in iidShellItemArray, out IntPtr arrayPtr);
-#else
-            Marshal.QueryInterface(unk, ref iidShellItemArray, out IntPtr arrayPtr);
-#endif
-            Marshal.Release(unk);
+            if (itemIdLists.Count == 0) {
+                throw new ArgumentException("At least one slideshow image or folder is required.", nameof(paths));
+            }
+            var result = MonitorNativeMethods.SHCreateShellItemArrayFromIDLists((uint)itemIdLists.Count, itemIdLists.ToArray(), out var arrayPtr);
+            if (result != 0 || arrayPtr == IntPtr.Zero) {
+                if (arrayPtr != IntPtr.Zero) { Marshal.Release(arrayPtr); }
+                Marshal.ThrowExceptionForHR(result);
+                throw new InvalidOperationException("The Shell did not create a slideshow item array.");
+            }
             return arrayPtr;
         } finally {
-            Marshal.ReleaseComObject(collection);
+            foreach (var item in itemIdLists) { Marshal.FreeCoTaskMem(item); }
         }
     }
 
