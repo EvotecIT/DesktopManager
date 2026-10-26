@@ -92,7 +92,7 @@ jobs:
           path: .
 
       - name: Setup .NET
-        uses: EvotecIT/PSPublishModule/.github/actions/setup-dotnet@97c8ff542123b3e2feae0a9d0ea2639a5f0c7c24
+        uses: EvotecIT/.github/actions/setup-dotnet@6a07f68bbcf97cfce479f930590d4fe4d85ef715
         with:
           dotnet-version: |
             8.0.x
@@ -140,7 +140,7 @@ jobs:
           path: .
 
       - name: Setup .NET
-        uses: EvotecIT/PSPublishModule/.github/actions/setup-dotnet@97c8ff542123b3e2feae0a9d0ea2639a5f0c7c24
+        uses: EvotecIT/.github/actions/setup-dotnet@6a07f68bbcf97cfce479f930590d4fe4d85ef715
         with:
           dotnet-version: |
             8.0.x
