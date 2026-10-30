@@ -1,0 +1,113 @@
+name: Controlled NuGet dependency graph
+
+on:
+  pull_request:
+    branches: [v2-speedygonzales]
+    paths:
+      - '.github/workflows/dependency-submission.yml'
+      - '**/*.csproj'
+      - '**/*.props'
+      - '**/*.targets'
+      - '**/*.sln'
+      - '**/*.slnx'
+      - '**/packages.lock.json'
+      - '**/global.json'
+      - '**/NuGet.Config'
+  push:
+    branches: [v2-speedygonzales]
+    paths:
+      - '.github/workflows/dependency-submission.yml'
+      - '**/*.csproj'
+      - '**/*.props'
+      - '**/*.targets'
+      - '**/*.sln'
+      - '**/*.slnx'
+      - '**/packages.lock.json'
+      - '**/global.json'
+      - '**/NuGet.Config'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-submission-${{ github.event_name == 'pull_request' && github.run_attempt == 1 && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.run_attempt == 1 }}
+
+jobs:
+  restore:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Record selected SDK and installed workloads
+        shell: pwsh
+        run: |
+          dotnet --info
+          dotnet workload list
+      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@5af552fc2c07f232e7a0f48c9f00952de18c094b
+        id: graphs
+        with:
+          mode: restore
+          setup-dotnet: 'false'
+          projects-json: '["Sources/DesktopManager.sln", "Sources/DesktopManager.WinUiHarness/DesktopManager.WinUiHarness.csproj"]'
+          workloads: maui-windows
+      - name: Record qualified workload selection
+        shell: pwsh
+        run: |
+          dotnet --info
+          dotnet workload list
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nuget-graphs-windows
+          path: ${{ steps.graphs.outputs.graphs-path }}
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
+
+  scan:
+    needs: restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: nuget-graphs-windows
+          path: ${{ runner.temp }}/native-graphs
+      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@5af552fc2c07f232e7a0f48c9f00952de18c094b
+        id: snapshot
+        with:
+          mode: scan
+          graph-artifact: ${{ runner.temp }}/native-graphs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nuget-snapshot-windows
+          path: ${{ steps.snapshot.outputs.snapshot-path }}
+          if-no-files-found: error
+          retention-days: 1
+
+  submit:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: nuget-snapshot-windows
+          path: ${{ runner.temp }}/snapshot
+      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@5af552fc2c07f232e7a0f48c9f00952de18c094b
+        with:
+          mode: submit
+          snapshot-file: ${{ runner.temp }}/snapshot/snapshot.json
+          submit: 'true'
+          correlator: desktopmanager-windows
