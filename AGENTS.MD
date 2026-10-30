@@ -179,3 +179,7 @@ public class MyType2 {}
 /// <seealso href="https://learn.microsoft.com/..."/>
 /// <seealso href="https://github.com/MatejKafka/XmlDoc2CmdletDoc/">XmlDoc2CmdletDoc repository</seealso>
 ```
+
+## Test changes
+
+Resolve shared procedures against `CODEX_HOME` (default `~/.codex`). Before adding or changing tests, read `skills/test-audit/SKILL.md#authoring-gate` and use `skills/contract-focused-tests/SKILL.md` for proof design. Deliberate pruning follows `skills/test-audit/CAMPAIGN.md`; campaign coverage is local evidence, not a CI or merge gate.
