@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -8,6 +9,8 @@ public sealed class PortableDesktopService {
     private readonly IPortableDesktopBackend _backend;
 
     /// <summary>Selects the current platform and desktop backend. No settings are changed.</summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public PortableDesktopService() : this(PortableDesktopBackendFactory.Create()) { }
 
     internal PortableDesktopService(IPortableDesktopBackend backend) {

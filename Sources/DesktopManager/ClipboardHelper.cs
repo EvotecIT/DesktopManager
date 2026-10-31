@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Versioning;
 using System.Threading;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -11,6 +12,8 @@ namespace DesktopManager;
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class ClipboardHelper {
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     internal static ClipboardSnapshot CaptureSnapshot() {
         int initializeResult = OleInitialize(IntPtr.Zero);
         if (initializeResult < 0) {
@@ -180,6 +183,8 @@ public static class ClipboardHelper {
             _oleInitialized = oleInitialized;
         }
 
+        [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+        [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
         internal void Restore() {
             if (_restored) {
                 return;

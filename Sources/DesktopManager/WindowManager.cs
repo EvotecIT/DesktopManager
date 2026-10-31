@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Threading;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -14,15 +15,14 @@ namespace DesktopManager;
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public partial class WindowManager {
-        private readonly Lazy<Monitors> _lazyMonitors;
-        private Monitors _monitors => _lazyMonitors.Value;
+        private readonly Monitors _monitors;
 
         /// <summary>
         /// Initializes a new instance of the WindowManager class.
         /// </summary>
-        public WindowManager() {
-            _lazyMonitors = new Lazy<Monitors>(() => new Monitors());
-            SnapOptions = new WindowSnapOptions();
+        [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+        [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
+        public WindowManager() : this(new Monitors()) {
         }
 
         internal WindowManager(Monitors monitors) {
@@ -30,7 +30,7 @@ public partial class WindowManager {
                 throw new ArgumentNullException(nameof(monitors));
             }
 
-            _lazyMonitors = new Lazy<Monitors>(() => monitors);
+            _monitors = monitors;
             SnapOptions = new WindowSnapOptions();
         }
 

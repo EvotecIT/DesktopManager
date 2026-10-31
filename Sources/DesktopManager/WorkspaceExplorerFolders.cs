@@ -3,11 +3,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
 internal static class WorkspaceExplorerFolders {
     // Shell.Application exposes filesystem folders and stable window handles without title guessing.
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     internal static Dictionary<IntPtr, string> Read() {
         Type type = Type.GetTypeFromProgID("Shell.Application", true)!;
         object shell = Activator.CreateInstance(type)!;
@@ -21,6 +24,8 @@ internal static class WorkspaceExplorerFolders {
         }
     }
 
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     internal static Dictionary<IntPtr, string> ReadWindows(IEnumerable windows) {
         var result = new Dictionary<IntPtr, string>();
         foreach (object? window in windows) {
@@ -63,6 +68,8 @@ internal static class WorkspaceExplorerFolders {
         if (value != null) { owned.Add(value); }
         return value;
     }
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     private static object? Invoke(object value, string member, BindingFlags flags) =>
         value.GetType().InvokeMember(member, flags, null, value, null, System.Globalization.CultureInfo.InvariantCulture);
 }

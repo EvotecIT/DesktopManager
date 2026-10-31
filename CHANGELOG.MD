@@ -1,3 +1,9 @@
+## Unreleased
+
+- Make Core Audio work in trimmed and Native AOT applications. On .NET 8 and later, `AudioService`, `PolicyConfigClient`, `AudioEndpointWatcher` and `VirtualDesktopService` use source-generated COM; net472 and netstandard2.0 keep built-in COM.
+- Mark the .NET 8 and .NET 10 targets as AOT compatible. Persisted JSON state uses source-generated metadata and native structure marshalling no longer needs runtime code generation.
+- Annotate the APIs that still depend on built-in COM (wallpaper and monitor enumeration, Explorer folder capture, experimental virtual desktops and clipboard snapshots) so AOT consumers get a build-time warning instead of a runtime failure.
+
 ## 4.6.1 - 2026.10.24
 
 - Report no image when GNOME background images are disabled, and explain unsupported KDE image-package sources instead of returning a directory as an image file.

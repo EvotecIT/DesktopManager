@@ -9,11 +9,6 @@ namespace DesktopManager;
 /// Stores named workstation profiles in the current user's DesktopManager state directory.
 /// </summary>
 public static class WorkstationProfileStore {
-    private static readonly JsonSerializerOptions SerializerOptions = new() {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true
-    };
-
     /// <summary>Saves or replaces a named workstation profile.</summary>
     /// <param name="name">The profile name.</param>
     /// <param name="profile">The profile to store.</param>
@@ -23,7 +18,7 @@ public static class WorkstationProfileStore {
         }
 
         WorkstationProfileValidator.Validate(profile);
-        string json = JsonSerializer.Serialize(profile, SerializerOptions);
+        string json = JsonSerializer.Serialize(profile, DesktopManagerJsonContext.IndentedCaseInsensitive.WorkstationProfile);
         AtomicFileWriter.WriteAllText(DesktopStateStore.GetWorkstationProfilePath(name), json);
     }
 
@@ -36,7 +31,7 @@ public static class WorkstationProfileStore {
             throw new FileNotFoundException("Workstation profile not found.", path);
         }
 
-        WorkstationProfile? profile = JsonSerializer.Deserialize<WorkstationProfile>(File.ReadAllText(path), SerializerOptions);
+        WorkstationProfile? profile = JsonSerializer.Deserialize(File.ReadAllText(path), DesktopManagerJsonContext.IndentedCaseInsensitive.WorkstationProfile);
         if (profile == null) {
             throw new InvalidOperationException("Unable to deserialize the workstation profile.");
         }

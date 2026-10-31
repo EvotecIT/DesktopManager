@@ -284,7 +284,7 @@ public partial class MonitorService {
         }
 
         DEVMODE devMode = new DEVMODE {
-            dmSize = (short)Marshal.SizeOf(typeof(DEVMODE))
+            dmSize = (short)Marshal.SizeOf<DEVMODE>()
         };
         if (!MonitorNativeMethods.EnumDisplaySettings(monitor.DeviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
             throw new InvalidOperationException($"Unable to get display settings for '{monitor.DeviceName}'.");
@@ -347,7 +347,7 @@ public partial class MonitorService {
         var deviceName = monitor.DeviceName;
 
         DEVMODE devMode = new DEVMODE();
-        devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+        devMode.dmSize = (short)Marshal.SizeOf<DEVMODE>();
         if (!MonitorNativeMethods.EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
             throw new InvalidOperationException("Unable to get display settings");
         }
@@ -375,7 +375,7 @@ public partial class MonitorService {
         var deviceName = monitor.DeviceName;
 
         DEVMODE devMode = new DEVMODE();
-        devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+        devMode.dmSize = (short)Marshal.SizeOf<DEVMODE>();
         if (!MonitorNativeMethods.EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref devMode)) {
             throw new InvalidOperationException("Unable to get display settings");
         }

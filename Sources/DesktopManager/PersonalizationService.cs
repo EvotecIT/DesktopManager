@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -32,6 +33,8 @@ public sealed class PersonalizationService {
     /// <summary>
     /// Initializes a new instance of the <see cref="PersonalizationService"/> class.
     /// </summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public PersonalizationService() {
         _monitors = new Monitors();
     }

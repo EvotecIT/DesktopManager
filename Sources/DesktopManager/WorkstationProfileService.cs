@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -16,6 +17,8 @@ public sealed class WorkstationProfileService {
     private readonly TaskbarService _taskbars;
 
     /// <summary>Initializes a workstation profile service over the current interactive desktop.</summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public WorkstationProfileService()
         : this(
             new MonitorService(DesktopManagerWrapper.Create()),

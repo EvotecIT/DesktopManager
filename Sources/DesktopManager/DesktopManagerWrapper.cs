@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace DesktopManager;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace DesktopManager;
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 internal static class DesktopManagerWrapper {
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     internal static IDesktopManager Create() {
         var type = Type.GetTypeFromCLSID(new Guid("C2CF3110-460E-4fc1-B9D0-8A1C0C9CC4BD"));
         return (IDesktopManager)Activator.CreateInstance(type!)!;

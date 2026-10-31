@@ -134,7 +134,7 @@ internal sealed partial class NativeDeviceManagementApi {
             IntPtr.Zero,
             0,
             out uint requiredSize);
-        int baseSize = Marshal.SizeOf(typeof(DeviceNativeMethods.SpDrvInfoDetailData));
+        int baseSize = Marshal.SizeOf<DeviceNativeMethods.SpDrvInfoDetailData>();
         int bufferSize = Math.Max(baseSize, checked((int)requiredSize));
         IntPtr buffer = Marshal.AllocHGlobal(bufferSize);
         try {
@@ -148,9 +148,7 @@ internal sealed partial class NativeDeviceManagementApi {
                 out _)) {
                 return new DriverDetail();
             }
-            var native = (DeviceNativeMethods.SpDrvInfoDetailData)Marshal.PtrToStructure(
-                buffer,
-                typeof(DeviceNativeMethods.SpDrvInfoDetailData))!;
+            var native = Marshal.PtrToStructure<DeviceNativeMethods.SpDrvInfoDetailData>(buffer);
             int hardwareOffset = Marshal.OffsetOf(
                 typeof(DeviceNativeMethods.SpDrvInfoDetailData),
                 nameof(DeviceNativeMethods.SpDrvInfoDetailData.HardwareId)).ToInt32();

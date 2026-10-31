@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -17,6 +18,8 @@ public class Monitors {
     /// <summary>
     /// Initializes a new instance of the <see cref="Monitors"/> class.
     /// </summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public Monitors()
         : this(DesktopManagerWrapper.Create) {
     }

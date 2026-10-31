@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -11,6 +12,8 @@ public sealed partial class WorkspaceRecoveryService {
     private readonly Func<IWorkspaceDesktopApi> _desktops;
 
     /// <summary>Creates the Windows workspace recovery service. Experimental shell connections are opened only when explicitly requested.</summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public WorkspaceRecoveryService() : this(new WorkspaceWindowApi(), () => new ExperimentalVirtualDesktopService()) { }
 
     internal WorkspaceRecoveryService(IWorkspaceWindowApi windows, Func<IWorkspaceDesktopApi> desktops) {
@@ -49,13 +52,13 @@ public sealed partial class WorkspaceRecoveryService {
     /// <summary>Writes an existing layout atomically, without capturing or changing the desktop.</summary>
     public static void Write(string path, WindowLayout layout) {
         Validate(layout);
-        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(layout, new JsonSerializerOptions { WriteIndented = true }));
+        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(layout, DesktopManagerJsonContext.Indented.WindowLayout));
     }
 
     /// <summary>Reads a layout without changing windows. Legacy layouts need no migration.</summary>
     public static WindowLayout Read(string path, bool validate = false) {
         WindowLayout? layout;
-        try { layout = JsonSerializer.Deserialize<WindowLayout>(File.ReadAllText(path)); }
+        try { layout = JsonSerializer.Deserialize(File.ReadAllText(path), DesktopManagerJsonContext.Default.WindowLayout); }
         catch (JsonException ex) { throw new InvalidDataException("The workspace file is not a valid window layout.", ex); }
         if (layout == null) { throw new InvalidDataException("The workspace file contains no layout."); }
         Validate(layout);
@@ -189,6 +192,8 @@ internal interface IWorkspaceWindowApi {
     void OpenExplorer(string path);
 }
 
+[RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+[RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
 internal sealed class WorkspaceWindowApi : IWorkspaceWindowApi {
     private readonly WindowManager _manager = new();
 

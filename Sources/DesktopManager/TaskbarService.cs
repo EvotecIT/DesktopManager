@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -14,6 +15,8 @@ public class TaskbarService {
     private readonly Monitors _monitors;
 
     /// <summary>Initializes a new instance of the <see cref="TaskbarService"/> class.</summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public TaskbarService() {
         _monitors = new Monitors();
     }

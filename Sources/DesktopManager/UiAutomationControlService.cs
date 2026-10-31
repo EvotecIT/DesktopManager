@@ -3,9 +3,19 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
+// UI Automation is optional. Trimmed and Native AOT applications cannot load the managed UIAutomationClient
+// assemblies, so IsAvailable stays false, no reflective path runs and callers keep their Win32 control fallback.
+[UnconditionalSuppressMessage("Trimming", "IL2026", Justification = AotCompatibility.UiAutomationUnavailableWhenTrimmed)]
+[UnconditionalSuppressMessage("Trimming", "IL2070", Justification = AotCompatibility.UiAutomationUnavailableWhenTrimmed)]
+[UnconditionalSuppressMessage("Trimming", "IL2075", Justification = AotCompatibility.UiAutomationUnavailableWhenTrimmed)]
+[UnconditionalSuppressMessage("Trimming", "IL2080", Justification = AotCompatibility.UiAutomationUnavailableWhenTrimmed)]
+[UnconditionalSuppressMessage("Trimming", "IL2087", Justification = AotCompatibility.UiAutomationUnavailableWhenTrimmed)]
+[UnconditionalSuppressMessage("Trimming", "IL2090", Justification = AotCompatibility.UiAutomationUnavailableWhenTrimmed)]
+[UnconditionalSuppressMessage("AOT", "IL3050", Justification = AotCompatibility.UiAutomationUnavailableWhenTrimmed)]
 internal sealed partial class UiAutomationControlService {
     private const int EnumeratedControlsCacheMilliseconds = 750;
     private const int ActionMatchCacheMilliseconds = 5000;

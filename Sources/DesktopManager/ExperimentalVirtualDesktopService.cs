@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -20,6 +21,8 @@ public sealed class ExperimentalVirtualDesktopService : IDisposable, IWorkspaceD
     private bool _disposed;
 
     /// <summary>Connects to the gated Windows 11 shell interface family (builds 26100, 26200 and 26300).</summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public ExperimentalVirtualDesktopService() {
         using RegistryKey? version = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
         if (!int.TryParse(version?.GetValue("CurrentBuildNumber") as string, out int build) ||

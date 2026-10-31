@@ -1,6 +1,9 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices.Marshalling;
+#endif
 
 namespace DesktopManager;
 
@@ -69,10 +72,7 @@ internal sealed class VirtualDesktopManagerApi : IVirtualDesktopManagerApi {
     private bool _disposed;
 
     public VirtualDesktopManagerApi() {
-        Type managerType = Type.GetTypeFromCLSID(new Guid("AA509086-5CA9-4C25-8F95-589D3C07B48A"), true)
-            ?? throw new InvalidOperationException("Windows did not expose the virtual desktop manager COM class.");
-        _manager = (IVirtualDesktopManager)(Activator.CreateInstance(managerType)
-            ?? throw new InvalidOperationException("Windows did not create the virtual desktop manager COM object."));
+        _manager = (IVirtualDesktopManager)NativeComActivation.CreateInstance(new Guid("AA509086-5CA9-4C25-8F95-589D3C07B48A"));
     }
 
     public int IsWindowOnCurrentVirtualDesktop(IntPtr topLevelWindow, out int onCurrentDesktop) {
@@ -91,17 +91,19 @@ internal sealed class VirtualDesktopManagerApi : IVirtualDesktopManagerApi {
         if (_disposed) {
             return;
         }
-        if (Marshal.IsComObject(_manager)) {
-            Marshal.FinalReleaseComObject(_manager);
-        }
+        NativeComActivation.Release(_manager);
         _disposed = true;
     }
 }
 
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
 [ComImport]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
 [Guid("A5CD92FF-29BE-454C-8D04-D82879FB3F1B")]
-internal interface IVirtualDesktopManager {
+internal partial interface IVirtualDesktopManager {
     [PreserveSig]
     int IsWindowOnCurrentVirtualDesktop(IntPtr topLevelWindow, out int onCurrentDesktop);
 

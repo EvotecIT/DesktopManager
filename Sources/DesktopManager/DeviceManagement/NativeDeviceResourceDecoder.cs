@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -95,19 +96,15 @@ internal static class NativeDeviceResourceDecoder {
         };
     }
 
-    private static bool TryRead<T>(IntPtr buffer, uint size, out T value) where T : struct {
-        int requiredSize = Marshal.SizeOf(typeof(T));
+    private static bool TryRead<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>(
+        IntPtr buffer, uint size, out T value) where T : struct {
+        int requiredSize = Marshal.SizeOf<T>();
         if (size < requiredSize) {
             value = default;
             return false;
         }
-        object? native = Marshal.PtrToStructure(buffer, typeof(T));
-        if (native is T descriptor) {
-            value = descriptor;
-            return true;
-        }
-        value = default;
-        return false;
+        value = Marshal.PtrToStructure<T>(buffer);
+        return true;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 8)]

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -74,8 +75,7 @@ public partial class WindowManager
             var layout = new WindowLayout {
                 Windows = GetWindows().Select(GetWindowPosition).Where(WorkspaceWindowPlacement.TryCapture).ToList()
             };
-            var json = System.Text.Json.JsonSerializer.Serialize(layout,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            var json = System.Text.Json.JsonSerializer.Serialize(layout, DesktopManagerJsonContext.Indented.WindowLayout);
             var fullPath = System.IO.Path.GetFullPath(path);
             var directory = System.IO.Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(directory)) {
@@ -91,6 +91,8 @@ public partial class WindowManager
         /// <param name="validate">Validate layout before applying.</param>
         /// <exception cref="System.IO.FileNotFoundException">Thrown when the layout file does not exist.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the file is not a valid layout.</exception>
+        [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+        [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
         public void LoadLayout(string path, bool validate = false) {
             if (!System.IO.File.Exists(path)) {
                 throw new System.IO.FileNotFoundException("Layout file not found", path);
@@ -99,7 +101,7 @@ public partial class WindowManager
             var json = System.IO.File.ReadAllText(path);
             WindowLayout? layout;
             try {
-                layout = System.Text.Json.JsonSerializer.Deserialize<WindowLayout>(json);
+                layout = System.Text.Json.JsonSerializer.Deserialize(json, DesktopManagerJsonContext.Default.WindowLayout);
             } catch (System.Text.Json.JsonException ex) {
                 throw new InvalidOperationException($"Invalid layout file: {ex.Message}", ex);
             }

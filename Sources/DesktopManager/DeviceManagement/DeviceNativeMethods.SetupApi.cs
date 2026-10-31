@@ -55,7 +55,7 @@ internal static partial class DeviceNativeMethods {
         internal IntPtr Reserved;
 
         internal static SpDevInfoData Create() {
-            return new SpDevInfoData { Size = (uint)Marshal.SizeOf(typeof(SpDevInfoData)) };
+            return new SpDevInfoData { Size = (uint)Marshal.SizeOf<SpDevInfoData>() };
         }
     }
 
@@ -67,7 +67,7 @@ internal static partial class DeviceNativeMethods {
         internal IntPtr Reserved;
 
         internal static SpDeviceInterfaceData Create() {
-            return new SpDeviceInterfaceData { Size = (uint)Marshal.SizeOf(typeof(SpDeviceInterfaceData)) };
+            return new SpDeviceInterfaceData { Size = (uint)Marshal.SizeOf<SpDeviceInterfaceData>() };
         }
     }
 
@@ -90,7 +90,7 @@ internal static partial class DeviceNativeMethods {
         internal ulong DriverVersion;
 
         internal static SpDrvInfoData Create() {
-            return new SpDrvInfoData { Size = (uint)Marshal.SizeOf(typeof(SpDrvInfoData)) };
+            return new SpDrvInfoData { Size = (uint)Marshal.SizeOf<SpDrvInfoData>() };
         }
     }
 
@@ -123,7 +123,7 @@ internal static partial class DeviceNativeMethods {
         internal uint Reserved;
 
         internal static SpDriverInstallParams Create() {
-            return new SpDriverInstallParams { Size = (uint)Marshal.SizeOf(typeof(SpDriverInstallParams)) };
+            return new SpDriverInstallParams { Size = (uint)Marshal.SizeOf<SpDriverInstallParams>() };
         }
     }
 
@@ -143,7 +143,7 @@ internal static partial class DeviceNativeMethods {
         internal string DriverPath;
 
         internal static SpDevInstallParams Create() {
-            return new SpDevInstallParams { Size = (uint)Marshal.SizeOf(typeof(SpDevInstallParams)) };
+            return new SpDevInstallParams { Size = (uint)Marshal.SizeOf<SpDevInstallParams>() };
         }
     }
 
@@ -163,7 +163,7 @@ internal static partial class DeviceNativeMethods {
         internal static SpPropChangeParams Create(uint stateChange) {
             return new SpPropChangeParams {
                 Header = new SpClassInstallHeader {
-                    Size = (uint)Marshal.SizeOf(typeof(SpClassInstallHeader)),
+                    Size = (uint)Marshal.SizeOf<SpClassInstallHeader>(),
                     InstallFunction = DifPropertyChange
                 },
                 StateChange = stateChange,
@@ -183,7 +183,7 @@ internal static partial class DeviceNativeMethods {
         internal string OriginalCatalogName;
 
         internal static SpOriginalFileInfo Create() {
-            return new SpOriginalFileInfo { Size = (uint)Marshal.SizeOf(typeof(SpOriginalFileInfo)) };
+            return new SpOriginalFileInfo { Size = (uint)Marshal.SizeOf<SpOriginalFileInfo>() };
         }
     }
 

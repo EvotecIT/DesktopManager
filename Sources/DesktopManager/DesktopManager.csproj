@@ -31,6 +31,12 @@
         <UseWindowsForms>true</UseWindowsForms>
     </PropertyGroup>
 
+    <!-- .NET 8+ uses source-generated COM, P/Invoke and JSON so trimmed and Native AOT consumers work. -->
+    <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+        <IsAotCompatible>true</IsAotCompatible>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
     <PropertyGroup>
         <PackageId>DesktopManager</PackageId>
         <PackageIcon>DesktopManager.png</PackageIcon>

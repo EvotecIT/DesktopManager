@@ -1,6 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace DesktopManager;
 
 internal static class PortableDesktopBackendFactory {
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     internal static IPortableDesktopBackend Create() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             return new WindowsDesktopBackend();

@@ -13,11 +13,6 @@ public interface IPolicyConfigClient {
     void SetDefaultEndpoint(string devID, ERole role);
 }
 
-[ComImport]
-[Guid("870af99c-171d-4f9e-af0d-e63df40c2bc9")]
-internal class _PolicyConfigClient {
-}
-
 /// <summary>
 /// Implementation using the native policy configuration interfaces.
 /// </summary>
@@ -30,17 +25,17 @@ public class PolicyConfigClient : IPolicyConfigClient {
     /// Initializes a new instance of the <see cref="PolicyConfigClient"/> class.
     /// </summary>
     public PolicyConfigClient() {
-        _policyConfig = new _PolicyConfigClient() as IPolicyConfig;
+        _policyConfig = CreatePolicyConfig() as IPolicyConfig;
         if (_policyConfig != null) {
             return;
         }
 
-        _policyConfigVista = new _PolicyConfigClient() as IPolicyConfigVista;
+        _policyConfigVista = CreatePolicyConfig() as IPolicyConfigVista;
         if (_policyConfigVista != null) {
             return;
         }
 
-        _policyConfig10 = new _PolicyConfigClient() as IPolicyConfig10;
+        _policyConfig10 = CreatePolicyConfig() as IPolicyConfig10;
     }
 
     /// <inheritdoc/>
@@ -56,5 +51,9 @@ public class PolicyConfigClient : IPolicyConfigClient {
         if (_policyConfig10 != null) {
             Marshal.ThrowExceptionForHR(_policyConfig10.SetDefaultEndpoint(devID, role));
         }
+    }
+
+    private static object CreatePolicyConfig() {
+        return NativeComActivation.CreateInstance(CoreAudioNative.PolicyConfigClassId);
     }
 }

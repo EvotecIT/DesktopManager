@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -13,6 +14,8 @@ public partial class MonitorService {
     }
 
     /// <summary>Captures strict native state; unlike presentation reads, no fallback value may masquerade as a restorable setting.</summary>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     internal DesktopWallpaperSnapshot CaptureNativeWallpaperCheckpoint(object owner, Func<bool> interactive, Func<IReadOnlyList<MonitorSnapshot>> geometry,
         WindowsWallpaperSelection? selection = null) {
         var mode = selection?.Read();
@@ -146,6 +149,8 @@ public partial class MonitorService {
         private static readonly Guid ShellItemArrayId = new Guid("b63ea76d-1f85-456f-a19c-48159efa858b");
         private IAgileWallpaperReference? _reference;
 
+        [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+        [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
         internal WallpaperShellItems(IntPtr pointer) {
             if (pointer == IntPtr.Zero) { return; }
             try {

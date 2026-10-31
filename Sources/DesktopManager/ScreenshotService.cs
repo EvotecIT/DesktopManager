@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 #if NET8_0_OR_GREATER
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
@@ -45,6 +46,8 @@ public static partial class ScreenshotService {
     /// <param name="deviceId">Monitor device identifier.</param>
     /// <param name="deviceName">Monitor device name.</param>
     /// <returns>Bitmap with the screenshot.</returns>
+    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
+    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public static Bitmap CaptureMonitor(int? index = null, string? deviceId = null, string? deviceName = null) {
         Monitors monitors = new();
         var monitor = monitors.GetMonitors(index: index, deviceId: deviceId, deviceName: deviceName).FirstOrDefault();
