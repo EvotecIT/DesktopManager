@@ -1,4 +1,7 @@
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices.Marshalling;
+#endif
 
 namespace DesktopManager;
 
@@ -27,59 +30,106 @@ internal static class ExperimentalVirtualDesktopNative {
     }
 
     internal static void Release(object? value) {
-        if (value != null && Marshal.IsComObject(value)) { Marshal.ReleaseComObject(value); }
+        NativeComActivation.Release(value);
+    }
+
+    /// <summary>Consumes an owned COM output reference, retaining a separately owned typed wrapper.</summary>
+    internal static T WrapOwned<T>(IntPtr pointer) {
+        object? wrapper = null;
+        try {
+            if (pointer == IntPtr.Zero) {
+                throw new COMException("The shell returned a null COM interface pointer.");
+            }
+            wrapper = NativeComActivation.FromPointer(pointer);
+            return (T)wrapper;
+        } catch {
+            Release(wrapper);
+            throw;
+        } finally {
+            if (pointer != IntPtr.Zero) { Marshal.Release(pointer); }
+        }
     }
 }
 
-[ComImport, Guid("6D5140C1-7436-11CE-8034-00AA006009FA"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IWorkspaceShellServices {
-    [return: MarshalAs(UnmanagedType.IUnknown)]
-    object QueryService(ref Guid service, ref Guid iid);
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
+[Guid("6D5140C1-7436-11CE-8034-00AA006009FA")]
+internal partial interface IWorkspaceShellServices {
+    // The requested IID is selected at runtime: this is an arbitrary interface pointer, not an object VARIANT.
+    void QueryService(ref Guid service, ref Guid iid, out IntPtr value);
 }
 
-[ComImport, Guid("92CA9DCD-5622-4BBA-A805-5E9F541BD8C9"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IWorkspaceObjectArray {
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
+[Guid("92CA9DCD-5622-4BBA-A805-5E9F541BD8C9")]
+internal partial interface IWorkspaceObjectArray {
     void GetCount(out int count);
-    void GetAt(int index, ref Guid iid, [MarshalAs(UnmanagedType.Interface)] out object value);
+    void GetAt(int index, ref Guid iid, out IntPtr value);
 }
 
-[ComImport, Guid("3F07F4BE-B107-441A-AF0F-39D82529072C"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IWorkspaceDesktop {
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
+[Guid("3F07F4BE-B107-441A-AF0F-39D82529072C")]
+internal partial interface IWorkspaceDesktop {
     [return: MarshalAs(UnmanagedType.Bool)] bool IsViewVisible(IntPtr view);
     Guid GetId();
     void GetName(out IntPtr name);
     void GetWallpaperPath(out IntPtr path);
 }
 
-[ComImport, Guid("53F5CA0B-158F-4124-900C-057158060B27"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IWorkspaceDesktopManager {
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
+[Guid("53F5CA0B-158F-4124-900C-057158060B27")]
+internal partial interface IWorkspaceDesktopManager {
     int GetCount();
     void MoveViewToDesktop(IntPtr view, IWorkspaceDesktop desktop);
     [return: MarshalAs(UnmanagedType.Bool)] bool CanViewMoveDesktops(IntPtr view);
     IWorkspaceDesktop GetCurrentDesktop();
-    void GetDesktops(out IWorkspaceObjectArray desktops);
+    void GetDesktops(out IntPtr desktops);
     [PreserveSig] int GetAdjacentDesktop(IWorkspaceDesktop from, int direction, out IWorkspaceDesktop desktop);
     void SwitchDesktop(IWorkspaceDesktop desktop);
     void SwitchDesktopAndMoveForegroundView(IWorkspaceDesktop desktop);
     IWorkspaceDesktop CreateDesktop();
     void MoveDesktop(IWorkspaceDesktop desktop, int index);
     void RemoveDesktop(IWorkspaceDesktop desktop, IWorkspaceDesktop fallback);
-    IWorkspaceDesktop FindDesktop(ref Guid id);
+    void FindDesktop(ref Guid id, out IntPtr desktop);
     void GetDesktopSwitchIncludeExcludeViews(IWorkspaceDesktop desktop, out IWorkspaceObjectArray include, out IWorkspaceObjectArray exclude);
     void SetDesktopName(IWorkspaceDesktop desktop, IntPtr name);
     void SetDesktopWallpaper(IWorkspaceDesktop desktop, IntPtr path);
 }
 
-[ComImport, Guid("1841C6D7-4F9D-42C0-AF41-8747538F10E5"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IWorkspaceApplicationViews {
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
+[Guid("1841C6D7-4F9D-42C0-AF41-8747538F10E5")]
+internal partial interface IWorkspaceApplicationViews {
     void GetViews(out IWorkspaceObjectArray views);
     void GetViewsByZOrder(out IWorkspaceObjectArray views);
     void GetViewsByAppUserModelId([MarshalAs(UnmanagedType.LPWStr)] string id, out IWorkspaceObjectArray views);
     void GetViewForHwnd(IntPtr handle, out IntPtr view);
 }
 
-[ComImport, Guid("4CE81583-1E4C-4632-A621-07A53543148F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IWorkspacePinnedApps {
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
+[Guid("4CE81583-1E4C-4632-A621-07A53543148F")]
+internal partial interface IWorkspacePinnedApps {
     [return: MarshalAs(UnmanagedType.Bool)] bool IsAppIdPinned([MarshalAs(UnmanagedType.LPWStr)] string id);
     void PinAppId([MarshalAs(UnmanagedType.LPWStr)] string id);
     void UnpinAppId([MarshalAs(UnmanagedType.LPWStr)] string id);
@@ -89,8 +139,13 @@ internal interface IWorkspacePinnedApps {
 }
 
 // Explicit IInspectable prefix avoids the removed built-in WinRT marshaller on modern .NET.
-[ComImport, Guid("372E1D3B-38D3-42E4-A15B-8AB2B178F513"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IWorkspaceApplicationIdentity {
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
+[Guid("372E1D3B-38D3-42E4-A15B-8AB2B178F513")]
+internal partial interface IWorkspaceApplicationIdentity {
     void GetIids(out uint count, out IntPtr ids);
     void GetRuntimeClassName(out IntPtr name);
     void GetTrustLevel(out int level);

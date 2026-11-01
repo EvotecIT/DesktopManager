@@ -1,11 +1,8 @@
 using System.Linq;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
 /// <summary>Adapts the existing Windows owner without duplicating its native display or wallpaper implementation.</summary>
-[RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-[RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
 internal sealed class WindowsDesktopBackend : IPortableDesktopBackend, IDesktopWallpaperSnapshotBackend {
     private readonly MonitorService _monitors;
     private readonly Func<IReadOnlyList<MonitorSnapshot>> _snapshots;

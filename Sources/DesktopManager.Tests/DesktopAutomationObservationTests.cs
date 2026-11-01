@@ -295,11 +295,20 @@ public class DesktopAutomationObservationTests {
     /// Ensures TextPattern asks the provider for only one character beyond the public observation limit.
     /// </summary>
     public void UiAutomationControlService_ReadTextPatternRange_BoundsProviderReadAndSearchesExpectedText() {
+#if NET8_0_OR_GREATER
+        var provider = new NativeUiaTextRangeFixture("prefix-hidden-needle");
+        var range = new UiaRange(provider);
+#else
         var range = new TextPatternRangeStub("prefix-hidden-needle");
+#endif
 
         UiAutomationTextReadResult result = UiAutomationControlService.ReadTextPatternRange(range, 6, "needle");
 
+#if NET8_0_OR_GREATER
+        Assert.AreEqual(7, provider.LastMaxLength);
+#else
         Assert.AreEqual(7, range.LastMaxLength);
+#endif
         Assert.AreEqual("prefix", result.Value);
         Assert.IsTrue(result.IsTruncated);
         Assert.AreEqual(true, result.ContainsExpected);
@@ -566,7 +575,13 @@ public class DesktopAutomationObservationTests {
     /// Ensures provider exceptions while reading IsPassword are contained.
     /// </summary>
     public void UiAutomationControlService_TryReadPasswordState_ThrowingProvider_ReturnsFalse() {
+#if NET8_0_OR_GREATER
+        var provider = new NativeUiaElementFixture(throwOnPasswordRead: true);
+        bool result = UiAutomationControlService.TryReadPasswordState(new UiaElement(provider), out bool? isPassword);
+        Assert.AreEqual(1, provider.PasswordReadCount);
+#else
         bool result = UiAutomationControlService.TryReadPasswordState(new ThrowingPasswordState(), out bool? isPassword);
+#endif
 
         Assert.IsFalse(result);
         Assert.IsNull(isPassword);
@@ -896,6 +911,7 @@ public class DesktopAutomationObservationTests {
         };
     }
 
+#if !NET8_0_OR_GREATER
     private sealed class ThrowingPasswordState {
         public bool IsPassword => throw new InvalidOperationException("Provider unavailable");
     }
@@ -919,4 +935,5 @@ public class DesktopAutomationObservationTests {
             return _document.IndexOf(text, comparison) >= 0 ? new object() : null;
         }
     }
+#endif
 }

@@ -6,7 +6,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Threading;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -20,8 +19,6 @@ public partial class WindowManager {
         /// <summary>
         /// Initializes a new instance of the WindowManager class.
         /// </summary>
-        [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-        [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
         public WindowManager() : this(new Monitors()) {
         }
 

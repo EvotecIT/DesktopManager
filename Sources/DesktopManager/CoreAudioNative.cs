@@ -190,7 +190,8 @@ internal struct PropVariant : IDisposable {
     private ushort _valueType;
     [FieldOffset(8)]
     private IntPtr _pointerValue;
-    // The native union includes counted arrays, including pointer alignment on x64.
+    // PROPVARIANT's union includes counted arrays: 8 bytes on x86, 16 on x64/ARM64.
+    // Including that member gives the complete native output buffer, even for a string read.
     [FieldOffset(8)]
     private CountedArray _countedArray;
 

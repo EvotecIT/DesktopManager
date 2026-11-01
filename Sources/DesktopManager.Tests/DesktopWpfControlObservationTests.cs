@@ -17,7 +17,7 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class DesktopWpfControlObservationTests {
     [TestMethod]
-    public void DesktopAutomationService_WpfSelectionPattern_ReturnsSelectedItem() {
+    public void DesktopAutomationService_WpfSelectionAndTextPatterns_ReportProviderState() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
         }
@@ -41,6 +41,24 @@ public class DesktopWpfControlObservationTests {
 
         Assert.AreEqual(false, observation.IsPassword);
         CollectionAssert.Contains(observation.Selection.Items.ToArray(), "Beta");
+
+        // Compare the native adapter's public metadata with the independent managed UIA provider.
+        AutomationElement rich = AutomationElement.FromHandle(harness.WindowHandle).FindFirst(
+            TreeScope.Descendants,
+            new PropertyCondition(AutomationElement.AutomationIdProperty, PumpingWpfHarness.RichAutomationId));
+        string expectedSelection = ((TextPattern)rich.GetCurrentPattern(TextPattern.Pattern)).SupportedTextSelection.ToString();
+        DesktopControlObservation textObservation = harness.Invoke(() => automation.ObserveControls(
+            CreateWindowQuery(harness.WindowHandle),
+            new WindowControlQueryOptions {
+                AutomationIdPattern = PumpingWpfHarness.RichAutomationId,
+                ControlTypePattern = "Document",
+                UseUiAutomation = true,
+                IncludeUiAutomation = true
+            },
+            new DesktopControlObservationOptions { IncludeTextRanges = true },
+            allWindows: false,
+            allControls: false).Single());
+        Assert.AreEqual(expectedSelection, textObservation.Text.SupportedSelection);
     }
 
     [TestMethod]

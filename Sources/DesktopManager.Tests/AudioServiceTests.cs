@@ -107,6 +107,7 @@ public class AudioServiceTests {
     /// Protects the native PROPVARIANT layout used to read Core Audio endpoint friendly names.
     /// </summary>
     public void PropVariant_CoreAudioNativeLayout_MatchesWindowsAbi() {
+        // Windows SDK PROPVARIANT includes an aligned counted-pointer member in its union.
         Assert.AreEqual(IntPtr.Size == 8 ? 24 : 16, System.Runtime.InteropServices.Marshal.SizeOf<PropVariant>());
         Assert.AreEqual(new IntPtr(8), System.Runtime.InteropServices.Marshal.OffsetOf<PropVariant>("_pointerValue"));
     }

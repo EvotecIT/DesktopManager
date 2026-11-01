@@ -539,9 +539,15 @@ public class UiAutomationControlServiceTests {
 
     [TestMethod]
     public void TryReadPasswordState_NullProviderValue_ReturnsUnavailable() {
+#if NET8_0_OR_GREATER
+        var provider = new NativeUiaElementFixture(isPassword: null);
+        bool available = UiAutomationControlService.TryReadPasswordState(new UiaElement(provider), out bool? isPassword);
+        Assert.AreEqual(1, provider.PasswordReadCount);
+#else
         bool available = UiAutomationControlService.TryReadPasswordState(
             new UnknownPasswordState(),
             out bool? isPassword);
+#endif
 
         Assert.IsFalse(available);
         Assert.IsNull(isPassword);
@@ -620,11 +626,24 @@ public class UiAutomationControlServiceTests {
 
     [TestMethod]
     public void IsTextMutationAllowed_RequiresLiveExplicitNonPasswordState() {
+#if NET8_0_OR_GREATER
+        var readable = new NativeUiaElementFixture(isPassword: false);
+        var password = new NativeUiaElementFixture(isPassword: true);
+        var unknown = new NativeUiaElementFixture(isPassword: null);
+        Assert.IsTrue(UiAutomationControlService.IsTextMutationAllowed(new UiaElement(readable)));
+        Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new UiaElement(password)));
+        Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new UiaElement(unknown)));
+        Assert.AreEqual(1, readable.PasswordReadCount);
+        Assert.AreEqual(1, password.PasswordReadCount);
+        Assert.AreEqual(1, unknown.PasswordReadCount);
+#else
         Assert.IsTrue(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(false)));
         Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(true)));
         Assert.IsFalse(UiAutomationControlService.IsTextMutationAllowed(new AutomationElementStub(null)));
+#endif
     }
 
+#if !NET8_0_OR_GREATER
     private sealed class UnknownPasswordState {
         public bool? IsPassword => null;
     }
@@ -644,4 +663,5 @@ public class UiAutomationControlServiceTests {
 
         public bool? IsPassword { get; }
     }
+#endif
 }

@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -18,8 +17,6 @@ public partial class WindowManager {
     /// Initializes snapping options.
     /// </summary>
     /// <param name="options">Snap options instance.</param>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public WindowManager(WindowSnapOptions? options) : this() {
         SnapOptions = options ?? new WindowSnapOptions();
     }

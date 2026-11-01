@@ -56,6 +56,10 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private static string ReadRuntimeId(object element, List<string>? errors) {
+#if NET8_0_OR_GREATER
+        try { return string.Join(".", ((UiaElement)element).GetRuntimeId()); }
+        catch (Exception ex) { if (errors != null) { AddObservationError(errors, "identity.runtimeId", ex); } return string.Empty; }
+#else
         try {
             object? value = element.GetType().GetMethod("GetRuntimeId", Type.EmptyTypes)?.Invoke(element, null);
             if (value is int[] runtimeId) {
@@ -69,15 +73,29 @@ internal sealed partial class UiAutomationControlService {
             }
             return string.Empty;
         }
+    #endif
     }
 
     private string ReadAncestorPath(object element, int maxDepth, List<string> errors) {
+#if NET8_0_OR_GREATER
+        if (maxDepth <= 0) { return string.Empty; }
+        try {
+            var segments = new List<string>();
+            UiaWalker walker = UiaWalker.ControlViewWalker;
+            UiaElement? current = (UiaElement)element;
+            for (int depth = 0; depth < maxDepth && current != null; depth++) {
+                segments.Add(CreateAncestorSegment(current.ControlType, current.AutomationId as string, current.ClassName as string));
+                current = walker.GetParent(current);
+            }
+            segments.Reverse(); return string.Join("/", segments);
+        } catch (Exception ex) { AddObservationError(errors, "identity.ancestorPath", ex); return string.Empty; }
+#else
         if (maxDepth <= 0) {
             return string.Empty;
         }
 
         try {
-            Type? treeWalkerType = _automationClientAssembly?.GetType("System.Windows.Automation.TreeWalker", throwOnError: false);
+            var treeWalkerType = ResolveAutomationType("System.Windows.Automation.TreeWalker", throwOnError: false);
             object? walker = treeWalkerType?.GetProperty("ControlViewWalker", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
             MethodInfo? getParent = walker?.GetType().GetMethod("GetParent", new[] { _automationElementType! });
             if (walker == null || getParent == null) {
@@ -87,7 +105,7 @@ internal sealed partial class UiAutomationControlService {
             var segments = new List<string>();
             object? currentElement = element;
             for (int depth = 0; depth < maxDepth && currentElement != null; depth++) {
-                object? current = currentElement.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(currentElement);
+                object? current = GetAutomationProperty(currentElement, "Current");
                 if (current == null) {
                     break;
                 }
@@ -105,6 +123,7 @@ internal sealed partial class UiAutomationControlService {
             AddObservationError(errors, "identity.ancestorPath", ex);
             return string.Empty;
         }
+    #endif
     }
 
     internal static string CreateAncestorSegment(string? controlType, string? automationId, string? className) {

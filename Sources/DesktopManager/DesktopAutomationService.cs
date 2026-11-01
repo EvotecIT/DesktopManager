@@ -8,7 +8,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -25,8 +24,6 @@ public sealed partial class DesktopAutomationService {
     /// <summary>
     /// Initializes a new instance of the <see cref="DesktopAutomationService"/> class.
     /// </summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public DesktopAutomationService() {
         _monitors = new Monitors();
         _windowManager = new WindowManager(_monitors);
@@ -382,8 +379,6 @@ public sealed partial class DesktopAutomationService {
     /// </summary>
     /// <param name="monitorIndex">Monitor index.</param>
     /// <param name="position">Target taskbar position.</param>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public void SetTaskbarPosition(int monitorIndex, TaskbarPosition position) {
         if (monitorIndex < 0) {
             throw new ArgumentOutOfRangeException(nameof(monitorIndex), "Monitor index must be zero or greater.");
@@ -397,8 +392,6 @@ public sealed partial class DesktopAutomationService {
     /// </summary>
     /// <param name="monitorIndex">Monitor index.</param>
     /// <param name="visible">Whether the taskbar should be visible.</param>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public void SetTaskbarVisibility(int monitorIndex, bool visible) {
         if (monitorIndex < 0) {
             throw new ArgumentOutOfRangeException(nameof(monitorIndex), "Monitor index must be zero or greater.");
@@ -3457,8 +3450,6 @@ public sealed partial class DesktopAutomationService {
     /// <summary>
     /// Loads a layout from the specified path.
     /// </summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public void LoadLayout(string path, bool validate = false) {
         _windowManager.LoadLayout(path, validate);
     }

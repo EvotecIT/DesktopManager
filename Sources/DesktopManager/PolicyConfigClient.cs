@@ -25,17 +25,25 @@ public class PolicyConfigClient : IPolicyConfigClient {
     /// Initializes a new instance of the <see cref="PolicyConfigClient"/> class.
     /// </summary>
     public PolicyConfigClient() {
-        _policyConfig = CreatePolicyConfig() as IPolicyConfig;
+        var candidate = CreatePolicyConfig();
+        _policyConfig = candidate as IPolicyConfig;
         if (_policyConfig != null) {
             return;
         }
+        NativeComActivation.Release(candidate);
 
-        _policyConfigVista = CreatePolicyConfig() as IPolicyConfigVista;
+        candidate = CreatePolicyConfig();
+        _policyConfigVista = candidate as IPolicyConfigVista;
         if (_policyConfigVista != null) {
             return;
         }
+        NativeComActivation.Release(candidate);
 
-        _policyConfig10 = CreatePolicyConfig() as IPolicyConfig10;
+        candidate = CreatePolicyConfig();
+        _policyConfig10 = candidate as IPolicyConfig10;
+        if (_policyConfig10 == null) {
+            NativeComActivation.Release(candidate);
+        }
     }
 
     /// <inheritdoc/>

@@ -130,17 +130,25 @@ internal sealed partial class UiAutomationControlService {
 
         ValidateTextReadLength(maxLength);
         int providerLimit = maxLength == int.MaxValue ? int.MaxValue : maxLength + 1;
+#if NET8_0_OR_GREATER
+        string value = ((UiaRange)documentRange).GetText(providerLimit);
+#else
         MethodInfo? getTextMethod = documentRange.GetType().GetMethod("GetText", new[] { typeof(int) });
         string value = getTextMethod?.Invoke(documentRange, new object[] { providerLimit }) as string ?? string.Empty;
+#endif
         bool? containsExpected = null;
         if (!string.IsNullOrEmpty(expectedText)) {
             if (value.IndexOf(expectedText, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) >= 0) {
                 containsExpected = true;
             } else {
+#if NET8_0_OR_GREATER
+                containsExpected = ((UiaRange)documentRange).FindText(expectedText!, false, ignoreCase) != null ? true : null;
+#else
                 MethodInfo? findTextMethod = documentRange.GetType().GetMethod("FindText", new[] { typeof(string), typeof(bool), typeof(bool) });
                 containsExpected = findTextMethod?.Invoke(documentRange, new object[] { expectedText!, false, ignoreCase }) != null
                     ? true
                     : null;
+#endif
             }
         }
 
@@ -210,7 +218,7 @@ internal sealed partial class UiAutomationControlService {
     private UiAutomationTextReadResult? ReadElementText(object element, int maxLength, string? expectedText, bool ignoreCase = false) {
         object? current;
         try {
-            current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            current = GetAutomationProperty(element, "Current");
         } catch {
             return null;
         }
@@ -268,14 +276,20 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private UiAutomationTextReadResult? ReadTextPatternValue(object element, int maxLength, string? expectedText, bool ignoreCase) {
+#if NET8_0_OR_GREATER
         try {
-            Type? textPatternType = _automationClientAssembly?.GetType("System.Windows.Automation.TextPattern", throwOnError: false);
+            UiaPattern? pattern = ((UiaElement)element).GetCurrentPattern(10014);
+            return pattern == null ? null : ReadTextPatternRange(pattern.DocumentRange, maxLength, expectedText, ignoreCase);
+        } catch { return null; }
+#else
+        try {
+            var textPatternType = ResolveAutomationType("System.Windows.Automation.TextPattern", throwOnError: false);
             if (textPatternType == null) {
                 return null;
             }
 
             object? pattern = GetCurrentPattern(element, textPatternType);
-            object? documentRange = pattern?.GetType().GetProperty("DocumentRange", BindingFlags.Public | BindingFlags.Instance)?.GetValue(pattern);
+            object? documentRange = (pattern == null ? null : GetAutomationProperty(pattern, "DocumentRange"));
             if (documentRange == null) {
                 return null;
             }
@@ -284,14 +298,19 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return null;
         }
+    #endif
     }
 
     private object? TryGetAutomationFocusedElement() {
+#if NET8_0_OR_GREATER
+        try { return UiaElement.FocusedElement; } catch { return null; }
+#else
         try {
             return _automationElementType?.GetProperty("FocusedElement", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
         } catch {
             return null;
         }
+    #endif
     }
 
     private object? TryFindFocusedDescendant(IntPtr windowHandle) {
@@ -306,7 +325,7 @@ internal sealed partial class UiAutomationControlService {
 
     private static bool IsRootWindowElement(object element, IntPtr windowHandle) {
         try {
-            object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            object? current = GetAutomationProperty(element, "Current");
             int nativeHandle = current == null ? 0 : ReadInt32(current, "NativeWindowHandle");
             return nativeHandle != 0 && new IntPtr(nativeHandle) == windowHandle;
         } catch {
@@ -315,14 +334,30 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private bool BelongsToWindow(object element, IntPtr windowHandle) {
+#if NET8_0_OR_GREATER
+        UiaElement? current = (UiaElement)element;
+        UiaWalker walker = UiaWalker.RawViewWalker;
+        for (int depth = 0; current != null && depth < MaximumAutomationParentDepth; depth++) {
+            try {
+                int handle = current.NativeWindowHandle is int value ? value : 0;
+                if (handle != 0) {
+                    IntPtr candidate = new(handle);
+                    IntPtr root = MonitorNativeMethods.GetAncestor(candidate, MonitorNativeMethods.GA_ROOT);
+                    if (candidate == windowHandle || root == windowHandle) { return true; }
+                }
+                current = walker.GetParent(current);
+            } catch { break; }
+        }
+        return IsFocusedElementInsideForegroundWindow(element, windowHandle);
+#else
         object? current = element;
-        object? walker = _automationClientAssembly?.GetType("System.Windows.Automation.TreeWalker", throwOnError: false)?
+        object? walker = ResolveAutomationType("System.Windows.Automation.TreeWalker", throwOnError: false)?
             .GetProperty("RawViewWalker", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
         MethodInfo? getParentMethod = walker?.GetType().GetMethod("GetParent", new[] { _automationElementType! });
 
         for (int depth = 0; current != null && depth < MaximumAutomationParentDepth; depth++) {
             try {
-                object? currentProperties = current.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(current);
+                object? currentProperties = GetAutomationProperty(current, "Current");
                 int nativeHandle = currentProperties == null ? 0 : ReadInt32(currentProperties, "NativeWindowHandle");
                 if (nativeHandle != 0) {
                     IntPtr candidateHandle = new(nativeHandle);
@@ -339,6 +374,7 @@ internal sealed partial class UiAutomationControlService {
         }
 
         return IsFocusedElementInsideForegroundWindow(element, windowHandle);
+    #endif
     }
 
     private static bool IsFocusedElementInsideForegroundWindow(object element, IntPtr windowHandle) {
@@ -349,7 +385,7 @@ internal sealed partial class UiAutomationControlService {
 
         MonitorNativeMethods.GetWindowThreadProcessId(windowHandle, out uint windowProcessId);
         try {
-            object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            object? current = GetAutomationProperty(element, "Current");
             if (current == null || ReadInt32(current, "ProcessId") != (int)windowProcessId) {
                 return false;
             }

@@ -1,6 +1,5 @@
 using System.IO;
 using System.Linq;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -14,10 +13,12 @@ public partial class MonitorService {
     }
 
     /// <summary>Captures strict native state; unlike presentation reads, no fallback value may masquerade as a restorable setting.</summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     internal DesktopWallpaperSnapshot CaptureNativeWallpaperCheckpoint(object owner, Func<bool> interactive, Func<IReadOnlyList<MonitorSnapshot>> geometry,
-        WindowsWallpaperSelection? selection = null) {
+        WindowsWallpaperSelection? selection = null) => DesktopManagerWrapper.Invoke(_desktopManager,
+            () => CaptureNativeWallpaperCheckpointCore(owner, interactive, geometry, selection));
+
+    private DesktopWallpaperSnapshot CaptureNativeWallpaperCheckpointCore(object owner, Func<bool> interactive,
+        Func<IReadOnlyList<MonitorSnapshot>> geometry, WindowsWallpaperSelection? selection) {
         var mode = selection?.Read();
         if (selection != null && (!mode.HasValue || mode < 0 || mode > 2)) {
             return new DesktopWallpaperSnapshot(DesktopOperationStatus.Unsupported,
@@ -149,13 +150,13 @@ public partial class MonitorService {
         private static readonly Guid ShellItemArrayId = new Guid("b63ea76d-1f85-456f-a19c-48159efa858b");
         private IAgileWallpaperReference? _reference;
 
-        [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-        [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
         internal WallpaperShellItems(IntPtr pointer) {
             if (pointer == IntPtr.Zero) { return; }
             try {
                 var id = ShellItemArrayId;
-                Marshal.ThrowExceptionForHR(RoGetAgileReference(0, ref id, pointer, out _reference));
+                Marshal.ThrowExceptionForHR(RoGetAgileReference(0, ref id, pointer, out var reference));
+                try { _reference = NativeComActivation.FromPointer<IAgileWallpaperReference>(reference); }
+                finally { if (reference != IntPtr.Zero) { Marshal.Release(reference); } }
             } finally {
                 // GetSlideshow's original reference belongs to this capture apartment.
                 Marshal.Release(pointer);
@@ -167,15 +168,24 @@ public partial class MonitorService {
                 uint count = 0;
                 WithApartmentPointer(pointer => {
                     if (pointer == IntPtr.Zero) { return; }
-                    var array = (MonitorNativeMethods.IShellItemArray)Marshal.GetObjectForIUnknown(pointer);
+                    var array = NativeComActivation.FromPointer<MonitorNativeMethods.IShellItemArray>(pointer);
                     try { Marshal.ThrowExceptionForHR(array.GetCount(out count)); }
-                    finally { Marshal.ReleaseComObject(array); }
+                    finally { NativeComActivation.Release(array); }
                 });
                 return count;
             }
         }
 
         internal void WithApartmentPointer(Action<IntPtr> action) {
+            // Empty checkpoints carry no native reference, including injected portable backends.
+            if (_reference == null) { action(IntPtr.Zero); return; }
+            WallpaperComApartment.Invoke(() => {
+                WithApartmentPointerCore(action);
+                return true;
+            });
+        }
+
+        private void WithApartmentPointerCore(Action<IntPtr> action) {
             if (_reference == null) { action(IntPtr.Zero); return; }
             var id = ShellItemArrayId;
             _reference.Resolve(ref id, out var pointer);
@@ -183,22 +193,26 @@ public partial class MonitorService {
         }
 
         public void Dispose() {
+            if (_reference == null) { return; }
+            WallpaperComApartment.Invoke(() => {
+                DisposeCore();
+                return true;
+            });
+        }
+
+        private void DisposeCore() {
             var reference = _reference;
             _reference = null;
             if (reference != null) {
                 // RoGetAgileReference creates an exclusively owned agile object. Its RCW also
                 // provides COM-aware finalization if a caller forgets to dispose the checkpoint.
-                Marshal.ReleaseComObject(reference);
+                NativeComActivation.Release(reference);
             }
         }
 
         [DllImport("ole32.dll", ExactSpelling = true)]
         private static extern int RoGetAgileReference(uint options, ref Guid interfaceId, IntPtr pointer,
-            [MarshalAs(UnmanagedType.Interface)] out IAgileWallpaperReference? reference);
+            out IntPtr reference);
 
-        [ComImport, Guid("C03F6A43-65A4-9818-987E-E0B810D2A6F2"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        private interface IAgileWallpaperReference {
-            void Resolve(ref Guid interfaceId, out IntPtr pointer);
-        }
     }
 }

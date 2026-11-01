@@ -421,7 +421,27 @@ public class DesktopControlObservationContractTests {
     }
 
     [TestMethod]
-    public void UiAutomationControlService_InvokePatternCurrentMethod_UsesCurrentInformationObject() {
+    public void UiAutomationControlService_InvokePatternCurrentMethod_ReadsSelectionAndTableCollections() {
+#if NET8_0_OR_GREATER
+        var provider = new NativeUiaCollectionPatternFixture();
+        var errors = new List<string>();
+        var selectionPattern = provider.Wrap(10001);
+        var tablePattern = provider.Wrap(10012);
+        var itemPattern = provider.Wrap(10013);
+
+        object? selection = UiAutomationControlService.InvokePatternCurrentMethod(selectionPattern, "GetSelection", errors, "selection.items");
+        object? rowHeaders = UiAutomationControlService.InvokePatternCurrentMethod(tablePattern, "GetRowHeaders", errors, "table.rowHeaders");
+        object? columnHeaders = UiAutomationControlService.InvokePatternCurrentMethod(tablePattern, "GetColumnHeaders", errors, "table.columnHeaders");
+        object? rowHeaderItems = UiAutomationControlService.InvokePatternCurrentMethod(itemPattern, "GetRowHeaderItems", errors, "tableItem.rowHeaders");
+        object? columnHeaderItems = UiAutomationControlService.InvokePatternCurrentMethod(itemPattern, "GetColumnHeaderItems", errors, "tableItem.columnHeaders");
+
+        CollectionAssert.AreEqual(new[] { "selected" }, ReadNativeLabels(selection));
+        CollectionAssert.AreEqual(new[] { "row" }, ReadNativeLabels(rowHeaders));
+        CollectionAssert.AreEqual(new[] { "column" }, ReadNativeLabels(columnHeaders));
+        CollectionAssert.AreEqual(new[] { "row-item" }, ReadNativeLabels(rowHeaderItems));
+        CollectionAssert.AreEqual(new[] { "column-item" }, ReadNativeLabels(columnHeaderItems));
+        Assert.AreEqual(0, errors.Count);
+#else
         var pattern = new SemanticCollectionPatternStub();
         var errors = new List<string>();
 
@@ -437,6 +457,7 @@ public class DesktopControlObservationContractTests {
         CollectionAssert.AreEqual(new[] { "row-item" }, (string[])rowHeaderItems!);
         CollectionAssert.AreEqual(new[] { "column-item" }, (string[])columnHeaderItems!);
         Assert.AreEqual(0, errors.Count);
+#endif
     }
 
     [TestMethod]
@@ -936,6 +957,12 @@ public class DesktopControlObservationContractTests {
         }
     }
 
+#if NET8_0_OR_GREATER
+    private static string[] ReadNativeLabels(object? collection) {
+        Assert.IsNotNull(collection);
+        return ((UiaElements)collection).Cast<UiaElement>().Select(element => (string)element.Name!).ToArray();
+    }
+#else
     private sealed class SemanticCollectionPatternStub {
         public SemanticCollectionInformationStub Current { get; } = new();
     }
@@ -961,6 +988,8 @@ public class DesktopControlObservationContractTests {
             return new[] { "column-item" };
         }
     }
+
+#endif
 
     private static WindowQueryOptions CreateWindowQuery(IntPtr handle) {
         return new WindowQueryOptions {

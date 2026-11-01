@@ -37,7 +37,7 @@ internal sealed partial class UiAutomationControlService {
         var patterns = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         foreach ((string typeName, string name) in ObservationPatternCatalog) {
             try {
-                Type? patternType = _automationClientAssembly?.GetType(typeName, throwOnError: false);
+                var patternType = ResolveAutomationType(typeName, throwOnError: false);
                 object? pattern = patternType == null ? null : GetCurrentPattern(element, patternType);
                 if (pattern != null) {
                     patterns[name] = pattern;
@@ -263,7 +263,9 @@ internal sealed partial class UiAutomationControlService {
 
                 int allowedLength = Math.Min(4096, textBudget.RemainingCharacters);
                 UiAutomationTextReadResult? text = ReadElementText(item, allowedLength, expectedText: null);
-                string label = text?.Value ?? info.Text;
+                // Label-only elements can expose an empty legacy Value alongside a useful Name.
+                // Keep empty editable values meaningful elsewhere; semantic labels use the readable name.
+                string label = !string.IsNullOrEmpty(text?.Value) ? text!.Value : info.Text;
                 if (!string.IsNullOrEmpty(label)) {
                     if (text?.IsTruncated == true || label.Length > allowedLength) {
                         labels.Add(label.Length > allowedLength ? label.Substring(0, allowedLength) : label);
@@ -303,8 +305,13 @@ internal sealed partial class UiAutomationControlService {
 
     internal static object? InvokePatternCurrentMethod(object pattern, string name, List<string> errors, string scope) {
         try {
-            object? current = pattern.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(pattern);
+            object? current = GetAutomationProperty(pattern, "Current");
+#if NET8_0_OR_GREATER
+            UiaPattern native = (UiaPattern)pattern;
+            return name switch { "GetSelection" => native.GetSelection(), "GetRowHeaders" => native.GetRowHeaders(), "GetColumnHeaders" => native.GetColumnHeaders(), "GetRowHeaderItems" => native.GetRowHeaderItems(), "GetColumnHeaderItems" => native.GetColumnHeaderItems(), _ => null };
+#else
             return current?.GetType().GetMethod(name, Type.EmptyTypes)?.Invoke(current, null);
+#endif
         } catch (Exception ex) {
             AddObservationError(errors, scope, ex);
             return null;
@@ -313,8 +320,9 @@ internal sealed partial class UiAutomationControlService {
 
     private static object? ReadPatternCurrentValue(object pattern, string propertyName, List<string> errors, string scope) {
         try {
-            object? current = pattern.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(pattern);
-            return current?.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(current);
+            // TextPattern exposes selection metadata directly; most other patterns use Current.
+            object current = GetAutomationProperty(pattern, "Current") ?? pattern;
+            return GetAutomationProperty(current, propertyName);
         } catch (Exception ex) {
             AddObservationError(errors, scope, ex);
             return null;

@@ -57,7 +57,11 @@ internal sealed partial class UiAutomationControlService {
         Dictionary<string, object> patterns = ReadObservationPatterns(element, errors);
         if (options.RealizeVirtualizedItem && patterns.TryGetValue("VirtualizedItem", out object? virtualizedItem)) {
             try {
+#if NET8_0_OR_GREATER
+                ((UiaPattern)virtualizedItem).Realize();
+#else
                 virtualizedItem.GetType().GetMethod("Realize", Type.EmptyTypes)?.Invoke(virtualizedItem, null);
+#endif
                 match = ResolveMatchingElement(window.Handle, control);
                 element = match.Element ?? element;
                 patterns = ReadObservationPatterns(element, errors);
@@ -79,7 +83,7 @@ internal sealed partial class UiAutomationControlService {
 
         object? current;
         try {
-            current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            current = GetAutomationProperty(element, "Current");
         } catch (Exception ex) {
             AddObservationError(errors, "control.current", ex);
             return null;
@@ -221,13 +225,17 @@ internal sealed partial class UiAutomationControlService {
         out bool isComplete) {
         isComplete = true;
         try {
+#if NET8_0_OR_GREATER
+            object? result = ((UiaPattern)textPattern).GetSelection();
+#else
             object? result = textPattern.GetType().GetMethod("GetSelection", Type.EmptyTypes)?.Invoke(textPattern, null);
+#endif
             if (result is not IEnumerable ranges) {
                 isComplete = false;
                 return Array.Empty<DesktopTextRangeObservation>();
             }
 
-            object? documentRange = textPattern.GetType().GetProperty("DocumentRange", BindingFlags.Public | BindingFlags.Instance)?.GetValue(textPattern);
+            object? documentRange = GetAutomationProperty(textPattern, "DocumentRange");
             var values = new List<DesktopTextRangeObservation>();
             int remaining = maxLength;
             int inspectedRangeCount = 0;
@@ -273,6 +281,18 @@ internal sealed partial class UiAutomationControlService {
         int maxLength,
         DesktopControlTextObservation observation,
         List<string> errors) {
+#if NET8_0_OR_GREATER
+        try {
+            UiaPattern pattern = (UiaPattern)textPattern2;
+            UiaRange? caret = pattern.GetCaretRange(out bool active);
+            observation.IsCaretActive = active;
+            if (caret == null) { return; }
+            observation.CaretOffset = TryGetTextRangeOffset(pattern.DocumentRange, caret, maxLength);
+            UiaRange context = caret.Clone();
+            context.ExpandToEnclosingUnit(UiaTextUnit.Line);
+            observation.CaretContext = ReadTextRange(context, Math.Min(maxLength, 512), out _);
+        } catch (Exception ex) { AddObservationError(errors, "text.caret", ex); }
+#else
         try {
             MethodInfo? method = textPattern2.GetType().GetMethod("GetCaretRange");
             if (method == null) {
@@ -286,12 +306,12 @@ internal sealed partial class UiAutomationControlService {
                 return;
             }
 
-            object? documentRange = textPattern2.GetType().GetProperty("DocumentRange", BindingFlags.Public | BindingFlags.Instance)?.GetValue(textPattern2);
+            object? documentRange = GetAutomationProperty(textPattern2, "DocumentRange");
             observation.CaretOffset = documentRange == null ? null : TryGetTextRangeOffset(documentRange, caretRange, maxLength);
 
             object? contextRange = caretRange.GetType().GetMethod("Clone", Type.EmptyTypes)?.Invoke(caretRange, null) ?? caretRange;
-            Type? textUnitType = _automationTypesAssembly?.GetType("System.Windows.Automation.Text.TextUnit", throwOnError: false)
-                ?? _automationClientAssembly?.GetType("System.Windows.Automation.Text.TextUnit", throwOnError: false);
+            var textUnitType = ResolveAutomationType("System.Windows.Automation.Text.TextUnit", throwOnError: false)
+                ?? ResolveAutomationType("System.Windows.Automation.Text.TextUnit", throwOnError: false);
             if (textUnitType != null) {
                 object line = Enum.Parse(textUnitType, "Line", ignoreCase: false);
                 contextRange.GetType().GetMethod("ExpandToEnclosingUnit", new[] { textUnitType })?.Invoke(contextRange, new[] { line });
@@ -301,6 +321,7 @@ internal sealed partial class UiAutomationControlService {
         } catch (Exception ex) {
             AddObservationError(errors, "text.caret", ex);
         }
+    #endif
     }
 
     private static string ReadTextRangeFromMethod(
@@ -312,6 +333,10 @@ internal sealed partial class UiAutomationControlService {
         out bool isComplete) {
         isComplete = true;
         try {
+#if NET8_0_OR_GREATER
+            UiaPattern native = (UiaPattern)pattern;
+            object? range = methodName switch { "GetActiveComposition" => native.GetActiveComposition(), "GetConversionTarget" => native.GetConversionTarget(), _ => throw new ArgumentException("Unknown UIA text range method.", nameof(methodName)) };
+#else
             MethodInfo? method = pattern.GetType().GetMethod(methodName, Type.EmptyTypes);
             if (method == null) {
                 isComplete = false;
@@ -319,6 +344,7 @@ internal sealed partial class UiAutomationControlService {
             }
 
             object? range = method.Invoke(pattern, null);
+#endif
             if (range == null) {
                 return string.Empty;
             }
@@ -335,12 +361,24 @@ internal sealed partial class UiAutomationControlService {
 
     internal static string ReadTextRange(object range, int maxLength, out bool isTruncated) {
         int providerLimit = maxLength == int.MaxValue ? int.MaxValue : maxLength + 1;
+#if NET8_0_OR_GREATER
+        string value = ((UiaRange)range).GetText(providerLimit);
+#else
         string value = range.GetType().GetMethod("GetText", new[] { typeof(int) })?.Invoke(range, new object[] { providerLimit }) as string ?? string.Empty;
+#endif
         isTruncated = value.Length > maxLength;
         return isTruncated ? value.Substring(0, maxLength) : value;
     }
 
     internal static int? TryGetTextRangeOffset(object documentRange, object targetRange, int maxLength) {
+#if NET8_0_OR_GREATER
+        try {
+            UiaRange prefix = ((UiaRange)documentRange).Clone();
+            prefix.MoveEndpointByRange(UiaEndpoint.End, (UiaRange)targetRange, UiaEndpoint.Start);
+            string value = ReadTextRange(prefix, maxLength, out bool truncated);
+            return truncated ? null : value.Length;
+        } catch { return null; }
+#else
         try {
             object? prefix = documentRange.GetType().GetMethod("Clone", Type.EmptyTypes)?.Invoke(documentRange, null);
             if (prefix == null) {
@@ -362,6 +400,7 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return null;
         }
+    #endif
     }
 
     private static bool TryFindTextWithProvider(
@@ -374,9 +413,13 @@ internal sealed partial class UiAutomationControlService {
         }
 
         try {
-            object? documentRange = textPattern.GetType().GetProperty("DocumentRange", BindingFlags.Public | BindingFlags.Instance)?.GetValue(textPattern);
+            object? documentRange = GetAutomationProperty(textPattern, "DocumentRange");
+#if NET8_0_OR_GREATER
+            return ((UiaRange?)documentRange)?.FindText(expectedText, false, ignoreCase) != null;
+#else
             MethodInfo? findText = documentRange?.GetType().GetMethod("FindText", new[] { typeof(string), typeof(bool), typeof(bool) });
             return findText?.Invoke(documentRange, new object[] { expectedText, false, ignoreCase }) != null;
+#endif
         } catch (Exception ex) {
             AddObservationError(errors, "text.find", ex);
             return false;
@@ -385,7 +428,7 @@ internal sealed partial class UiAutomationControlService {
 
     private static bool? ReadObservationBoolean(object current, string propertyName, List<string> errors) {
         try {
-            object? value = current.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(current);
+            object? value = GetAutomationProperty(current, propertyName);
             return value is bool result ? result : null;
         } catch (Exception ex) {
             AddObservationError(errors, $"control.{propertyName}", ex);

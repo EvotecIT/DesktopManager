@@ -1,10 +1,19 @@
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices.Marshalling;
+#endif
+
 namespace DesktopManager;
 
 /// <summary>
 /// Provides methods to manage desktop settings and wallpapers.
 /// </summary>
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+[Guid("B92B56A9-8B55-4E14-9A89-0199BBB6F93B")]
+#else
 [ComImport, Guid("B92B56A9-8B55-4E14-9A89-0199BBB6F93B"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IDesktopManager {
+#endif
+public partial interface IDesktopManager {
     /// <summary>
     /// Sets the wallpaper for a specific monitor.
     /// </summary>
@@ -59,13 +68,12 @@ public interface IDesktopManager {
     /// Sets the wallpaper position.
     /// </summary>
     /// <param name="position">The wallpaper position.</param>
-    void SetPosition([MarshalAs(UnmanagedType.I4)] DesktopWallpaperPosition position);
+    void SetPosition(DesktopWallpaperPosition position);
 
     /// <summary>
     /// Gets the wallpaper position.
     /// </summary>
     /// <returns>The wallpaper position.</returns>
-    [return: MarshalAs(UnmanagedType.I4)]
     DesktopWallpaperPosition GetPosition();
 
     /// <summary>
@@ -103,7 +111,7 @@ public interface IDesktopManager {
     /// </summary>
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="direction">The direction to advance the slideshow.</param>
-    void AdvanceSlideshow([MarshalAs(UnmanagedType.LPWStr)] string? monitorId, [MarshalAs(UnmanagedType.I4)] DesktopSlideshowDirection direction);
+    void AdvanceSlideshow([MarshalAs(UnmanagedType.LPWStr)] string? monitorId, DesktopSlideshowDirection direction);
 
     /// <summary>
     /// Gets the status of the slideshow.

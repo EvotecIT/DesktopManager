@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.InteropServices.Marshalling;
 #endif
@@ -11,11 +12,19 @@ namespace DesktopManager;
 /// source-generated COM on .NET 8+ (trimming and Native AOT safe) and built-in COM on net472/netstandard2.0.
 /// </summary>
 internal static partial class NativeComActivation {
+    /// <summary>Wraps a borrowed pointer and releases the wrapper if the requested interface is unavailable.</summary>
+    internal static T FromPointer<T>(IntPtr pointer) {
+        object instance = FromPointer(pointer);
+        try { return (T)instance; }
+        catch { Release(instance); throw; }
+    }
+
 #if NET8_0_OR_GREATER
     // CLSCTX_SERVER, matching what built-in activation through Activator.CreateInstance requests.
     private const uint ClassContextServer = 0x15;
     private static readonly Guid UnknownInterfaceId = new("00000000-0000-0000-C000-000000000046");
     private static readonly StrategyBasedComWrappers ComWrappers = new();
+    private static readonly ConditionalWeakTable<ComObject, object> UniqueInstances = new();
 
     /// <summary>
     /// Creates a COM object as a unique wrapper so <see cref="Release"/> frees it deterministically.
@@ -25,16 +34,26 @@ internal static partial class NativeComActivation {
         Guid interfaceId = UnknownInterfaceId;
         Marshal.ThrowExceptionForHR(CoCreateInstance(in classId, IntPtr.Zero, ClassContextServer, in interfaceId, out IntPtr unknown));
         try {
-            return ComWrappers.GetOrCreateObjectForComInstance(unknown, CreateObjectFlags.UniqueInstance);
+            return FromPointer(unknown);
         } finally {
             Marshal.Release(unknown);
         }
     }
 
+    /// <summary>Wraps a borrowed COM pointer independently; the caller still owns its incoming reference.</summary>
+    internal static object FromPointer(IntPtr pointer) {
+        if (pointer == IntPtr.Zero) { throw new ArgumentNullException(nameof(pointer)); }
+        var value = ComWrappers.GetOrCreateObjectForComInstance(pointer, CreateObjectFlags.UniqueInstance);
+        if (value is ComObject comObject) {
+            UniqueInstances.Add(comObject, new object());
+        }
+        return value;
+    }
+
     /// <summary>Releases a wrapper created by <see cref="CreateInstance"/>.</summary>
     /// <remarks>Shared wrappers returned through interface marshalling are released by their finalizer.</remarks>
     internal static void Release(object? value) {
-        if (value is ComObject comObject) {
+        if (value is ComObject comObject && UniqueInstances.Remove(comObject)) {
             comObject.FinalRelease();
             // The .NET 8 ComObject finalizer releases the instance again even after FinalRelease.
             GC.SuppressFinalize(comObject);
@@ -44,6 +63,8 @@ internal static partial class NativeComActivation {
     [LibraryImport("ole32.dll")]
     private static partial int CoCreateInstance(in Guid classId, IntPtr outer, uint classContext, in Guid interfaceId, out IntPtr instance);
 #else
+    internal static object FromPointer(IntPtr pointer) => Marshal.GetObjectForIUnknown(pointer);
+
     internal static object CreateInstance(Guid classId) {
         Type type = Type.GetTypeFromCLSID(classId, true)
             ?? throw new InvalidOperationException($"Windows did not expose COM class {classId}.");

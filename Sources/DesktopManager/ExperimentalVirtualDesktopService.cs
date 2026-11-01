@@ -1,8 +1,6 @@
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -21,24 +19,28 @@ public sealed class ExperimentalVirtualDesktopService : IDisposable, IWorkspaceD
     private bool _disposed;
 
     /// <summary>Connects to the gated Windows 11 shell interface family (builds 26100, 26200 and 26300).</summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public ExperimentalVirtualDesktopService() {
         using RegistryKey? version = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
         if (!int.TryParse(version?.GetValue("CurrentBuildNumber") as string, out int build) ||
                 (build != 26100 && build != 26200 && build != 26300)) {
             throw new PlatformNotSupportedException("Experimental virtual desktop recovery requires Windows 11 build 26100, 26200 or 26300 and the supported shell interface IDs.");
         }
-        Type shellType = Type.GetTypeFromCLSID(ExperimentalVirtualDesktopNative.ShellClass, true)!;
-        _shell = (IWorkspaceShellServices)Activator.CreateInstance(shellType)!;
+        object shell = NativeComActivation.CreateInstance(ExperimentalVirtualDesktopNative.ShellClass);
+        try { _shell = (IWorkspaceShellServices)shell; }
+        catch { ExperimentalVirtualDesktopNative.Release(shell); throw; }
+        object? manager = null, views = null, pins = null;
+        // Concrete casts retain generated interface metadata even when a consumer only enumerates desktops.
         try {
-            _manager = Query<IWorkspaceDesktopManager>(ExperimentalVirtualDesktopNative.ManagerService);
-            _views = Query<IWorkspaceApplicationViews>(typeof(IWorkspaceApplicationViews).GUID);
-            _pins = Query<IWorkspacePinnedApps>(ExperimentalVirtualDesktopNative.PinsService);
+            manager = Query(ExperimentalVirtualDesktopNative.ManagerService, new Guid("53F5CA0B-158F-4124-900C-057158060B27"));
+            _manager = (IWorkspaceDesktopManager)manager;
+            views = Query(new Guid("1841C6D7-4F9D-42C0-AF41-8747538F10E5"), new Guid("1841C6D7-4F9D-42C0-AF41-8747538F10E5"));
+            _views = (IWorkspaceApplicationViews)views;
+            pins = Query(ExperimentalVirtualDesktopNative.PinsService, new Guid("4CE81583-1E4C-4632-A621-07A53543148F"));
+            _pins = (IWorkspacePinnedApps)pins;
         } catch {
-            ExperimentalVirtualDesktopNative.Release(_pins);
-            ExperimentalVirtualDesktopNative.Release(_views);
-            ExperimentalVirtualDesktopNative.Release(_manager);
+            ExperimentalVirtualDesktopNative.Release(pins);
+            ExperimentalVirtualDesktopNative.Release(views);
+            ExperimentalVirtualDesktopNative.Release(manager);
             ExperimentalVirtualDesktopNative.Release(_shell);
             throw;
         }
@@ -47,23 +49,25 @@ public sealed class ExperimentalVirtualDesktopService : IDisposable, IWorkspaceD
     /// <summary>Reads desktop IDs, names and wallpaper paths from the live shell without changing state.</summary>
     public IReadOnlyList<VirtualDesktopInfo> GetDesktops() {
         EnsureUsable();
-        _manager.GetDesktops(out IWorkspaceObjectArray array);
+        _manager.GetDesktops(out IntPtr pointer);
+        IWorkspaceObjectArray array = ExperimentalVirtualDesktopNative.WrapOwned<IWorkspaceObjectArray>(pointer);
         try {
             array.GetCount(out int count);
             var result = new List<VirtualDesktopInfo>();
-            Guid iid = typeof(IWorkspaceDesktop).GUID;
+            Guid iid = new("3F07F4BE-B107-441A-AF0F-39D82529072C");
             for (int index = 0; index < count; index++) {
-                array.GetAt(index, ref iid, out object item);
+                array.GetAt(index, ref iid, out IntPtr itemPointer);
+                IWorkspaceDesktop desktop = ExperimentalVirtualDesktopNative.WrapOwned<IWorkspaceDesktop>(itemPointer);
                 try {
-                    var desktop = (IWorkspaceDesktop)item;
                     desktop.GetName(out IntPtr name);
                     string desktopName = ExperimentalVirtualDesktopNative.ReadString(name);
                     desktop.GetWallpaperPath(out IntPtr wallpaper);
+                    string wallpaperPath = ExperimentalVirtualDesktopNative.ReadString(wallpaper);
                     result.Add(new VirtualDesktopInfo {
                         Id = desktop.GetId(), Index = index + 1, Name = desktopName,
-                        WallpaperPath = ExperimentalVirtualDesktopNative.ReadString(wallpaper)
+                        WallpaperPath = wallpaperPath
                     });
-                } finally { ExperimentalVirtualDesktopNative.Release(item); }
+                } finally { ExperimentalVirtualDesktopNative.Release(desktop); }
             }
             return result;
         } finally { ExperimentalVirtualDesktopNative.Release(array); }
@@ -95,7 +99,7 @@ public sealed class ExperimentalVirtualDesktopService : IDisposable, IWorkspaceD
         if (saved.PinMode != VirtualDesktopPinMode.Application && saved.PinMode != VirtualDesktopPinMode.Window) {
             if (id == Guid.Empty) { throw new InvalidOperationException("The saved window has no target desktop identity."); }
             // Resolve the exact GUID before making even application-wide pin changes.
-            target = _manager.FindDesktop(ref id);
+            target = FindDesktop(ref id);
         }
         try { WithView(handle, view => {
             string appId = ReadApplicationId(view);
@@ -138,7 +142,7 @@ public sealed class ExperimentalVirtualDesktopService : IDisposable, IWorkspaceD
         if (string.IsNullOrWhiteSpace(wallpaperPath) || !Path.IsPathRooted(wallpaperPath) || !File.Exists(wallpaperPath)) {
             throw new FileNotFoundException("The saved wallpaper must be an existing absolute file path.", wallpaperPath);
         }
-        IWorkspaceDesktop desktop = _manager.FindDesktop(ref desktopId);
+        IWorkspaceDesktop desktop = FindDesktop(ref desktopId);
         try {
             Marshal.ThrowExceptionForHR(ExperimentalVirtualDesktopNative.WindowsCreateString(wallpaperPath, wallpaperPath.Length, out IntPtr value));
             try { _manager.SetDesktopWallpaper(desktop, value); }
@@ -150,9 +154,14 @@ public sealed class ExperimentalVirtualDesktopService : IDisposable, IWorkspaceD
         } finally { ExperimentalVirtualDesktopNative.Release(desktop); }
     }
 
-    private T Query<T>(Guid service) {
-        Guid iid = typeof(T).GUID;
-        return (T)_shell.QueryService(ref service, ref iid);
+    private object Query(Guid service, Guid iid) {
+        _shell.QueryService(ref service, ref iid, out IntPtr pointer);
+        return ExperimentalVirtualDesktopNative.WrapOwned<object>(pointer);
+    }
+
+    private IWorkspaceDesktop FindDesktop(ref Guid id) {
+        _manager.FindDesktop(ref id, out IntPtr pointer);
+        return ExperimentalVirtualDesktopNative.WrapOwned<IWorkspaceDesktop>(pointer);
     }
 
     private void WithView(IntPtr handle, Action<IntPtr> action) {
@@ -164,7 +173,7 @@ public sealed class ExperimentalVirtualDesktopService : IDisposable, IWorkspaceD
     }
 
     private static string ReadApplicationId(IntPtr view) {
-        object identity = Marshal.GetObjectForIUnknown(view);
+        object identity = NativeComActivation.FromPointer(view);
         try {
             ((IWorkspaceApplicationIdentity)identity).GetAppUserModelId(out string appId);
             return appId;

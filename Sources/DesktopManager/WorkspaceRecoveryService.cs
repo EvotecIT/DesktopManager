@@ -1,7 +1,6 @@
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -12,8 +11,6 @@ public sealed partial class WorkspaceRecoveryService {
     private readonly Func<IWorkspaceDesktopApi> _desktops;
 
     /// <summary>Creates the Windows workspace recovery service. Experimental shell connections are opened only when explicitly requested.</summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public WorkspaceRecoveryService() : this(new WorkspaceWindowApi(), () => new ExperimentalVirtualDesktopService()) { }
 
     internal WorkspaceRecoveryService(IWorkspaceWindowApi windows, Func<IWorkspaceDesktopApi> desktops) {
@@ -192,8 +189,6 @@ internal interface IWorkspaceWindowApi {
     void OpenExplorer(string path);
 }
 
-[RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-[RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
 internal sealed class WorkspaceWindowApi : IWorkspaceWindowApi {
     private readonly WindowManager _manager = new();
 

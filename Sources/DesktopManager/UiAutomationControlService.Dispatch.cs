@@ -70,6 +70,19 @@ internal sealed partial class UiAutomationControlService {
             return (T)(object)UiAutomationTextEditAttempt.Failed("provider-timeout");
         }
 
+#if NET8_0_OR_GREATER
+        // Only these collection contracts reach the provider dispatcher; keep AOT allocation static.
+        if (resultType == typeof(System.Collections.Generic.List<WindowControlInfo>)) {
+            return (T)(object)new System.Collections.Generic.List<WindowControlInfo>();
+        }
+        if (resultType == typeof(WindowControlInfo[])) {
+            return (T)(object)Array.Empty<WindowControlInfo>();
+        }
+        if (resultType == typeof(DesktopUiAutomationRootDiagnostic[]) ||
+            resultType == typeof(System.Collections.Generic.IReadOnlyList<DesktopUiAutomationRootDiagnostic>)) {
+            return (T)(object)Array.Empty<DesktopUiAutomationRootDiagnostic>();
+        }
+#else
         if (resultType.IsArray) {
             return (T)(object)Array.CreateInstance(resultType.GetElementType()!, 0);
         }
@@ -80,6 +93,7 @@ internal sealed partial class UiAutomationControlService {
             resultType.GetConstructor(Type.EmptyTypes) != null) {
             return (T)Activator.CreateInstance(resultType)!;
         }
+#endif
 
         return default!;
     }

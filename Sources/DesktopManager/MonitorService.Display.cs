@@ -497,6 +497,10 @@ public partial class MonitorService {
     /// <param name="options">Optional slideshow options.</param>
     /// <param name="slideshowTick">Optional slideshow tick interval in milliseconds.</param>
     public void StartWallpaperSlideshow(IEnumerable<string> wallpaperPaths, DesktopSlideshowOptions? options, uint? slideshowTick) {
+        DesktopManagerWrapper.Invoke(_desktopManager, () => StartWallpaperSlideshowCore(wallpaperPaths, options, slideshowTick));
+    }
+
+    private void StartWallpaperSlideshowCore(IEnumerable<string> wallpaperPaths, DesktopSlideshowOptions? options, uint? slideshowTick) {
         if (wallpaperPaths == null) {
             throw new ArgumentNullException(nameof(wallpaperPaths));
         }
@@ -538,7 +542,10 @@ public partial class MonitorService {
     /// Gets the current desktop wallpaper slideshow configuration and state.
     /// </summary>
     /// <returns>The current wallpaper slideshow details.</returns>
-    public DesktopWallpaperSlideshow GetWallpaperSlideshow() {
+    public DesktopWallpaperSlideshow GetWallpaperSlideshow() =>
+        DesktopManagerWrapper.Invoke(_desktopManager, GetWallpaperSlideshowCore);
+
+    private DesktopWallpaperSlideshow GetWallpaperSlideshowCore() {
         DesktopSlideshowOptions options = DesktopSlideshowOptions.None;
         uint slideshowTick = 0;
         try {
@@ -596,7 +603,7 @@ public partial class MonitorService {
         }
 
         try {
-            var array = (MonitorNativeMethods.IShellItemArray)Marshal.GetObjectForIUnknown(arrayPtr);
+            var array = NativeComActivation.FromPointer<MonitorNativeMethods.IShellItemArray>(arrayPtr);
             try {
                 int countResult = array.GetCount(out uint count);
                 if (countResult != 0 || count == 0) {
@@ -617,13 +624,13 @@ public partial class MonitorService {
                             paths.Add(path!);
                         }
                     } finally {
-                        Marshal.ReleaseComObject(item);
+                        NativeComActivation.Release(item);
                     }
                 }
 
                 return paths;
             } finally {
-                Marshal.ReleaseComObject(array);
+                NativeComActivation.Release(array);
             }
         } finally {
             Marshal.Release(arrayPtr);

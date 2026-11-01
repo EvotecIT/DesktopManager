@@ -185,6 +185,20 @@ $env:RUN_SYSTEM_UI_TESTS = "true"
 dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj -f net8.0-windows --no-build --filter "BackgroundColorTests|MonitorBrightnessTests|MonitorFallbackTests|MonitorResolutionOrientationTests|LogonWallpaperTests"
 ```
 
+## Native AOT qualification
+
+Publish the standalone Windows x64 consumer and run its read-only checks:
+
+```powershell
+dotnet publish Sources/DesktopManager.AotSmoke/DesktopManager.AotSmoke.csproj -c Release -f net10.0-windows10.0.19041.0 -o Artefacts/AotSmoke
+.\Artefacts\AotSmoke\DesktopManager.AotSmoke.exe
+```
+
+The consumer reads the live native services and uses owned fixtures for clipboard handles,
+Shell arrays and UI Automation controls. It does not restore checkpoints or change desktop
+settings. Each native area runs in a child process with a deadline. See the
+[smoke consumer guide](../Sources/DesktopManager.AotSmoke/README.md) for coverage and unavailable results.
+
 ## Hosted-Session Diagnostics
 
 When the repo-owned hosted-session typing harness goes inconclusive, inspect artifacts in this order:

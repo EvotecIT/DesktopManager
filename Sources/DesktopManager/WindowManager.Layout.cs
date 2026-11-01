@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -91,8 +90,6 @@ public partial class WindowManager
         /// <param name="validate">Validate layout before applying.</param>
         /// <exception cref="System.IO.FileNotFoundException">Thrown when the layout file does not exist.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the file is not a valid layout.</exception>
-        [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-        [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
         public void LoadLayout(string path, bool validate = false) {
             if (!System.IO.File.Exists(path)) {
                 throw new System.IO.FileNotFoundException("Layout file not found", path);

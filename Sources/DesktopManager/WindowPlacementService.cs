@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
@@ -17,8 +16,6 @@ public sealed class WindowPlacementService {
     /// <summary>
     /// Initializes a new instance of the <see cref="WindowPlacementService"/> class.
     /// </summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public WindowPlacementService()
         : this(new Monitors()) {
     }

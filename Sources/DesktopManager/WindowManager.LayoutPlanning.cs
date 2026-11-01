@@ -1,14 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Diagnostics.CodeAnalysis;
 
 namespace DesktopManager;
 
 public partial class WindowManager {
     /// <summary>Plans one-to-one layout matches without moving windows. Ambiguous targets are skipped.</summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public WindowLayoutPlan PlanLayout(WindowLayout layout) {
         if (layout == null) { throw new ArgumentNullException(nameof(layout)); }
         WindowPosition[] current = GetWindows().Select(GetWindowPosition).ToArray();
@@ -56,8 +53,6 @@ public partial class WindowManager {
     }
 
     /// <summary>Applies uniquely matched layout entries and reports each result. Uncertain or missing targets are skipped.</summary>
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     public IReadOnlyList<WindowLayoutApplyResult> ApplyLayout(WindowLayout layout) {
         WindowLayoutPlan plan = PlanLayout(layout);
         var results = new List<WindowLayoutApplyResult>();
@@ -68,8 +63,6 @@ public partial class WindowManager {
     }
 
     // Recovery reuses the already computed one-to-one plan rather than rematching each entry.
-    [RequiresUnreferencedCode(AotCompatibility.BuiltInComInterop)]
-    [RequiresDynamicCode(AotCompatibility.BuiltInComInterop)]
     private WindowLayoutApplyResult ApplyLayoutMatch(WindowLayoutMatch match) {
         if (match.Window == null) { return new WindowLayoutApplyResult(match, false, null); }
         try {

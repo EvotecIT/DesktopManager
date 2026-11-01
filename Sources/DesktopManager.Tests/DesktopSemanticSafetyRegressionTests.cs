@@ -57,8 +57,14 @@ public class DesktopSemanticSafetyRegressionTests {
     [TestMethod]
     public void UiAutomationControlService_ControlWithoutReadableText_IsUnavailable() {
         var errors = new List<string>();
+#if NET8_0_OR_GREATER
+        var provider = new NativeUiaElementFixture();
+        object element = new UiaElement(provider);
+#else
+        object element = new NoTextAutomationElementStub();
+#endif
         DesktopControlTextObservation observation = new UiAutomationControlService().ReadControlTextObservation(
-            new NoTextAutomationElementStub(),
+            element,
             new Dictionary<string, object>(),
             new DesktopControlObservationOptions { ExpectedText = "needle" },
             errors);
@@ -68,6 +74,10 @@ public class DesktopSemanticSafetyRegressionTests {
         Assert.AreEqual(string.Empty, observation.ContentFingerprint);
         Assert.IsNull(observation.ContainsExpected);
         CollectionAssert.Contains(errors, "text.unavailable");
+#if NET8_0_OR_GREATER
+        Assert.IsGreaterThan(0, provider.PasswordReadCount);
+        Assert.IsGreaterThan(0, provider.PatternReadCount);
+#endif
     }
 
     [TestMethod]
@@ -78,7 +88,11 @@ public class DesktopSemanticSafetyRegressionTests {
         var errors = new List<string>();
 
         IReadOnlyList<DesktopTextRangeObservation> selections = UiAutomationControlService.ReadTextSelections(
+#if NET8_0_OR_GREATER
+            new NativeUiaTextPatternFixture(emptySelections).Wrap(),
+#else
             new TextSelectionPatternStub(emptySelections),
+#endif
             maxLength: 4096,
             errors,
             out bool isComplete);
@@ -334,7 +348,11 @@ public class DesktopSemanticSafetyRegressionTests {
     [TestMethod]
     public void UiAutomationControlService_ReadTextSelections_ExactBudgetWithMoreRangesIsIncomplete() {
         var errors = new List<string>();
+#if NET8_0_OR_GREATER
+        var pattern = new NativeUiaTextPatternFixture("abcd", "efgh").Wrap();
+#else
         var pattern = new TextSelectionPatternStub("abcd", "efgh");
+#endif
 
         IReadOnlyList<DesktopTextRangeObservation> ranges = UiAutomationControlService.ReadTextSelections(
             pattern,
@@ -504,6 +522,7 @@ public class DesktopSemanticSafetyRegressionTests {
         Assert.AreEqual(string.Empty, state.Value);
     }
 
+#if !NET8_0_OR_GREATER
     private sealed class TextSelectionPatternStub {
         private readonly object[] _ranges;
 
@@ -521,6 +540,8 @@ public class DesktopSemanticSafetyRegressionTests {
         }
     }
 
+#endif
+
     private sealed class ThrowingMutationPattern {
         internal string Value { get; private set; } = string.Empty;
 
@@ -530,6 +551,7 @@ public class DesktopSemanticSafetyRegressionTests {
         }
     }
 
+#if !NET8_0_OR_GREATER
     private sealed class NoTextAutomationElementStub {
         public NonPasswordStateStub Current { get; } = new();
     }
@@ -549,4 +571,5 @@ public class DesktopSemanticSafetyRegressionTests {
             return _value.Length > maximumLength ? _value.Substring(0, maximumLength) : _value;
         }
     }
+#endif
 }

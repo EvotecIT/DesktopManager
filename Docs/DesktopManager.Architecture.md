@@ -28,7 +28,6 @@ flowchart TD
     E --> J["WindowInputService and verification helpers"]
     E --> L["Workstation, audio, power/session, personalization, taskbar, radio, saved Wi-Fi profile, and virtual-desktop services"]
 ```
-```
 
 ## What Runs Where
 

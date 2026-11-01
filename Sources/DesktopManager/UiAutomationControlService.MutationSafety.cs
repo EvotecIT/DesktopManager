@@ -19,7 +19,29 @@ internal sealed partial class UiAutomationControlService {
         string methodName,
         bool mutation,
         params object[] parameters) {
-        Type? patternType = _automationClientAssembly?.GetType(patternTypeName, throwOnError: false);
+#if NET8_0_OR_GREATER
+        var type = ResolveAutomationType(patternTypeName);
+        UiaPattern? pattern = type == null ? null : GetCurrentPattern(element, type) as UiaPattern;
+        if (pattern == null) { return false; }
+        try {
+            switch (methodName) {
+                case "Invoke": pattern.Invoke(); break;
+                case "Select": pattern.Select(); break;
+                case "Toggle": pattern.Toggle(); break;
+                case "Expand": pattern.Expand(); break;
+                case "Collapse": pattern.Collapse(); break;
+                case "ScrollIntoView": pattern.ScrollIntoView(); break;
+                case "DoDefaultAction": pattern.DoDefaultAction(); break;
+                case "SetValue": pattern.SetValue((string)parameters[0]); break;
+                default: return false;
+            }
+            return true;
+        } catch (Exception ex) {
+            if (mutation) { throw new UiAutomationMutationOutcomeUnknownException(patternTypeName, methodName, ex); }
+            return false;
+        }
+#else
+        var patternType = ResolveAutomationType(patternTypeName, throwOnError: false);
         if (patternType == null) {
             return false;
         }
@@ -45,6 +67,7 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return false;
         }
+    #endif
     }
 
     internal static void InvokeProviderMutation(
