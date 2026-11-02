@@ -92,7 +92,10 @@ public sealed class MonitorIdentity {
                 serialNumber);
         }
 
-        if (!string.IsNullOrWhiteSpace(monitor.DeviceId)) {
+        // Fallback enumeration can put the current GDI adapter name in DeviceId.
+        // It is a topology address, not a persistent identity for the physical screen.
+        if (!string.IsNullOrWhiteSpace(monitor.DeviceId) &&
+            !monitor.DeviceId.StartsWith(@"\\.\DISPLAY", StringComparison.OrdinalIgnoreCase)) {
             return new MonitorIdentity(
                 $"device-id:{Normalize(monitor.DeviceId)}",
                 "device-id",

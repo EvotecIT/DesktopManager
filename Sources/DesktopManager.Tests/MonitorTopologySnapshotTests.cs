@@ -36,6 +36,16 @@ public class MonitorTopologySnapshotTests {
     }
 
     [TestMethod]
+    public void MonitorIdentity_AdapterNameFallback_IsNotAPersistentDeviceId() {
+        Monitor monitor = CreateMonitor(2, 0, 0, 1920, 1080, deviceId: @"\\.\DISPLAY2");
+
+        MonitorIdentity identity = MonitorIdentity.FromMonitor(monitor);
+
+        Assert.AreEqual("device-name", identity.Source);
+        StringAssert.StartsWith(identity.StableKey, "device-name:");
+    }
+
+    [TestMethod]
     /// <summary>
     /// Topology uses visual rows and columns while skipping disconnected placeholder monitors.
     /// </summary>
