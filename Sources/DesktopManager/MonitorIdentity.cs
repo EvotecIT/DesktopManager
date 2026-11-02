@@ -118,7 +118,12 @@ public sealed class MonitorIdentity {
                 monitor.SerialNumber);
         }
 
-        MonitorPosition position = monitor.Position;
+        // Use the bounds captured with this snapshot; Position re-enumerates by DeviceId,
+        // which fails when a fallback GDI name is absent from a recovered enumeration.
+        RECT rect = monitor.Rect;
+        MonitorPosition position = rect.Right > rect.Left && rect.Bottom > rect.Top
+            ? new MonitorPosition(rect.Left, rect.Top, rect.Right, rect.Bottom)
+            : monitor.Position;
         return new MonitorIdentity(
             $"geometry:{position.Left},{position.Top},{position.Right},{position.Bottom}",
             "geometry",
