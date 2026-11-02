@@ -36,13 +36,13 @@ public class MonitorTopologySnapshotTests {
     }
 
     [TestMethod]
-    public void MonitorIdentity_AdapterNameFallback_IsNotAPersistentDeviceId() {
+    public void MonitorIdentity_GdiSourceNames_AreNotPersistentIdentities() {
         Monitor monitor = CreateMonitor(2, 0, 0, 1920, 1080, deviceId: @"\\.\DISPLAY2");
 
         MonitorIdentity identity = MonitorIdentity.FromMonitor(monitor);
 
-        Assert.AreEqual("device-name", identity.Source);
-        StringAssert.StartsWith(identity.StableKey, "device-name:");
+        Assert.AreEqual("geometry", identity.Source);
+        Assert.AreEqual("geometry:0,0,1920,1080", identity.StableKey);
     }
 
     [TestMethod]
