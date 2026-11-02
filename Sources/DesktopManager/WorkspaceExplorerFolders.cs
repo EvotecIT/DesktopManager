@@ -26,7 +26,8 @@ internal static class WorkspaceExplorerFolders {
                     Marshal.ThrowExceptionForHR(browser.GetHwnd(out IntPtr handle));
                     string? path = ReadCurrentFolder(window);
                     if (path != null && Path.IsPathRooted(path) && Directory.Exists(path)) { result[handle] = path; }
-                } catch (Exception ex) when (ex is COMException || ex is InvalidCastException) {
+                } catch (Exception ex) when (ex is COMException || ex is InvalidCastException ||
+                    ex is UnauthorizedAccessException || ex is NotImplementedException || ex is ArgumentException) {
                     // A shell window can disappear or navigate while it is being read.
                 } finally {
                     NativeComActivation.Release(window);

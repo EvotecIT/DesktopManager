@@ -37,7 +37,7 @@ public partial class MonitorService {
                     for (uint i = 0; i < count; i++) {
                         string deviceId = Execute(() => _desktopManager.GetMonitorDevicePathAt(i), nameof(IDesktopManager.GetMonitorDevicePathAt)) ?? string.Empty;
                         RECT bounds = string.IsNullOrWhiteSpace(deviceId) ? default :
-                            Execute(() => _desktopManager.GetMonitorBounds(deviceId), nameof(IDesktopManager.GetMonitorBounds));
+                            ReadWallpaperMonitorBounds(deviceId);
                         // Reserve exact/geometry matches before assigning anonymous RDS slots. COM and
                         // native monitor order can differ, so a later known slot must not be borrowed.
                         DisplayPathSnapshot? path = string.IsNullOrWhiteSpace(deviceId) ? null :
@@ -57,7 +57,9 @@ public partial class MonitorService {
                                 assignedSources.Add(path.AdapterDeviceName);
                             }
                         }
-                        snapshots.Add(CreateMonitorSnapshot(native, i, slot.DeviceId, path, path?.AdapterBounds ?? slot.Bounds));
+                        RECT bounds = path?.AdapterBounds ?? slot.Bounds;
+                        if (bounds.Right <= bounds.Left || bounds.Bottom <= bounds.Top) { continue; }
+                        snapshots.Add(CreateMonitorSnapshot(native, i, slot.DeviceId, path, bounds));
                     }
                     completed = true;
                     return snapshots.AsReadOnly();

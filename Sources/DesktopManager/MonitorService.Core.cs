@@ -97,9 +97,13 @@ public partial class MonitorService {
                     DeviceId = deviceId
                 };
                 if (!string.IsNullOrWhiteSpace(monitor.DeviceId)) {
+                    monitor.Rect = ReadWallpaperMonitorBounds(monitor.DeviceId);
+                    if (monitor.Rect.Right <= monitor.Rect.Left || monitor.Rect.Bottom <= monitor.Rect.Top) {
+                        list.Add(monitor);
+                        continue;
+                    }
                     monitor.WallpaperPosition = Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
                     monitor.Wallpaper = Execute(() => _desktopManager.GetWallpaper(monitor.DeviceId), nameof(IDesktopManager.GetWallpaper));
-                    monitor.Rect = Execute(() => _desktopManager.GetMonitorBounds(monitor.DeviceId), nameof(IDesktopManager.GetMonitorBounds));
                     if (!string.IsNullOrWhiteSpace(monitor.Wallpaper)) {
                         UpdateWallpaperCache(monitor.DeviceId, monitor.Wallpaper);
                     }
@@ -122,6 +126,13 @@ public partial class MonitorService {
         } catch (COMException) {
             return EnumerateMonitorsFallback();
         }
+    }
+
+    // Disconnected wallpaper slots can retain an ID while GetMonitorRECT returns E_FAIL.
+    // One unavailable slot must not discard identities for every connected display.
+    private RECT ReadWallpaperMonitorBounds(string deviceId) {
+        try { return Execute(() => _desktopManager.GetMonitorBounds(deviceId), nameof(IDesktopManager.GetMonitorBounds)); }
+        catch (DesktopManagerException) { return default; }
     }
 
     private List<Monitor> EnumerateMonitorsFallback() {
@@ -165,7 +176,7 @@ public partial class MonitorService {
     public List<Monitor> GetMonitorsConnected() {
         List<Monitor> list = new List<Monitor>();
         foreach (var monitor in GetMonitors()) {
-            if (monitor.DeviceId != "") {
+            if (monitor.IsConnected && !string.IsNullOrWhiteSpace(monitor.DeviceId)) {
                 list.Add(monitor);
             }
         }

@@ -1224,7 +1224,8 @@ internal sealed partial class UiAutomationControlService {
 #if NET8_0_OR_GREATER
         if (value == null || value is string text && string.IsNullOrWhiteSpace(text)) { return null; }
         int id = propertyFieldName switch { "NativeWindowHandleProperty" => 30020, "ProcessIdProperty" => 30002,
-            "AutomationIdProperty" => 30011, "NameProperty" => 30005, "ClassNameProperty" => 30012, _ => 0 };
+            "AutomationIdProperty" => 30011, "NameProperty" => 30005, "ClassNameProperty" => 30012,
+            "HasKeyboardFocusProperty" => 30008, _ => 0 };
         return id == 0 ? null : new UiaPropertyCondition(id, value);
 #else
         if (string.IsNullOrWhiteSpace(propertyFieldName) || value == null) {

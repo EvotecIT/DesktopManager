@@ -89,6 +89,13 @@ internal static class SmokeChecks {
                     Require(edit.Value == NativeWindowHarness.EditText, "UIA ValuePattern must read the known edit value.");
                     Require(!string.IsNullOrEmpty(edit.RuntimeId) && !string.IsNullOrEmpty(edit.ControlType), "UIA runtime identity and control type must survive native marshalling.");
                     Require(controls.Any(c => c.Control.Source == WindowControlSource.UiAutomation && c.Control.Handle == harness.ButtonHandle && c.Control.Text == NativeWindowHarness.ButtonText), "UIA must read the owned button name.");
+                    var nativeRoot = UiaElement.FromHandle(harness.Handle);
+                    var unfocused = nativeRoot.FindAll(UiaTreeScope.Descendants, new UiaPropertyCondition(30008, false));
+                    Require(unfocused.Count >= 2, "Native UIA boolean property conditions must find the nonactivated owned controls.");
+                    var nativeEdit = UiaElement.FromHandle(harness.EditHandle);
+                    var valuePattern = (IUIAutomationValuePattern)UiAutomationNative.GetPattern(nativeEdit.Native, 10002)!;
+                    valuePattern.SetValue("Owned BSTR value proof");
+                    Require(nativeEdit.Property(30045) as string == "Owned BSTR value proof", "Native UIA must round-trip a BSTR value on its owned edit.");
                     using var changed = new System.Threading.ManualResetEvent(false);
                     using (var subscription = new UiAutomationControlService().TrySubscribeToChanges(harness.Handle, () => changed.Set())) {
                         Require(subscription != null, "UIA must register generated event callbacks for the owned native controls.");

@@ -60,6 +60,25 @@ public class MonitorServiceTests {
     }
 
     [TestMethod]
+    public void GetMonitors_UnavailableSlot_PreservesOtherWallpaperIdentities() {
+        WithIsolatedWallpaperHistory(_ => {
+            var native = new FakeDesktopManager { DevicePathCount = 3 };
+            native.DevicePaths[0] = "connected-before";
+            native.DevicePaths[1] = "disconnected";
+            native.DevicePaths[2] = "connected-after";
+            native.ReadBounds = id => id == "disconnected"
+                ? throw new System.Runtime.InteropServices.COMException("Monitor is disconnected", unchecked((int)0x80004005))
+                : new RECT { Right = 100, Bottom = 100 };
+
+            var monitors = new MonitorService(native).GetMonitors();
+
+            CollectionAssert.AreEqual(new[] { "connected-before", "disconnected", "connected-after" }, monitors.Select(m => m.DeviceId).ToArray());
+            Assert.IsFalse(monitors[1].IsConnected);
+            CollectionAssert.AreEqual(new[] { "connected-before", "connected-after" }, native.GetWallpaperIds);
+        });
+    }
+
+    [TestMethod]
     /// <summary>
     /// Test for SetWallpaper_ForwardsCall.
     /// </summary>

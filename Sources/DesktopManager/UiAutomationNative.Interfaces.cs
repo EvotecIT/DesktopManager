@@ -157,7 +157,7 @@ internal partial interface IUIAutomationInvokePattern {
 [GeneratedComInterface(Options = ComInterfaceOptions.ComObjectWrapper)]
 [Guid("a94cd8b1-0844-4cd6-9d2d-640537ab39e9" )]
 internal partial interface IUIAutomationValuePattern {
-    void SetValue([MarshalAs(UnmanagedType.LPWStr)] string value);
+    void SetValue([MarshalAs(UnmanagedType.BStr)] string value);
 }
 
 [GeneratedComInterface(Options = ComInterfaceOptions.ComObjectWrapper)]

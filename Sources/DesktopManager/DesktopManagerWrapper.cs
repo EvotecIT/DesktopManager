@@ -22,7 +22,7 @@ internal static class DesktopManagerWrapper {
             object instance = NativeComActivation.CreateInstance(ClassId);
             try { return (IDesktopManager)instance; }
             catch { NativeComActivation.Release(instance); throw; }
-        });
+        }, System.Threading.LazyThreadSafetyMode.PublicationOnly);
 
         private T Call<T>(Func<IDesktopManager, T> operation) => WallpaperComApartment.Invoke(() => operation(_instance.Value));
 

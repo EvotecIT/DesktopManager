@@ -36,6 +36,7 @@ internal sealed class UiaPropertyCondition : UiaCondition {
     private static IUIAutomationCondition Create(int property, object value) {
         var variant = new UiaVariant();
         if (value is int number) { variant.Type = 3; variant.Data.Integer = number; }
+        else if (value is bool flag) { variant.Type = 11; variant.Data.Integer = flag ? -1 : 0; }
         else if (value is string text) { variant.Type = 8; variant.Data.Pointer = System.Runtime.InteropServices.Marshal.StringToBSTR(text); }
         else { throw new ArgumentException("Unsupported UIA search property value.", nameof(value)); }
         try { return UiAutomationNative.Client.CreatePropertyCondition(property, variant); }

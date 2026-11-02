@@ -35,7 +35,7 @@ public class MonitorServiceCleanupTests {
         /// <summary>
         /// Test for GetMonitorBounds.
         /// </summary>
-        public RECT GetMonitorBounds(string monitorId) => new();
+        public RECT GetMonitorBounds(string monitorId) => new() { Right = 100, Bottom = 100 };
         /// <summary>
         /// Test for SetBackgroundColor.
         /// </summary>

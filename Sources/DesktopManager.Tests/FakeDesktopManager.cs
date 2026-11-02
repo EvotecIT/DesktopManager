@@ -17,6 +17,7 @@ internal class FakeDesktopManager : IDesktopManager {
     public uint DevicePathCount = 1;
     public int MonitorEnumerationCalls;
     public Action? BeforeMonitorEnumeration = null;
+    public Func<string, RECT>? ReadBounds { get; set; }
 
     /// <summary>Value used when testing background color operations.</summary>
     public uint BackgroundColor;
@@ -75,7 +76,7 @@ internal class FakeDesktopManager : IDesktopManager {
     /// <summary>
     /// Test for GetMonitorBounds.
     /// </summary>
-    public RECT GetMonitorBounds(string monitorId) => new() { Left = 0, Top = 0, Right = 10, Bottom = 10 };
+    public RECT GetMonitorBounds(string monitorId) => ReadBounds != null ? ReadBounds(monitorId) : new() { Left = 0, Top = 0, Right = 10, Bottom = 10 };
 
     /// <summary>
     /// Test for SetBackgroundColor.

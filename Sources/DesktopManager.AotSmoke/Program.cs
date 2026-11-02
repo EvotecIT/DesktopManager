@@ -4,6 +4,16 @@ using System.Runtime.CompilerServices;
 namespace DesktopManager.AotSmoke;
 
 internal static class Program {
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", EntryPoint = "GetLongPathNameW", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetLongPathName(string path, System.Text.StringBuilder buffer, uint length);
+
+    private static string ExpandLongPath(string path) {
+        var buffer = new System.Text.StringBuilder(32768);
+        uint length = GetLongPathName(path, buffer, (uint)buffer.Capacity);
+        if (length == 0 || length >= buffer.Capacity) { throw new IOException("Cannot resolve the smoke fixture's temporary directory."); }
+        return buffer.ToString();
+    }
+
     private static readonly string[] Areas = ["monitors", "wallpaper", "slideshow", "checkpoint", "clipboard", "explorer", "explorer-fixture", "virtual-desktops", "audio", "uia"];
 
     // Each native boundary runs in a disposable process: even a stuck COM server cannot hang the runner.
@@ -33,7 +43,7 @@ internal static class Program {
         }
         int failures = 0, unavailable = 0, cleanupFailures = 0;
         foreach (string area in Areas) {
-            string fixtureDirectory = Path.Combine(Path.GetTempPath(), "DesktopManager.AotSmoke-" + Guid.NewGuid().ToString("N"));
+            string fixtureDirectory = Path.Combine(ExpandLongPath(Path.GetTempPath()), "DesktopManager.AotSmoke-" + Guid.NewGuid().ToString("N"));
             using var worker = new Process {
                 StartInfo = new ProcessStartInfo(Environment.ProcessPath!) {
                     UseShellExecute = false,

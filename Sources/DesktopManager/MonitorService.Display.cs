@@ -497,7 +497,9 @@ public partial class MonitorService {
     /// <param name="options">Optional slideshow options.</param>
     /// <param name="slideshowTick">Optional slideshow tick interval in milliseconds.</param>
     public void StartWallpaperSlideshow(IEnumerable<string> wallpaperPaths, DesktopSlideshowOptions? options, uint? slideshowTick) {
-        DesktopManagerWrapper.Invoke(_desktopManager, () => StartWallpaperSlideshowCore(wallpaperPaths, options, slideshowTick));
+        if (wallpaperPaths == null) { throw new ArgumentNullException(nameof(wallpaperPaths)); }
+        string[] paths = wallpaperPaths.ToArray();
+        DesktopManagerWrapper.Invoke(_desktopManager, () => StartWallpaperSlideshowCore(paths, options, slideshowTick));
     }
 
     private void StartWallpaperSlideshowCore(IEnumerable<string> wallpaperPaths, DesktopSlideshowOptions? options, uint? slideshowTick) {

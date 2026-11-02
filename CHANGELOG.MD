@@ -6,6 +6,7 @@
 - Capture clipboard snapshots through Win32 data handles, and capture Explorer folders through typed Shell views without late-bound automation.
 - Use generated COM for the gated experimental virtual desktop interfaces and the UI Automation interfaces used by control discovery, patterns, text ranges and event subscriptions. The older targets retain their existing interop paths.
 - Add a Windows Native AOT smoke consumer that reads desktop state and exercises owned controls without changing wallpaper, clipboard data, audio defaults or user windows.
+- Preserve connected monitor identities when a disconnected wallpaper slot cannot return its bounds; omit unavailable geometry from connected snapshots.
 
 ## 4.6.1 - 2026.10.24
 
