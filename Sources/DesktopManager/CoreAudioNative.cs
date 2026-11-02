@@ -1,5 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices.Marshalling;
+#endif
 
 namespace DesktopManager;
 
@@ -23,10 +26,18 @@ internal interface IMMDeviceEnumerator {
     int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string id, out IMMDevice device);
 
     [PreserveSig]
+#if NET8_0_OR_GREATER
+    int RegisterEndpointNotificationCallback(IntPtr client);
+#else
     int RegisterEndpointNotificationCallback(IMMNotificationClient client);
+#endif
 
     [PreserveSig]
+#if NET8_0_OR_GREATER
+    int UnregisterEndpointNotificationCallback(IntPtr client);
+#else
     int UnregisterEndpointNotificationCallback(IMMNotificationClient client);
+#endif
 }
 
 [ComImport]
@@ -119,10 +130,14 @@ internal interface IAudioEndpointVolume {
     int GetVolumeRange(out float minimumDb, out float maximumDb, out float incrementDb);
 }
 
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
 [ComVisible(true)]
-[Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMNotificationClient {
+#endif
+[Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0")]
+internal partial interface IMMNotificationClient {
     [PreserveSig]
     int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)] string deviceId, AudioEndpointState newState);
 
@@ -145,12 +160,21 @@ internal struct PropertyKey {
     public uint PropertyId;
 }
 
-[StructLayout(LayoutKind.Explicit, Size = 16)]
+[StructLayout(LayoutKind.Explicit)]
 internal struct PropVariant : IDisposable {
     [FieldOffset(0)]
     private ushort _valueType;
     [FieldOffset(8)]
     private IntPtr _pointerValue;
+    // The native union includes counted arrays, including pointer alignment on x64.
+    [FieldOffset(8)]
+    private CountedArray _countedArray;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CountedArray {
+        internal uint Count;
+        internal IntPtr Values;
+    }
 
     public string? GetString() {
         return _valueType == 31 && _pointerValue != IntPtr.Zero

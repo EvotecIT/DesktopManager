@@ -2,25 +2,43 @@ using System;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices.Marshalling;
+#endif
 
 namespace DesktopManager;
 
 /// <summary>
 /// Observes Core Audio endpoint arrival, removal, state, default, and property changes.
 /// </summary>
+#if NET8_0_OR_GREATER
+[GeneratedComClass]
+#else
 [ComVisible(true)]
 [ClassInterface(ClassInterfaceType.None)]
+#endif
 [SupportedOSPlatform("windows")]
-public sealed class AudioEndpointWatcher : IMMNotificationClient, IDisposable {
+public sealed partial class AudioEndpointWatcher : IMMNotificationClient, IDisposable {
     private readonly IMMDeviceEnumerator _enumerator;
+    private readonly IntPtr _callbackReference;
     private int _disposed;
 
     /// <summary>Initializes and registers a Core Audio notification watcher.</summary>
     public AudioEndpointWatcher() {
         _enumerator = CoreAudioNative.CreateEnumerator();
         try {
+            // Core Audio borrows this interface without AddRef. Keep a COM reference (and
+            // therefore its managed target) alive until Unregister has drained callbacks.
+            _callbackReference = CreateCallbackReference();
+#if NET8_0_OR_GREATER
+            Marshal.ThrowExceptionForHR(_enumerator.RegisterEndpointNotificationCallback(_callbackReference));
+#else
             Marshal.ThrowExceptionForHR(_enumerator.RegisterEndpointNotificationCallback(this));
+#endif
         } catch {
+            if (_callbackReference != IntPtr.Zero) {
+                Marshal.Release(_callbackReference);
+            }
             CoreAudioNative.Release(_enumerator);
             throw;
         }
@@ -36,12 +54,26 @@ public sealed class AudioEndpointWatcher : IMMNotificationClient, IDisposable {
         }
 
         try {
+#if NET8_0_OR_GREATER
+            Marshal.ThrowExceptionForHR(_enumerator.UnregisterEndpointNotificationCallback(_callbackReference));
+#else
             Marshal.ThrowExceptionForHR(_enumerator.UnregisterEndpointNotificationCallback(this));
+#endif
         } catch {
             Volatile.Write(ref _disposed, 0);
             throw;
         }
+        Marshal.Release(_callbackReference);
         CoreAudioNative.Release(_enumerator);
+        GC.KeepAlive(this);
+    }
+
+    private IntPtr CreateCallbackReference() {
+#if NET8_0_OR_GREATER
+        unsafe { return (IntPtr)ComInterfaceMarshaller<IMMNotificationClient>.ConvertToUnmanaged(this); }
+#else
+        return Marshal.GetIUnknownForObject(this);
+#endif
     }
 
     int IMMNotificationClient.OnDeviceStateChanged(string deviceId, AudioEndpointState newState) {

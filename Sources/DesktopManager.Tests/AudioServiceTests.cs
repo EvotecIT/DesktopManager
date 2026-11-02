@@ -72,11 +72,8 @@ public class AudioServiceTests {
     /// <summary>
     /// Protects the native PROPVARIANT layout used to read Core Audio endpoint friendly names.
     /// </summary>
-    public void PropVariant_CoreAudioStringLayout_IsWritableAndSixteenBytes() {
-        Type valueType = typeof(PropVariant);
-
-        Assert.AreEqual(16, valueType.StructLayoutAttribute?.Size);
-        Assert.IsFalse(valueType.GetField("_valueType", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.IsInitOnly);
-        Assert.IsFalse(valueType.GetField("_pointerValue", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.IsInitOnly);
+    public void PropVariant_CoreAudioNativeLayout_MatchesWindowsAbi() {
+        Assert.AreEqual(IntPtr.Size == 8 ? 24 : 16, System.Runtime.InteropServices.Marshal.SizeOf<PropVariant>());
+        Assert.AreEqual(new IntPtr(8), System.Runtime.InteropServices.Marshal.OffsetOf<PropVariant>("_pointerValue"));
     }
 }
