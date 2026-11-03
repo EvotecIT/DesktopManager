@@ -57,7 +57,8 @@
       <Output TaskParameter="TargetOutputs" ItemName="_WindowHelperTarget" />
     </MSBuild>
     <ItemGroup>
-      <HelperFiles Include="%(_WindowHelperTarget.RootDir)%(_WindowHelperTarget.Directory)**/*.*" />
+      <HelperFiles Include="%(_WindowHelperTarget.RootDir)%(_WindowHelperTarget.Directory)**/*.*"
+                   Exclude="$(TargetDir)WindowTextHelper32/**/*.*" />
       <FileWrites Include="@(HelperFiles->'$(OutDir)WindowTextHelper32\%(RecursiveDir)%(Filename)%(Extension)')" />
     </ItemGroup>
     <Copy SourceFiles="@(HelperFiles)" DestinationFiles="@(HelperFiles->'$(OutDir)WindowTextHelper32\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
