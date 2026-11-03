@@ -131,10 +131,12 @@ public sealed class MonitorSnapshotTests {
     }
 
     [TestMethod]
-    [DataRow(false)]
-    [DataRow(true)]
-    public void GetMonitorSnapshots_EmptyOrUnavailableCom_UsesNativeMonitorOrderAndRetainsMissingPaths(bool failCom) {
-        var desktop = new ReadOnlyDesktopManager { Paths = Array.Empty<string>(), FailEnumeration = failCom };
+    [DataRow(false, 0)]
+    [DataRow(true, 0)]
+    [DataRow(false, unchecked((int)0x80004005))]
+    [DataRow(false, unchecked((int)0x80010108))]
+    public void GetMonitorSnapshots_EmptyOrUnavailableCom_UsesNativeMonitorOrderAndRetainsMissingPaths(bool failCom, int boundsError) {
+        var desktop = new ReadOnlyDesktopManager { Paths = boundsError == 0 ? Array.Empty<string>() : new[] { "unavailable-wallpaper-slot" }, FailEnumeration = failCom, BoundsError = boundsError };
         var native = new SnapshotNative();
         var second = Path("", @"\\.\DISPLAY2", -2560, 0, 0, 1440);
         second.AdapterMonitorIndex = 1;
@@ -313,11 +315,13 @@ public sealed class MonitorSnapshotTests {
         internal string[] Paths = Array.Empty<string>();
         internal bool FailEnumeration;
         internal int BoundsCalls;
+        internal int BoundsError;
         public uint GetMonitorDevicePathCount() => FailEnumeration ? throw new COMException("No wallpaper service") : (uint)Paths.Length;
         public string GetMonitorDevicePathAt(uint monitorIndex) => Paths[monitorIndex];
         public RECT GetMonitorBounds(string monitorId) {
             Assert.IsFalse(string.IsNullOrWhiteSpace(monitorId));
             BoundsCalls++;
+            if (BoundsError != 0) { throw new COMException("Unavailable bounds", BoundsError); }
             return new RECT { Right = 10, Bottom = 10 };
         }
         public void SetWallpaper(string monitorId, string wallpaper) => throw new InvalidOperationException();

@@ -61,8 +61,10 @@ public partial class MonitorService {
                         if (bounds.Right <= bounds.Left || bounds.Bottom <= bounds.Top) { continue; }
                         snapshots.Add(CreateMonitorSnapshot(native, i, slot.DeviceId, path, bounds));
                     }
-                    completed = true;
-                    return snapshots.AsReadOnly();
+                    if (snapshots.Count > 0) {
+                        completed = true;
+                        return snapshots.AsReadOnly();
+                    }
                 }
             } catch (DesktopManagerException) {
                 // Session hosts can expose display geometry without the wallpaper COM service.

@@ -88,6 +88,8 @@ public partial class MonitorService {
         try {
             List<Monitor> list = new List<Monitor>();
             List<DisplayPathSnapshot> displayPaths = EnumerateDisplayPaths();
+            bool hasUsableBounds = false;
+            bool hasUnavailableBounds = false;
 
             var count = Execute(() => _desktopManager.GetMonitorDevicePathCount(), nameof(IDesktopManager.GetMonitorDevicePathCount));
             for (uint i = 0; i < count; i++) {
@@ -99,9 +101,11 @@ public partial class MonitorService {
                 if (!string.IsNullOrWhiteSpace(monitor.DeviceId)) {
                     monitor.Rect = ReadWallpaperMonitorBounds(monitor.DeviceId);
                     if (monitor.Rect.Right <= monitor.Rect.Left || monitor.Rect.Bottom <= monitor.Rect.Top) {
+                        hasUnavailableBounds = true;
                         list.Add(monitor);
                         continue;
                     }
+                    hasUsableBounds = true;
                     monitor.WallpaperPosition = Execute(() => _desktopManager.GetPosition(), nameof(IDesktopManager.GetPosition));
                     monitor.Wallpaper = Execute(() => _desktopManager.GetWallpaper(monitor.DeviceId), nameof(IDesktopManager.GetWallpaper));
                     if (!string.IsNullOrWhiteSpace(monitor.Wallpaper)) {
@@ -120,7 +124,7 @@ public partial class MonitorService {
                 list.Add(monitor);
             }
 
-            return list;
+            return hasUnavailableBounds && !hasUsableBounds ? EnumerateMonitorsFallback() : list;
         } catch (DesktopManagerException) {
             return EnumerateMonitorsFallback();
         } catch (COMException) {
@@ -132,7 +136,7 @@ public partial class MonitorService {
     // One unavailable slot must not discard identities for every connected display.
     private RECT ReadWallpaperMonitorBounds(string deviceId) {
         try { return Execute(() => _desktopManager.GetMonitorBounds(deviceId), nameof(IDesktopManager.GetMonitorBounds)); }
-        catch (DesktopManagerException) { return default; }
+        catch (DesktopManagerException ex) when (ex.InnerException is COMException com && com.HResult == unchecked((int)0x80004005)) { return default; }
     }
 
     private List<Monitor> EnumerateMonitorsFallback() {
