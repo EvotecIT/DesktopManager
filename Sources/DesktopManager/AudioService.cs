@@ -11,7 +11,7 @@ namespace DesktopManager;
 /// Service to manage system audio devices.
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-public class AudioService {
+public partial class AudioService {
     private readonly IPolicyConfigClient _policy;
 
     /// <summary>
@@ -120,6 +120,17 @@ public class AudioService {
     [SupportedOSPlatform("windows")]
     public AudioEndpointWatcher CreateWatcher() {
         return new AudioEndpointWatcher();
+    }
+
+    /// <summary>Opens a reusable volume and meter session on the current default endpoint.</summary>
+    /// <param name="flow">Render or capture. <see cref="AudioDataFlow.All"/> is not supported.</param>
+    /// <param name="role">The default endpoint role to resolve.</param>
+    /// <returns>A session pinned to this endpoint until disposed, even if the default changes.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The direction or role is invalid.</exception>
+    /// <exception cref="COMException">The default endpoint or its volume control cannot be opened.</exception>
+    [SupportedOSPlatform("windows")]
+    public AudioEndpointSession OpenDefaultEndpoint(AudioDataFlow flow, AudioRole role) {
+        return new AudioEndpointSession(AudioEndpointNativeBackend.Open(flow, role));
     }
 
     internal static NativeAudioDataFlow ToNativeFlow(AudioDataFlow dataFlow) {

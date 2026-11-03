@@ -736,11 +736,46 @@ DesktopManager ships as a .NET library targeting `net472`, `netstandard2.0`, `ne
 - `ScreenshotService` to capture the desktop or custom regions.
 - `WorkstationProfileService` and `WorkstationProfileStore` for cohesive named workstation state.
 - `AudioService` and `AudioEndpointWatcher` for Core Audio endpoints, default roles, volume, mute, and changes.
+- `AudioSessionService` for per-application volume, mute and peak levels, and `AudioService.OpenDefaultEndpoint` for a disposable endpoint level session.
+- `MediaSessionService` for the current Windows media session, encoded artwork and transport controls; .NET 8 and .NET 10 Windows targets support this capability.
+- `DeviceUsageService` for the microphone and camera applications recorded by the Windows privacy indicator.
 - `SystemPowerService`, `DesktopSessionService`, and `DesktopSessionWatcher` for power and session state/actions.
 - `PersonalizationService`, `PersonalizationStateStore`, and `TaskbarService` for reversible user settings and taskbars.
 - `RadioService` for supported per-radio operations and `ExperimentalAirplaneModeService` for the separately acknowledged undocumented global switch.
 - `WifiProfileService` for saved-profile inventory and exact profile connection without nearby-network scanning.
 - `VirtualDesktopService` for the supported window-to-desktop operations.
+
+### Audio and current media
+
+Audio volumes use percentages from 0 through 100; signal peaks use 0 through 1.
+Application readings group sessions by process name, retaining a representative
+process ID and a key for subsequent volume or mute changes. Dispose the service
+to release its cached session references.
+
+```csharp
+using var mixer = new AudioSessionService();
+foreach (AudioApplicationInfo app in mixer.GetApplications()) {
+    Console.WriteLine($"{app.Name}: {app.VolumePercent:0}% (peak {app.PeakValue:0.00})");
+}
+
+using var media = new MediaSessionService();
+MediaSessionResult current = await media.GetCurrentAsync();
+if (current.Succeeded && current.Session is { } track) {
+    Console.WriteLine($"{track.Artist} — {track.Title}");
+}
+```
+
+`MediaSessionService.Changed` signals that the current metadata should be read
+again. Artwork is encoded image data, independent of any UI framework. Media
+session operations report `Unsupported` on the older library targets and report
+success with no session when Windows has no current source. Transport methods
+request play/pause, next or previous only when called explicitly.
+
+`AudioService.OpenDefaultEndpoint` retains the endpoint selected for a flow and
+role when opened; reopen it after a default-device change. `GetState()` reads
+volume, mute and the optional meter. `DeviceUsageService` reads Windows' current
+privacy-indicator records without changing permissions; these records can lag
+actual microphone or camera activity.
 
 ### Input, waits, and provider health
 
