@@ -23,7 +23,7 @@ Use `--framework net8.0-windows10.0.19041.0` for .NET 8. Ordinary shared NuGet
 caches are sufficient for this project reference; local candidate packages
 require an isolated cache.
 
-The ten checks cover:
+The checks cover:
 
 - Monitor bounds/DPI, wallpaper metadata, slideshow reads, and checkpoint
   capture/disposal. Checkpoints are never restored.
@@ -35,6 +35,10 @@ The ten checks cover:
   PIDL must resolve to its owned temporary directory. No Explorer window is opened.
 - Experimental desktop enumeration, Core Audio endpoints/default roles, and
   generated audio callback registration/disposal. No desktop or audio setting changes.
+- Application audio sessions and cached peaks, default output/microphone level
+  snapshots, native IAudioClient activation/release without stream initialization,
+  current media metadata/artwork, and microphone/camera usage records.
+  No volume, mute, playback or privacy settings are changed.
 - UIA discovery, names, values and runtime IDs for an offscreen, nonactivating
   EDIT/BUTTON harness. Only the owned EDIT value changes to verify generated
   event delivery, followed by subscription disposal. Win32 fallback cannot

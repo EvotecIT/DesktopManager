@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add shared services for per-application audio volume, mute and peaks; live endpoint levels; current media metadata, artwork and transport; and microphone/camera usage records. Modern targets retain trimming and Native AOT support, while older targets report unsupported media-session capability.
+
 - Make Core Audio work in trimmed and Native AOT applications. On .NET 8 and later, `AudioService`, `PolicyConfigClient`, `AudioEndpointWatcher` and `VirtualDesktopService` use source-generated COM; net472 and netstandard2.0 keep built-in COM.
 - Mark the .NET 8 and .NET 10 targets as AOT compatible. Persisted JSON state uses source-generated metadata and native structure marshalling no longer needs runtime code generation.
 - Support wallpaper and monitor enumeration, slideshow Shell items and wallpaper checkpoints in Native AOT applications. Native wallpaper calls run in one COM apartment.

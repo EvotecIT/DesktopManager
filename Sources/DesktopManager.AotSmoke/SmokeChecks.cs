@@ -78,6 +78,9 @@ internal static class SmokeChecks {
                 Console.WriteLine("Core Audio accepted generated callback registration and disposal; no endpoint changes.");
                 if (endpoints.Count == 0 || !endpoints.Any(e => e.IsDefault)) { throw new UnavailableException("Audio enumeration completed; no default endpoint available to qualify default-role reads."); }
                 break;
+            case "audio-media":
+                AudioMediaChecks.Run();
+                break;
             case "uia":
                 using (var harness = new NativeWindowHarness()) {
                     var controls = new DesktopAutomationService().GetControls(

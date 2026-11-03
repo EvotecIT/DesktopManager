@@ -51,8 +51,15 @@
   </Target>
 
   <Target Name="CopyWindowHelperDependencies" AfterTargets="Build">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\WindowTextHelper32\WindowTextHelper32.csproj"
+             Targets="GetTargetPath"
+             Properties="Configuration=$(Configuration);TargetFramework=net472">
+      <Output TaskParameter="TargetOutputs" ItemName="_WindowHelperTarget" />
+    </MSBuild>
     <ItemGroup>
-      <HelperFiles Include="$(MSBuildProjectDirectory)\..\WindowTextHelper32\bin\$(Configuration)\net472\**\*.*" />
+      <HelperFiles Include="%(_WindowHelperTarget.RootDir)%(_WindowHelperTarget.Directory)**/*.*"
+                   Exclude="$(TargetDir)WindowTextHelper32/**/*.*" />
+      <FileWrites Include="@(HelperFiles->'$(OutDir)WindowTextHelper32\%(RecursiveDir)%(Filename)%(Extension)')" />
     </ItemGroup>
     <Copy SourceFiles="@(HelperFiles)" DestinationFiles="@(HelperFiles->'$(OutDir)WindowTextHelper32\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
