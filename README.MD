@@ -7,6 +7,11 @@ and session diagnostics on Windows, macOS, GNOME, and KDE Plasma. Each adapter r
 the window automation, tray app, CLI, and existing PowerShell commands retain their Windows scope.
 See [Portable desktop integration](Docs/Portable.Desktop.md) for usage and platform limits.
 
+The .NET 8 and .NET 10 library targets support trimming and Native AOT, including Core Audio,
+wallpaper and monitor enumeration, Explorer folder capture, virtual desktops and UI Automation.
+The .NET Framework and .NET Standard targets retain their legacy interop paths.
+See [Native AOT qualification](Sources/DesktopManager.AotSmoke/README.md) for the contributor smoke consumer.
+
 [![nuget downloads](https://img.shields.io/nuget/dt/DesktopManager?label=nuget%20downloads)](https://www.nuget.org/packages/DesktopManager)
 [![nuget version](https://img.shields.io/nuget/v/DesktopManager)](https://www.nuget.org/packages/DesktopManager)
 

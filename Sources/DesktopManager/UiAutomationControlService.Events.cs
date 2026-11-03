@@ -37,7 +37,10 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        Type? automationType = _automationClientAssembly?.GetType("System.Windows.Automation.Automation", throwOnError: false);
+#if NET8_0_OR_GREATER
+        return SubscribeNative((UiaElement)rootElement, signal);
+#else
+        var automationType = ResolveAutomationType("System.Windows.Automation.Automation", throwOnError: false);
         if (automationType == null) {
             return null;
         }
@@ -58,8 +61,10 @@ internal sealed partial class UiAutomationControlService {
         }
 
         return new UiAutomationChangeSubscription(cleanup, signalGuard);
+#endif
     }
 
+#if !NET8_0_OR_GREATER
     private void TryAddTextChangedSubscription(
         Type automationType,
         object rootElement,
@@ -67,7 +72,7 @@ internal sealed partial class UiAutomationControlService {
         Action signal,
         List<Action> cleanup) {
         try {
-            Type? textPatternType = _automationClientAssembly?.GetType("System.Windows.Automation.TextPattern", throwOnError: false);
+            var textPatternType = ResolveAutomationType("System.Windows.Automation.TextPattern", throwOnError: false);
             object? textChangedEvent = textPatternType?.GetField("TextChangedEvent", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
             MethodInfo? add = automationType.GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .FirstOrDefault(method => method.Name == "AddAutomationEventHandler" && method.GetParameters().Length == 4);
@@ -155,13 +160,13 @@ internal sealed partial class UiAutomationControlService {
         AddAutomationProperty(properties, propertyType, _automationElementType, "HasKeyboardFocusProperty");
         AddAutomationProperty(properties, propertyType, _automationElementType, "IsEnabledProperty");
         AddAutomationProperty(properties, propertyType, _automationElementType, "IsOffscreenProperty");
-        AddAutomationProperty(properties, propertyType, _automationClientAssembly?.GetType("System.Windows.Automation.ValuePattern", false), "ValueProperty");
-        AddAutomationProperty(properties, propertyType, _automationClientAssembly?.GetType("System.Windows.Automation.RangeValuePattern", false), "ValueProperty");
-        AddAutomationProperty(properties, propertyType, _automationClientAssembly?.GetType("System.Windows.Automation.TogglePattern", false), "ToggleStateProperty");
-        AddAutomationProperty(properties, propertyType, _automationClientAssembly?.GetType("System.Windows.Automation.ExpandCollapsePattern", false), "ExpandCollapseStateProperty");
-        AddAutomationProperty(properties, propertyType, _automationClientAssembly?.GetType("System.Windows.Automation.SelectionItemPattern", false), "IsSelectedProperty");
-        AddAutomationProperty(properties, propertyType, _automationClientAssembly?.GetType("System.Windows.Automation.ScrollPattern", false), "HorizontalScrollPercentProperty");
-        AddAutomationProperty(properties, propertyType, _automationClientAssembly?.GetType("System.Windows.Automation.ScrollPattern", false), "VerticalScrollPercentProperty");
+        AddAutomationProperty(properties, propertyType, ResolveAutomationType("System.Windows.Automation.ValuePattern", false), "ValueProperty");
+        AddAutomationProperty(properties, propertyType, ResolveAutomationType("System.Windows.Automation.RangeValuePattern", false), "ValueProperty");
+        AddAutomationProperty(properties, propertyType, ResolveAutomationType("System.Windows.Automation.TogglePattern", false), "ToggleStateProperty");
+        AddAutomationProperty(properties, propertyType, ResolveAutomationType("System.Windows.Automation.ExpandCollapsePattern", false), "ExpandCollapseStateProperty");
+        AddAutomationProperty(properties, propertyType, ResolveAutomationType("System.Windows.Automation.SelectionItemPattern", false), "IsSelectedProperty");
+        AddAutomationProperty(properties, propertyType, ResolveAutomationType("System.Windows.Automation.ScrollPattern", false), "HorizontalScrollPercentProperty");
+        AddAutomationProperty(properties, propertyType, ResolveAutomationType("System.Windows.Automation.ScrollPattern", false), "VerticalScrollPercentProperty");
         return properties;
     }
 
@@ -180,6 +185,8 @@ internal sealed partial class UiAutomationControlService {
         MethodCallExpression body = Expression.Call(Expression.Constant(signal), typeof(Action).GetMethod(nameof(Action.Invoke))!);
         return Expression.Lambda(delegateType, body, parameters).Compile();
     }
+
+#endif
 
     internal static IDisposable CreateGuardedEventSignal(Action signal, out Action guardedSignal) {
         var guard = new UiAutomationEventSignal(signal);

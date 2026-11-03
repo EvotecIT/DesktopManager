@@ -39,7 +39,7 @@ public sealed partial class AudioEndpointWatcher : IMMNotificationClient, IDispo
             if (_callbackReference != IntPtr.Zero) {
                 Marshal.Release(_callbackReference);
             }
-            CoreAudioNative.Release(_enumerator);
+            NativeComActivation.Release(_enumerator);
             throw;
         }
     }
@@ -64,7 +64,7 @@ public sealed partial class AudioEndpointWatcher : IMMNotificationClient, IDispo
             throw;
         }
         Marshal.Release(_callbackReference);
-        CoreAudioNative.Release(_enumerator);
+        NativeComActivation.Release(_enumerator);
         GC.KeepAlive(this);
     }
 

@@ -6,16 +6,23 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace DesktopManager;
 
+// Core Audio interfaces use source-generated COM on .NET 8+ so Native AOT and trimmed
+// consumers can activate them. net472 and netstandard2.0 keep built-in COM interop.
+
 internal enum NativeAudioDataFlow {
     Render = 0,
     Capture = 1,
     All = 2
 }
 
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
 [ComImport]
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDeviceEnumerator {
+#endif
+[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
+internal partial interface IMMDeviceEnumerator {
     [PreserveSig]
     int EnumAudioEndpoints(NativeAudioDataFlow dataFlow, AudioEndpointState stateMask, out IMMDeviceCollection devices);
 
@@ -40,10 +47,14 @@ internal interface IMMDeviceEnumerator {
 #endif
 }
 
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
 [ComImport]
-[Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDeviceCollection {
+#endif
+[Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
+internal partial interface IMMDeviceCollection {
     [PreserveSig]
     int GetCount(out uint count);
 
@@ -51,12 +62,17 @@ internal interface IMMDeviceCollection {
     int Item(uint index, out IMMDevice device);
 }
 
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
 [ComImport]
-[Guid("D666063F-1587-4E43-81F1-B948E807363F")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDevice {
+#endif
+[Guid("D666063F-1587-4E43-81F1-B948E807363F")]
+internal partial interface IMMDevice {
+    /// <remarks>Only <see cref="IAudioEndpointVolume"/> is activated, so the result is typed to it.</remarks>
     [PreserveSig]
-    int Activate(ref Guid interfaceId, uint classContext, IntPtr activationParameters, [MarshalAs(UnmanagedType.IUnknown)] out object instance);
+    int Activate(ref Guid interfaceId, uint classContext, IntPtr activationParameters, out IAudioEndpointVolume instance);
 
     [PreserveSig]
     int OpenPropertyStore(uint accessMode, out IPropertyStore properties);
@@ -68,10 +84,14 @@ internal interface IMMDevice {
     int GetState(out AudioEndpointState state);
 }
 
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
 [ComImport]
-[Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IPropertyStore {
+#endif
+[Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
+internal partial interface IPropertyStore {
     [PreserveSig]
     int GetCount(out uint propertyCount);
 
@@ -88,10 +108,14 @@ internal interface IPropertyStore {
     int Commit();
 }
 
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
 [ComImport]
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IAudioEndpointVolume {
+#endif
+[Guid("5CDF2C82-841E-4546-9722-0CF74078229A")]
+internal partial interface IAudioEndpointVolume {
     [PreserveSig]
     int RegisterControlChangeNotify(IntPtr notificationClient);
     [PreserveSig]
@@ -166,7 +190,8 @@ internal struct PropVariant : IDisposable {
     private ushort _valueType;
     [FieldOffset(8)]
     private IntPtr _pointerValue;
-    // The native union includes counted arrays, including pointer alignment on x64.
+    // PROPVARIANT's union includes counted arrays: 8 bytes on x86, 16 on x64/ARM64.
+    // Including that member gives the complete native output buffer, even for a string read.
     [FieldOffset(8)]
     private CountedArray _countedArray;
 
@@ -194,21 +219,14 @@ internal static class CoreAudioNative {
     internal const uint ClassContextAll = 23;
     internal const uint StorageModeRead = 0;
     internal static readonly Guid AudioEndpointVolumeInterfaceId = new("5CDF2C82-841E-4546-9722-0CF74078229A");
+    internal static readonly Guid DeviceEnumeratorClassId = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
+    internal static readonly Guid PolicyConfigClassId = new("870af99c-171d-4f9e-af0d-e63df40c2bc9");
     internal static readonly PropertyKey DeviceFriendlyName = new() {
         FormatId = new Guid("A45C254E-DF1C-4EFD-8020-67D146A850E0"),
         PropertyId = 14
     };
 
     internal static IMMDeviceEnumerator CreateEnumerator() {
-        Type enumeratorType = Type.GetTypeFromCLSID(new Guid("BCDE0395-E52F-467C-8E3D-C4579291692E"), true)
-            ?? throw new InvalidOperationException("Windows did not expose the Core Audio device enumerator.");
-        return (IMMDeviceEnumerator)(Activator.CreateInstance(enumeratorType)
-            ?? throw new InvalidOperationException("Windows did not create the Core Audio device enumerator."));
-    }
-
-    internal static void Release(object? value) {
-        if (value != null && Marshal.IsComObject(value)) {
-            Marshal.ReleaseComObject(value);
-        }
+        return (IMMDeviceEnumerator)NativeComActivation.CreateInstance(DeviceEnumeratorClassId);
     }
 }

@@ -69,6 +69,10 @@ jobs:
       - name: Build solution
         run: dotnet build Sources/DesktopManager.sln --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
+      - name: Compile the Native AOT smoke consumer
+        if: matrix.label == 'net10'
+        run: dotnet publish Sources/DesktopManager.AotSmoke/DesktopManager.AotSmoke.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework ${{ matrix.framework }} --output artifacts/aot-smoke
+
       - name: Run tests
         if: matrix.label != 'net8'
         run: dotnet test Sources/DesktopManager.Tests/DesktopManager.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --framework ${{ matrix.framework }} --no-build --verbosity normal --logger trx

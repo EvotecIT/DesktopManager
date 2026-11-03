@@ -93,7 +93,7 @@ internal static class DevicePropertyReader {
             return Array.Empty<DesktopDevicePropertyInfo>();
         }
 
-        int keySize = Marshal.SizeOf(typeof(DeviceNativeMethods.DevPropKey));
+        int keySize = Marshal.SizeOf<DeviceNativeMethods.DevPropKey>();
         IntPtr keys = Marshal.AllocHGlobal(checked((int)requiredCount * keySize));
         try {
             if (!DeviceNativeMethods.SetupDiGetDevicePropertyKeys(
@@ -108,9 +108,7 @@ internal static class DevicePropertyReader {
             var properties = new List<DesktopDevicePropertyInfo>(checked((int)returnedCount));
             for (int index = 0; index < returnedCount; index++) {
                 IntPtr address = IntPtr.Add(keys, index * keySize);
-                var key = (DeviceNativeMethods.DevPropKey)Marshal.PtrToStructure(
-                    address,
-                    typeof(DeviceNativeMethods.DevPropKey))!;
+                var key = Marshal.PtrToStructure<DeviceNativeMethods.DevPropKey>(address);
                 if (TryGet(deviceInfoSet, ref deviceInfoData, key, out uint propertyType, out object? value)) {
                     properties.Add(new DesktopDevicePropertyInfo {
                         Key = key.ToString(),
@@ -189,7 +187,7 @@ internal static class DevicePropertyReader {
             case TypeDouble:
                 return BitConverter.ToDouble(ReadBytes(buffer, size), 0);
             case TypeGuid:
-                return (Guid)Marshal.PtrToStructure(buffer, typeof(Guid))!;
+                return Marshal.PtrToStructure<Guid>(buffer);
             case TypeFileTime:
                 long fileTime = Marshal.ReadInt64(buffer);
                 return fileTime <= 0 ? null : DateTime.FromFileTimeUtc(fileTime);

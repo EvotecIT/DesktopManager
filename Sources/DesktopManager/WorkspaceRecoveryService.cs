@@ -49,13 +49,13 @@ public sealed partial class WorkspaceRecoveryService {
     /// <summary>Writes an existing layout atomically, without capturing or changing the desktop.</summary>
     public static void Write(string path, WindowLayout layout) {
         Validate(layout);
-        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(layout, new JsonSerializerOptions { WriteIndented = true }));
+        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(layout, DesktopManagerJsonContext.Indented.WindowLayout));
     }
 
     /// <summary>Reads a layout without changing windows. Legacy layouts need no migration.</summary>
     public static WindowLayout Read(string path, bool validate = false) {
         WindowLayout? layout;
-        try { layout = JsonSerializer.Deserialize<WindowLayout>(File.ReadAllText(path)); }
+        try { layout = JsonSerializer.Deserialize(File.ReadAllText(path), DesktopManagerJsonContext.Default.WindowLayout); }
         catch (JsonException ex) { throw new InvalidDataException("The workspace file is not a valid window layout.", ex); }
         if (layout == null) { throw new InvalidDataException("The workspace file contains no layout."); }
         Validate(layout);

@@ -70,9 +70,44 @@ public class AudioServiceTests {
 
     [TestMethod]
     /// <summary>
+    /// Reads live endpoints through each target's COM interop model (source-generated on .NET 8+, built-in on net472).
+    /// Read-only: no default device, volume or mute state changes.
+    /// </summary>
+    public void GetEndpoints_DefaultService_ReadsLiveEndpointsWithoutChangingState() {
+        var service = new AudioService();
+
+        IReadOnlyList<AudioEndpointInfo> endpoints = service.GetEndpoints();
+
+        foreach (AudioEndpointInfo endpoint in endpoints) {
+            Assert.IsFalse(string.IsNullOrWhiteSpace(endpoint.Id));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(endpoint.Name));
+            Assert.IsTrue(endpoint.DataFlow == AudioDataFlow.Render || endpoint.DataFlow == AudioDataFlow.Capture);
+            if (endpoint.VolumePercent.HasValue) {
+                Assert.IsTrue(endpoint.VolumePercent.Value >= 0 && endpoint.VolumePercent.Value <= 100.5f);
+            }
+        }
+        Assert.IsTrue(endpoints.Count(endpoint => endpoint.DefaultRoles.Contains(AudioRole.Console) && endpoint.DataFlow == AudioDataFlow.Render) <= 1,
+            "At most one render endpoint can be the console default.");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Registers the managed notification callback with Core Audio and unregisters the same callback on dispose.
+    /// The constructor and Dispose throw when Core Audio rejects the registration or unregistration HRESULT.
+    /// </summary>
+    public void AudioEndpointWatcher_CreateAndDispose_CoreAudioAcceptsRegistrationAndUnregistration() {
+        var watcher = new AudioEndpointWatcher();
+
+        watcher.Dispose();
+        watcher.Dispose();
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Protects the native PROPVARIANT layout used to read Core Audio endpoint friendly names.
     /// </summary>
     public void PropVariant_CoreAudioNativeLayout_MatchesWindowsAbi() {
+        // Windows SDK PROPVARIANT includes an aligned counted-pointer member in its union.
         Assert.AreEqual(IntPtr.Size == 8 ? 24 : 16, System.Runtime.InteropServices.Marshal.SizeOf<PropVariant>());
         Assert.AreEqual(new IntPtr(8), System.Runtime.InteropServices.Marshal.OffsetOf<PropVariant>("_pointerValue"));
     }

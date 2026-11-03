@@ -10,10 +10,6 @@ namespace DesktopManager;
 /// Provides storage for personalization snapshots.
 /// </summary>
 public static class PersonalizationStateStore {
-    private static readonly JsonSerializerOptions SerializerOptions = new() {
-        WriteIndented = true
-    };
-
     /// <summary>
     /// Gets the base directory for personalization snapshots.
     /// </summary>
@@ -48,7 +44,7 @@ public static class PersonalizationStateStore {
         }
 
         string path = GetSnapshotPath(name);
-        string json = JsonSerializer.Serialize(snapshot, SerializerOptions);
+        string json = JsonSerializer.Serialize(snapshot, DesktopManagerJsonContext.Indented.PersonalizationSnapshot);
         AtomicFileWriter.WriteAllText(path, json);
     }
 
@@ -68,7 +64,7 @@ public static class PersonalizationStateStore {
         }
 
         string json = File.ReadAllText(path);
-        PersonalizationSnapshot? snapshot = JsonSerializer.Deserialize<PersonalizationSnapshot>(json, SerializerOptions);
+        PersonalizationSnapshot? snapshot = JsonSerializer.Deserialize(json, DesktopManagerJsonContext.Indented.PersonalizationSnapshot);
         if (snapshot == null) {
             throw new InvalidOperationException("Unable to deserialize personalization snapshot.");
         }

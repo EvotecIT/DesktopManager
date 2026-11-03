@@ -1,3 +1,6 @@
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices.Marshalling;
+#endif
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -134,8 +137,13 @@ public static partial class MonitorNativeMethods
     /// <summary>
     /// Interface for shell item arrays returned by desktop wallpaper slideshow APIs.
     /// </summary>
+    #if NET8_0_OR_GREATER
+    [GeneratedComInterface]
+    [Guid("B63EA76D-1F85-456F-A19C-48159EFA858B")]
+#else
     [ComImport, Guid("B63EA76D-1F85-456F-A19C-48159EFA858B"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IShellItemArray {
+#endif
+    public partial interface IShellItemArray {
         /// <summary>Binds the shell item array to a handler.</summary>
         [PreserveSig]
         int BindToHandler(IntPtr pbc, ref Guid bhid, ref Guid riid, out IntPtr ppvOut);
@@ -168,8 +176,13 @@ public static partial class MonitorNativeMethods
     /// <summary>
     /// Interface for a shell item.
     /// </summary>
+    #if NET8_0_OR_GREATER
+    [GeneratedComInterface]
+    [Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE")]
+#else
     [ComImport, Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IShellItem {
+#endif
+    public partial interface IShellItem {
         /// <summary>Binds the shell item to a handler.</summary>
         [PreserveSig]
         int BindToHandler(IntPtr pbc, ref Guid bhid, ref Guid riid, out IntPtr ppv);

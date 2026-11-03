@@ -9,6 +9,7 @@ namespace DesktopManager.Tests;
 /// </summary>
 public class MonitorFallbackTests {
     private class FailingDesktopManager : IDesktopManager {
+        internal int BoundsError { get; set; }
         /// <summary>
         /// Test for SetWallpaper.
         /// </summary>
@@ -20,15 +21,15 @@ public class MonitorFallbackTests {
         /// <summary>
         /// Test for GetMonitorDevicePathAt.
         /// </summary>
-        public string GetMonitorDevicePathAt(uint monitorIndex) => throw new COMException();
+        public string GetMonitorDevicePathAt(uint monitorIndex) => BoundsError != 0 ? "unavailable-wallpaper-slot" : throw new COMException();
         /// <summary>
         /// Test for GetMonitorDevicePathCount.
         /// </summary>
-        public uint GetMonitorDevicePathCount() => throw new COMException();
+        public uint GetMonitorDevicePathCount() => BoundsError != 0 ? 1u : throw new COMException();
         /// <summary>
         /// Test for GetMonitorBounds.
         /// </summary>
-        public RECT GetMonitorBounds(string monitorId) => throw new COMException();
+        public RECT GetMonitorBounds(string monitorId) => throw new COMException("Unavailable bounds", BoundsError);
         /// <summary>
         /// Test for SetBackgroundColor.
         /// </summary>
@@ -76,15 +77,18 @@ public class MonitorFallbackTests {
     }
 
     [TestMethod]
+    [DataRow(0)]
+    [DataRow(unchecked((int)0x80004005))]
+    [DataRow(unchecked((int)0x80010108))]
     /// <summary>
     /// Test for EnumeratesMonitors_WhenDesktopManagerFails.
     /// </summary>
-    public void EnumeratesMonitors_WhenDesktopManagerFails() {
+    public void EnumeratesMonitors_WhenDesktopManagerFails(int boundsError) {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
         }
 
-        var service = new MonitorService(new FailingDesktopManager());
+        var service = new MonitorService(new FailingDesktopManager { BoundsError = boundsError });
         var monitors = service.GetMonitors();
         Assert.IsNotNull(monitors);
         if (monitors.Count == 0) {

@@ -78,7 +78,7 @@ internal sealed partial class UiAutomationControlService {
 
         object? current;
         try {
-            current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            current = GetAutomationProperty(element, "Current");
         } catch {
             return UiAutomationTextEditAttempt.Failed("provider-unavailable");
         }
@@ -176,7 +176,7 @@ internal sealed partial class UiAutomationControlService {
         WindowControlInfo control,
         object element) {
         try {
-            object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            object? current = GetAutomationProperty(element, "Current");
             bool? hasKeyboardFocus = current == null
                 ? null
                 : ReadObservationBoolean(current, "HasKeyboardFocus", new List<string>());
@@ -216,7 +216,7 @@ internal sealed partial class UiAutomationControlService {
 
     private static bool? TryReadElementPasswordState(object element) {
         try {
-            object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+            object? current = GetAutomationProperty(element, "Current");
             return current != null && TryReadPasswordState(current, out bool? isPassword)
                 ? isPassword
                 : null;
@@ -259,8 +259,17 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private bool TrySelectCurrentCaret(object element) {
+#if NET8_0_OR_GREATER
         try {
-            Type? textPattern2Type = _automationClientAssembly?.GetType("System.Windows.Automation.TextPattern2", throwOnError: false);
+            UiaPattern? pattern = ((UiaElement)element).GetCurrentPattern(10024);
+            if (pattern == null) { return TrySelectCollapsedTextSelection(element); }
+            UiaRange? caret = pattern.GetCaretRange(out _);
+            if (caret == null) { return false; }
+            caret.Select(); return true;
+        } catch { return TrySelectCollapsedTextSelection(element); }
+#else
+        try {
+            var textPattern2Type = ResolveAutomationType("System.Windows.Automation.TextPattern2", throwOnError: false);
             object? pattern = textPattern2Type == null ? null : GetCurrentPattern(element, textPattern2Type);
             MethodInfo? getCaretRange = pattern?.GetType().GetMethod("GetCaretRange");
             if (getCaretRange == null) {
@@ -279,11 +288,26 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return TrySelectCollapsedTextSelection(element);
         }
+#endif
     }
 
     private bool TrySelectCollapsedTextSelection(object element) {
+#if NET8_0_OR_GREATER
         try {
-            Type? textPatternType = _automationClientAssembly?.GetType("System.Windows.Automation.TextPattern", throwOnError: false);
+            if (((UiaElement)element).GetCurrentPattern(10014)?.GetSelection() is not UiaRanges ranges) { return false; }
+            UiaRange? collapsed = null;
+            int count = 0;
+            foreach (UiaRange range in ranges) {
+                count++;
+                if (count > 1 || ReadTextRange(range, 1, out bool truncated).Length != 0 || truncated) { return false; }
+                collapsed = range;
+            }
+            if (count != 1 || collapsed == null) { return false; }
+            collapsed.Select(); return true;
+        } catch { return false; }
+#else
+        try {
+            var textPatternType = ResolveAutomationType("System.Windows.Automation.TextPattern", throwOnError: false);
             object? pattern = textPatternType == null ? null : GetCurrentPattern(element, textPatternType);
             object? result = pattern?.GetType().GetMethod("GetSelection", Type.EmptyTypes)?.Invoke(pattern, null);
             if (result is not IEnumerable ranges) {
@@ -315,6 +339,7 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return false;
         }
+    #endif
     }
 }
 

@@ -6,6 +6,7 @@ using System.Reflection;
 
 namespace DesktopManager;
 
+// Modern targets use native generated COM bindings; legacy targets retain managed UIAutomationClient discovery.
 internal sealed partial class UiAutomationControlService {
     private const int EnumeratedControlsCacheMilliseconds = 750;
     private const int ActionMatchCacheMilliseconds = 5000;
@@ -19,16 +20,19 @@ internal sealed partial class UiAutomationControlService {
     private static readonly ConcurrentDictionary<IntPtr, IntPtr> PreferredSearchRoots = new();
     private static readonly ConcurrentDictionary<string, CachedControlCollection> EnumeratedControlsCache = new();
     private static readonly ConcurrentDictionary<string, CachedActionMatch> ActionMatchCache = new();
+#if !NET8_0_OR_GREATER
     private readonly Assembly? _automationClientAssembly;
     private readonly Assembly? _automationTypesAssembly;
     private readonly Type? _automationElementType;
     private readonly Type? _automationElementCollectionType;
     private readonly Type? _conditionType;
     private readonly Type? _treeScopeType;
+#endif
 
     internal bool LastOperationTimedOut { get; private set; }
 
     public UiAutomationControlService() {
+#if !NET8_0_OR_GREATER
         _automationClientAssembly = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(candidate => string.Equals(candidate.GetName().Name, "UIAutomationClient", StringComparison.OrdinalIgnoreCase));
         _automationClientAssembly ??= TryLoadAssembly("UIAutomationClient");
@@ -37,17 +41,22 @@ internal sealed partial class UiAutomationControlService {
             .FirstOrDefault(candidate => string.Equals(candidate.GetName().Name, "UIAutomationTypes", StringComparison.OrdinalIgnoreCase));
         _automationTypesAssembly ??= TryLoadAssembly("UIAutomationTypes");
 
-        _automationElementType = _automationClientAssembly?.GetType("System.Windows.Automation.AutomationElement", throwOnError: false);
-        _automationElementCollectionType = _automationClientAssembly?.GetType("System.Windows.Automation.AutomationElementCollection", throwOnError: false);
-        _conditionType = _automationClientAssembly?.GetType("System.Windows.Automation.Condition", throwOnError: false);
+        _automationElementType = ResolveAutomationType("System.Windows.Automation.AutomationElement", throwOnError: false);
+        _automationElementCollectionType = ResolveAutomationType("System.Windows.Automation.AutomationElementCollection", throwOnError: false);
+        _conditionType = ResolveAutomationType("System.Windows.Automation.Condition", throwOnError: false);
         _treeScopeType = _automationTypesAssembly?.GetType("System.Windows.Automation.TreeScope", throwOnError: false)
             ?? _automationClientAssembly?.GetType("System.Windows.Automation.TreeScope", throwOnError: false);
+#endif
     }
 
+#if NET8_0_OR_GREATER
+    public bool IsAvailable => OperatingSystem.IsWindows();
+#else
     public bool IsAvailable => _automationElementType != null &&
         _automationElementCollectionType != null &&
         _conditionType != null &&
         _treeScopeType != null;
+#endif
 
     public List<WindowControlInfo> EnumerateControls(IntPtr windowHandle, IReadOnlyList<IntPtr>? fallbackRootHandles = null) {
         return EnumerateControls(windowHandle, fallbackRootHandles, readValues: true);
@@ -446,6 +455,10 @@ internal sealed partial class UiAutomationControlService {
             return new List<WindowControlInfo>();
         }
 
+#if NET8_0_OR_GREATER
+        UiaElements collection = ((UiaElement)rootElement).FindAll(includeRoot ? UiaTreeScope.Subtree : UiaTreeScope.Descendants, UiaCondition.TrueCondition);
+        int count = collection.Count;
+#else
         object? treeScope = Enum.Parse(_treeScopeType!, includeRoot ? "Subtree" : "Descendants", ignoreCase: false);
         object? trueCondition = _conditionType!.GetField("TrueCondition", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
         if (treeScope == null || trueCondition == null) {
@@ -465,9 +478,16 @@ internal sealed partial class UiAutomationControlService {
         }
 
         int count = (int)(countProperty.GetValue(collection) ?? 0);
+
+#endif
         var controls = new List<WindowControlInfo>(count);
+
         for (int index = 0; index < count; index++) {
+#if NET8_0_OR_GREATER
+            object? element = collection[index];
+#else
             object? element = itemProperty.GetValue(collection, new object[] { index });
+#endif
             if (element == null) {
                 continue;
             }
@@ -881,6 +901,10 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private IEnumerable<object> EnumerateElementsForRoot(IntPtr rootHandle, bool includeRoot) {
+#if NET8_0_OR_GREATER
+        if (!TryResolveRootElement(rootHandle, out object? root) || root is not UiaElement element) { yield break; }
+        foreach (UiaElement child in element.FindAll(includeRoot ? UiaTreeScope.Subtree : UiaTreeScope.Descendants, UiaCondition.TrueCondition)) { yield return child; }
+#else
         if (!TryResolveRootElement(rootHandle, out object? rootElement) || rootElement == null) {
             yield break;
         }
@@ -910,6 +934,7 @@ internal sealed partial class UiAutomationControlService {
                 yield return candidate;
             }
         }
+    #endif
     }
 
     internal static int ScoreMatch(WindowControlInfo expected, WindowControlInfo candidate) {
@@ -1103,10 +1128,15 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
+#if NET8_0_OR_GREATER
+        UiaTreeScope treeScope = includeRoot ? UiaTreeScope.Subtree : UiaTreeScope.Descendants;
+#else
         object? treeScope = Enum.Parse(_treeScopeType!, includeRoot ? "Subtree" : "Descendants", ignoreCase: false);
         if (treeScope == null) {
             return null;
         }
+
+#endif
 
         foreach ((string PropertyName, string Value) term in GetFastSearchTerms(expected)) {
             object? condition = CreatePropertyCondition(term.PropertyName, term.Value);
@@ -1115,8 +1145,12 @@ internal sealed partial class UiAutomationControlService {
             }
 
             try {
+#if NET8_0_OR_GREATER
+                object? element = ((UiaElement)rootElement).FindFirst(treeScope, (UiaCondition)condition);
+#else
                 object? element = _automationElementType!.GetMethod("FindFirst", new[] { _treeScopeType!, _conditionType! })?
                     .Invoke(rootElement, new[] { treeScope, condition });
+#endif
                 if (element == null) {
                     continue;
                 }
@@ -1187,6 +1221,13 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private object? CreatePropertyCondition(string propertyFieldName, object? value) {
+#if NET8_0_OR_GREATER
+        if (value == null || value is string text && string.IsNullOrWhiteSpace(text)) { return null; }
+        int id = propertyFieldName switch { "NativeWindowHandleProperty" => 30020, "ProcessIdProperty" => 30002,
+            "AutomationIdProperty" => 30011, "NameProperty" => 30005, "ClassNameProperty" => 30012,
+            "HasKeyboardFocusProperty" => 30008, _ => 0 };
+        return id == 0 ? null : new UiaPropertyCondition(id, value);
+#else
         if (string.IsNullOrWhiteSpace(propertyFieldName) || value == null) {
             return null;
         }
@@ -1195,7 +1236,7 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
-        Type? propertyConditionType = _automationClientAssembly?.GetType("System.Windows.Automation.PropertyCondition", throwOnError: false);
+        var propertyConditionType = ResolveAutomationType("System.Windows.Automation.PropertyCondition", throwOnError: false);
         if (propertyConditionType == null) {
             return null;
         }
@@ -1211,6 +1252,7 @@ internal sealed partial class UiAutomationControlService {
         }
 
         return constructor.Invoke(new object[] { property, value });
+    #endif
     }
 
     private static bool TryGetCachedActionMatch(string cacheKey, out CachedActionMatch? cachedMatch) {
@@ -1324,6 +1366,9 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private static bool TrySetFocus(object element) {
+#if NET8_0_OR_GREATER
+        try { ((UiaElement)element).SetFocus(); return true; } catch { return false; }
+#else
         MethodInfo? method = element.GetType().GetMethod("SetFocus", Type.EmptyTypes);
         if (method == null) {
             return false;
@@ -1335,8 +1380,14 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return false;
         }
+    #endif
     }
 
+#if NET8_0_OR_GREATER
+    private static object? GetCurrentPattern(object element, int? patternId) {
+        try { return patternId.HasValue ? ((UiaElement)element).GetCurrentPattern(patternId.Value) : null; } catch { return null; }
+    }
+#else
     private static object? GetCurrentPattern(object element, Type patternType) {
         object? patternIdentifier = patternType.GetField("Pattern", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
         if (patternIdentifier == null) {
@@ -1349,8 +1400,19 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return null;
         }
-    }
+        }
+#endif
 
+#if NET8_0_OR_GREATER
+    private static int? ResolveAutomationType(string name, bool throwOnError = false) => UiAutomationNative.PatternId(name);
+#else
+    private Type? ResolveAutomationType(string name, bool throwOnError = false) {
+        return _automationClientAssembly?.GetType(name, throwOnError)
+            ?? _automationTypesAssembly?.GetType(name, throwOnError);
+    }
+#endif
+
+#if !NET8_0_OR_GREATER
     private static Assembly? TryLoadAssembly(string name) {
         try {
             return Assembly.Load(name);
@@ -1364,7 +1426,13 @@ internal sealed partial class UiAutomationControlService {
         }
     }
 
+#endif
+
     private bool TryResolveRootElement(IntPtr rootHandle, out object? rootElement) {
+#if NET8_0_OR_GREATER
+        try { rootElement = UiaElement.FromHandle(rootHandle); if (rootElement != null) { return true; } } catch { }
+        return TryResolveRootElementFromDesktopSearch(rootHandle, out rootElement);
+#else
         try {
             rootElement = _automationElementType!.GetMethod("FromHandle", BindingFlags.Public | BindingFlags.Static)?
                 .Invoke(null, new object[] { rootHandle });
@@ -1375,6 +1443,7 @@ internal sealed partial class UiAutomationControlService {
         }
 
         return TryResolveRootElementFromDesktopSearch(rootHandle, out rootElement);
+    #endif
     }
 
     private bool TryResolveRootElementFromDesktopSearch(IntPtr rootHandle, out object? rootElement) {
@@ -1398,6 +1467,11 @@ internal sealed partial class UiAutomationControlService {
         }
 
         object? processCondition = CreatePropertyCondition("ProcessIdProperty", (int)processId);
+#if NET8_0_OR_GREATER
+        if (processCondition == null) { return false; }
+        UiaElements collection = ((UiaElement)desktopRoot).FindAll(UiaTreeScope.Descendants, (UiaCondition)processCondition);
+        int count = collection.Count;
+#else
         object? treeScope = Enum.Parse(_treeScopeType!, "Descendants", ignoreCase: false);
         if (processCondition == null || treeScope == null) {
             return false;
@@ -1416,10 +1490,15 @@ internal sealed partial class UiAutomationControlService {
         }
 
         int count = (int)(countProperty.GetValue(collection) ?? 0);
+#endif
         int bestScore = 0;
         object? bestElement = null;
         for (int index = 0; index < count; index++) {
+#if NET8_0_OR_GREATER
+            object? candidate = collection[index];
+#else
             object? candidate = itemProperty.GetValue(collection, new object[] { index });
+#endif
             if (candidate == null) {
                 continue;
             }
@@ -1447,7 +1526,11 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private object? TryGetDesktopRootElement() {
+#if NET8_0_OR_GREATER
+        return UiaElement.RootElement;
+#else
         return _automationElementType?.GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+    #endif
     }
 
     private bool TryFindElementByProperty(object rootElement, string propertyFieldName, object? value, out object? element) {
@@ -1457,6 +1540,11 @@ internal sealed partial class UiAutomationControlService {
         }
 
         object? condition = CreatePropertyCondition(propertyFieldName, value);
+#if NET8_0_OR_GREATER
+        if (condition == null) { return false; }
+        try { element = ((UiaElement)rootElement).FindFirst(UiaTreeScope.Descendants, (UiaCondition)condition); return element != null; }
+        catch { element = null; return false; }
+#else
         object? treeScope = Enum.Parse(_treeScopeType!, "Descendants", ignoreCase: false);
         if (condition == null || treeScope == null) {
             return false;
@@ -1470,6 +1558,7 @@ internal sealed partial class UiAutomationControlService {
             element = null;
             return false;
         }
+#endif
     }
 
     internal static int ScoreDesktopSearchRootCandidate(RECT windowRect, WindowControlInfo candidate) {
@@ -1552,7 +1641,7 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private WindowControlInfo? CreateControlInfo(object element, bool readValue = true) {
-        object? current = element.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(element);
+        object? current = GetAutomationProperty(element, "Current");
         if (current == null) {
             return null;
         }
@@ -1674,7 +1763,7 @@ internal sealed partial class UiAutomationControlService {
 
     private bool HasPattern(object element, string patternTypeName) {
         try {
-            Type? patternType = _automationClientAssembly?.GetType(patternTypeName, throwOnError: false);
+            var patternType = ResolveAutomationType(patternTypeName, throwOnError: false);
             if (patternType == null) {
                 return false;
             }
@@ -1686,8 +1775,12 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private string? ReadPatternValue(object element, string patternTypeName) {
+#if NET8_0_OR_GREATER
+        var type = ResolveAutomationType(patternTypeName);
+        try { return type == null ? null : (GetCurrentPattern(element, type) as UiaPattern)?.Value?.ToString(); } catch { return null; }
+#else
         try {
-            Type? patternType = _automationClientAssembly?.GetType(patternTypeName, throwOnError: false);
+            var patternType = ResolveAutomationType(patternTypeName, throwOnError: false);
             if (patternType == null) {
                 return null;
             }
@@ -1697,7 +1790,7 @@ internal sealed partial class UiAutomationControlService {
                 return null;
             }
 
-            object? current = pattern.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(pattern);
+            object? current = GetAutomationProperty(pattern, "Current");
             if (current == null) {
                 return null;
             }
@@ -1712,11 +1805,18 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return null;
         }
+    #endif
     }
 
     private bool? ReadCheckState(object element) {
+#if NET8_0_OR_GREATER
         try {
-            Type? togglePatternType = _automationClientAssembly?.GetType("System.Windows.Automation.TogglePattern", throwOnError: false);
+            UiaPattern? pattern = ((UiaElement)element).GetCurrentPattern(10015);
+            return pattern?.ToggleState switch { "On" => true, "Off" => false, _ => null };
+        } catch { return null; }
+#else
+        try {
+            var togglePatternType = ResolveAutomationType("System.Windows.Automation.TogglePattern", throwOnError: false);
             if (togglePatternType == null) {
                 return null;
             }
@@ -1726,8 +1826,8 @@ internal sealed partial class UiAutomationControlService {
                 return null;
             }
 
-            object? current = pattern.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?.GetValue(pattern);
-            object? toggleState = current?.GetType().GetProperty("ToggleState", BindingFlags.Public | BindingFlags.Instance)?.GetValue(current);
+            object? current = GetAutomationProperty(pattern, "Current");
+            object? toggleState = (current == null ? null : GetAutomationProperty(current, "ToggleState"));
             string? toggleStateName = toggleState?.ToString();
             if (string.IsNullOrWhiteSpace(toggleStateName)) {
                 return null;
@@ -1746,6 +1846,7 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return null;
         }
+    #endif
     }
 
     private string? ReadSelectedValue(object element) {
@@ -1763,8 +1864,16 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private string? ReadSelectedItemValue(object element) {
+#if NET8_0_OR_GREATER
         try {
-            Type? selectionPatternType = _automationClientAssembly?.GetType("System.Windows.Automation.SelectionPattern", throwOnError: false);
+            UiaPattern? pattern = ((UiaElement)element).GetCurrentPattern(10001);
+            if (pattern?.GetSelection() is not UiaElements selection || selection.Count == 0) { return null; }
+            WindowControlInfo? info = CreateControlInfo(selection[0]);
+            return info == null ? null : !string.IsNullOrWhiteSpace(info.Value) ? info.Value : !string.IsNullOrWhiteSpace(info.Text) ? info.Text : null;
+        } catch { return null; }
+#else
+        try {
+            var selectionPatternType = ResolveAutomationType("System.Windows.Automation.SelectionPattern", throwOnError: false);
             if (selectionPatternType == null) {
                 return null;
             }
@@ -1809,6 +1918,7 @@ internal sealed partial class UiAutomationControlService {
         } catch {
             return null;
         }
+    #endif
     }
 
     private object? FindSelectionCandidateElement(object rootElement, string selectedValue) {
@@ -1826,6 +1936,10 @@ internal sealed partial class UiAutomationControlService {
             return null;
         }
 
+#if NET8_0_OR_GREATER
+        UiaElements collection = ((UiaElement)rootElement).FindAll(includeRoot ? UiaTreeScope.Subtree : UiaTreeScope.Descendants, UiaCondition.TrueCondition);
+        int count = collection.Count;
+#else
         object? treeScope = Enum.Parse(_treeScopeType!, includeRoot ? "Subtree" : "Descendants", ignoreCase: false);
         object? trueCondition = _conditionType!.GetField("TrueCondition", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
         if (treeScope == null || trueCondition == null) {
@@ -1845,8 +1959,14 @@ internal sealed partial class UiAutomationControlService {
         }
 
         int count = (int)(countProperty.GetValue(collection) ?? 0);
+#endif
+
         for (int index = 0; index < count; index++) {
+#if NET8_0_OR_GREATER
+            object? candidateElement = collection[index];
+#else
             object? candidateElement = itemProperty.GetValue(collection, new object[] { index });
+#endif
             if (candidateElement == null) {
                 continue;
             }
@@ -1865,7 +1985,7 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private static string ReadString(object instance, string propertyName) {
-        return instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(instance) as string ?? string.Empty;
+        return GetAutomationProperty(instance, propertyName) as string ?? string.Empty;
     }
 
     internal static bool SupportsForegroundFallback(bool hasNativeHandle, bool? isKeyboardFocusable, bool? isEnabled, string controlType, string className) {
@@ -1893,12 +2013,12 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private static int ReadInt32(object instance, string propertyName) {
-        object? value = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(instance);
+        object? value = GetAutomationProperty(instance, propertyName);
         return value is int intValue ? intValue : 0;
     }
 
     private static (int Left, int Top, int Width, int Height) ReadBounds(object instance) {
-        object? value = instance.GetType().GetProperty("BoundingRectangle", BindingFlags.Public | BindingFlags.Instance)?.GetValue(instance);
+        object? value = GetAutomationProperty(instance, "BoundingRectangle");
         if (value == null) {
             return default;
         }
@@ -1948,22 +2068,22 @@ internal sealed partial class UiAutomationControlService {
     }
 
     private static bool? ReadNullableBoolean(object instance, string propertyName) {
-        object? value = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(instance);
+        object? value = GetAutomationProperty(instance, propertyName);
         return value is bool boolValue ? boolValue : null;
     }
 
     private static double ReadDouble(object instance, string propertyName) {
-        object? value = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(instance);
+        object? value = GetAutomationProperty(instance, propertyName);
         return value is double doubleValue ? doubleValue : 0;
     }
 
     private static string ReadControlTypeName(object instance) {
-        object? controlType = instance.GetType().GetProperty("ControlType", BindingFlags.Public | BindingFlags.Instance)?.GetValue(instance);
+        object? controlType = GetAutomationProperty(instance, "ControlType");
         if (controlType == null) {
             return string.Empty;
         }
 
-        string? programmaticName = controlType.GetType().GetProperty("ProgrammaticName", BindingFlags.Public | BindingFlags.Instance)?.GetValue(controlType) as string;
+        string? programmaticName = GetAutomationProperty(controlType, "ProgrammaticName") as string;
         if (string.IsNullOrWhiteSpace(programmaticName)) {
             return controlType.ToString() ?? string.Empty;
         }

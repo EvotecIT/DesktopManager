@@ -50,7 +50,7 @@ internal sealed partial class NativeDeviceManagementApi {
             deviceInfoSet,
             ref deviceInfoData,
             ref parameters,
-            (uint)Marshal.SizeOf(typeof(DeviceNativeMethods.SpPropChangeParams)))) {
+            (uint)Marshal.SizeOf<DeviceNativeMethods.SpPropChangeParams>())) {
             return Win32Result("RestartDevice", instanceId, succeeded: false);
         }
         bool succeeded = DeviceNativeMethods.SetupDiCallClassInstaller(

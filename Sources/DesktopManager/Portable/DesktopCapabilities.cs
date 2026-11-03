@@ -13,9 +13,17 @@ public sealed class DesktopCapabilities {
         SupportsWallpaperPosition = available && position;
         CanEnumerateWallpaperTargets = available && (wallpaperTargets || displays);
         SupportedWallpaperPositions = Array.AsReadOnly(available && position
-            ? (DesktopWallpaperPosition[])(supportedPositions ?? Enum.GetValues(typeof(DesktopWallpaperPosition))).Clone()
+            ? (DesktopWallpaperPosition[])(supportedPositions ?? AllWallpaperPositions()).Clone()
             : Array.Empty<DesktopWallpaperPosition>());
         Message = message;
+    }
+
+    private static DesktopWallpaperPosition[] AllWallpaperPositions() {
+#if NET8_0_OR_GREATER
+        return Enum.GetValues<DesktopWallpaperPosition>();
+#else
+        return (DesktopWallpaperPosition[])Enum.GetValues(typeof(DesktopWallpaperPosition));
+#endif
     }
 
     /// <summary>Gets the selected backend: windows, macos, gnome, kde, or unsupported.</summary>

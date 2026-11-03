@@ -125,7 +125,7 @@ public static class WallpaperHistory
         try
         {
             using FileStream stream = new FileStream(historyFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var history = JsonSerializer.Deserialize<List<string>>(stream);
+            var history = JsonSerializer.Deserialize(stream, DesktopManagerJsonContext.Default.ListString);
             return history ?? new List<string>();
         }
         catch (JsonException)
@@ -135,7 +135,7 @@ public static class WallpaperHistory
     }
 
     private static void WriteHistoryCore(string historyFilePath, IEnumerable<string> paths) {
-        string json = JsonSerializer.Serialize(paths);
+        string json = JsonSerializer.Serialize(paths, DesktopManagerJsonContext.Default.IEnumerableString);
         AtomicFileWriter.WriteAllText(historyFilePath, json);
     }
 

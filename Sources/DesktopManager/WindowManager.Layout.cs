@@ -74,8 +74,7 @@ public partial class WindowManager
             var layout = new WindowLayout {
                 Windows = GetWindows().Select(GetWindowPosition).Where(WorkspaceWindowPlacement.TryCapture).ToList()
             };
-            var json = System.Text.Json.JsonSerializer.Serialize(layout,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            var json = System.Text.Json.JsonSerializer.Serialize(layout, DesktopManagerJsonContext.Indented.WindowLayout);
             var fullPath = System.IO.Path.GetFullPath(path);
             var directory = System.IO.Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(directory)) {
@@ -99,7 +98,7 @@ public partial class WindowManager
             var json = System.IO.File.ReadAllText(path);
             WindowLayout? layout;
             try {
-                layout = System.Text.Json.JsonSerializer.Deserialize<WindowLayout>(json);
+                layout = System.Text.Json.JsonSerializer.Deserialize(json, DesktopManagerJsonContext.Default.WindowLayout);
             } catch (System.Text.Json.JsonException ex) {
                 throw new InvalidOperationException($"Invalid layout file: {ex.Message}", ex);
             }

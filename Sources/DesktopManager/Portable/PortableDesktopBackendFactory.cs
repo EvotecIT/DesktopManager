@@ -1,3 +1,4 @@
+
 namespace DesktopManager;
 
 internal static class PortableDesktopBackendFactory {

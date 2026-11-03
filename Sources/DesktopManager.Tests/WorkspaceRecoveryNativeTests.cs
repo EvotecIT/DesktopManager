@@ -33,9 +33,10 @@ public sealed class WorkspaceRecoveryNativeTests {
     private static void VerifyOwnedDesktop() {
         string ownedAppId = "Evotec.DesktopManager.WorkspaceTest." + Guid.NewGuid().ToString("N");
         Marshal.ThrowExceptionForHR(SetCurrentProcessExplicitAppUserModelID(ownedAppId));
-        var shell = (IWorkspaceShellServices)Activator.CreateInstance(Type.GetTypeFromCLSID(ExperimentalVirtualDesktopNative.ShellClass, true)!)!;
+        var shell = (IWorkspaceShellServices)NativeComActivation.CreateInstance(ExperimentalVirtualDesktopNative.ShellClass);
         Guid serviceId = ExperimentalVirtualDesktopNative.ManagerService, iid = typeof(IWorkspaceDesktopManager).GUID;
-        var manager = (IWorkspaceDesktopManager)shell.QueryService(ref serviceId, ref iid);
+        shell.QueryService(ref serviceId, ref iid, out IntPtr managerPointer);
+        var manager = ExperimentalVirtualDesktopNative.WrapOwned<IWorkspaceDesktopManager>(managerPointer);
         IWorkspaceDesktop original = manager.GetCurrentDesktop();
         Guid currentId = original.GetId();
         int initialCount = manager.GetCount();
@@ -119,7 +120,8 @@ public sealed class WorkspaceRecoveryNativeTests {
             AssertCurrentDesktop(manager, currentId);
         } finally {
             Guid pinService = ExperimentalVirtualDesktopNative.PinsService, pinIid = typeof(IWorkspacePinnedApps).GUID;
-            var pins = (IWorkspacePinnedApps)shell.QueryService(ref pinService, ref pinIid);
+            shell.QueryService(ref pinService, ref pinIid, out IntPtr pinsPointer);
+            var pins = ExperimentalVirtualDesktopNative.WrapOwned<IWorkspacePinnedApps>(pinsPointer);
             try { if (pins.IsAppIdPinned(ownedAppId)) { pins.UnpinAppId(ownedAppId); } }
             finally { ExperimentalVirtualDesktopNative.Release(pins); }
             if (owned != null) {

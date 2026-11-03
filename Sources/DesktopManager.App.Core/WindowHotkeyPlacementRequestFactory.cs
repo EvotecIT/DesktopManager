@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace DesktopManager.App.Core;
 
 /// <summary>
@@ -53,6 +55,9 @@ public static class WindowHotkeyPlacementRequestFactory {
         throw new InvalidOperationException($"Unsupported monitor target '{monitor}'.");
     }
 
+    // Monitor topology still uses built-in COM. Native AOT hosts reach the catch below and keep the stored monitor index.
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Topology failures fall back to the stored monitor index.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Topology failures fall back to the stored monitor index.")]
     private static int? ResolveMonitorIndex(WindowHotkeyActionDefinition action) {
         if (string.IsNullOrWhiteSpace(action.MonitorStableKey)) {
             return action.MonitorIndex;

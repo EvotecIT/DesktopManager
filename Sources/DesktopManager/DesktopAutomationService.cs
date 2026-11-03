@@ -20,9 +20,6 @@ public sealed partial class DesktopAutomationService {
     private readonly WindowManager _windowManager;
     private readonly Monitors _monitors;
     private readonly UiAutomationControlService _uiAutomationControlService;
-    private static readonly JsonSerializerOptions TargetSerializerOptions = new() {
-        WriteIndented = true
-    };
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DesktopAutomationService"/> class.
@@ -1796,7 +1793,7 @@ public sealed partial class DesktopAutomationService {
         ValidateWindowTargetDefinition(definition);
 
         string path = DesktopStateStore.GetTargetPath(name);
-        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(definition, TargetSerializerOptions));
+        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(definition, DesktopManagerJsonContext.Indented.DesktopWindowTargetDefinition));
         return definition;
     }
 
@@ -1809,7 +1806,7 @@ public sealed partial class DesktopAutomationService {
             throw new InvalidOperationException($"Named target '{name}' was not found.");
         }
 
-        DesktopWindowTargetDefinition? definition = JsonSerializer.Deserialize<DesktopWindowTargetDefinition>(File.ReadAllText(path));
+        DesktopWindowTargetDefinition? definition = JsonSerializer.Deserialize(File.ReadAllText(path), DesktopManagerJsonContext.Default.DesktopWindowTargetDefinition);
         if (definition == null) {
             throw new InvalidOperationException($"Named target '{name}' could not be read.");
         }
@@ -1836,7 +1833,7 @@ public sealed partial class DesktopAutomationService {
         ValidateControlTargetDefinition(definition);
 
         string path = DesktopStateStore.GetControlTargetPath(name);
-        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(definition, TargetSerializerOptions));
+        AtomicFileWriter.WriteAllText(path, JsonSerializer.Serialize(definition, DesktopManagerJsonContext.Indented.DesktopControlTargetDefinition));
         return definition;
     }
 
@@ -1849,7 +1846,7 @@ public sealed partial class DesktopAutomationService {
             throw new InvalidOperationException($"Named control target '{name}' was not found.");
         }
 
-        DesktopControlTargetDefinition? definition = JsonSerializer.Deserialize<DesktopControlTargetDefinition>(File.ReadAllText(path));
+        DesktopControlTargetDefinition? definition = JsonSerializer.Deserialize(File.ReadAllText(path), DesktopManagerJsonContext.Default.DesktopControlTargetDefinition);
         if (definition == null) {
             throw new InvalidOperationException($"Named control target '{name}' could not be read.");
         }
@@ -1890,7 +1887,7 @@ public sealed partial class DesktopAutomationService {
             CreatedUtc = DateTime.UtcNow.ToString("O")
         };
 
-        AtomicFileWriter.WriteAllText(metadataPath, JsonSerializer.Serialize(definition, TargetSerializerOptions));
+        AtomicFileWriter.WriteAllText(metadataPath, JsonSerializer.Serialize(definition, DesktopManagerJsonContext.Indented.DesktopVisualBaselineDefinition));
         return definition;
     }
 
@@ -1903,7 +1900,7 @@ public sealed partial class DesktopAutomationService {
             throw new InvalidOperationException($"Named visual baseline '{name}' was not found.");
         }
 
-        DesktopVisualBaselineDefinition? definition = JsonSerializer.Deserialize<DesktopVisualBaselineDefinition>(File.ReadAllText(path));
+        DesktopVisualBaselineDefinition? definition = JsonSerializer.Deserialize(File.ReadAllText(path), DesktopManagerJsonContext.Default.DesktopVisualBaselineDefinition);
         if (definition == null) {
             throw new InvalidOperationException($"Named visual baseline '{name}' could not be read.");
         }

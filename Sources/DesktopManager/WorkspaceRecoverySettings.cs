@@ -29,11 +29,11 @@ public sealed class WorkspaceRecoverySettings {
     public static WorkspaceRecoverySettings Load(string? root = null) {
         string path = Path.Combine(GetDirectory(root), "settings.json");
         if (!File.Exists(path)) { return new WorkspaceRecoverySettings(); }
-        return JsonSerializer.Deserialize<WorkspaceRecoverySettings>(File.ReadAllText(path))
+        return JsonSerializer.Deserialize(File.ReadAllText(path), DesktopManagerJsonContext.Default.WorkspaceRecoverySettings)
             ?? throw new InvalidDataException("Workspace recovery settings contain no object.");
     }
 
     /// <summary>Saves the explicitly selected settings atomically. Does not register startup or change desktop state.</summary>
     public void Save(string? root = null) => AtomicFileWriter.WriteAllText(Path.Combine(GetDirectory(root), "settings.json"),
-        JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+        JsonSerializer.Serialize(this, DesktopManagerJsonContext.Indented.WorkspaceRecoverySettings));
 }

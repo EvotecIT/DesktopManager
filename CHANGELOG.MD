@@ -1,3 +1,13 @@
+## Unreleased
+
+- Make Core Audio work in trimmed and Native AOT applications. On .NET 8 and later, `AudioService`, `PolicyConfigClient`, `AudioEndpointWatcher` and `VirtualDesktopService` use source-generated COM; net472 and netstandard2.0 keep built-in COM.
+- Mark the .NET 8 and .NET 10 targets as AOT compatible. Persisted JSON state uses source-generated metadata and native structure marshalling no longer needs runtime code generation.
+- Support wallpaper and monitor enumeration, slideshow Shell items and wallpaper checkpoints in Native AOT applications. Native wallpaper calls run in one COM apartment.
+- Capture clipboard snapshots through Win32 data handles, and capture Explorer folders through typed Shell views without late-bound automation.
+- Use generated COM for the gated experimental virtual desktop interfaces and the UI Automation interfaces used by control discovery, patterns, text ranges and event subscriptions. The older targets retain their existing interop paths.
+- Add a Windows Native AOT smoke consumer that reads desktop state and exercises owned controls without changing wallpaper, clipboard data, audio defaults or user windows.
+- Preserve connected monitor identities when a disconnected wallpaper slot cannot return its bounds; omit unavailable geometry from connected snapshots.
+
 ## 4.6.1 - 2026.10.24
 
 - Report no image when GNOME background images are disabled, and explain unsupported KDE image-package sources instead of returning a directory as an image file.

@@ -71,7 +71,7 @@ public class AudioService {
 
             return endpoints.ToArray();
         } finally {
-            CoreAudioNative.Release(enumerator);
+            NativeComActivation.Release(enumerator);
         }
     }
 
@@ -189,11 +189,11 @@ public class AudioService {
                 } catch (COMException ex) {
                     DesktopManagerDiagnostics.Report($"Audio endpoint {dataFlow} index {index} could not be read: {ex.Message}");
                 } finally {
-                    CoreAudioNative.Release(device);
+                    NativeComActivation.Release(device);
                 }
             }
         } finally {
-            CoreAudioNative.Release(collection);
+            NativeComActivation.Release(collection);
         }
     }
 
@@ -209,7 +209,7 @@ public class AudioService {
                 Marshal.ThrowExceptionForHR(device.GetId(out string id));
                 defaults[role] = id;
             } finally {
-                CoreAudioNative.Release(device);
+                NativeComActivation.Release(device);
             }
         }
         return defaults;
@@ -232,7 +232,7 @@ public class AudioService {
                 value.Dispose();
             }
         } finally {
-            CoreAudioNative.Release(properties);
+            NativeComActivation.Release(properties);
         }
     }
 
@@ -247,7 +247,7 @@ public class AudioService {
                 volumePercent = scalar * 100f;
                 isMuted = muted;
             } finally {
-                CoreAudioNative.Release(volume);
+                NativeComActivation.Release(volume);
             }
         } catch (Exception ex) when (ex is COMException || ex is IOException || ex is InvalidCastException) {
             // Disabled, unplugged, and not-present endpoints commonly reject volume activation.
@@ -270,9 +270,9 @@ public class AudioService {
             volume = ActivateEndpointVolume(device);
             action(volume);
         } finally {
-            CoreAudioNative.Release(volume);
-            CoreAudioNative.Release(device);
-            CoreAudioNative.Release(enumerator);
+            NativeComActivation.Release(volume);
+            NativeComActivation.Release(device);
+            NativeComActivation.Release(enumerator);
         }
     }
 
@@ -282,7 +282,7 @@ public class AudioService {
             ref interfaceId,
             CoreAudioNative.ClassContextAll,
             IntPtr.Zero,
-            out object volume));
-        return (IAudioEndpointVolume)volume;
+            out IAudioEndpointVolume volume));
+        return volume;
     }
 }
