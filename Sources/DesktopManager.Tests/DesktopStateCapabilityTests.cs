@@ -44,6 +44,24 @@ public class DesktopStateCapabilityTests {
     }
 
     [TestMethod]
+    [DataRow("961cc777-2547-4f9d-8174-7d86181b8a7a", SystemPowerMode.BestPowerEfficiency)]
+    [DataRow("3af9b8d9-7c97-431d-ad78-34a8bfea439f", SystemPowerMode.BetterBattery)]
+    [DataRow("ded574b5-45a0-4f42-8737-46345c09c238", SystemPowerMode.BestPerformance)]
+    [DataRow("00000000-0000-0000-0000-000000000000", SystemPowerMode.Balanced)]
+    [DataRow("12345678-9abc-4def-8123-456789abcdef", SystemPowerMode.Unknown)]
+    public void SystemPowerService_ToPowerMode_MapsSettingsOverlayGuids(string overlay, SystemPowerMode expected) {
+        Assert.AreEqual(expected, SystemPowerService.ToPowerMode(new Guid(overlay)));
+    }
+
+    [TestMethod]
+    public void SystemPowerService_GetActivePowerPlan_ReadsTheActivePlanWithoutChangingIt() {
+        SystemPowerPlan plan = new SystemPowerService().GetActivePowerPlan();
+
+        Assert.AreNotEqual(Guid.Empty, plan.SchemeId);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(plan.Name), "Windows names every power plan it can activate.");
+    }
+
+    [TestMethod]
     public void SystemPowerStatus_UnknownBatteryFlag_IsNotReportedAsNoBattery() {
         var unknown = new SystemPowerStatus(PowerLineState.Unknown, BatteryChargeState.Unknown, null, null, null);
         var missing = new SystemPowerStatus(PowerLineState.Online, BatteryChargeState.NoBattery, null, null, null);

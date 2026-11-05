@@ -341,7 +341,7 @@ internal sealed class NativeWifiProfileApi : IWifiProfileApi {
         return (int)count;
     }
 
-    private static void ThrowWindowsError(uint error, string operation) {
+    internal static void ThrowWindowsError(uint error, string operation) {
         if (error == NativeWifiMethods.ErrorSuccess) {
             return;
         }

@@ -91,7 +91,7 @@ internal static class NativeClipboardSnapshot {
     private struct MetafilePicture { internal int MappingMode; internal int Width; internal int Height; internal IntPtr Metafile; }
     [DllImport("user32.dll", SetLastError = true)] internal static extern uint EnumClipboardFormats(uint format);
     [DllImport("kernel32.dll")] internal static extern void SetLastError(uint error);
-    [DllImport("kernel32.dll")] private static extern UIntPtr GlobalSize(IntPtr memory);
+    [DllImport("kernel32.dll")] internal static extern UIntPtr GlobalSize(IntPtr memory);
     [DllImport("user32.dll")] private static extern IntPtr CopyImage(IntPtr image, uint type, int width, int height, uint flags);
     [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr CopyEnhMetaFile(IntPtr source, string? file);
     [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr CopyMetaFile(IntPtr source, string? file);
