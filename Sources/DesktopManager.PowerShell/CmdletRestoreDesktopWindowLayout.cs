@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Management.Automation;
 
 namespace DesktopManager.PowerShell;
@@ -51,7 +52,6 @@ public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {
             WriteObject(new WorkspaceRecoveryService().Plan(WorkspaceRecoveryService.Read(Path, Validate), RestoreVirtualDesktops));
             return;
         }
-        var automation = new DesktopAutomationService();
         if (ShouldProcess($"Layout file '{Path}'", "Restore desktop window layout")) {
             if (RestoreVirtualDesktops || RestoreApplicationPins || RestoreWallpapers || ReopenExplorerFolders || PassThru) {
                 WorkspaceRestoreResult result = new WorkspaceRecoveryService().Restore(WorkspaceRecoveryService.Read(Path, Validate), new WorkspaceRestoreOptions {
@@ -70,7 +70,17 @@ public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {
                 }
                 if (PassThru) { WriteObject(result); }
             } else {
-                automation.LoadLayout(Path, Validate.IsPresent);
+                // Report saved windows that were skipped, so a layout that matched nothing doesn't look restored.
+                IReadOnlyList<WindowLayoutApplyResult> results = new WindowManager().ApplyLayout(Path, Validate.IsPresent);
+                foreach (WindowLayoutApplyResult result in results) {
+                    if (result.Error == null && !result.Applied) {
+                        WriteWarning($"{result.Match.SavedWindow.Title}: {result.Match.Status}");
+                    }
+                }
+                WindowLayoutApplyResult failed = results.FirstOrDefault(result => result.Error != null);
+                if (failed != null) {
+                    throw new InvalidOperationException(failed.Error);
+                }
             }
         }
     }
