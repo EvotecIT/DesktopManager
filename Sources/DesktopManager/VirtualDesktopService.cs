@@ -44,10 +44,22 @@ public sealed class VirtualDesktopService : IDisposable {
     /// <summary>Moves a top-level window to a known virtual desktop.</summary>
     /// <param name="windowHandle">The top-level window handle to move.</param>
     /// <param name="desktopId">A desktop identifier obtained from another top-level window.</param>
+    /// <exception cref="UnauthorizedAccessException">
+    /// The window belongs to another process. The supported Windows API only moves the calling process's own windows.
+    /// </exception>
     public void MoveWindowToDesktop(IntPtr windowHandle, Guid desktopId) {
         ValidateHandle(windowHandle);
-        Marshal.ThrowExceptionForHR(_manager.MoveWindowToDesktop(windowHandle, ref desktopId));
+        int result = _manager.MoveWindowToDesktop(windowHandle, ref desktopId);
+        if (result == AccessDenied) {
+            throw new UnauthorizedAccessException(
+                "Windows only lets a process move its own windows to another virtual desktop with the supported API, " +
+                "and this window belongs to another process. Moving it needs the experimental shell contract " +
+                "(ExperimentalVirtualDesktopService, or Move-DesktopWindowToVirtualDesktop -Experimental in PowerShell).");
+        }
+        Marshal.ThrowExceptionForHR(result);
     }
+
+    private const int AccessDenied = unchecked((int)0x80070005);
 
     /// <inheritdoc/>
     public void Dispose() {

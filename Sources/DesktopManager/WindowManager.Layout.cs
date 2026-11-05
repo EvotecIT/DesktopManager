@@ -72,7 +72,7 @@ public partial class WindowManager
         /// <exception cref="System.IO.IOException">Thrown when writing to the file fails.</exception>
         public void SaveLayout(string path) {
             var layout = new WindowLayout {
-                Windows = GetWindows().Select(GetWindowPosition).Where(WorkspaceWindowPlacement.TryCapture).ToList()
+                Windows = WindowDpiContext.Execute(() => GetWindows().Select(GetWindowPosition).Where(WorkspaceWindowPlacement.TryCapture).ToList())
             };
             var json = System.Text.Json.JsonSerializer.Serialize(layout, DesktopManagerJsonContext.Indented.WindowLayout);
             var fullPath = System.IO.Path.GetFullPath(path);
@@ -89,8 +89,26 @@ public partial class WindowManager
         /// <param name="path">Path to the layout file.</param>
         /// <param name="validate">Validate layout before applying.</param>
         /// <exception cref="System.IO.FileNotFoundException">Thrown when the layout file does not exist.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the file is not a valid layout.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the file is not a valid layout, or a matched window could not be placed.</exception>
+        /// <remarks>Saved windows with no unique live match are skipped silently; use <see cref="ApplyLayout(string, bool)"/> to see them.</remarks>
         public void LoadLayout(string path, bool validate = false) {
+            IReadOnlyList<WindowLayoutApplyResult> results = ApplyLayout(path, validate);
+            WindowLayoutApplyResult? failed = results.FirstOrDefault(result => result.Error != null);
+            if (failed != null) {
+                throw new InvalidOperationException(failed.Error);
+            }
+        }
+
+        /// <summary>
+        /// Loads a window layout from a JSON file, applies it and reports every saved window, including those
+        /// skipped because no live window, or more than one, matched. Failures are reported rather than thrown.
+        /// </summary>
+        /// <param name="path">Path to the layout file.</param>
+        /// <param name="validate">Validate layout before applying.</param>
+        /// <returns>One result per saved window. Check <see cref="WindowLayoutMatch.Status"/> for skipped entries.</returns>
+        /// <exception cref="System.IO.FileNotFoundException">Thrown when the layout file does not exist.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the file is not a valid layout.</exception>
+        public IReadOnlyList<WindowLayoutApplyResult> ApplyLayout(string path, bool validate = false) {
             if (!System.IO.File.Exists(path)) {
                 throw new System.IO.FileNotFoundException("Layout file not found", path);
             }
@@ -103,18 +121,14 @@ public partial class WindowManager
                 throw new InvalidOperationException($"Invalid layout file: {ex.Message}", ex);
             }
             if (layout == null) {
-                return;
+                return Array.Empty<WindowLayoutApplyResult>();
             }
 
             if (validate) {
                 ValidateLayout(layout);
             }
 
-            IReadOnlyList<WindowLayoutApplyResult> results = ApplyLayout(layout);
-            WindowLayoutApplyResult? failed = results.FirstOrDefault(result => result.Error != null);
-            if (failed != null) {
-                throw new InvalidOperationException(failed.Error);
-            }
+            return ApplyLayout(layout);
         }
         internal static void ValidateLayout(WindowLayout layout) {
             if (layout.Windows == null) {

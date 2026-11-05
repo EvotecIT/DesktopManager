@@ -26,6 +26,10 @@ internal static class WorkspaceWindowPlacement {
     private static extern int SetWindowLong32(IntPtr window, int index, int value);
 
     internal static void Capture(WindowPosition window) {
+        WindowDpiContext.Execute(() => CaptureCore(window));
+    }
+
+    private static void CaptureCore(WindowPosition window) {
         Placement placement = Read(window.Handle);
         window.RestoreToMaximized = (placement.Flags & 2) != 0;
         if (window.State == WindowState.Minimize || window.State == WindowState.Maximize) {
@@ -44,6 +48,36 @@ internal static class WorkspaceWindowPlacement {
     }
 
     internal static WindowLayoutApplyResult Apply(WindowManager manager, WindowLayoutMatch match) {
+        return WindowDpiContext.Execute(() => ApplyCore(manager, match));
+    }
+
+    /// <summary>Gets the bounds a window restores to, in screen coordinates. Valid for minimised and maximised windows.</summary>
+    internal static RECT GetNormalBounds(IntPtr window) {
+        return ConvertCoordinates(window, Read(window).Normal, toScreen: true);
+    }
+
+    /// <summary>
+    /// Changes where a minimised window restores to, leaving it minimised and inactive. Its rectangle on
+    /// screen is the off-screen minimised position, so moving it with SetWindowPos would not change where it reopens.
+    /// </summary>
+    internal static void SetMinimizedNormalBounds(IntPtr window, RECT screenBounds) {
+        Placement placement = Read(window);
+        placement.Normal = ConvertCoordinates(window, screenBounds, toScreen: false);
+        // Restore-to-maximised is kept only with SW_SHOWMINIMIZED; SW_SHOWMINNOACTIVE otherwise keeps it minimised and inactive.
+        placement.ShowCommand = (placement.Flags & 2) != 0 ? 2 : 7;
+        Write(window, ref placement);
+    }
+
+    /// <summary>Restores a minimised or maximised window straight to the given bounds without activating it.</summary>
+    internal static void RestoreToNormalBounds(IntPtr window, RECT screenBounds) {
+        Placement placement = Read(window);
+        placement.Normal = ConvertCoordinates(window, screenBounds, toScreen: false);
+        placement.Flags = 0;
+        placement.ShowCommand = 4;
+        Write(window, ref placement);
+    }
+
+    private static WindowLayoutApplyResult ApplyCore(WindowManager manager, WindowLayoutMatch match) {
         try {
             WindowPosition target = match.Window!;
             Placement placement = Read(target.Handle);
@@ -54,17 +88,7 @@ internal static class WorkspaceWindowPlacement {
             placement.Flags = match.SavedWindow.RestoreToMaximized ? 2 : 0;
             placement.ShowCommand = match.SavedWindow.State == WindowState.Minimize ? (match.SavedWindow.RestoreToMaximized ? 2 : 7) :
                 match.SavedWindow.State == WindowState.Maximize ? 3 : 4;
-            IntPtr style = MonitorNativeMethods.GetWindowLongPtr(target.Handle, MonitorNativeMethods.GWL_EXSTYLE);
-            const long noActivate = 0x08000000;
-            bool suppressActivation = (style.ToInt64() & noActivate) == 0;
-            try {
-                // Maximizing and restoring a maximized minimized window otherwise activate it,
-                // which can switch the user's virtual desktop. Remove only our temporary bit.
-                if (suppressActivation) { SetNoActivate(target.Handle, true); }
-                if (!SetWindowPlacement(target.Handle, ref placement)) { throw new Win32Exception(Marshal.GetLastWin32Error()); }
-            } finally {
-                if (suppressActivation) { SetNoActivate(target.Handle, false); }
-            }
+            Write(target.Handle, ref placement);
             WindowPosition actual = manager.GetWindowPosition(target);
             Capture(actual);
             if (actual.Left != match.SavedWindow.Left || actual.Top != match.SavedWindow.Top ||
@@ -75,6 +99,20 @@ internal static class WorkspaceWindowPlacement {
             }
             return new WindowLayoutApplyResult(match, true, null);
         } catch (Exception ex) { return new WindowLayoutApplyResult(match, false, ex.Message); }
+    }
+
+    private static void Write(IntPtr window, ref Placement placement) {
+        IntPtr style = MonitorNativeMethods.GetWindowLongPtr(window, MonitorNativeMethods.GWL_EXSTYLE);
+        const long noActivate = 0x08000000;
+        bool suppressActivation = (style.ToInt64() & noActivate) == 0;
+        try {
+            // Maximizing and restoring a maximized minimized window otherwise activate it,
+            // which can switch the user's virtual desktop. Remove only our temporary bit.
+            if (suppressActivation) { SetNoActivate(window, true); }
+            if (!SetWindowPlacement(window, ref placement)) { throw new Win32Exception(Marshal.GetLastWin32Error()); }
+        } finally {
+            if (suppressActivation) { SetNoActivate(window, false); }
+        }
     }
 
     private static void SetNoActivate(IntPtr window, bool enabled) {

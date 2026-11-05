@@ -242,7 +242,7 @@ internal static partial class McpCatalog {
                     ["processId"] = CreateIntegerSchema("Process identifier."),
                     ["handle"] = CreateStringSchema("Window handle in decimal or hexadecimal format."),
                     ["activeWindow"] = CreateBooleanSchema("Target only the current foreground window."),
-                    ["position"] = CreateStringSchema("One of left, right, top-left, top-right, bottom-left, bottom-right."),
+                    ["position"] = CreateStringSchema("One of left, right, top, bottom, top-left, top-right, bottom-left, bottom-right, left-third, center-third, right-third, or center (keeps the size)."),
                     ["all"] = CreateBooleanSchema("Apply to all matching windows instead of the first match.")
                 }), new[] { "position" }), readOnly: false, destructive: false, idempotent: true),
             CreateTool("list_monitors", "List Monitors", "List connected monitors and their bounds.", CreateObjectSchema(

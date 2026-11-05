@@ -73,6 +73,12 @@ public partial class WindowManager {
                 throw new ArgumentNullException(nameof(options));
             }
 
+            // Window and monitor rectangles are read in one per-monitor-aware context so they are physical pixels
+            // that the move, snap and placement methods accept back unchanged, whatever the caller's DPI awareness.
+            return WindowDpiContext.Execute(() => QueryWindows(options, cancellationToken, observationBudget));
+        }
+
+        private List<WindowInfo> QueryWindows(WindowQueryOptions options, CancellationToken cancellationToken, Func<int>? observationBudget) {
             var handles = new List<IntPtr>();
             var shellWindowhWnd = MonitorNativeMethods.GetShellWindow();
             bool includeHidden = options.IncludeHidden || options.IsVisible == false;
@@ -214,7 +220,10 @@ public partial class WindowManager {
         /// <returns>A list of child window information.</returns>
         public List<WindowInfo> GetChildWindows(WindowInfo parent, bool includeHidden = false, bool includeCloaked = true) {
             ValidateWindowInfo(parent);
+            return WindowDpiContext.Execute(() => QueryChildWindows(parent, includeHidden, includeCloaked));
+        }
 
+        private List<WindowInfo> QueryChildWindows(WindowInfo parent, bool includeHidden, bool includeCloaked) {
             var handles = new List<IntPtr>();
             if (MonitorNativeMethods.GetWindowThreadProcessId(parent.Handle, out _) == 0) {
                 throw new ArgumentException("The parent window no longer exists.", nameof(parent));
@@ -342,8 +351,12 @@ public partial class WindowManager {
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
         /// <returns>The window position.</returns>
-        public WindowPosition GetWindowPosition(WindowInfo windowInfo) {        
+        public WindowPosition GetWindowPosition(WindowInfo windowInfo) {
             ValidateWindowInfo(windowInfo);
+            return WindowDpiContext.Execute(() => ReadWindowPosition(windowInfo));
+        }
+
+        private static WindowPosition ReadWindowPosition(WindowInfo windowInfo) {
             RECT rect = new RECT();
             if (MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out rect)) {
                 // Re-evaluate the current state directly from the window to avoid stale data

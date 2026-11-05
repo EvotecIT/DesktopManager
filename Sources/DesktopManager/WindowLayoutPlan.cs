@@ -14,14 +14,33 @@ public enum WindowLayoutMatchStatus {
     Invalid
 }
 
+/// <summary>Describes how a saved window was matched to a live window.</summary>
+public enum WindowLayoutMatchMethod {
+    /// <summary>No live window was matched.</summary>
+    None,
+    /// <summary>The same process and the exact saved title.</summary>
+    ProcessAndTitle,
+    /// <summary>The exact saved title and the same application, after the process restarted.</summary>
+    Title,
+    /// <summary>
+    /// The same application (process name and window class) after its title changed, narrowed by the
+    /// title's application suffix when needed. The only candidate, and claimed by no other saved window.
+    /// </summary>
+    Application
+}
+
 /// <summary>A saved position and its proposed live target. Planning does not move windows.</summary>
 public sealed class WindowLayoutMatch {
-    internal WindowLayoutMatch(WindowPosition saved, WindowPosition? window, WindowLayoutMatchStatus status, int candidateCount) {
+    internal WindowLayoutMatch(WindowPosition saved, WindowPosition? window, WindowLayoutMatchStatus status, int candidateCount,
+        WindowLayoutMatchMethod method = WindowLayoutMatchMethod.None) {
         SavedWindow = saved;
         Window = window;
         Status = status;
         CandidateCount = candidateCount;
+        Method = window == null ? WindowLayoutMatchMethod.None : method;
     }
+    /// <summary>Gets how the live target was matched; <see cref="WindowLayoutMatchMethod.None"/> when there is none.</summary>
+    public WindowLayoutMatchMethod Method { get; }
     /// <summary>Gets the saved position.</summary>
     public WindowPosition SavedWindow { get; }
     /// <summary>Gets the unique proposed live target, if one exists.</summary>
