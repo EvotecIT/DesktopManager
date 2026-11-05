@@ -4,21 +4,11 @@ namespace DesktopManager.Tests;
 
 [TestClass]
 /// <summary>
-/// Tests for MouseInputService.
+/// Tests for MouseInputService that only read state. Moving, clicking, scrolling or dragging here would act on the
+/// real desktop under the cursor (a click at 0,0 un-maximises whatever window's title bar is there), so those
+/// operations are not exercised against the live session.
 /// </summary>
 public class MouseInputServiceTests {
-    [TestMethod]
-    /// <summary>
-    /// Test for MoveCursor_DoesNotThrow.
-    /// </summary>
-    public void MoveCursor_DoesNotThrow() {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires Windows");
-        }
-
-        MouseInputService.MoveCursor(0, 0);
-    }
-
     [TestMethod]
     /// <summary>
     /// Test for GetState_DoesNotThrow.
@@ -31,41 +21,5 @@ public class MouseInputServiceTests {
         DesktopMouseState state = MouseInputService.GetState();
 
         Assert.IsNotNull(state);
-    }
-
-    [TestMethod]
-    /// <summary>
-    /// Test for Click_DoesNotThrow.
-    /// </summary>
-    public void Click_DoesNotThrow() {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires Windows");
-        }
-
-        MouseInputService.Click(MouseButton.Left);
-    }
-
-    [TestMethod]
-    /// <summary>
-    /// Test for Scroll_DoesNotThrow.
-    /// </summary>
-    public void Scroll_DoesNotThrow() {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires Windows");
-        }
-
-        MouseInputService.Scroll(0);
-    }
-
-    [TestMethod]
-    /// <summary>
-    /// Test for MouseDrag_DoesNotThrow.
-    /// </summary>
-    public void MouseDrag_DoesNotThrow() {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            Assert.Inconclusive("Test requires Windows");
-        }
-
-        MouseInputService.MouseDrag(MouseButton.Left, 0, 0, 1, 1, 0);
     }
 }
