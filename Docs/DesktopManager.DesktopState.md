@@ -72,7 +72,7 @@ if (state.Level != null) {
 }
 ```
 
-`AudioLoopbackCapture` raises the samples playing on the default output as floats, for meters and visualisers. Its event runs on the capture thread and the buffer is reused, so copy what you keep.
+`AudioLoopbackCapture` raises the samples playing on the default output as floats, for meters and visualisers. Its event runs on the capture thread and the buffer is reused, so copy what you keep. If endpoint notifications cannot be registered, capture reopens about once a second to follow the current default and retry registration; those retries can leave brief gaps.
 
 ## Side screens and touch panels
 

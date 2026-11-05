@@ -60,6 +60,23 @@ public sealed class AudioDefaultEndpointSessionTests {
     }
 
     [TestMethod]
+    public void Session_ResolvesTheCurrentDefaultWhenNotificationsCannotBeRegistered() {
+        var endpoints = new Endpoints();
+        using var session = new AudioDefaultEndpointSession(AudioDataFlow.Capture, AudioRole.Communications,
+            endpoints.Open, _ => throw new COMException("Notifications unavailable", unchecked((int)0x80004005)));
+
+        Assert.AreEqual(37f, session.GetState().Level!.VolumePercent);
+        Endpoint previous = endpoints.Opened[0];
+        endpoints.DefaultVolumeScalar = 0.62f;
+        Assert.AreEqual(62f, session.GetState().Level!.VolumePercent, "An active old endpoint must not hide a new default when notifications are unavailable.");
+        Assert.AreEqual(1, previous.Disposals);
+
+        Assert.IsTrue(session.SetMute(true).Succeeded);
+        Assert.IsFalse(previous.Muted, "A current-default mute must not affect the previous microphone.");
+        Assert.IsTrue(endpoints.Opened[endpoints.Opened.Count - 1].Muted);
+    }
+
+    [TestMethod]
     [DataRow(unchecked((int)0x80070490), true, DisplayName = "No default endpoint")]
     [DataRow(unchecked((int)0x8007048F), true, DisplayName = "Device disconnected")]
     [DataRow(unchecked((int)0x80070005), true, DisplayName = "Access denied")]
@@ -86,6 +103,7 @@ public sealed class AudioDefaultEndpointSessionTests {
         private EventHandler<AudioEndpointChangedEventArgs>? _handler;
         internal readonly List<Endpoint> Opened = new();
         internal int OpenFailure;
+        internal float DefaultVolumeScalar = 0.37f;
         internal int CallThread;
         internal ApartmentState CallApartment;
         internal bool SubscriptionDisposed;
@@ -96,7 +114,7 @@ public sealed class AudioDefaultEndpointSessionTests {
             if (OpenFailure != 0) {
                 Marshal.ThrowExceptionForHR(OpenFailure);
             }
-            var endpoint = new Endpoint();
+            var endpoint = new Endpoint { VolumeScalar = DefaultVolumeScalar };
             Opened.Add(endpoint);
             return endpoint;
         }

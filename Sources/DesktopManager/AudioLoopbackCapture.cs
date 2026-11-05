@@ -13,7 +13,9 @@ namespace DesktopManager;
 /// <para>
 /// The capture follows the default render endpoint for <see cref="Role"/>: when Windows assigns another default
 /// or the endpoint goes away, it reopens the new default. While no output endpoint is available it retries
-/// about once a second and <see cref="IsCapturing"/> is false. Windows delivers no packets while nothing plays.
+/// about once a second and <see cref="IsCapturing"/> is false. If endpoint notifications cannot be registered,
+/// capture reopens about once a second until registration succeeds; those retries can leave brief gaps.
+/// Windows delivers no packets while nothing plays.
 /// </para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
@@ -105,7 +107,8 @@ public sealed partial class AudioLoopbackCapture : IDisposable {
         Stop();
     }
 
-    private sealed class CaptureRun {
+    /// <summary>Owns one capture thread and its stop/default-change signals.</summary>
+    internal sealed class CaptureRun {
         private readonly object _signal = new();
         private bool _signalled;
         internal Thread? Thread;

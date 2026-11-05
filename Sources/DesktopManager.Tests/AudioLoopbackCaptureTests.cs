@@ -45,4 +45,48 @@ public sealed class AudioLoopbackCaptureTests {
         capture.Dispose();
         Assert.ThrowsExactly<ObjectDisposedException>(() => capture.Start());
     }
+    [TestMethod]
+    [DataRow(false, DisplayName = "Idle output")]
+    [DataRow(true, DisplayName = "Continuously queued packets")]
+    public void PumpWithoutNotifications_ReturnsToReopenTheDefaultOutput(bool hasPackets) {
+        using var capture = new AudioLoopbackCapture();
+        var run = new AudioLoopbackCapture.CaptureRun();
+        var client = new QueuedCaptureClient(hasPackets);
+        var format = new AudioCaptureFormat(AudioSampleEncoding.Pcm16, 2, 48000);
+        var pump = System.Threading.Tasks.Task.Run(() => capture.Pump(run, client, format, retryDefaultWatcher: true));
+        bool returned;
+        try {
+            returned = pump.Wait(TimeSpan.FromSeconds(3));
+        } finally {
+            run.RequestStop();
+            pump.GetAwaiter().GetResult();
+        }
+        Assert.IsTrue(returned, "Without endpoint notifications, the pump must return so the current default and registration are retried.");
+    }
+
+    private sealed class QueuedCaptureClient : IAudioCaptureClient {
+        private readonly bool _hasPackets;
+
+        internal QueuedCaptureClient(bool hasPackets) {
+            _hasPackets = hasPackets;
+        }
+
+        public int GetNextPacketSize(out uint frames) {
+            // A permanently nonempty queue also exercises the inner drain loop without opening a real device.
+            Thread.Sleep(1);
+            frames = _hasPackets ? 1u : 0u;
+            return 0;
+        }
+
+        public int GetBuffer(out IntPtr data, out uint frames, out uint flags, out ulong devicePosition, out ulong performanceCounterPosition) {
+            data = IntPtr.Zero;
+            frames = 1;
+            flags = CoreAudioCaptureNative.SilentBufferFlag;
+            devicePosition = 0;
+            performanceCounterPosition = 0;
+            return 0;
+        }
+
+        public int ReleaseBuffer(uint frames) => 0;
+    }
 }
