@@ -167,22 +167,14 @@ public static class ClipboardHelper {
         text = string.Empty;
         OpenClipboardWithRetry(retryCount, retryDelayMilliseconds);
         try {
-            IntPtr handle = MonitorNativeMethods.GetClipboardData(MonitorNativeMethods.CF_UNICODETEXT);
-            if (handle == IntPtr.Zero) {
+            // Bounded by the memory block's size, so text without a terminator can't be read past its end.
+            string? read = ReadOpenUnicodeText();
+            if (read == null) {
                 return false;
             }
 
-            IntPtr pointer = MonitorNativeMethods.GlobalLock(handle);
-            if (pointer == IntPtr.Zero) {
-                return false;
-            }
-
-            try {
-                text = Marshal.PtrToStringUni(pointer) ?? string.Empty;
-                return true;
-            } finally {
-                MonitorNativeMethods.GlobalUnlock(handle);
-            }
+            text = read;
+            return true;
         } finally {
             MonitorNativeMethods.CloseClipboard();
         }
