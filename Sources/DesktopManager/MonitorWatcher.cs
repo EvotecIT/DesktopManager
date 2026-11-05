@@ -250,6 +250,11 @@ public sealed class MonitorWatcher : IDisposable {
                 Start();
             } catch (Exception exception) {
                 _startupFailure = exception;
+                // A window left behind by a failed start would never be pumped or destroyed.
+                if (_hwnd != IntPtr.Zero) {
+                    MonitorNativeMethods.DestroyWindow(_hwnd);
+                    _hwnd = IntPtr.Zero;
+                }
                 _ready.Set();
                 return;
             }
@@ -286,6 +291,9 @@ public sealed class MonitorWatcher : IDisposable {
                 _hwnd,
                 ref guid,
                 MonitorNativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+            if (_notificationHandle == IntPtr.Zero) {
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Windows refused the monitor power notification.");
+            }
             _ready.Set();
         }
 
@@ -354,6 +362,11 @@ public sealed class MonitorWatcher : IDisposable {
                 Start();
             } catch (Exception exception) {
                 _startupFailure = exception;
+                // A window left behind by a failed start would never be pumped or destroyed.
+                if (_hwnd != IntPtr.Zero) {
+                    MonitorNativeMethods.DestroyWindow(_hwnd);
+                    _hwnd = IntPtr.Zero;
+                }
                 _ready.Set();
                 return;
             }
@@ -399,6 +412,9 @@ public sealed class MonitorWatcher : IDisposable {
                     MonitorNativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
             } finally {
                 Marshal.FreeHGlobal(pFilter);
+            }
+            if (_notificationHandle == IntPtr.Zero) {
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Windows refused the monitor device notification.");
             }
             _ready.Set();
         }

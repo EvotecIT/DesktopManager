@@ -24,15 +24,17 @@ public static class TouchInputMapping {
     /// empty when Windows holds no explicit mapping.
     /// </returns>
     public static IReadOnlyList<string> GetMappedMonitorDevicePaths() {
-        using RegistryKey? key = Registry.LocalMachine.OpenSubKey(MappingKey);
-        if (key == null) {
-            return Array.Empty<string>();
-        }
-
-        string[] names = key.GetValueNames();
-        var values = new object?[names.Length];
-        for (int index = 0; index < names.Length; index++) {
-            values[index] = key.GetValue(names[index]);
+        // A 32-bit process sees a redirected HKLM\SOFTWARE, so both views are read; duplicates fold together.
+        var values = new List<object?>();
+        foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 }) {
+            using RegistryKey root = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+            using RegistryKey? key = root.OpenSubKey(MappingKey);
+            if (key == null) {
+                continue;
+            }
+            foreach (string name in key.GetValueNames()) {
+                values.Add(key.GetValue(name));
+            }
         }
 
         return ParseMonitorDevicePaths(values);

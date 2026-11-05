@@ -67,6 +67,12 @@ public sealed class CursorFence : IDisposable {
     public CursorFenceMode Mode { get; }
 
     private void Run() {
+        // Hook points, GetCursorPos, SetCursorPos and Bounds must all be physical pixels, whatever the host's DPI awareness.
+        try {
+            MonitorNativeMethods.SetThreadDpiAwarenessContext(new IntPtr(-4));
+        } catch (EntryPointNotFoundException) {
+            // Before Windows 10 1607 there is no per-thread DPI context; the process setting applies.
+        }
         _threadId = MonitorNativeMethods.GetCurrentThreadId();
         // Create the message queue before publishing readiness, so Dispose can always post WM_QUIT.
         MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
