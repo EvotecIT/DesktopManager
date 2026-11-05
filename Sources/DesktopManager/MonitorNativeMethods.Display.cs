@@ -63,7 +63,7 @@ public static partial class MonitorNativeMethods {
     /// <param name="hMonitor">Handle to the display monitor.</param>
     /// <param name="lpmi">Structure that receives monitor information.</param>
     /// <returns>True if the function succeeds.</returns>
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
 
     /// <summary>

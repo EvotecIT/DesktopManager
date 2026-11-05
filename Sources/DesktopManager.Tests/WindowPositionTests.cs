@@ -121,4 +121,24 @@ public class WindowPositionTests {
 
         Assert.IsTrue(moved);
     }
+    [TestMethod]
+    /// <summary>
+    /// A window keeps its place relative to the work area, and a place that would leave it off the target screen is moved back on.
+    /// </summary>
+    public void PlaceOnMonitor_KeepsTheOffsetAndStaysInsideTheTargetWorkArea() {
+        var from = new RECT { Left = 0, Top = 0, Right = 3840, Bottom = 2112 };
+        var strip = new RECT { Left = 3840, Top = 1440, Right = 6400, Bottom = 2160 };
+        var window = new RECT { Left = 200, Top = 100, Right = 1400, Bottom = 900 };
+
+        RECT kept = WindowManager.PlaceOnMonitor(window, from, new RECT { Left = 3840, Top = 0, Right = 7680, Bottom = 2112 });
+        Assert.AreEqual((4040, 100, 5240, 900), (kept.Left, kept.Top, kept.Right, kept.Bottom));
+
+        // Near the far corner, the window is pulled back so it ends at the strip's edge.
+        RECT clamped = WindowManager.PlaceOnMonitor(new RECT { Left = 3000, Top = 1800, Right = 3800, Bottom = 2100 }, from, strip);
+        Assert.AreEqual((5600, 1860, 6400, 2160), (clamped.Left, clamped.Top, clamped.Right, clamped.Bottom));
+
+        // An 800-high window can't fit on a 720-high strip: its top-left corner stays on screen.
+        RECT oversized = WindowManager.PlaceOnMonitor(window, from, strip);
+        Assert.AreEqual((4040, 1440), (oversized.Left, oversized.Top));
+    }
 }

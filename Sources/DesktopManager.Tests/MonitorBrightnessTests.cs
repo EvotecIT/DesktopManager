@@ -5,31 +5,46 @@ namespace DesktopManager.Tests;
 
 [TestClass]
 /// <summary>
-/// Test class for MonitorBrightnessTests.
+/// Brightness through DDC/CI, read only.
 /// </summary>
 public class MonitorBrightnessTests {
     [TestMethod]
     /// <summary>
-    /// Test for GetAndSetBrightness_DoesNotThrow.
+    /// Every monitor that answers DDC/CI when asked directly also answers through the library, by device ID, by display name and on the monitor itself.
     /// </summary>
-    public void GetAndSetBrightness_DoesNotThrow() {
+    public void Brightness_MonitorsThatAnswerDdcCi_ReadTheSameByDeviceIdNameAndMonitor() {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             Assert.Inconclusive("Test requires Windows");
         }
-        TestHelper.RequireSystemDesktopChanges();
 
-        var monitors = new Monitors().GetMonitorsConnected();
-        if (monitors.Count == 0) {
-            Assert.Inconclusive("No monitors found");
+        // Asked directly, without the library's lookup, so a lookup that never matches can't pass as "not supported".
+        var answering = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        MonitorNativeMethods.MonitorEnumProc proc = (IntPtr handle, IntPtr hdc, ref RECT rect, IntPtr data) => {
+            var info = new MONITORINFOEX { cbSize = Marshal.SizeOf<MONITORINFOEX>() };
+            if (MonitorNativeMethods.GetMonitorInfo(handle, ref info)
+                && MonitorNativeMethods.GetNumberOfPhysicalMonitorsFromHMONITOR(handle, out uint count) && count > 0) {
+                var physical = new PHYSICAL_MONITOR[count];
+                if (MonitorNativeMethods.GetPhysicalMonitorsFromHMONITOR(handle, count, physical)) {
+                    if (MonitorNativeMethods.GetMonitorBrightness(physical[0].hPhysicalMonitor, out _, out _, out _)) {
+                        answering.Add(info.szDevice);
+                    }
+                    MonitorNativeMethods.DestroyPhysicalMonitors(count, physical);
+                }
+            }
+            return true;
+        };
+        MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+        if (answering.Count == 0) {
+            Assert.Inconclusive("No monitor answers DDC/CI brightness.");
         }
 
-        var monitor = monitors.First();
         var service = new Monitors();
-        try {
-            int current = service.GetMonitorBrightness(monitor.DeviceId);
-            service.SetMonitorBrightness(monitor.DeviceId, current);
-        } catch (InvalidOperationException ex) {
-            Assert.Inconclusive($"Brightness not supported: {ex.Message}");
+        var connected = service.GetMonitorsConnected().Where(monitor => answering.Contains(monitor.DeviceName)).ToList();
+        Assert.HasCount(answering.Count, connected);
+        foreach (Monitor monitor in connected) {
+            int byName = service.GetMonitorBrightness(monitor.DeviceName);
+            Assert.AreEqual(byName, service.GetMonitorBrightness(monitor.DeviceId), monitor.DeviceName);
+            Assert.AreEqual(byName, monitor.GetBrightness(), monitor.DeviceName);
         }
     }
 }

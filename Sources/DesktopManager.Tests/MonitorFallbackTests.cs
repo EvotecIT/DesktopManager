@@ -94,7 +94,8 @@ public class MonitorFallbackTests {
         if (monitors.Count == 0) {
             Assert.Inconclusive("No monitors were returned by fallback enumeration.");
         }
-        Assert.AreEqual(monitors[0].DeviceId, monitors[0].DeviceName, "Fallback enumeration must expose the adapter name used by display-setting APIs.");
+        StringAssert.StartsWith(monitors[0].DeviceName, @"\\.\DISPLAY", "Fallback enumeration must expose the adapter name used by display-setting APIs.");
+        Assert.AreEqual(monitors[0].DeviceName, service.ResolveDisplaySource(monitors[0].DeviceId), "The fallback ID must lead back to the same display.");
         var rect = service.GetMonitorBounds(monitors[0].DeviceId);
         Assert.IsTrue(rect.Right > rect.Left);
         Assert.IsTrue(rect.Bottom > rect.Top);

@@ -286,7 +286,8 @@ public partial class WindowManager
         }
 
         /// <summary>
-        /// Moves the specified window to the target monitor while preserving its relative position.
+        /// Moves the specified window to the target monitor, at the same place relative to the monitor's work area,
+        /// kept inside the target's work area. A maximised window is maximised again on the target.
         /// </summary>
         /// <param name="windowInfo">The window to move.</param>
         /// <param name="targetMonitor">The monitor to move the window to.</param>
@@ -315,12 +316,6 @@ public partial class WindowManager
                 currentBounds = new RECT { Left = windowRect.Left, Top = windowRect.Top };
             }
 
-            int offsetX = windowRect.Left - currentBounds.Left;
-            int offsetY = windowRect.Top - currentBounds.Top;
-
-            int newLeft = targetBounds.Left + offsetX;
-            int newTop = targetBounds.Top + offsetY;
-
             if (currentBounds.Left == targetBounds.Left &&
                 currentBounds.Top == targetBounds.Top &&
                 currentBounds.Right == targetBounds.Right &&
@@ -328,9 +323,42 @@ public partial class WindowManager
                 return false;
             }
 
-            SetWindowPosition(windowInfo, newLeft, newTop);
+            // A maximised window would stay maximised on its old screen: restore it, move it, maximise it on the target.
+            bool maximized = IsZoomed(windowInfo.Handle);
+            if (maximized) {
+                RestoreWindow(windowInfo);
+                if (!MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out windowRect)) {
+                    throw new InvalidOperationException("Failed to get window position");
+                }
+            }
+
+            RECT currentArea = currentMonitor != null ? currentMonitor.GetMonitorWorkArea() : currentBounds;
+            RECT placed = PlaceOnMonitor(windowRect, currentArea, targetMonitor.GetMonitorWorkArea());
+            SetWindowPosition(windowInfo, placed.Left, placed.Top);
+            if (maximized) {
+                MaximizeWindow(windowInfo);
+            }
             return true;
         }
+
+        /// <summary>
+        /// Where a window lands on another monitor: at the same offset from the work area's corner as on its current monitor,
+        /// moved back inside the target's work area when that offset would leave it partly off screen.
+        /// </summary>
+        internal static RECT PlaceOnMonitor(RECT window, RECT fromArea, RECT toArea) {
+            int width = window.Right - window.Left;
+            int height = window.Bottom - window.Top;
+            int left = toArea.Left + (window.Left - fromArea.Left);
+            int top = toArea.Top + (window.Top - fromArea.Top);
+            // A window larger than the target keeps its top-left corner on screen, where its title bar is.
+            left = Math.Max(toArea.Left, Math.Min(left, toArea.Right - width));
+            top = Math.Max(toArea.Top, Math.Min(top, toArea.Bottom - height));
+            return new RECT { Left = left, Top = top, Right = left + width, Bottom = top + height };
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        private static extern bool IsZoomed(IntPtr hWnd);
 
         /// <summary>
         /// Closes a window.

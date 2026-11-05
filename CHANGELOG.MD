@@ -1,5 +1,24 @@
 ## Unreleased
 
+- Ignore microphone and camera usage records that predate both boot and the current sign-in, so a crash or power loss no longer leaves an app reported as still using the device. Active records use the recorded sign-in time rather than a moving boot estimate; ambiguous timestamps after Fast Startup or a backwards clock correction return unavailable rather than a successful empty snapshot.
+- Make monitor brightness work: monitor lookup no longer gives up when the enumeration stops early on a match, `GetMonitorBrightness`/`SetMonitorBrightness` accept the device ID or the display name, and `Monitor` gains `GetBrightness()` and `SetBrightness()`.
+- Keep monitor IDs consistent: the fallback enumeration reports the same device path as the normal one, and display-setting fallbacks map it back to the display name.
+- Add `Monitor.Bounds` and `Monitor.WorkingArea`, and make `Monitor.Position` use the bounds already read during enumeration.
+- Move windows between monitors relative to the work area, keep them inside the target, and maximise a maximised window again on the target.
+- Correct interop that failed or misbehaved: `SetSuspendState` marshalling, `SetWindowLongPtr` on 32-bit processes, the ANSI window-long entry points, missing last-error capture, hive unload errors, and `MonitorWatcher` startup, shutdown and 64-bit message parameters.
+- Add `CursorFence` to keep the mouse pointer from crossing a screen edge, either always or until it is pushed for a moment, while touch and pen pass through.
+- Add `WindowEventWatcher` for window move, resize, show, destroy and foreground events on its own thread.
+- Add `NonActivatingWindow`, `WindowEdgeGestures` and `TouchInputMapping` for touch-screen and side-panel apps, and make `DesktopSessionService.GetIdleTime()` public.
+- Add `WindowThumbnail` for live DWM window previews.
+- Add `AudioDefaultEndpointSession`, which follows the default device as it changes and reports a missing device as unavailable rather than throwing, and `AudioLoopbackCapture` for the samples playing on the default output.
+- Add `ClipboardWatcher`, which reports new text or image content, skips copies apps mark as private, retries busy reads, and can put text or an image back without reporting it.
+- Add `WifiConnectionService.GetCurrent` for the connected network, signal and link rates of a Wi-Fi interface. Windows 11 24H2 and later answer only apps that have location access.
+- Add `SystemPowerService.GetActivePowerPlan` for the active plan and the Windows 11 power mode.
+- Read clipboard text within the size of its memory block, and allocate before emptying the clipboard so a failed allocation in `SetText` no longer clears it.
+- Stop the mouse input tests clicking and dragging on the live desktop.
+
+## 4.7.0 - 2026.11.03
+
 - Add shared services for per-application audio volume, mute and peaks; live endpoint levels; current media metadata, artwork and transport; and microphone/camera usage records. Modern targets retain trimming and Native AOT support, while older targets report unsupported media-session capability.
 
 - Make Core Audio work in trimmed and Native AOT applications. On .NET 8 and later, `AudioService`, `PolicyConfigClient`, `AudioEndpointWatcher` and `VirtualDesktopService` use source-generated COM; net472 and netstandard2.0 keep built-in COM.

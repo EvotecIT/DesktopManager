@@ -19,6 +19,9 @@ internal static class NativeWifiMethods {
     internal const int ConnectionNotificationProfileNameOffset = 4;
     internal const int ConnectionNotificationReasonCodeOffset = 560;
     internal const int ConnectionNotificationMinimumSize = ConnectionNotificationReasonCodeOffset + sizeof(uint);
+    internal const uint ErrorInvalidState = 5023;
+    internal const uint ErrorAccessDenied = 5;
+    internal const uint InterfaceOpcodeCurrentConnection = 7;
 
     [DllImport("wlanapi.dll")]
     internal static extern uint WlanOpenHandle(
@@ -69,6 +72,16 @@ internal static class NativeWifiMethods {
         IntPtr callbackContext,
         IntPtr reserved,
         IntPtr previousNotificationSource);
+
+    [DllImport("wlanapi.dll")]
+    internal static extern uint WlanQueryInterface(
+        SafeWlanClientHandle clientHandle,
+        ref Guid interfaceId,
+        uint opCode,
+        IntPtr reserved,
+        out uint dataSize,
+        out IntPtr data,
+        IntPtr opcodeValueType);
 
     [DllImport("wlanapi.dll")]
     internal static extern void WlanFreeMemory(IntPtr memory);

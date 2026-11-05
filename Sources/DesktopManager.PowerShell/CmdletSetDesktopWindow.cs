@@ -8,15 +8,15 @@ namespace DesktopManager.PowerShell {
     /// <para type="description">Sets the position, size and state of a window on the desktop. You can identify the window by its title (supports wildcards).</para>
     /// <example>
     ///   <para>Move a specific window to coordinates (100,100)</para>
-    ///   <code>Set-DesktopWindowPosition -Name "Calculator" -Left 100 -Top 100</code>
+    ///   <code>Set-DesktopWindow -Name "Calculator" -Left 100 -Top 100</code>
     /// </example>
     /// <example>
     ///   <para>Set window position and size</para>
-    ///   <code>Set-DesktopWindowPosition -Name "Notepad" -Left 100 -Top 100 -Width 800 -Height 600</code>
+    ///   <code>Set-DesktopWindow -Name "Notepad" -Left 100 -Top 100 -Width 800 -Height 600</code>
     /// </example>
     /// <example>
     ///   <para>Minimize a window</para>
-    ///   <code>Set-DesktopWindowPosition -Name "Calculator" -State Minimize</code>
+    ///   <code>Set-DesktopWindow -Name "Calculator" -State Minimize</code>
     /// </example>
     [Cmdlet(VerbsCommon.Set, "DesktopWindow", SupportsShouldProcess = true)]
     public class CmdletSetDesktopWindow : PSCmdlet {

@@ -7,10 +7,13 @@ DesktopManager keeps desktop-state behavior in the shared C# library. PowerShell
 | Area | Shared API | What it covers |
 | ---- | ---------- | -------------- |
 | Workstation profiles | `WorkstationProfileService`, `WorkstationProfileStore` | Monitor modes and placement, wallpaper, supported brightness/HDR, active audio, personalization, taskbars, matching, staged display application, and rollback |
-| Audio | `AudioService`, `AudioEndpointWatcher` | Render/capture endpoint inventory, active/unavailable state, volume, mute, independent default roles, and endpoint change events |
-| Power and session | `SystemPowerService`, `DesktopSessionService`, `DesktopSessionWatcher` | AC/battery status, bounded keep-awake leases, lock, sleep/hibernate, sign-out, session identity, connection, remote/console, lock, and meaningful state changes |
+| Audio | `AudioService`, `AudioEndpointWatcher`, `AudioDefaultEndpointSession`, `AudioLoopbackCapture` | Render/capture endpoint inventory, active/unavailable state, volume, mute, independent default roles, endpoint change events, a session that follows the default device, and loopback samples from the default output |
+| Side screens and touch panels | `CursorFence`, `WindowEventWatcher`, `NonActivatingWindow`, `WindowEdgeGestures`, `TouchInputMapping`, `WindowThumbnail` | Keeping the pointer off a screen, window move/show/foreground events, windows that never take focus, edge swipes, which monitors touch input maps to, and live window previews |
+| Power and session | `SystemPowerService`, `DesktopSessionService`, `DesktopSessionWatcher` | AC/battery status, the active power plan and power mode, bounded keep-awake leases, lock, sleep/hibernate, sign-out, session identity, connection, remote/console, lock, and meaningful state changes |
 | Personalization and taskbar | `PersonalizationService`, `PersonalizationStateStore`, `TaskbarService` | Reversible personalization snapshots, monitor wallpapers, theme and Start/taskbar settings, taskbar monitor mapping, visibility, position, bounds, and auto-hide |
 | Radios | `RadioService` | Supported Windows radio inventory, explicit On/Off requests, access results, and state change events |
+| Clipboard | `ClipboardHelper`, `ClipboardWatcher` | Text and snapshots, plus a listener that reports each copy and skips ones marked private |
+| Current Wi-Fi connection | `WifiConnectionService` | Network name, BSSID, signal quality, PHY type and link rates; needs location access on Windows 11 24H2 and later |
 | Saved Wi-Fi profiles | `WifiProfileService` | Wireless interface and saved-profile inventory plus exact profile connection without nearby-network scanning or credential access |
 | Experimental airplane mode | `ExperimentalAirplaneModeService` | Explicit global Enabled/Disabled state through an undocumented Windows shell COM contract, followed by verification |
 | Virtual desktops | `VirtualDesktopService` | Current-desktop check, desktop ID lookup, and moving a top-level window to a known desktop ID |
@@ -58,6 +61,29 @@ audio.SetDefaultAudioDevice(speakers.Id, AudioRole.Multimedia);
 ```
 
 Use `AudioEndpointWatcher` when a long-running process needs device arrival, removal, state, property, or default-role changes.
+
+For a volume or mute control that should always act on the current default device, use `AudioDefaultEndpointSession`. It reopens the endpoint when Windows picks a new default or the device goes away, and reports a missing device as `Unavailable` instead of throwing:
+
+```csharp
+using var microphone = new AudioDefaultEndpointSession(AudioDataFlow.Capture, AudioRole.Communications);
+AudioEndpointLevelResult state = microphone.GetState();
+if (state.Level != null) {
+    microphone.SetMute(!state.Level.IsMuted);
+}
+```
+
+`AudioLoopbackCapture` raises the samples playing on the default output as floats, for meters and visualisers. Its event runs on the capture thread and the buffer is reused, so copy what you keep. If endpoint notifications cannot be registered, capture reopens about once a second to follow the current default and retry registration; those retries can leave brief gaps.
+
+## Side screens and touch panels
+
+These pieces are for apps that live on their own screen, such as a touch strip or a dashboard panel.
+
+- `CursorFence` keeps the mouse pointer from crossing into a screen's rectangle, either always (`Locked`) or until it is pushed against the edge for a moment (`Sticky`). Touch and pen input pass through. Dispose it to remove the hook.
+- `WindowEventWatcher` reports window moves, resizes, shows, destroys and foreground changes on its own thread, including child windows. Compare each handle with its root ancestor when only top-level windows are wanted.
+- `NonActivatingWindow.Apply` stops a window taking focus when it is clicked or touched, and keeps it out of Alt+Tab. `WindowEdgeGestures.SetDisabled` turns off the system edge swipes over a window.
+- `TouchInputMapping.GetMappedMonitorDevicePaths` lists the monitors Windows maps touch input to, which tells an app whether touches on its screen land somewhere else.
+- `WindowThumbnail` shows a live DWM preview of another window inside yours; set where it draws with `Update`.
+- `DesktopSessionService.GetIdleTime()` returns the time since the last keyboard or mouse input.
 
 ## Power and session state
 
@@ -108,6 +134,8 @@ DesktopWifiConnectionResult result = await wifi.ConnectProfileAsync("Corporate W
 ```
 
 Profile names follow Windows' case-sensitive matching rules. If the same profile name exists on multiple adapters, pass the intended interface ID. The service waits for WLAN Auto Configuration completion or failure notifications; cancellation or timeout stops that wait but cannot cancel an attempt already accepted by Windows.
+
+`WifiConnectionService.GetCurrent(interfaceId)` is the separate, location-sensitive read of the connected network. Since Windows 11 24H2 the query needs location access for the calling app; without it `GetCurrent` throws `UnauthorizedAccessException`. Windows can show a consent prompt on first use and record location activity, so complete interactive consent before background polling. Older versions may answer with the SSID and BSSID left out.
 
 This is not a general location-permission bypass. Windows still requires location consent for nearby-network scans and related Wi-Fi information. The service does not return profile XML or credentials, and it is currently exposed through the C# library, PowerShell, and CLI rather than MCP.
 

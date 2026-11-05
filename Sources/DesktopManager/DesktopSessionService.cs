@@ -104,7 +104,16 @@ public sealed partial class DesktopSessionService {
         }
     }
 
-    private static TimeSpan GetIdleTime() {
+    /// <summary>
+    /// Gets the time since the last keyboard or mouse input in this session.
+    /// </summary>
+    /// <returns>The idle time. It is accurate across the 49.7-day tick-count wrap.</returns>
+    /// <remarks>
+    /// A single cheap call, unlike <see cref="GetCurrentSession"/>, so it suits frequent polling such as
+    /// dimming or screensaver timers.
+    /// </remarks>
+    /// <exception cref="Win32Exception">Windows could not report the last input time.</exception>
+    public static TimeSpan GetIdleTime() {
         var info = new LastInputInfo {
             Size = (uint)Marshal.SizeOf<LastInputInfo>()
         };

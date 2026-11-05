@@ -165,9 +165,10 @@ public partial class MonitorService {
     }
 
     private static void TryUnloadUserHive(string subKey) {
-        try {
-            RegUnLoadKey(HKeyUsers, subKey);
-        } catch {
+        // RegUnLoadKey reports failure through its result rather than throwing; a failure leaves that user's hive loaded.
+        int result = RegUnLoadKey(HKeyUsers, subKey);
+        if (result != 0) {
+            DesktopManagerDiagnostics.Report($"RegUnLoadKey failed for {subKey}: {new System.ComponentModel.Win32Exception(result).Message}");
         }
     }
 

@@ -149,8 +149,16 @@ public static partial class MonitorNativeMethods {
     /// <param name="nIndex">Zero-based offset to the value.</param>
     /// <param name="dwNewLong">The replacement value.</param>
     /// <returns>The previous value of the specified attribute.</returns>
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+    /// <remarks>32-bit Windows has no SetWindowLongPtr export, so a 32-bit process calls SetWindowLong instead.</remarks>
+    public static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong) {
+        return IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
+    }
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
 
     /// <summary>Offset to retrieve the window procedure.</summary>
     public const int GWLP_WNDPROC = -4;

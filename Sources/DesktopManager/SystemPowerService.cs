@@ -9,7 +9,7 @@ namespace DesktopManager;
 /// Reads power state and performs explicit Windows power/session actions.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class SystemPowerService {
+public sealed partial class SystemPowerService {
     internal const uint ExecutionStateSystemRequired = 0x00000001;
     internal const uint ExecutionStateDisplayRequired = 0x00000002;
     internal const uint ExecutionStateAwayModeRequired = 0x00000040;
@@ -109,8 +109,11 @@ public sealed class SystemPowerService {
     [DllImport("user32.dll", EntryPoint = "LockWorkStation", SetLastError = true)]
     private static extern bool NativeLockWorkStation();
 
+    // SetSuspendState takes and returns BOOLEAN, a single byte, not the four-byte BOOL bool marshals to by default.
     [DllImport("powrprof.dll", SetLastError = true)]
-    private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
+    [return: MarshalAs(UnmanagedType.U1)]
+    private static extern bool SetSuspendState([MarshalAs(UnmanagedType.U1)] bool hibernate, [MarshalAs(UnmanagedType.U1)] bool forceCritical,
+        [MarshalAs(UnmanagedType.U1)] bool disableWakeEvent);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool ExitWindowsEx(uint flags, uint reason);

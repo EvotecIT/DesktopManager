@@ -5,7 +5,7 @@
     CompanyName            = 'Evotec'
     CompatiblePSEditions   = @('Desktop', 'Core')
     Copyright              = '(c) 2011 - 2026 Przemyslaw Klys @ Evotec. All rights reserved.'
-    Description            = 'Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.'
+    Description            = 'Desktop Manager automates the Windows desktop: wallpapers and monitors, windows and their layouts, virtual desktops, audio and media, input and workspace recovery.'
     DotNetFrameworkVersion = '4.7.2'
     FunctionsToExport      = @()
     GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'

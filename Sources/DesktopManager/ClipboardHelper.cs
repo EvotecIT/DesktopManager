@@ -51,39 +51,112 @@ public static class ClipboardHelper {
             throw new ArgumentNullException(nameof(text));
         }
 
-        OpenClipboardWithRetry(retryCount, retryDelayMilliseconds);
+        SetData(MonitorNativeMethods.CF_UNICODETEXT, ToUnicodeTextBytes(text), retryCount, retryDelayMilliseconds, IntPtr.Zero);
+    }
+
+    /// <summary>Encodes text as null-terminated UTF-16 exactly as stored, without replacing unpaired surrogates.</summary>
+    internal static byte[] ToUnicodeTextBytes(string text) {
+        byte[] bytes = new byte[(text.Length + 1) * 2];
+        Buffer.BlockCopy(text.ToCharArray(), 0, bytes, 0, text.Length * 2);
+        return bytes;
+    }
+
+    /// <summary>Replaces the clipboard with one format holding a copy of <paramref name="data"/>.</summary>
+    internal static uint SetData(uint format, byte[] data, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
+        if (data == null) {
+            throw new ArgumentNullException(nameof(data));
+        }
+        if (data.Length == 0) {
+            throw new ArgumentException("Clipboard data cannot be empty.", nameof(data));
+        }
+
+        // Prepare the transfer before emptying the clipboard so a failed allocation leaves the current content intact.
+        IntPtr hGlobal = MonitorNativeMethods.GlobalAlloc(MonitorNativeMethods.GMEM_MOVEABLE, (UIntPtr)data.Length);
+        if (hGlobal == IntPtr.Zero) {
+            throw new InvalidOperationException("GlobalAlloc failed.");
+        }
+
+        bool transferred = false;
         try {
-            if (!MonitorNativeMethods.EmptyClipboard()) {
-                throw new InvalidOperationException("Unable to empty clipboard.");
-            }
-
-            int bytes = (text.Length + 1) * 2;
-            IntPtr hGlobal = MonitorNativeMethods.GlobalAlloc(MonitorNativeMethods.GMEM_MOVEABLE, (UIntPtr)bytes);
-            if (hGlobal == IntPtr.Zero) {
-                throw new InvalidOperationException("GlobalAlloc failed.");
-            }
-
             IntPtr target = MonitorNativeMethods.GlobalLock(hGlobal);
             if (target == IntPtr.Zero) {
-                MonitorNativeMethods.GlobalFree(hGlobal);
                 throw new InvalidOperationException("GlobalLock failed.");
             }
 
             try {
-                Marshal.Copy(text.ToCharArray(), 0, target, text.Length);
-                Marshal.WriteInt16(target, text.Length * 2, 0);
+                Marshal.Copy(data, 0, target, data.Length);
             } finally {
                 MonitorNativeMethods.GlobalUnlock(hGlobal);
             }
 
-            if (MonitorNativeMethods.SetClipboardData(MonitorNativeMethods.CF_UNICODETEXT, hGlobal) == IntPtr.Zero) {
-                MonitorNativeMethods.GlobalFree(hGlobal);
-                throw new InvalidOperationException("SetClipboardData failed.");
+            OpenClipboardWithRetry(retryCount, retryDelayMilliseconds, owner);
+            try {
+                if (!MonitorNativeMethods.EmptyClipboard()) {
+                    throw new InvalidOperationException("Unable to empty clipboard.");
+                }
+
+                if (MonitorNativeMethods.SetClipboardData(format, hGlobal) == IntPtr.Zero) {
+                    throw new InvalidOperationException("SetClipboardData failed.");
+                }
+                transferred = true;
+                // Read while still locked; a later copy must never be mistaken for this write.
+                return NativeClipboardMethods.GetClipboardSequenceNumber();
+            } finally {
+                MonitorNativeMethods.CloseClipboard();
             }
         } finally {
-            MonitorNativeMethods.CloseClipboard();
+            if (!transferred) {
+                MonitorNativeMethods.GlobalFree(hGlobal);
+            }
         }
     }
+
+    /// <summary>Reads Unicode text from the already open clipboard, bounded by the size of its memory block.</summary>
+    internal static string? ReadOpenUnicodeText() {
+        byte[]? bytes = ReadOpenData(MonitorNativeMethods.CF_UNICODETEXT, MaximumReadBytes);
+        if (bytes == null) {
+            return null;
+        }
+
+        string text = System.Text.Encoding.Unicode.GetString(bytes, 0, bytes.Length & ~1);
+        int terminator = text.IndexOf('\0');
+        return terminator >= 0 ? text.Substring(0, terminator) : text;
+    }
+
+    /// <summary>
+    /// Copies an HGLOBAL clipboard format from the already open clipboard, or returns <c>null</c> when the format is
+    /// absent, unreadable or larger than <paramref name="maximumBytes"/>.
+    /// </summary>
+    internal static byte[]? ReadOpenData(uint format, ulong maximumBytes) {
+        if (!NativeClipboardMethods.IsClipboardFormatAvailable(format)) {
+            return null;
+        }
+
+        IntPtr handle = MonitorNativeMethods.GetClipboardData(format);
+        if (handle == IntPtr.Zero) {
+            return null;
+        }
+
+        ulong size = NativeClipboardSnapshot.GlobalSize(handle).ToUInt64();
+        if (size == 0 || size > maximumBytes || size > int.MaxValue) {
+            return null;
+        }
+
+        IntPtr pointer = MonitorNativeMethods.GlobalLock(handle);
+        if (pointer == IntPtr.Zero) {
+            return null;
+        }
+
+        try {
+            byte[] data = new byte[(int)size];
+            Marshal.Copy(pointer, data, 0, data.Length);
+            return data;
+        } finally {
+            MonitorNativeMethods.GlobalUnlock(handle);
+        }
+    }
+
+    internal const ulong MaximumReadBytes = 64 * 1024 * 1024;
 
     /// <summary>
     /// Attempts to read Unicode text from the clipboard.
@@ -96,28 +169,20 @@ public static class ClipboardHelper {
         text = string.Empty;
         OpenClipboardWithRetry(retryCount, retryDelayMilliseconds);
         try {
-            IntPtr handle = MonitorNativeMethods.GetClipboardData(MonitorNativeMethods.CF_UNICODETEXT);
-            if (handle == IntPtr.Zero) {
+            // Bounded by the memory block's size, so text without a terminator can't be read past its end.
+            string? read = ReadOpenUnicodeText();
+            if (read == null) {
                 return false;
             }
 
-            IntPtr pointer = MonitorNativeMethods.GlobalLock(handle);
-            if (pointer == IntPtr.Zero) {
-                return false;
-            }
-
-            try {
-                text = Marshal.PtrToStringUni(pointer) ?? string.Empty;
-                return true;
-            } finally {
-                MonitorNativeMethods.GlobalUnlock(handle);
-            }
+            text = read;
+            return true;
         } finally {
             MonitorNativeMethods.CloseClipboard();
         }
     }
 
-    private static void OpenClipboardWithRetry(int maxAttempts, int delayMilliseconds, IntPtr owner = default) {
+    internal static void OpenClipboardWithRetry(int maxAttempts, int delayMilliseconds, IntPtr owner = default) {
         if (maxAttempts < 1) {
             maxAttempts = 1;
         }
