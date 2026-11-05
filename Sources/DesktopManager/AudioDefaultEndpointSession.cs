@@ -9,6 +9,7 @@ namespace DesktopManager;
 /// <para>
 /// Unlike <see cref="AudioEndpointSession"/>, this session follows the default: when Windows assigns another default
 /// endpoint, or the current one is disabled, unplugged or invalidated, the next call opens the current default.
+/// If notification registration is unavailable, every operation reopens the current default until it can subscribe.
 /// </para>
 /// <para>
 /// All Core Audio work runs on the session's own multithreaded-apartment thread, so it can be used from any thread,

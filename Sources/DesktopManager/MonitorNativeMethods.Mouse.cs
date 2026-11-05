@@ -15,6 +15,20 @@ public static partial class MonitorNativeMethods {
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetCursorPos(out POINT lpPoint);
 
+    /// <summary>Reads the cursor position in physical desktop pixels, independent of caller DPI awareness.</summary>
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetPhysicalCursorPos(out POINT point);
+
+    /// <summary>Moves the cursor in physical desktop pixels, independent of caller DPI awareness.</summary>
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetPhysicalCursorPos(int x, int y);
+
+    /// <summary>Waits for queued input without preventing the fence from observing a stop request.</summary>
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern uint MsgWaitForMultipleObjectsEx(uint count, IntPtr handles, uint milliseconds, uint wakeMask, uint flags);
+
     /// <summary>
     /// Retrieves information about the global cursor.
     /// </summary>

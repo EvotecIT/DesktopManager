@@ -15,6 +15,8 @@ namespace DesktopManager;
 /// deliberately avoids. Since Windows 11 24H2, Windows refuses the whole query to apps without location consent;
 /// <see cref="GetCurrent"/> then throws <see cref="UnauthorizedAccessException"/>. Older versions may answer with
 /// the SSID and BSSID left out.</para>
+/// <para>Windows can show a location-consent prompt on first use and record location activity. Background polling
+/// callers should obtain consent through their normal interactive setup before starting this query.</para>
 /// <para>Only reads; it never scans, connects or changes Wi-Fi settings.</para>
 /// </remarks>
 [SupportedOSPlatform("windows6.0.6000.0")]

@@ -45,7 +45,7 @@ public sealed partial class AudioDefaultEndpointSession {
     private IAudioEndpointBackend? ResolveBackend(out string reason) {
         reason = string.Empty;
         EnsureSubscribed();
-        if (Interlocked.Exchange(ref _defaultChanged, 0) != 0) {
+        if (Interlocked.Exchange(ref _defaultChanged, 0) != 0 || _subscription == null) {
             CloseBackend();
         }
         if (_backend != null && !_backend.IsAvailable) {
@@ -77,7 +77,7 @@ public sealed partial class AudioDefaultEndpointSession {
         try {
             _subscription = _subscribe(OnEndpointChanged);
         } catch (Exception exception) when (exception is COMException || exception is UnauthorizedAccessException) {
-            // Without notifications a default change is only noticed when the old endpoint fails; retry on the next call.
+            // Without notifications, each operation resolves the current default; registration retries on the next call.
             DesktopManagerDiagnostics.Report($"Audio default endpoint notifications are unavailable: {exception.Message}");
             return;
         }

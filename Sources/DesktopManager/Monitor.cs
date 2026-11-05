@@ -69,7 +69,7 @@ public class Monitor {
     /// Gets the position of the monitor as it was when the monitors were listed.
     /// </summary>
     /// <remarks>
-    /// This reads the bounds captured with the monitor, so it is cheap and never throws. Call
+    /// This reads the bounds captured with the monitor when available. If none were captured it queries Windows. Call
     /// <see cref="GetMonitorPosition"/> for the position Windows reports now.
     /// </remarks>
     public MonitorPosition Position => IsNonEmpty(Rect) ? new MonitorPosition(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom) : GetMonitorPosition();

@@ -5,7 +5,7 @@ public sealed class WindowThumbnailProperties {
     /// <summary>Gets or sets where the thumbnail is drawn, in the destination window's client coordinates and physical pixels.</summary>
     public RECT? Destination { get; set; }
 
-    /// <summary>Gets or sets the part of the source window to show, in source window coordinates. Null keeps the whole source.</summary>
+    /// <summary>Gets or sets the part of the source window to show, in source window coordinates. Null leaves the current crop unchanged; a new thumbnail initially uses the whole source.</summary>
     public RECT? Source { get; set; }
 
     /// <summary>Gets or sets the thumbnail opacity from 0 (transparent) through 255 (opaque).</summary>

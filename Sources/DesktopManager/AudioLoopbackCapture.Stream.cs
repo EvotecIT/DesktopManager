@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -22,7 +23,7 @@ public sealed partial class AudioLoopbackCapture {
             while (!run.Stopping) {
                 watcher ??= TryWatchDefault(run);
                 Volatile.Write(ref run.DefaultChanged, 0);
-                int retry = CaptureUntilInterrupted(run);
+                int retry = CaptureUntilInterrupted(run, watcher == null);
                 if (!run.Stopping && retry > 0) {
                     run.Wait(retry);
                 }
@@ -48,14 +49,14 @@ public sealed partial class AudioLoopbackCapture {
             };
             return watcher;
         } catch (Exception exception) when (exception is COMException || exception is UnauthorizedAccessException) {
-            // Without notifications the capture still reopens when its endpoint is invalidated.
+            // The stream reopens periodically until notification registration succeeds.
             DesktopManagerDiagnostics.Report($"Loopback capture cannot follow default endpoint changes: {exception.Message}");
             return null;
         }
     }
 
     /// <summary>Captures until stopped, the default changes, or the stream fails; returns the delay before reopening.</summary>
-    private int CaptureUntilInterrupted(CaptureRun run) {
+    private int CaptureUntilInterrupted(CaptureRun run, bool retryDefaultWatcher) {
         IMMDevice? device = null;
         IAudioClient? client = null;
         IAudioCaptureClient? capture = null;
@@ -72,7 +73,7 @@ public sealed partial class AudioLoopbackCapture {
             Marshal.ThrowExceptionForHR(client.Start());
             started = true;
             Volatile.Write(ref run.Capturing, 1);
-            Pump(run, capture, format);
+            Pump(run, capture, format, retryDefaultWatcher);
             return 0;
         } catch (Exception exception) when (AudioEndpointAvailability.IsUnavailable(exception)) {
             return UnavailableRetryMilliseconds;
@@ -113,12 +114,17 @@ public sealed partial class AudioLoopbackCapture {
         }
     }
 
-    private void Pump(CaptureRun run, IAudioCaptureClient capture, AudioCaptureFormat format) {
+    /// <summary>Drains packets until stop, a default change, or a notification-registration retry is due.</summary>
+    internal void Pump(CaptureRun run, IAudioCaptureClient capture, AudioCaptureFormat format, bool retryDefaultWatcher) {
+        Stopwatch? retryClock = retryDefaultWatcher ? Stopwatch.StartNew() : null;
+        // Reopening also retries notifications and selects the current default, even if the old device stays valid.
+        bool CanCapture() => !run.Stopping && Volatile.Read(ref run.DefaultChanged) == 0 &&
+            (retryClock == null || retryClock.ElapsedMilliseconds < UnavailableRetryMilliseconds);
         float[] samples = new float[0];
         byte[] scratch = new byte[0];
-        while (!run.Stopping && Volatile.Read(ref run.DefaultChanged) == 0) {
+        while (CanCapture()) {
             Marshal.ThrowExceptionForHR(capture.GetNextPacketSize(out uint packet));
-            while (packet > 0 && !run.Stopping) {
+            while (packet > 0 && CanCapture()) {
                 Marshal.ThrowExceptionForHR(capture.GetBuffer(out IntPtr data, out uint frames, out uint flags, out _, out _));
                 EventHandler<AudioSamplesCapturedEventArgs>? handlers = SamplesCaptured;
                 int count = (int)frames * format.Channels;

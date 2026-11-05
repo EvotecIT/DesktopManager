@@ -9,7 +9,7 @@ using System.Threading;
 namespace DesktopManager;
 
 /// <summary>
-/// Reports each new copy of text or an image through a clipboard format listener on a dedicated message thread.
+/// Reports new text or image content through a clipboard format listener on a dedicated message thread.
 /// </summary>
 /// <remarks>
 /// <para>Copies that apps mark as private are skipped, so password managers and similar apps are not recorded:
@@ -20,7 +20,8 @@ namespace DesktopManager;
 /// To paste it into the app in front afterwards, send Ctrl+V with
 /// <see cref="KeyboardInputService.SendToForeground(VirtualKey[])"/>.</para>
 /// <para><see cref="ClipboardChanged"/> is raised on the watcher's thread. Keep handlers short and hand longer
-/// work to another thread, or later copies queue behind it.</para>
+/// work to another thread, or later copies queue behind it. Queued copies can coalesce into the latest clipboard
+/// state. If the clipboard stays locked through the immediate attempts, that state is retried on this thread.</para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class ClipboardWatcher : IDisposable {
@@ -44,6 +45,7 @@ public sealed class ClipboardWatcher : IDisposable {
     private volatile bool _disposed;
     // The clipboard state already handled; only the watcher thread touches it.
     private uint _handledSequence;
+    private bool _retryRead;
 
     /// <summary>
     /// Starts listening for clipboard changes.
@@ -69,7 +71,7 @@ public sealed class ClipboardWatcher : IDisposable {
         }
     }
 
-    /// <summary>Occurs on the watcher's thread for each new copy of text or an image that may be recorded.</summary>
+    /// <summary>Occurs on the watcher's thread for new text or image content that may be recorded.</summary>
     public event EventHandler<ClipboardChangedEventArgs>? ClipboardChanged;
 
     /// <summary>
@@ -158,7 +160,18 @@ public sealed class ClipboardWatcher : IDisposable {
                 return;
             }
 
-            while (!_disposed && MonitorNativeMethods.GetMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0) > 0) {
+            while (!_disposed) {
+                if (!MonitorNativeMethods.PeekMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0, 1)) {
+                    // A released clipboard emits no new notification. Retry on this thread after a bounded wait.
+                    MonitorNativeMethods.MsgWaitForMultipleObjectsEx(0, IntPtr.Zero, 100, 0x04FF, 4);
+                    if (_retryRead && !_disposed) {
+                        OnClipboardUpdate();
+                    }
+                    continue;
+                }
+                if (message.message == MonitorNativeMethods.WM_QUIT) {
+                    break;
+                }
                 MonitorNativeMethods.TranslateMessage(ref message);
                 MonitorNativeMethods.DispatchMessage(ref message);
             }
@@ -183,7 +196,9 @@ public sealed class ClipboardWatcher : IDisposable {
             if (id >= int.MinValue && id <= int.MaxValue && _puts.TryGetValue((int)id, out PutRequest? request)) {
                 request.Run(_window);
                 // The watcher's own put is never reported, however the update for it is queued.
-                _handledSequence = NativeClipboardMethods.GetClipboardSequenceNumber();
+                if (request.Error == null) {
+                    _handledSequence = request.Sequence;
+                }
             }
             return IntPtr.Zero;
         }
@@ -191,13 +206,13 @@ public sealed class ClipboardWatcher : IDisposable {
     }
 
     private void OnClipboardUpdate() {
+        _retryRead = false;
         EventHandler<ClipboardChangedEventArgs>? handler = ClipboardChanged;
         // Several queued updates all read the newest content; report each clipboard state once.
         uint sequence = NativeClipboardMethods.GetClipboardSequenceNumber();
         if (sequence != 0 && sequence == _handledSequence) {
             return;
         }
-        _handledSequence = sequence;
         if (_disposed || handler == null || NativeClipboardMethods.GetClipboardOwner() == _window) {
             return;
         }
@@ -222,7 +237,9 @@ public sealed class ClipboardWatcher : IDisposable {
     }
 
     private ClipboardChangedEventArgs? ReadRecordableCopy() {
+        _retryRead = true;
         ClipboardHelper.OpenClipboardWithRetry(OpenAttempts, OpenRetryDelayMilliseconds, _window);
+        _retryRead = false;
         try {
             bool historyFlagPresent = IsAvailable(_historyFormat);
             int? historyFlag = null;
@@ -244,6 +261,8 @@ public sealed class ClipboardWatcher : IDisposable {
                 ? new ClipboardChangedEventArgs(null, dib, DateTimeOffset.Now)
                 : null;
         } finally {
+            // Includes changes caused by delayed rendering during this read, while other writers are excluded.
+            _handledSequence = NativeClipboardMethods.GetClipboardSequenceNumber();
             MonitorNativeMethods.CloseClipboard();
         }
     }
@@ -293,9 +312,11 @@ public sealed class ClipboardWatcher : IDisposable {
 
         internal Exception? Error { get; private set; }
 
+        internal uint Sequence { get; private set; }
+
         internal void Run(IntPtr owner) {
             try {
-                ClipboardHelper.SetData(_format, _data, OpenAttempts, OpenRetryDelayMilliseconds, owner);
+                Sequence = ClipboardHelper.SetData(_format, _data, OpenAttempts, OpenRetryDelayMilliseconds, owner);
             } catch (Exception ex) {
                 Error = ex;
             } finally {

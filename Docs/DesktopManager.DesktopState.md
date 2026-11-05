@@ -72,14 +72,14 @@ if (state.Level != null) {
 }
 ```
 
-`AudioLoopbackCapture` raises the samples playing on the default output as floats, for meters and visualisers. Its event runs on the capture thread and the buffer is reused, so copy what you keep.
+`AudioLoopbackCapture` raises the samples playing on the default output as floats, for meters and visualisers. Its event runs on the capture thread and the buffer is reused, so copy what you keep. If endpoint notifications cannot be registered, capture reopens about once a second to follow the current default and retry registration; those retries can leave brief gaps.
 
 ## Side screens and touch panels
 
 These pieces are for apps that live on their own screen, such as a touch strip or a dashboard panel.
 
 - `CursorFence` keeps the mouse pointer from crossing into a screen's rectangle, either always (`Locked`) or until it is pushed against the edge for a moment (`Sticky`). Touch and pen input pass through. Dispose it to remove the hook.
-- `WindowEventWatcher` reports top-level window moves, resizes, shows, destroys and foreground changes on its own thread, so it works from console apps and PowerShell too.
+- `WindowEventWatcher` reports window moves, resizes, shows, destroys and foreground changes on its own thread, including child windows. Compare each handle with its root ancestor when only top-level windows are wanted.
 - `NonActivatingWindow.Apply` stops a window taking focus when it is clicked or touched, and keeps it out of Alt+Tab. `WindowEdgeGestures.SetDisabled` turns off the system edge swipes over a window.
 - `TouchInputMapping.GetMappedMonitorDevicePaths` lists the monitors Windows maps touch input to, which tells an app whether touches on its screen land somewhere else.
 - `WindowThumbnail` shows a live DWM preview of another window inside yours; set where it draws with `Update`.
@@ -135,7 +135,7 @@ DesktopWifiConnectionResult result = await wifi.ConnectProfileAsync("Corporate W
 
 Profile names follow Windows' case-sensitive matching rules. If the same profile name exists on multiple adapters, pass the intended interface ID. The service waits for WLAN Auto Configuration completion or failure notifications; cancellation or timeout stops that wait but cannot cancel an attempt already accepted by Windows.
 
-`WifiConnectionService.GetCurrent(interfaceId)` is the separate, location-sensitive read of the connected network. Since Windows 11 24H2 the query needs location access for the calling app; without it `GetCurrent` throws `UnauthorizedAccessException`. Older versions may answer with the SSID and BSSID left out.
+`WifiConnectionService.GetCurrent(interfaceId)` is the separate, location-sensitive read of the connected network. Since Windows 11 24H2 the query needs location access for the calling app; without it `GetCurrent` throws `UnauthorizedAccessException`. Windows can show a consent prompt on first use and record location activity, so complete interactive consent before background polling. Older versions may answer with the SSID and BSSID left out.
 
 This is not a general location-permission bypass. Windows still requires location consent for nearby-network scans and related Wi-Fi information. The service does not return profile XML or credentials, and it is currently exposed through the C# library, PowerShell, and CLI rather than MCP.
 

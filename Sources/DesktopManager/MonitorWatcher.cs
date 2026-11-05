@@ -231,6 +231,7 @@ public sealed class MonitorWatcher : IDisposable {
         private MonitorNativeMethods.WndProc? _wndProc;
         private readonly ManualResetEventSlim _ready = new(false);
         private Exception? _startupFailure;
+        private volatile bool _stopping;
 
         public PowerBroadcastWindow(MonitorWatcher parent) {
             _parent = parent;
@@ -238,6 +239,11 @@ public sealed class MonitorWatcher : IDisposable {
             _thread.Start();
             // A window that can't start must not hang the caller, and its failure is rethrown with its own type and stack.
             if (!_ready.Wait(StartupTimeout)) {
+                _stopping = true;
+                var hwnd = _hwnd;
+                if (hwnd != IntPtr.Zero) {
+                    MonitorNativeMethods.PostMessage(hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+                }
                 throw new TimeoutException("The monitor notification window did not start.");
             }
             if (_startupFailure != null) {
@@ -299,7 +305,7 @@ public sealed class MonitorWatcher : IDisposable {
 
         private void Pump() {
             MonitorNativeMethods.MSG msg;
-            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
+            while (!_stopping && MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
                 MonitorNativeMethods.TranslateMessage(ref msg);
                 MonitorNativeMethods.DispatchMessage(ref msg);
             }
@@ -325,8 +331,9 @@ public sealed class MonitorWatcher : IDisposable {
         }
 
         public void Dispose() {
-            if (_hwnd != IntPtr.Zero) {
-                MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            var hwnd = _hwnd;
+            if (hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.PostMessage(hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
                 if (Thread.CurrentThread != _thread && !_thread.Join(TimeSpan.FromSeconds(5))) {
                     DesktopManagerDiagnostics.Report("Monitor power notification shutdown is still pending.");
                 }
@@ -343,6 +350,7 @@ public sealed class MonitorWatcher : IDisposable {
         private MonitorNativeMethods.WndProc? _wndProc;
         private readonly ManualResetEventSlim _ready = new(false);
         private Exception? _startupFailure;
+        private volatile bool _stopping;
 
         public DeviceChangeWindow(MonitorWatcher parent) {
             _parent = parent;
@@ -350,6 +358,11 @@ public sealed class MonitorWatcher : IDisposable {
             _thread.Start();
             // A window that can't start must not hang the caller, and its failure is rethrown with its own type and stack.
             if (!_ready.Wait(StartupTimeout)) {
+                _stopping = true;
+                var hwnd = _hwnd;
+                if (hwnd != IntPtr.Zero) {
+                    MonitorNativeMethods.PostMessage(hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+                }
                 throw new TimeoutException("The monitor notification window did not start.");
             }
             if (_startupFailure != null) {
@@ -404,24 +417,26 @@ public sealed class MonitorWatcher : IDisposable {
                 dbcc_classguid = MonitorNativeMethods.GUID_DEVINTERFACE_MONITOR
             };
             IntPtr pFilter = Marshal.AllocHGlobal(Marshal.SizeOf(filter));
+            int registrationError;
             try {
                 Marshal.StructureToPtr(filter, pFilter, false);
                 _notificationHandle = MonitorNativeMethods.RegisterDeviceNotification(
                     _hwnd,
                     pFilter,
                     MonitorNativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+                registrationError = Marshal.GetLastWin32Error();
             } finally {
                 Marshal.FreeHGlobal(pFilter);
             }
             if (_notificationHandle == IntPtr.Zero) {
-                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Windows refused the monitor device notification.");
+                throw new System.ComponentModel.Win32Exception(registrationError, "Windows refused the monitor device notification.");
             }
             _ready.Set();
         }
 
         private void Pump() {
             MonitorNativeMethods.MSG msg;
-            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
+            while (!_stopping && MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
                 MonitorNativeMethods.TranslateMessage(ref msg);
                 MonitorNativeMethods.DispatchMessage(ref msg);
             }
@@ -448,8 +463,9 @@ public sealed class MonitorWatcher : IDisposable {
         }
 
         public void Dispose() {
-            if (_hwnd != IntPtr.Zero) {
-                MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            var hwnd = _hwnd;
+            if (hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.PostMessage(hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
                 if (Thread.CurrentThread != _thread && !_thread.Join(TimeSpan.FromSeconds(5))) {
                     DesktopManagerDiagnostics.Report("Monitor device notification shutdown is still pending.");
                 }

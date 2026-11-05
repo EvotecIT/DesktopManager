@@ -12,24 +12,23 @@ namespace DesktopManager;
 /// <summary>Reads the current user's Windows microphone and camera privacy-indicator records without changing permissions.</summary>
 /// <remarks>
 /// Consent-store timestamps describe Windows' last recorded usage and may lag actual device activity. A record
-/// that started before Windows last booted is ignored: an app cannot hold a device across a restart, so a missing
-/// stop time there means Windows went down mid-use, such as a crash during a call.
+/// that started before both the current sign-in and estimated boot is ignored. Timestamps between those
+/// boundaries are ambiguous after Fast Startup or a clock correction and produce an unavailable result.
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class DeviceUsageService {
     private readonly IReader _reader;
     private readonly Func<long> _bootFileTime;
-
-    // Five minutes in FILETIME units (100 ns).
-    internal const long BootClockAllowance = 5L * 60 * 10_000_000;
+    private readonly Func<long> _sessionFileTime;
 
     /// <summary>Creates a reader for the current user's Windows capability consent store.</summary>
-    public DeviceUsageService() : this(new RegistryReader(), BootFileTime) {
+    public DeviceUsageService() : this(new RegistryReader(), BootFileTime, DesktopSessionService.GetLogonFileTime) {
     }
 
-    internal DeviceUsageService(IReader reader, Func<long> bootFileTime) {
+    internal DeviceUsageService(IReader reader, Func<long> bootFileTime, Func<long>? sessionFileTime = null) {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
         _bootFileTime = bootFileTime ?? throw new ArgumentNullException(nameof(bootFileTime));
+        _sessionFileTime = sessionFileTime ?? bootFileTime;
     }
 
     /// <summary>When Windows last started, as a UTC file time like the consent store's timestamps.</summary>
@@ -55,9 +54,21 @@ public sealed class DeviceUsageService {
             var applications = new List<DeviceUsageInfo>();
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             long boot = _bootFileTime();
+            long signIn = _sessionFileTime();
+            if (boot <= 0 || signIn <= 0) {
+                return Empty(DesktopOperationStatus.Unavailable, "Windows could not establish the current sign-in time for device usage records.");
+            }
             foreach (Entry entry in _reader.Read(capability)) {
-                // The boot time is derived from the wall clock, so a correction after boot shifts it; allow a few minutes.
-                if (entry.Start <= 0 || entry.Stop >= entry.Start || entry.Start < boot - BootClockAllowance) {
+                if (entry.Start <= 0 || entry.Stop >= entry.Start) {
+                    continue;
+                }
+                // Sign-in is a recorded timestamp, so a forward clock correction cannot shift it past an active call.
+                if (entry.Start < signIn) {
+                    if (entry.Start >= boot) {
+                        // Kernel uptime survives Fast Startup, while sign-in does not. A backwards clock change can
+                        // produce the same ordering for a current call. Never turn that uncertainty into "not in use".
+                        return Empty(DesktopOperationStatus.Unavailable, "Windows device usage timestamps overlap an earlier sign-in or a clock correction.");
+                    }
                     continue;
                 }
 
