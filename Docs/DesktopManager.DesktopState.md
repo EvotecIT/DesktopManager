@@ -7,7 +7,8 @@ DesktopManager keeps desktop-state behavior in the shared C# library. PowerShell
 | Area | Shared API | What it covers |
 | ---- | ---------- | -------------- |
 | Workstation profiles | `WorkstationProfileService`, `WorkstationProfileStore` | Monitor modes and placement, wallpaper, supported brightness/HDR, active audio, personalization, taskbars, matching, staged display application, and rollback |
-| Audio | `AudioService`, `AudioEndpointWatcher` | Render/capture endpoint inventory, active/unavailable state, volume, mute, independent default roles, and endpoint change events |
+| Audio | `AudioService`, `AudioEndpointWatcher`, `AudioDefaultEndpointSession`, `AudioLoopbackCapture` | Render/capture endpoint inventory, active/unavailable state, volume, mute, independent default roles, endpoint change events, a session that follows the default device, and loopback samples from the default output |
+| Side screens and touch panels | `CursorFence`, `WindowEventWatcher`, `NonActivatingWindow`, `WindowEdgeGestures`, `TouchInputMapping`, `WindowThumbnail` | Keeping the pointer off a screen, window move/show/foreground events, windows that never take focus, edge swipes, which monitors touch input maps to, and live window previews |
 | Power and session | `SystemPowerService`, `DesktopSessionService`, `DesktopSessionWatcher` | AC/battery status, bounded keep-awake leases, lock, sleep/hibernate, sign-out, session identity, connection, remote/console, lock, and meaningful state changes |
 | Personalization and taskbar | `PersonalizationService`, `PersonalizationStateStore`, `TaskbarService` | Reversible personalization snapshots, monitor wallpapers, theme and Start/taskbar settings, taskbar monitor mapping, visibility, position, bounds, and auto-hide |
 | Radios | `RadioService` | Supported Windows radio inventory, explicit On/Off requests, access results, and state change events |
@@ -58,6 +59,29 @@ audio.SetDefaultAudioDevice(speakers.Id, AudioRole.Multimedia);
 ```
 
 Use `AudioEndpointWatcher` when a long-running process needs device arrival, removal, state, property, or default-role changes.
+
+For a volume or mute control that should always act on the current default device, use `AudioDefaultEndpointSession`. It reopens the endpoint when Windows picks a new default or the device goes away, and reports a missing device as `Unavailable` instead of throwing:
+
+```csharp
+using var microphone = new AudioDefaultEndpointSession(AudioDataFlow.Capture, AudioRole.Communications);
+AudioEndpointLevelResult state = microphone.GetState();
+if (state.Level != null) {
+    microphone.SetMute(!state.Level.IsMuted);
+}
+```
+
+`AudioLoopbackCapture` raises the samples playing on the default output as floats, for meters and visualisers. Its event runs on the capture thread and the buffer is reused, so copy what you keep.
+
+## Side screens and touch panels
+
+These pieces are for apps that live on their own screen, such as a touch strip or a dashboard panel.
+
+- `CursorFence` keeps the mouse pointer from crossing into a screen's rectangle, either always (`Locked`) or until it is pushed against the edge for a moment (`Sticky`). Touch and pen input pass through. Dispose it to remove the hook.
+- `WindowEventWatcher` reports top-level window moves, resizes, shows, destroys and foreground changes on its own thread, so it works from console apps and PowerShell too.
+- `NonActivatingWindow.Apply` stops a window taking focus when it is clicked or touched, and keeps it out of Alt+Tab. `WindowEdgeGestures.SetDisabled` turns off the system edge swipes over a window.
+- `TouchInputMapping.GetMappedMonitorDevicePaths` lists the monitors Windows maps touch input to, which tells an app whether touches on its screen land somewhere else.
+- `WindowThumbnail` shows a live DWM preview of another window inside yours; set where it draws with `Update`.
+- `DesktopSessionService.GetIdleTime()` returns the time since the last keyboard or mouse input.
 
 ## Power and session state
 
