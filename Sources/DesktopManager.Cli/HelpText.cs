@@ -202,7 +202,7 @@ Window commands:
   desktopmanager window topmost [selector] (--on | --off) [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window visibility [selector] (--show | --hide) [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window transparency [selector] --alpha <value> [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
-  desktopmanager window snap [selector] --position <left|right|top-left|top-right|bottom-left|bottom-right> [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window snap [selector] --position <left|right|top|bottom|top-left|top-right|bottom-left|bottom-right|left-third|center-third|right-third|center> [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window type [selector] --text <value> [--paste] [--foreground-input] [--physical-keys] [--hosted-session] [--script] [--chunk-size <value>] [--line-delay-ms <value>] [--delay-ms <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window keys [selector] --keys <value>[,<value>...] [--no-activate] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window wait [selector] [--timeout-ms <value>] [--interval-ms <value>] [--all] [--json]
