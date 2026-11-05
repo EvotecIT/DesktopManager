@@ -11,7 +11,7 @@ public class NativeWindowBehaviorTests {
     [TestMethod]
     /// <summary>The watcher's own thread reports show and destroy for the window that caused them.</summary>
     public void WindowEventWatcher_ReportsShownAndDestroyedForWindow() {
-        var events = new BlockingCollection<WindowEventArgs>();
+        var events = new BlockingCollection<WindowChangedEventArgs>();
         using var watcher = new WindowEventWatcher(WindowEventKinds.Shown | WindowEventKinds.Destroyed);
         watcher.WindowChanged += (_, e) => events.Add(e);
 
@@ -56,10 +56,10 @@ public class NativeWindowBehaviorTests {
     private static bool HasToolWindowStyle(IntPtr window) =>
         (MonitorNativeMethods.GetWindowLongPtr(window, MonitorNativeMethods.GWL_EXSTYLE).ToInt64() & 0x80) != 0;
 
-    private static bool WaitFor(BlockingCollection<WindowEventArgs> events, IntPtr window, WindowEventKinds kind) {
+    private static bool WaitFor(BlockingCollection<WindowChangedEventArgs> events, IntPtr window, WindowEventKinds kind) {
         DateTime deadline = DateTime.UtcNow.AddSeconds(5);
         while (DateTime.UtcNow < deadline) {
-            if (events.TryTake(out WindowEventArgs? next, TimeSpan.FromMilliseconds(100)) && next.Handle == window && next.Kind == kind) {
+            if (events.TryTake(out WindowChangedEventArgs? next, TimeSpan.FromMilliseconds(100)) && next.Handle == window && next.Kind == kind) {
                 return true;
             }
         }

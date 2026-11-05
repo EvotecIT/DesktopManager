@@ -5,11 +5,11 @@ namespace DesktopManager;
 /// <summary>
 /// Describes one window change reported by <see cref="WindowEventWatcher"/>.
 /// </summary>
-public sealed class WindowEventArgs : EventArgs {
-    /// <summary>Initializes a new instance of the <see cref="WindowEventArgs"/> class.</summary>
+public sealed class WindowChangedEventArgs : EventArgs {
+    /// <summary>Initializes a new instance of the <see cref="WindowChangedEventArgs"/> class.</summary>
     /// <param name="kind">The single event that occurred.</param>
     /// <param name="handle">The window the event refers to.</param>
-    public WindowEventArgs(WindowEventKinds kind, IntPtr handle) {
+    public WindowChangedEventArgs(WindowEventKinds kind, IntPtr handle) {
         Kind = kind;
         Handle = handle;
     }

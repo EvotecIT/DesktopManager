@@ -55,7 +55,7 @@ public sealed class WindowEventWatcher : IDisposable {
     }
 
     /// <summary>Occurs on the hook thread when a watched window event happens.</summary>
-    public event EventHandler<WindowEventArgs>? WindowChanged;
+    public event EventHandler<WindowChangedEventArgs>? WindowChanged;
 
     /// <summary>Gets the events this watcher reports.</summary>
     public WindowEventKinds Kinds { get; }
@@ -106,13 +106,13 @@ public sealed class WindowEventWatcher : IDisposable {
         }
 
         WindowEventKinds kind = FromNative(eventType);
-        EventHandler<WindowEventArgs>? handler = WindowChanged;
+        EventHandler<WindowChangedEventArgs>? handler = WindowChanged;
         if (kind == WindowEventKinds.None || handler == null) {
             return;
         }
 
         try {
-            handler(this, new WindowEventArgs(kind, hwnd));
+            handler(this, new WindowChangedEventArgs(kind, hwnd));
         } catch (Exception ex) {
             // An exception must not unwind into the native WinEvent dispatcher.
             DesktopManagerDiagnostics.Report($"Window event handler failed: {ex.Message}");
