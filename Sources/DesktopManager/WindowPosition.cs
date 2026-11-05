@@ -15,7 +15,7 @@ public class WindowPosition : WindowInfo {
     /// <summary>Gets or sets the explicitly captured window or application pin state.</summary>
     public VirtualDesktopPinMode? PinMode { get; set; }
 
-    /// <summary>Gets or sets the application identity required to restore an application pin.</summary>
+    /// <summary>Gets or sets the explicit window or packaged-process application identity, when Windows exposes one.</summary>
     public string AppUserModelId { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the Explorer filesystem folder used to distinguish otherwise identical windows.</summary>

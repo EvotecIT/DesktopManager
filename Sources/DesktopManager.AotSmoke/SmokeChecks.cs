@@ -83,6 +83,9 @@ internal static class SmokeChecks {
                 break;
             case "uia":
                 using (var harness = new NativeWindowHarness()) {
+                    WindowPosition position = new WindowManager().GetWindowPosition(new WindowInfo { Handle = harness.Handle });
+                    Require(position.ProcessId == (uint)Environment.ProcessId && position.Right > position.Left && position.Bottom > position.Top,
+                        "Native AOT must read the owned window position and its optional application identity.");
                     var controls = new DesktopAutomationService().GetControls(
                         new WindowQueryOptions { Handle = harness.Handle, ProcessId = Environment.ProcessId, IncludeHidden = true },
                         new WindowControlQueryOptions { UseUiAutomation = true, IncludeUiAutomation = false, EnsureForegroundWindow = false, AllowForegroundInputFallback = false });

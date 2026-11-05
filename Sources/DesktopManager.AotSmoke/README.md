@@ -39,6 +39,7 @@ The checks cover:
   snapshots, native IAudioClient activation/release without stream initialization,
   current media metadata/artwork, and microphone/camera usage records.
   No volume, mute, playback or privacy settings are changed.
+- Physical window-position and optional application-identity reads on the owned nonactivating window.
 - UIA discovery, names, values and runtime IDs for an offscreen, nonactivating
   EDIT/BUTTON harness. Only the owned EDIT value changes to verify generated
   event delivery, followed by subscription disposal. Win32 fallback cannot

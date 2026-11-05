@@ -8,6 +8,7 @@ public partial class WindowManager {
     private static readonly string[] TitleSeparators = { " - ", " — ", " – " };
 
     /// <summary>Plans one-to-one layout matches without moving windows. Ambiguous targets are skipped.</summary>
+    /// <remarks>A captured application ID must match a verified live ID. Unavailable identity is not treated as a match.</remarks>
     public WindowLayoutPlan PlanLayout(WindowLayout layout) {
         if (layout == null) { throw new ArgumentNullException(nameof(layout)); }
         return WindowDpiContext.Execute(() => {
@@ -33,7 +34,7 @@ public partial class WindowManager {
         if (layout.Windows == null) { throw new ArgumentException("Layout does not contain a window collection.", nameof(layout)); }
         var remaining = current.ToList();
         var matches = new WindowLayoutMatch?[layout.Windows.Count];
-        var deferred = new List<int>();
+        var pending = new List<int>();
         for (int index = 0; index < layout.Windows.Count; index++) {
             WindowPosition saved = layout.Windows[index];
             if (saved == null) { throw new ArgumentException("Layout contains a null window entry.", nameof(layout)); }
@@ -43,34 +44,31 @@ public partial class WindowManager {
                     (saved.State.HasValue && saved.State != WindowState.Normal &&
                         saved.State != WindowState.Minimize && saved.State != WindowState.Maximize)) {
                 matches[index] = new WindowLayoutMatch(saved, null, WindowLayoutMatchStatus.Invalid, 0);
-                continue;
+            } else {
+                pending.Add(index);
             }
-            WindowLayoutMatchMethod method = WindowLayoutMatchMethod.ProcessAndTitle;
-            List<WindowPosition> candidates = remaining.Where(window =>
-                window.ProcessId == saved.ProcessId && window.Title == saved.Title && IdentityMatches(saved, window)).ToList();
-            if (candidates.Count == 0 && HasApplicationIdentity(saved)) {
-                method = WindowLayoutMatchMethod.Title;
-                candidates = remaining.Where(window => window.Title == saved.Title && IdentityMatches(saved, window)).ToList();
-            }
-            if (candidates.Count == 0) {
-                deferred.Add(index);
-                continue;
-            }
-            matches[index] = Decide(saved, candidates, method);
-            if (matches[index]!.Window != null) { remaining.Remove(matches[index]!.Window!); }
         }
 
-        var fallback = deferred.ToDictionary(index => index, index => FindApplicationCandidates(layout.Windows[index], remaining));
-        foreach (int index in deferred) {
-            List<WindowPosition> candidates = fallback[index];
-            bool contested = candidates.Count == 1 &&
-                fallback.Any(other => other.Key != index && other.Value.Contains(candidates[0]));
-            WindowPosition saved = layout.Windows[index];
-            matches[index] = contested
-                ? new WindowLayoutMatch(saved, null, WindowLayoutMatchStatus.Ambiguous, candidates.Count)
-                : Decide(saved, candidates, WindowLayoutMatchMethod.Application);
+        // Reserve every candidate at a stronger identity level before a weaker match can claim it.
+        foreach (WindowLayoutMatchMethod method in new[] {
+                WindowLayoutMatchMethod.ProcessAndTitle, WindowLayoutMatchMethod.Title, WindowLayoutMatchMethod.Application }) {
+            var candidates = pending.ToDictionary(index => index, index => {
+                WindowPosition saved = layout.Windows[index];
+                if (method == WindowLayoutMatchMethod.Application) { return FindApplicationCandidates(saved, remaining); }
+                return remaining.Where(window => window.Title == saved.Title && IdentityMatches(saved, window) &&
+                    (method == WindowLayoutMatchMethod.ProcessAndTitle ? window.ProcessId == saved.ProcessId : HasApplicationIdentity(saved))).ToList();
+            });
+            foreach (int index in pending) {
+                List<WindowPosition> choices = candidates[index];
+                if (choices.Count == 0 && method != WindowLayoutMatchMethod.Application) { continue; }
+                bool contested = choices.Count == 1 && candidates.Any(other => other.Key != index && other.Value.Contains(choices[0]));
+                matches[index] = contested
+                    ? new WindowLayoutMatch(layout.Windows[index], null, WindowLayoutMatchStatus.Ambiguous, choices.Count)
+                    : Decide(layout.Windows[index], choices, method);
+            }
+            foreach (WindowPosition claimed in candidates.Values.SelectMany(choices => choices).Distinct()) { remaining.Remove(claimed); }
+            pending = pending.Where(index => matches[index] == null).ToList();
         }
-
         return new WindowLayoutPlan(matches.Select(match => match!).ToList().AsReadOnly());
     }
 
@@ -124,8 +122,7 @@ public partial class WindowManager {
     private static bool IdentityMatches(WindowPosition saved, WindowPosition window) {
         return (string.IsNullOrEmpty(saved.ProcessName) || string.Equals(saved.ProcessName, window.ProcessName, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrEmpty(saved.ClassName) || string.Equals(saved.ClassName, window.ClassName, StringComparison.Ordinal)) &&
-            (string.IsNullOrEmpty(saved.AppUserModelId) || string.IsNullOrEmpty(window.AppUserModelId) ||
-                string.Equals(saved.AppUserModelId, window.AppUserModelId, StringComparison.Ordinal)) &&
+            WindowApplicationIdentity.Matches(saved.AppUserModelId, window.AppUserModelId) &&
             (string.IsNullOrEmpty(saved.ExplorerFolderPath) || string.Equals(saved.ExplorerFolderPath, window.ExplorerFolderPath, StringComparison.OrdinalIgnoreCase));
     }
 

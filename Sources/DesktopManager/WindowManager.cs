@@ -384,6 +384,7 @@ public partial class WindowManager {
                     ProcessId = processId,
                     ProcessName = processName,
                     ClassName = className.ToString(),
+                    AppUserModelId = WindowApplicationIdentity.Read(windowInfo.Handle, processId),
                     Left = rect.Left,
                     Top = rect.Top,
                     Right = rect.Right,

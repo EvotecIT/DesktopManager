@@ -111,6 +111,55 @@ public class WindowGeometryTests {
         AssertNear(new RECT { Left = 300, Top = 200, Right = 700, Bottom = 500 }, normal);
     }
 
+    [TestMethod]
+    [TestCategory("UITest")]
+    public void GetWindowPosition_ReadsExplicitApplicationIdentityAndWorkspaceRevalidatesIt() {
+        TestHelper.RequireOwnedWindowUiTests();
+        using WinFormsWindowHarness harness = WinFormsWindowHarness.Create("DesktopManager Identity Harness");
+        int initialized = MonitorNativeMethods.CoInitializeEx(IntPtr.Zero, 0);
+        Assert.IsTrue(initialized >= 0 || initialized == unchecked((int)0x80010106));
+        try {
+            var iid = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
+            Assert.AreEqual(0, MonitorNativeMethods.SHGetPropertyStoreForWindow(harness.Form.Handle, in iid, out IntPtr pointer));
+            IPropertyStore store;
+            try { store = NativeComActivation.FromPointer<IPropertyStore>(pointer); }
+            finally { Marshal.Release(pointer); }
+            var key = new PropertyKey { FormatId = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), PropertyId = 5 };
+            const string expected = "DesktopManager.Tests.OwnedIdentity";
+            IntPtr text = Marshal.StringToCoTaskMemUni(expected);
+            IntPtr raw = IntPtr.Zero;
+            try {
+                raw = Marshal.AllocHGlobal(Marshal.SizeOf<PropVariant>());
+                for (int index = 0; index < Marshal.SizeOf<PropVariant>(); index++) { Marshal.WriteByte(raw, index, 0); }
+                Marshal.WriteInt16(raw, 31); // VT_LPWSTR; the fixture owns this input string, which SetValue copies.
+                Marshal.WriteIntPtr(raw, 8, text);
+                PropVariant value = Marshal.PtrToStructure<PropVariant>(raw);
+                Assert.AreEqual(0, store.SetValue(ref key, ref value));
+                Assert.AreEqual(0, store.Commit());
+
+                WindowPosition observed = new WindowManager().GetWindowPosition(harness.Window);
+                Assert.AreEqual(expected, observed.AppUserModelId);
+                var workspace = new WorkspaceWindowApi();
+                workspace.VerifyIdentity(observed);
+                observed.AppUserModelId = expected + ".changed";
+                Assert.ThrowsExactly<InvalidOperationException>(() => workspace.VerifyIdentity(observed),
+                    "A changed application identity must be rejected before workspace mutations.");
+            } finally {
+                try {
+                    PropVariant empty = default;
+                    store.SetValue(ref key, ref empty);
+                    store.Commit();
+                } finally {
+                    if (raw != IntPtr.Zero) { Marshal.FreeHGlobal(raw); }
+                    Marshal.FreeCoTaskMem(text);
+                    NativeComActivation.Release(store);
+                }
+            }
+        } finally {
+            if (initialized >= 0) { MonitorNativeMethods.CoUninitialize(); }
+        }
+    }
+
     // A DPI-unaware test window on a scaled monitor can round its logical size by a pixel.
     private static void AssertNear(RECT expected, RECT actual) {
         foreach ((int value, int wanted) in new[] {

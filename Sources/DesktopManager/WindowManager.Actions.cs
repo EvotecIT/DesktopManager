@@ -320,7 +320,9 @@ public partial class WindowManager
 
             var targetBounds = targetMonitor.GetMonitorBounds();
 
-            var currentMonitor = _monitors.GetMonitors(index: windowInfo.MonitorIndex).FirstOrDefault();
+            var probe = new WindowInfo { Handle = windowInfo.Handle, Left = windowRect.Left, Top = windowRect.Top,
+                Right = windowRect.Right, Bottom = windowRect.Bottom };
+            var currentMonitor = WindowMonitorResolver.Resolve(probe, _monitors.GetMonitors(connectedOnly: true, refresh: true));
             RECT currentBounds;
             if (currentMonitor != null) {
                 currentBounds = currentMonitor.GetMonitorBounds();

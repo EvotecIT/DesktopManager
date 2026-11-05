@@ -725,7 +725,7 @@ internal static class WindowCommands {
         bool scriptMode = arguments.GetBoolFlag("script");
         int? delayMilliseconds = arguments.GetIntOption("delay-ms");
         int? scriptLineDelayMilliseconds = arguments.GetIntOption("line-delay-ms");
-        char[] text = SessionTypingCommand.ReadText(arguments, Console.In, Environment.GetEnvironmentVariable);
+        char[] text = SessionTypingCommand.ReadText(arguments);
         string value = new string(text);
         Array.Clear(text, 0, text.Length);
         return new WindowTextCommandOptions {

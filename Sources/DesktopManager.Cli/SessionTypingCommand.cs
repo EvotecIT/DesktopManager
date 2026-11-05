@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 
 namespace DesktopManager.Cli;
@@ -9,7 +10,7 @@ namespace DesktopManager.Cli;
 internal static class SessionTypingCommand {
     public static int Run(CommandLineArguments arguments) {
         SessionTypingOptions options = CreateOptions(arguments);
-        char[] text = ReadText(arguments, Console.In, Environment.GetEnvironmentVariable);
+        char[] text = ReadText(arguments);
         WindowInfo target;
         SessionTypingResult result;
         using var cancellation = new CancellationTokenSource();
@@ -49,6 +50,23 @@ internal static class SessionTypingCommand {
 
         return result.Completed ? 0 : 1;
     }
+
+    /// <summary>Reads redirected text as Unicode without using the interactive console code page.</summary>
+    internal static char[] ReadText(CommandLineArguments arguments) {
+        if (!arguments.GetBoolFlag("text-stdin") || !Console.IsInputRedirected) {
+            return ReadText(arguments, Console.In, Environment.GetEnvironmentVariable);
+        }
+        using StreamReader reader = CreateStandardInputReader(Console.OpenStandardInput());
+        try {
+            return ReadText(arguments, reader, Environment.GetEnvironmentVariable);
+        } catch (DecoderFallbackException) {
+            throw new CommandLineException("Redirected text must be UTF-8 or have a Unicode byte-order mark. Set Windows PowerShell 5.1 $OutputEncoding to UTF-8 before piping.");
+        }
+    }
+
+    /// <summary>Owns the supplied redirected stream and detects a Unicode BOM; otherwise it requires UTF-8.</summary>
+    internal static StreamReader CreateStandardInputReader(Stream input) =>
+        new(input, new UTF8Encoding(false, true), detectEncodingFromByteOrderMarks: true);
 
     internal static SessionTypingOptions CreateOptions(CommandLineArguments arguments) {
         return new SessionTypingOptions {
@@ -106,33 +124,36 @@ internal static class SessionTypingCommand {
     private static char[] ReadAll(TextReader reader) {
         char[] buffer = new char[256];
         int length = 0;
-        while (true) {
-            if (length == buffer.Length) {
-                char[] larger = new char[buffer.Length * 2];
-                Array.Copy(buffer, larger, length);
-                Array.Clear(buffer, 0, buffer.Length);
-                buffer = larger;
+        try {
+            while (true) {
+                if (length == buffer.Length) {
+                    char[] larger = new char[buffer.Length * 2];
+                    Array.Copy(buffer, larger, length);
+                    Array.Clear(buffer, 0, buffer.Length);
+                    buffer = larger;
+                }
+
+                int read = reader.Read(buffer, length, buffer.Length - length);
+                if (read <= 0) {
+                    break;
+                }
+
+                length += read;
             }
 
-            int read = reader.Read(buffer, length, buffer.Length - length);
-            if (read <= 0) {
-                break;
-            }
-
-            length += read;
-        }
-
-        if (length > 0 && buffer[length - 1] == '\n') {
-            length--;
-            if (length > 0 && buffer[length - 1] == '\r') {
+            if (length > 0 && buffer[length - 1] == '\n') {
                 length--;
+                if (length > 0 && buffer[length - 1] == '\r') {
+                    length--;
+                }
             }
-        }
 
-        char[] text = new char[length];
-        Array.Copy(buffer, text, length);
-        Array.Clear(buffer, 0, buffer.Length);
-        return text;
+            char[] text = new char[length];
+            Array.Copy(buffer, text, length);
+            return text;
+        } finally {
+            Array.Clear(buffer, 0, buffer.Length);
+        }
     }
 
     private static WindowInfo ResolveSingleWindow(CommandLineArguments arguments) {

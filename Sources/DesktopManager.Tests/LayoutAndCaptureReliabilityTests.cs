@@ -16,8 +16,8 @@ public class LayoutAndCaptureReliabilityTests {
         WindowLayoutPlan ambiguous = WindowManager.BuildLayoutPlan(layout, new[] { Position(1, 10), Position(1, 20) });
         Assert.IsTrue(ambiguous.Windows.All(item => item.Status == WindowLayoutMatchStatus.Ambiguous));
         WindowLayoutPlan oneLive = WindowManager.BuildLayoutPlan(layout, new[] { Position(1, 10) });
-        Assert.AreEqual(WindowLayoutMatchStatus.Matched, oneLive.Windows[0].Status);
-        Assert.AreEqual(WindowLayoutMatchStatus.Missing, oneLive.Windows[1].Status);
+        Assert.IsTrue(oneLive.Windows.All(item => item.Status == WindowLayoutMatchStatus.Ambiguous));
+        Assert.IsTrue(oneLive.Windows.All(item => item.Window == null));
     }
 
     [TestMethod]
@@ -68,6 +68,41 @@ public class LayoutAndCaptureReliabilityTests {
         Assert.AreEqual(WindowLayoutMatchMethod.ProcessAndTitle, plan[2].Method);
         Assert.AreEqual(WindowLayoutMatchStatus.Ambiguous, plan[0].Status);
         Assert.AreEqual(WindowLayoutMatchStatus.Ambiguous, plan[1].Status);
+    }
+
+    [TestMethod]
+    public void LayoutPlan_AllProcessAndTitleMatchesPrecedeTitleFallbacks() {
+        WindowPosition early = AppWindow(6, 100, "Document");
+        WindowPosition exact = AppWindow(5, 200, "Document");
+        WindowPosition live = AppWindow(5, 10, "Document");
+        var layout = new WindowLayout { Windows = new() { early, exact } };
+
+        WindowLayoutPlan plan = WindowManager.BuildLayoutPlan(layout, new[] { live });
+
+        Assert.AreEqual(WindowLayoutMatchStatus.Missing, plan.Windows[0].Status);
+        Assert.AreSame(live, plan.Windows[1].Window);
+        Assert.AreEqual(WindowLayoutMatchMethod.ProcessAndTitle, plan.Windows[1].Method);
+    }
+
+    [TestMethod]
+    [DataRow("", false, false)]
+    [DataRow("other.app", false, false)]
+    [DataRow("saved.app", false, true)]
+    [DataRow("", true, false)]
+    public void LayoutPlan_RequiresKnownApplicationIdentityWhenOneWasCaptured(string liveAppId, bool sameInstance, bool expected) {
+        WindowPosition saved = AppWindow(1, 100, "Old page - Browser");
+        saved.AppUserModelId = "saved.app";
+        WindowPosition live = AppWindow(sameInstance ? 1u : 2u, sameInstance ? 100 : 10, "New page - Browser");
+        live.AppUserModelId = liveAppId;
+
+        WindowLayoutMatch match = WindowManager.BuildLayoutPlan(new WindowLayout { Windows = new() { saved } }, new[] { live }).Windows[0];
+
+        Assert.AreEqual(expected ? WindowLayoutMatchStatus.Matched : WindowLayoutMatchStatus.Missing, match.Status);
+        if (expected) {
+            Assert.AreSame(live, match.Window);
+        } else {
+            Assert.IsNull(match.Window, "Unverified application identity must not move another window.");
+        }
     }
 
     [TestMethod]

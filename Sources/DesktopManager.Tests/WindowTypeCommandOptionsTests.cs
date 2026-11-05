@@ -139,6 +139,24 @@ public class WindowTypeCommandOptionsTests {
     }
 
     [TestMethod]
+    [DataRow(false, false)]
+    [DataRow(true, false)]
+    [DataRow(true, true)]
+    public void ReadText_RedirectedUnicodeUsesUtf8OrItsBomAndPreservesNonAscii(bool bom, bool utf16) {
+        const string expected = "Grüße Łódź";
+        System.Text.Encoding encoding = utf16 ? System.Text.Encoding.Unicode : new System.Text.UTF8Encoding(bom);
+        byte[] payload = encoding.GetBytes(expected + "\r\n");
+        byte[] bytes = bom ? encoding.GetPreamble().Concat(payload).ToArray() : payload;
+        using var stream = new MemoryStream(bytes);
+        using StreamReader input = global::DesktopManager.Cli.SessionTypingCommand.CreateStandardInputReader(stream);
+        var arguments = global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "window", "type-session", "--text-stdin" });
+
+        char[] text = global::DesktopManager.Cli.SessionTypingCommand.ReadText(arguments, input, _ => null);
+        try { Assert.AreEqual(expected, new string(text)); }
+        finally { Array.Clear(text, 0, text.Length); }
+    }
+
+    [TestMethod]
     [DataRow(new[] { "--text", "a", "--text-stdin" })]
     [DataRow(new[] { "--delay-ms", "5" })]
     [DataRow(new[] { "--text-env", "DESKTOPMANAGER_TEST_UNSET_VARIABLE" })]

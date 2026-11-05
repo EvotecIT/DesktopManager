@@ -16,6 +16,31 @@ public sealed class WorkspaceRecoveryTests {
     }
 
     [TestMethod]
+    [DataRow("failure-before")]
+    [DataRow("failure-after")]
+    [DataRow("empty-success")]
+    public void Capture_PreservesVerifiedApplicationIdentityWhenOptionalDesktopMetadataIsUnavailable(string outcome) {
+        WindowPosition observed = Window("Editor", 10, 1);
+        observed.AppUserModelId = "verified.public.identity";
+        var desktop = new FakeDesktops(Guid.NewGuid()) {
+            CaptureAction = window => {
+                if (outcome != "failure-before") { window.AppUserModelId = outcome == "empty-success" ? string.Empty : "incomplete.shell.identity"; }
+                if (outcome != "empty-success") { throw new InvalidOperationException("Optional desktop metadata is unavailable."); }
+            }
+        };
+        var service = new WorkspaceRecoveryService(new FakeWindows(observed), () => desktop);
+
+        WindowLayout captured = service.Capture(new WorkspaceCaptureOptions { IncludeVirtualDesktops = true });
+
+        Assert.AreEqual("verified.public.identity", captured.Windows.Single().AppUserModelId);
+        Assert.AreEqual(outcome == "empty-success" ? 0 : 1, captured.CaptureWarnings.Count);
+        if (outcome != "empty-success") {
+            Assert.IsNull(captured.Windows.Single().VirtualDesktopId);
+            Assert.IsNull(captured.Windows.Single().PinMode);
+        }
+    }
+
+    [TestMethod]
     public void Capture_DesktopOptInPreservesGuidAndPinState() {
         Guid desktopId = Guid.NewGuid();
         var windows = new FakeWindows(Window("Editor", 10, 1));
@@ -237,11 +262,12 @@ public sealed class WorkspaceRecoveryTests {
         private readonly Guid[] _ids;
         internal FakeDesktops(params Guid[] ids) { _ids = ids; }
         internal int CaptureCalls { get; private set; }
+        internal Action<WindowPosition>? CaptureAction { get; set; }
         internal int RestoreCalls { get; private set; }
         internal int DisposeCalls { get; private set; }
         internal List<Guid> Wallpapers { get; } = new();
         public IReadOnlyList<VirtualDesktopInfo> GetDesktops() => _ids.Select((id, index) => new VirtualDesktopInfo { Id = id, Index = index + 1 }).ToArray();
-        public void CaptureWindow(WindowPosition window) { CaptureCalls++; window.VirtualDesktopId = _ids[0]; window.PinMode = VirtualDesktopPinMode.None; }
+        public void CaptureWindow(WindowPosition window) { CaptureCalls++; window.VirtualDesktopId = _ids[0]; window.PinMode = VirtualDesktopPinMode.None; CaptureAction?.Invoke(window); }
         public void RestoreWindow(WindowPosition saved, IntPtr handle, bool restoreApplicationPins) { RestoreCalls++; }
         public void SetWallpaper(Guid desktopId, string wallpaperPath) { Wallpapers.Add(desktopId); }
         public void Dispose() { DisposeCalls++; }

@@ -52,6 +52,8 @@ Send-DesktopSessionText -Name '*Remote Desktop Manager*' -Credential $credential
 Get-Content .\setup.ps1 -Raw | desktopmanager window type-session --process Devolutions.RemoteDesktopManager --text-stdin --layout de-DE
 ```
 
+`--text-stdin` reads redirected input as UTF-8, with Unicode BOM detection. Windows PowerShell 5.1 replaces non-ASCII characters before launching the CLI unless `$OutputEncoding = [Text.UTF8Encoding]::new($false)` is set before piping. PowerShell 7 uses UTF-8 by default.
+
 `--text-stdin` and `--text-env <name>` keep the text off the command line and out of shell history. One trailing line break is dropped from standard input, so a piped password doesn't press Enter. `window type` accepts the same two options. Session typing is not offered over MCP, because a secret passed as a tool argument would end up in the conversation.
 
 ## Pasting privately
