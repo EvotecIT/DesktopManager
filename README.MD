@@ -642,6 +642,10 @@ MonitorWatcherExample.Run(TimeSpan.FromSeconds(30));
 
 #### Example in PowerShell - Saving and Restoring Window Layout
 
+Window geometry uses physical desktop pixels for enumeration, movement, client coordinates and pointer targeting. A width of 900 on a 150% display means 900 physical pixels; DPI-unaware hosts previously could observe 600 logical pixels for that window. Values read by `Get-DesktopWindow` now use the same units as `Set-DesktopWindow`.
+
+Layout files saved by older versions in a DPI-unaware host can contain logical coordinates without identifying their DPI context. Those files retain their numeric values when restored; no reliable automatic conversion is possible. Re-save layouts on scaled displays after checking their placement with the new version. Existing layouts saved in physical pixels retain their coordinates.
+
 For optional virtual desktop assignments, pins, Explorer folders and explicit
 per-desktop wallpaper restoration, see [Workspace recovery](Docs/Workspace.Recovery.md).
 

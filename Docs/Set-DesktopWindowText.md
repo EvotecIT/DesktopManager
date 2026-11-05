@@ -11,7 +11,7 @@ Sets text in a desktop window.
 ## SYNTAX
 ### Paste (Default)
 ```powershell
-Set-DesktopWindowText [-Name] <string> [-Text] <string> [-Paste] [-ClipboardRetryCount <int>] [-ClipboardRetryDelayMilliseconds <int>] [-ActivationRetryCount <int>] [-ActivationRetryDelayMilliseconds <int>] [-InputRetryCount <int>] [-NoActivate] [-RestoreFocus] [-PreserveClipboard] [-SafeMode] [-Verify] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopWindowText [-Name] <string> [-Text] <string> [-Paste] [-ClipboardRetryCount <int>] [-ClipboardRetryDelayMilliseconds <int>] [-ActivationRetryCount <int>] [-ActivationRetryDelayMilliseconds <int>] [-InputRetryCount <int>] [-NoActivate] [-RestoreFocus] [-PreserveClipboard] [-PrivateClipboard <bool>] [-SafeMode] [-Verify] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ### Type
@@ -249,11 +249,27 @@ Accept wildcard characters: False
 ```
 
 ### -PreserveClipboard
-Preserve and restore clipboard text.
+Preserve and restore every clipboard format. Pasting fails before replacing the clipboard if a format cannot be preserved safely; a newer copy is never overwritten.
 
 ```yaml
 Type: SwitchParameter
 Parameter Sets: Paste, Type
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -PrivateClipboard
+Request exclusion from clipboard history, cloud synchronization and cooperating clipboard managers. Set to $false for ordinary clipboard behavior; this does not prevent other programs from reading clipboard data.
+
+```yaml
+Type: Boolean
+Parameter Sets: Paste
 Aliases: None
 Possible values:
 

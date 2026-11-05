@@ -61,21 +61,15 @@ public static class WindowInputService {
 
         IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
         ClipboardHelper.ClipboardSnapshot? snapshot = null;
-        string? textBackup = null;
-        bool restoreText = false;
         if (settings.PreserveClipboard) {
-            try {
-                snapshot = ClipboardHelper.CaptureSnapshot();
-            } catch (InvalidOperationException) {
-                // Formats owned by another application cannot be copied; keep at least the text as before.
-                restoreText = ClipboardHelper.TryGetText(out textBackup, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
-            }
+            // Refuse to replace content that cannot be preserved in full.
+            snapshot = ClipboardHelper.CaptureSnapshot();
         }
 
         bool operationFailed = false;
         uint pastedSequence = 0;
         try {
-            pastedSequence = ClipboardHelper.SetPasteText(text, settings.PrivateClipboard, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+            ClipboardHelper.SetPasteText(text, settings.PrivateClipboard, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds, out pastedSequence);
             if (settings.ActivateWindow) {
                 TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
             }
@@ -87,7 +81,7 @@ public static class WindowInputService {
         } finally {
             RestoreFocus(window, settings, previousForeground);
             try {
-                FinishPasteClipboard(settings, pastedSequence, operationFailed, snapshot, restoreText, textBackup);
+                FinishPasteClipboard(settings, pastedSequence, operationFailed, snapshot);
             } catch when (operationFailed) {
                 // Cleanup must not hide the original delivery failure.
             } finally {
@@ -96,19 +90,13 @@ public static class WindowInputService {
         }
     }
 
-    private static void FinishPasteClipboard(WindowInputOptions settings, uint pastedSequence, bool operationFailed, ClipboardHelper.ClipboardSnapshot? snapshot, bool restoreText, string? textBackup) {
-        if (snapshot == null && !restoreText && !settings.ClearClipboardAfterPaste) {
+    private static void FinishPasteClipboard(WindowInputOptions settings, uint pastedSequence, bool operationFailed, ClipboardHelper.ClipboardSnapshot? snapshot) {
+        if (snapshot == null && !settings.ClearClipboardAfterPaste) {
             return;
         }
 
         if (pastedSequence == 0) {
-            // Putting the text on the clipboard failed part-way; bring back what was there before.
-            if (snapshot != null) {
-                snapshot.Restore();
-            } else if (restoreText) {
-                ClipboardHelper.SetText(textBackup ?? string.Empty, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
-            }
-
+            // No clipboard write occurred; in particular, do not overwrite a concurrent copy after allocation/open failure.
             return;
         }
 
@@ -122,9 +110,7 @@ public static class WindowInputService {
         }
 
         if (snapshot != null) {
-            snapshot.Restore();
-        } else if (restoreText) {
-            ClipboardHelper.SetText(textBackup ?? string.Empty, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+            snapshot.Restore(pastedSequence);
         } else {
             ClipboardHelper.ClearIfUnchanged(pastedSequence, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
         }

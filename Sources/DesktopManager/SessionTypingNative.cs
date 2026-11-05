@@ -7,7 +7,6 @@ namespace DesktopManager;
 internal static class SessionTypingNative {
     internal const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     internal const uint MAPVK_VK_TO_VSC_EX = 4;
-    internal const uint KLF_NOTELLSHELL = 0x00000080;
     internal const uint ToUnicodeDoNotChangeKeyboardState = 0x4;
     internal const int WH_MOUSE_LL = 14;
     internal const uint LLKHF_INJECTED = 0x10;
@@ -30,13 +29,6 @@ internal static class SessionTypingNative {
         internal uint Time;
         internal IntPtr ExtraInfo;
     }
-
-    [DllImport("user32.dll", EntryPoint = "LoadKeyboardLayoutW", CharSet = CharSet.Unicode, SetLastError = true)]
-    internal static extern IntPtr LoadKeyboardLayout(string keyboardLayoutId, uint flags);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool UnloadKeyboardLayout(IntPtr keyboardLayout);
 
     [DllImport("user32.dll")]
     internal static extern int GetKeyboardLayoutList(int count, [Out] IntPtr[]? layouts);

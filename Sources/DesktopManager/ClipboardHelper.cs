@@ -93,11 +93,12 @@ public static class ClipboardHelper {
         formats.Add(new KeyValuePair<uint, byte[]>(format, data));
     }
 
-    /// <summary>Puts text on the clipboard for pasting and returns the clipboard sequence number that identifies it.</summary>
-    internal static uint SetPasteText(string text, bool privateText, int retryCount, int retryDelayMilliseconds) {
+    /// <summary>Puts text on the clipboard and identifies even a partial write, so cleanup can preserve a newer copy.</summary>
+    internal static void SetPasteText(string text, bool privateText, int retryCount, int retryDelayMilliseconds, out uint sequence) {
+        sequence = 0;
         List<KeyValuePair<uint, byte[]>> formats = BuildPasteFormats(text, privateText);
         try {
-            return SetFormats(formats, retryCount, retryDelayMilliseconds, IntPtr.Zero);
+            SetFormats(formats, retryCount, retryDelayMilliseconds, IntPtr.Zero, out sequence);
         } finally {
             foreach (var format in formats) {
                 Array.Clear(format.Value, 0, format.Value.Length);
@@ -116,15 +117,17 @@ public static class ClipboardHelper {
     }
 
     /// <summary>Replaces the clipboard with one format holding a copy of <paramref name="data"/>.</summary>
-    internal static void SetData(uint format, byte[] data, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
-        SetFormats(new[] { new KeyValuePair<uint, byte[]>(format, data) }, retryCount, retryDelayMilliseconds, owner);
+    internal static uint SetData(uint format, byte[] data, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
+        SetFormats(new[] { new KeyValuePair<uint, byte[]>(format, data) }, retryCount, retryDelayMilliseconds, owner, out uint sequence);
+        return sequence;
     }
 
     /// <summary>
     /// Replaces the clipboard with copies of <paramref name="formats"/> and returns the clipboard sequence number read
     /// while the clipboard was still open, so it identifies exactly this content.
     /// </summary>
-    internal static uint SetFormats(IReadOnlyList<KeyValuePair<uint, byte[]>> formats, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
+    internal static void SetFormats(IReadOnlyList<KeyValuePair<uint, byte[]>> formats, int retryCount, int retryDelayMilliseconds, IntPtr owner, out uint sequence) {
+        sequence = 0;
         if (formats == null) {
             throw new ArgumentNullException(nameof(formats));
         }
@@ -137,10 +140,12 @@ public static class ClipboardHelper {
             }
 
             OpenClipboardWithRetry(retryCount, retryDelayMilliseconds, owner);
+            bool cleared = false;
             try {
                 if (!MonitorNativeMethods.EmptyClipboard()) {
                     throw new InvalidOperationException("Unable to empty clipboard.");
                 }
+                cleared = true;
 
                 for (int index = 0; index < formats.Count; index++) {
                     if (MonitorNativeMethods.SetClipboardData(formats[index].Key, handles[index]) == IntPtr.Zero) {
@@ -150,8 +155,10 @@ public static class ClipboardHelper {
                     handles[index] = IntPtr.Zero;
                 }
 
-                return NativeClipboardMethods.GetClipboardSequenceNumber();
             } finally {
+                if (cleared) {
+                    sequence = NativeClipboardMethods.GetClipboardSequenceNumber();
+                }
                 MonitorNativeMethods.CloseClipboard();
             }
         } finally {
@@ -312,7 +319,7 @@ public static class ClipboardHelper {
             _formats.Add(new KeyValuePair<uint, IntPtr>(format, copy));
         }
 
-        internal void Restore() {
+        internal void Restore(uint? expectedSequence = null) {
             if (_disposed) { throw new ObjectDisposedException(nameof(ClipboardSnapshot)); }
             if (_restored) { return; }
             var pending = new List<KeyValuePair<uint, IntPtr>>();
@@ -326,6 +333,10 @@ public static class ClipboardHelper {
                 }
                 OpenClipboardWithRetry(5, 50, owner);
                 opened = true;
+                // The clipboard must stay locked between this comparison and replacing its contents.
+                if (expectedSequence.HasValue && NativeClipboardMethods.GetClipboardSequenceNumber() != expectedSequence.Value) {
+                    return;
+                }
                 if (!MonitorNativeMethods.EmptyClipboard()) { throw new InvalidOperationException("Unable to empty clipboard."); }
                 for (int i = 0; i < pending.Count; i++) {
                     var entry = pending[i];

@@ -67,7 +67,7 @@ The snap position.
 Type: SnapPosition
 Parameter Sets: __AllParameterSets
 Aliases: None
-Possible values: Left, Right, TopLeft, TopRight, BottomLeft, BottomRight
+Possible values: Left, Right, TopLeft, TopRight, BottomLeft, BottomRight, Top, Bottom, LeftThird, CenterThird, RightThird, Center
 
 Required: True
 Position: 1

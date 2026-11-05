@@ -17,6 +17,8 @@ Restore-DesktopWindowLayout [-Path] <string> [-Validate] [-Preview] [-RestoreVir
 ## DESCRIPTION
 Restores desktop window layout.
 
+Saved coordinates are interpreted as physical desktop pixels. Older layouts captured from a DPI-unaware host on a scaled display may contain logical coordinates; inspect their placement and save them again rather than applying an assumed DPI conversion.
+
 ## EXAMPLES
 
 ### EXAMPLE 1

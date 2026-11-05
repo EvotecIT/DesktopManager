@@ -13,7 +13,7 @@ Remote clients forward keys, not characters. RDP and Citrix send scan codes to t
 | `Citrix` | scan codes for the chosen layout | 10 ms / 15 ms / 100 ms / 100 ms every 32 characters |
 | `Vnc` | scan codes for the local layout | 25 ms / 40 ms / 150 ms / 200 ms every 32 characters |
 
-Without `KeyboardLayout`, the target window's own layout is used. Set it to the remote layout (a KLID such as `00000407` or a culture such as `de-DE`) when the remote machine uses a different one. Any pacing value can be overridden.
+Without `KeyboardLayout`, the target window's own layout is used. Set it to the remote layout (a KLID such as `00000407` or a culture such as `de-DE`) when the remote machine uses a different one. The chosen layout must already be loaded in Windows; add it in language settings before starting. Typing never loads, activates or unloads a keyboard layout. Any pacing value can be overridden.
 
 ## Safety
 
@@ -56,7 +56,11 @@ Get-Content .\setup.ps1 -Raw | desktopmanager window type-session --process Devo
 
 ## Pasting privately
 
-When the library pastes text for you, it marks the clipboard content so Windows keeps it out of clipboard history, the cloud clipboard and clipboard managers (`WindowInputOptions.PrivateClipboard`, on by default). With `PreserveClipboard`, everything the clipboard held before comes back afterwards, or it is emptied if it was empty. RDP fetches redirected clipboard content only when the remote side pastes, so use `ClipboardHoldMilliseconds` to keep the text available long enough.
+When the library pastes text for you, it marks the clipboard content for exclusion from Windows clipboard history, cloud synchronization and cooperating clipboard managers (`WindowInputOptions.PrivateClipboard`, on by default). These markers are cooperative policy; other software can still read the clipboard. Set `PrivateClipboard = false` for a library caller that deliberately needs ordinary clipboard history or a clipboard provider that does not accept these markers.
+
+With `PreserveClipboard`, every supported format comes back afterwards, or the clipboard is emptied if it was empty. If any format cannot be safely copied, pasting fails before replacing the clipboard. Content copied by another application during the paste wins over restoration. RDP fetches redirected clipboard content only when the remote side pastes, so use `ClipboardHoldMilliseconds` to keep the text available long enough. Private paste through real RDP/Citrix/VNC clipboard providers still needs qualification.
+
+PowerShell exposes the same choice: `Set-DesktopWindowText -Name 'Editor' -Text 'Hello' -PrivateClipboard $false` requests ordinary clipboard behavior. The CLI and MCP paste routes use the private default.
 
 ## What still needs a live check
 

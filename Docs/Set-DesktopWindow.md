@@ -11,13 +11,15 @@ Sets the position, size and state of a desktop window.
 ## SYNTAX
 ### __AllParameterSets
 ```powershell
-Set-DesktopWindow [-Name] <string> [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [-MonitorIndex <Int32>] [-State <WindowState>] [-TopMost] [-Activate] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
+Set-DesktopWindow [-Name] <string> [-Left <int>] [-Top <int>] [-Width <int>] [-Height <int>] [-MonitorIndex <Int32>] [-State <WindowState>] [-TopMost] [-Activate] [-IncludeHidden] [-IncludeCloaked] [-Verify] [-VerificationTolerancePixels <int>] [-PassThru] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
 Sets the position, size and state of a desktop window.
 
 Sets the position, size and state of a window on the desktop. You can identify the window by its title (supports wildcards).
+
+Positions and sizes use physical desktop pixels, including from DPI-unaware PowerShell hosts. On a 150% display, a 900-pixel width remains 900 physical pixels rather than 1350. Hidden and DWM-cloaked windows are skipped unless explicitly included.
 
 ## EXAMPLES
 
@@ -41,6 +43,20 @@ Set-DesktopWindow -Name "Calculator" -State Minimize
 ```
 
 Minimize a window
+
+### EXAMPLE 4
+```powershell
+Set-DesktopWindow -Name "Notepad" -Left -1800 -Top 100
+```
+
+Move a window to a monitor left of the primary monitor
+
+### EXAMPLE 5
+```powershell
+Set-DesktopWindow -Name "Notepad" -TopMost:$false
+```
+
+Clear a window's topmost state
 
 ## PARAMETERS
 
@@ -76,8 +92,40 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
+### -IncludeCloaked
+Also change DWM-cloaked windows that match the name, including windows on other virtual desktops. Cloaked windows, such as suspended app frames, are skipped by default because changing them can make them appear.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -IncludeHidden
+Also change hidden windows that match the name. Hidden windows are skipped by default.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: __AllParameterSets
+Aliases: None
+Possible values:
+
+Required: False
+Position: named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
 ### -Left
-The left position of the window.
+The left position of the window. Negative values reach monitors left of the primary monitor.
 
 ```yaml
 Type: Int32
@@ -157,7 +205,7 @@ Accept wildcard characters: False
 ```
 
 ### -Top
-The top position of the window.
+The top position of the window. Negative values reach monitors above the primary monitor.
 
 ```yaml
 Type: Int32
@@ -173,7 +221,7 @@ Accept wildcard characters: False
 ```
 
 ### -TopMost
-Set the window as top-most.
+Set the window as top-most. Use -TopMost:$false to clear it.
 
 ```yaml
 Type: SwitchParameter

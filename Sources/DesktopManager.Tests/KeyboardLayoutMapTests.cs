@@ -36,7 +36,7 @@ public class KeyboardLayoutMapTests {
         }
 
         var expected = (StaticKeyboardLayout)KeystrokePlannerTests.Layout(tableName);
-        using NativeKeyboardLayoutMap native = NativeKeyboardLayoutMap.ForLoadedLayout(layout);
+        using NativeKeyboardLayoutMap native = NativeKeyboardLayoutMap.ForLayout(layoutId.ToString("X8"));
         var mismatches = new List<string>();
         foreach (char character in expected.Characters) {
             expected.TryMap(character, out LayoutKey want);

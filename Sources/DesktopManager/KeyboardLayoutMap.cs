@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Runtime.Versioning;
+using Microsoft.Win32;
 
 namespace DesktopManager;
 
@@ -57,22 +58,20 @@ internal interface IKeyboardLayoutMap {
 /// Reads character mappings from a Windows keyboard layout (<c>HKL</c>) with <c>VkKeyScanEx</c>,
 /// <c>MapVirtualKeyEx</c> and a state-preserving <c>ToUnicodeEx</c> probe for dead keys and Caps Lock.
 /// </summary>
-/// <remarks>A layout this type loaded is unloaded on dispose; a layout that was already present is left alone.</remarks>
+/// <remarks>Only already-loaded layouts are used. Mapping never loads, activates or unloads a system keyboard layout.</remarks>
 [SupportedOSPlatform("windows")]
 internal sealed class NativeKeyboardLayoutMap : IKeyboardLayoutMap, IDisposable {
     private const byte KeyDown = 0x80;
     private const byte Toggled = 0x01;
     private const int UnknownLocale = 0x1000;
     private readonly IntPtr _layout;
-    private readonly bool _unloadOnDispose;
     private readonly byte[] _keyState = new byte[256];
     private readonly char[] _buffer = new char[8];
     private bool _disposed;
 
-    private NativeKeyboardLayoutMap(IntPtr layout, string name, bool unloadOnDispose) {
+    private NativeKeyboardLayoutMap(IntPtr layout, string name) {
         _layout = layout;
         Name = name;
-        _unloadOnDispose = unloadOnDispose;
     }
 
     /// <inheritdoc />
@@ -90,23 +89,31 @@ internal sealed class NativeKeyboardLayoutMap : IKeyboardLayoutMap, IDisposable 
 
     /// <summary>Uses a layout that is already loaded, such as one returned by <c>GetKeyboardLayoutList</c>; it is never unloaded.</summary>
     internal static NativeKeyboardLayoutMap ForLoadedLayout(IntPtr layout) {
-        return new NativeKeyboardLayoutMap(layout, FormatLayoutHandle(layout), unloadOnDispose: false);
+        return new NativeKeyboardLayoutMap(layout, FormatLayoutHandle(layout));
     }
 
     /// <summary>
-    /// Loads a layout by keyboard layout identifier (for example <c>00000407</c>) or culture name (for example <c>de-DE</c>)
-    /// without activating it.
+    /// Selects an already-loaded layout by keyboard layout identifier (for example <c>00000407</c>) or culture name
+    /// (for example <c>de-DE</c>), without changing the system's input locales.
     /// </summary>
-    internal static NativeKeyboardLayoutMap Load(string layout) {
+    internal static NativeKeyboardLayoutMap ForLayout(string layout) {
         string klid = ResolveLayoutId(layout);
-        IntPtr[] present = SessionTypingNative.GetKeyboardLayouts();
-        IntPtr handle = SessionTypingNative.LoadKeyboardLayout(klid, SessionTypingNative.KLF_NOTELLSHELL);
-        if (handle == IntPtr.Zero) {
-            throw new ArgumentException($"Keyboard layout '{layout}' could not be loaded.", nameof(layout));
+        uint requested = uint.Parse(klid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        using RegistryKey? key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Keyboard Layouts\" + klid);
+        string? layoutId = key?.GetValue("Layout Id") as string;
+        bool hasVariant = uint.TryParse(layoutId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint variant);
+        foreach (IntPtr handle in SessionTypingNative.GetKeyboardLayouts()) {
+            uint value = unchecked((uint)handle.ToInt64());
+            uint device = value >> 16;
+            // Windows uses Fxxx device IDs for variants; the registry maps their low twelve bits to the KLID.
+            bool matches = (device & 0xF000) == 0xF000
+                ? hasVariant && (device & 0x0FFF) == variant
+                : requested == (device == 0 ? value & 0xFFFF : device) || requested == value;
+            if (matches) {
+                return new NativeKeyboardLayoutMap(handle, klid);
+            }
         }
-
-        bool alreadyPresent = Array.IndexOf(present, handle) >= 0;
-        return new NativeKeyboardLayoutMap(handle, klid, unloadOnDispose: !alreadyPresent);
+        throw new ArgumentException($"Keyboard layout '{layout}' is not loaded. Add it in Windows language settings before starting session typing; typing never changes the system keyboard layout.", nameof(layout));
     }
 
     /// <summary>Normalises a KLID or culture name to the eight-digit identifier <c>LoadKeyboardLayout</c> expects.</summary>
@@ -222,9 +229,6 @@ internal sealed class NativeKeyboardLayoutMap : IKeyboardLayoutMap, IDisposable 
         }
 
         _disposed = true;
-        if (_unloadOnDispose) {
-            SessionTypingNative.UnloadKeyboardLayout(_layout);
-        }
     }
 
     private static bool IsNumericKeypad(uint virtualKey) {

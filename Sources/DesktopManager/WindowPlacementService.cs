@@ -296,10 +296,10 @@ public sealed class WindowPlacementService {
     }
 
     private bool VerifyPlacement(IntPtr handle, WindowPlacementRequest request, Monitor? monitor) {
-        return WaitForWindow(handle, current => IsExpectedPlacement(current, request, monitor), request);
+        return WaitForWindow(handle, current => IsExpectedPlacement(current, request, monitor, WindowManager.GetVisibleBounds(handle), WindowManager.IsPerMonitorDpiAware(handle)), request);
     }
 
-    internal static bool IsExpectedPlacement(WindowInfo window, WindowPlacementRequest request, Monitor? monitor) {
+    internal static bool IsExpectedPlacement(WindowInfo window, WindowPlacementRequest request, Monitor? monitor, RECT? visibleFrame = null, bool perMonitorAware = true) {
         if (request.Placement == WindowPlacementKind.ExactRectangle) {
             return IsNear(window.Left, request.ExactLeft!.Value, request.GeometryTolerancePixels) &&
                 IsNear(window.Top, request.ExactTop!.Value, request.GeometryTolerancePixels) &&
@@ -320,13 +320,24 @@ public sealed class WindowPlacementService {
             return true;
         }
 
-        // Window rectangles include the invisible resize border, which the tolerance absorbs.
+        // Half placement targets the visible frame; exact rectangles above still target the outer window.
         RECT expected = GetHalfRectangle(request.Placement, GetPlacementBounds(monitor));
+        RECT outer = new RECT { Left = window.Left, Top = window.Top, Right = window.Left + window.Width, Bottom = window.Top + window.Height };
+        RECT actual = visibleFrame ?? outer;
+        if (!perMonitorAware && visibleFrame.HasValue) {
+            RECT placed = WindowManager.GetFramePlacement(expected, outer, actual, WindowManager.GetBounds(monitor), perMonitorAware);
+            expected = new RECT {
+                Left = placed.Left + actual.Left - outer.Left,
+                Top = placed.Top + actual.Top - outer.Top,
+                Right = placed.Right - (outer.Right - actual.Right),
+                Bottom = placed.Bottom - (outer.Bottom - actual.Bottom)
+            };
+        }
         return window.MonitorIndex == monitor.Index &&
-            IsNear(window.Left, expected.Left, request.GeometryTolerancePixels) &&
-            IsNear(window.Top, expected.Top, request.GeometryTolerancePixels) &&
-            IsNear(window.Width, expected.Right - expected.Left, request.GeometryTolerancePixels) &&
-            IsNear(window.Height, expected.Bottom - expected.Top, request.GeometryTolerancePixels);
+            IsNear(actual.Left, expected.Left, request.GeometryTolerancePixels) &&
+            IsNear(actual.Top, expected.Top, request.GeometryTolerancePixels) &&
+            IsNear(actual.Right - actual.Left, expected.Right - expected.Left, request.GeometryTolerancePixels) &&
+            IsNear(actual.Bottom - actual.Top, expected.Bottom - expected.Top, request.GeometryTolerancePixels);
     }
 
     private bool WaitForWindow(IntPtr handle, Func<WindowInfo, bool> predicate, WindowPlacementRequest request) {

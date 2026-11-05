@@ -37,7 +37,8 @@ public sealed class SessionTypingResult {
 
     /// <summary>
     /// Gets how many UTF-16 code units of the text were completely typed. When typing stops early, the text from this
-    /// position on was not sent; the character at this position may have been partly sent if Windows rejected input.
+    /// position on was not completely sent; the character at this position may have been partly sent before a stop
+    /// condition or rejected input. Check the target before retrying a partial result.
     /// </summary>
     public int CharactersSent { get; }
 

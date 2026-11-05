@@ -5,6 +5,7 @@ namespace DesktopManager.PowerShell;
 
 /// <summary>Restores window positions from a saved layout.</summary>
 /// <para type="synopsis">Restores desktop window layout.</para>
+/// <para>Saved coordinates are interpreted as physical desktop pixels. Older layouts captured from a DPI-unaware host on a scaled display may contain logical coordinates; inspect their placement and save them again rather than applying an assumed DPI conversion.</para>
 [Cmdlet(VerbsData.Restore, "DesktopWindowLayout", SupportsShouldProcess = true)]
 [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.10240.0")]
 public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {

@@ -67,7 +67,7 @@ public static class SessionTypingService {
 
     private static IKeyboardLayoutMap OpenLayout(WindowInfo target, SessionTypingSettings settings) {
         if (settings.KeyboardLayout != null) {
-            return NativeKeyboardLayoutMap.Load(settings.KeyboardLayout);
+            return NativeKeyboardLayoutMap.ForLayout(settings.KeyboardLayout);
         }
 
         uint threadId = target.ThreadId != 0 ? target.ThreadId : MonitorNativeMethods.GetWindowThreadProcessId(target.Handle, out _);

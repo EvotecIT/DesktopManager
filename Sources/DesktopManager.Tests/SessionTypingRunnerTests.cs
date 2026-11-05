@@ -80,6 +80,37 @@ public class SessionTypingRunnerTests {
     }
 
     [TestMethod]
+    [DataRow(SessionTypingAbortReason.ForegroundChanged)]
+    [DataRow(SessionTypingAbortReason.FocusChanged)]
+    [DataRow(SessionTypingAbortReason.UserInput)]
+    [DataRow(SessionTypingAbortReason.Cancelled)]
+    public void Run_StopDuringModifierHoldReleasesShiftWithoutTypingTheCharacter(SessionTypingAbortReason expected) {
+        var desktop = new FakeDesktop();
+        using var cancellation = new CancellationTokenSource();
+        desktop.OnDelay = () => {
+            if (expected == SessionTypingAbortReason.ForegroundChanged) {
+                desktop.Foreground = Other;
+            } else if (expected == SessionTypingAbortReason.FocusChanged) {
+                desktop.Focus = Other;
+            } else if (expected == SessionTypingAbortReason.UserInput) {
+                desktop.RaiseUserInput();
+            } else {
+                cancellation.Cancel();
+            }
+        };
+        var sink = new RecordingSink();
+        var options = Options();
+        options.ModifierHoldMilliseconds = 1000;
+
+        SessionTypingResult result = Run(sink, desktop, "A", options, cancellation.Token);
+
+        Assert.AreEqual(expected, result.AbortReason);
+        Assert.AreEqual(0, result.CharactersSent);
+        Assert.AreEqual("+2A -2A", sink.Describe());
+        Assert.AreEqual(0, desktop.MonitorsRunning);
+    }
+
+    [TestMethod]
     public void Run_RejectedInputStillReleasesTheModifiersItPressed() {
         var desktop = new FakeDesktop();
         // Shift and AltGr are down when Windows rejects the key itself.

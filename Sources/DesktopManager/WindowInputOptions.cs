@@ -17,11 +17,13 @@ public sealed class WindowInputOptions {
     /// <summary>
     /// Gets or sets whether to restore the previous clipboard content, in every format it held, after pasting.
     /// When the clipboard was empty it is emptied again. Content copied by someone else in the meantime is left alone.
+    /// Pasting fails before changing the clipboard when any format cannot be preserved safely.
     /// </summary>
     public bool PreserveClipboard { get; set; }
 
     /// <summary>
-    /// Gets or sets whether pasted text is kept out of clipboard history, the cloud clipboard and clipboard monitors.
+    /// Gets or sets whether pasted text requests exclusion from clipboard history, cloud synchronization and cooperating
+    /// clipboard monitors. Other software can still read clipboard data. Enabled by default.
     /// </summary>
     public bool PrivateClipboard { get; set; } = true;
 

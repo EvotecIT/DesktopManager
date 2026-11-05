@@ -6,6 +6,7 @@ namespace DesktopManager.PowerShell {
     /// <summary>Sets the position, size and state of a desktop window.</summary>
     /// <para type="synopsis">Sets the position, size and state of a desktop window.</para>
     /// <para type="description">Sets the position, size and state of a window on the desktop. You can identify the window by its title (supports wildcards).</para>
+    /// <para>Positions and sizes use physical desktop pixels, including from DPI-unaware PowerShell hosts. On a 150% display, a 900-pixel width remains 900 physical pixels rather than 1350. Hidden and DWM-cloaked windows are skipped unless explicitly included.</para>
     /// <example>
     ///   <para>Move a specific window to coordinates (100,100)</para>
     ///   <code>Set-DesktopWindow -Name "Calculator" -Left 100 -Top 100</code>

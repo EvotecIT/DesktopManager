@@ -2,12 +2,12 @@
 Module Name: DesktopManager
 Module Guid: 56f85fa6-c622-4204-8e97-3d99e3e06e75
 Download Help Link: https://github.com/EvotecIT/DesktopManager
-Help Version: 4.7.0
+Help Version: 4.7.1
 Locale: en-US
 ---
 # DesktopManager Module
 ## Description
-Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.
+Desktop Manager automates the Windows desktop: wallpapers and monitors, windows and their layouts, virtual desktops, audio and media, input and workspace recovery.
 
 ## DesktopManager Cmdlets
 ### [Add-DesktopDriverPackage](Add-DesktopDriverPackage.md)
@@ -246,6 +246,9 @@ Captures and saves a named workstation profile.
 
 ### [Send-DesktopControlKey](Send-DesktopControlKey.md)
 Sends keys to a window control without activating it.
+
+### [Send-DesktopSessionText](Send-DesktopSessionText.md)
+Types text, a password or a script into a remote or locked-down session.
 
 ### [Set-DefaultAudioDevice](Set-DefaultAudioDevice.md)
 Sets the default audio device.

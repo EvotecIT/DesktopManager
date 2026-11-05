@@ -4703,6 +4703,10 @@ public sealed partial class DesktopAutomationService {
     }
 
     private static DesktopWindowGeometry DescribeWindowGeometry(WindowInfo window) {
+        return WindowDpiContext.Execute(() => DescribePhysicalWindowGeometry(window));
+    }
+
+    private static DesktopWindowGeometry DescribePhysicalWindowGeometry(WindowInfo window) {
         if (window == null) {
             throw new ArgumentNullException(nameof(window));
         }

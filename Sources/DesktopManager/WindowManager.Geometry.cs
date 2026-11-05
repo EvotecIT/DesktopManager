@@ -82,7 +82,7 @@ public partial class WindowManager {
         return target;
     }
 
-    private static bool IsPerMonitorDpiAware(IntPtr handle) {
+    internal static bool IsPerMonitorDpiAware(IntPtr handle) {
         try {
             // DPI_AWARENESS_PER_MONITOR_AWARE covers per-monitor V1 and V2.
             return GetAwarenessFromDpiAwarenessContext(GetWindowDpiAwarenessContext(handle)) == 2;
@@ -120,19 +120,21 @@ public partial class WindowManager {
                 WorkspaceWindowPlacement.RestoreToNormalBounds(handle, visibleTarget);
             }
 
-            RECT target = TryGetVisibleFrame(handle, out RECT windowRect, out RECT frame)
-                ? ExpandForInvisibleFrame(visibleTarget, windowRect, frame)
-                : visibleTarget;
-            if (!IsPerMonitorDpiAware(handle)) {
-                target = KeepOriginOnMonitor(target, monitorBounds);
-            }
+            bool hasFrame = TryGetVisibleFrame(handle, out RECT windowRect, out RECT frame);
+            RECT target = GetFramePlacement(visibleTarget, windowRect, hasFrame ? frame : windowRect, monitorBounds, IsPerMonitorDpiAware(handle));
             SetWindowPosOrThrow(handle, IntPtr.Zero, target.Left, target.Top, target.Right - target.Left, target.Bottom - target.Top,
                 MonitorNativeMethods.SWP_NOZORDER | MonitorNativeMethods.SWP_NOACTIVATE, operation);
         });
     }
 
+    /// <summary>The outer rectangle used by placement and verification, including its DPI-unaware origin clamp.</summary>
+    internal static RECT GetFramePlacement(RECT visibleTarget, RECT windowRect, RECT frame, RECT monitorBounds, bool perMonitorAware) {
+        RECT target = ExpandForInvisibleFrame(visibleTarget, windowRect, frame);
+        return perMonitorAware ? target : KeepOriginOnMonitor(target, monitorBounds);
+    }
+
     /// <summary>The visible bounds of a window: its DWM frame when available, otherwise its window rectangle.</summary>
-    private static RECT GetVisibleBounds(IntPtr handle) {
+    internal static RECT GetVisibleBounds(IntPtr handle) {
         if (TryGetVisibleFrame(handle, out RECT windowRect, out RECT frame)) {
             return frame;
         }

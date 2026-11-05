@@ -54,7 +54,8 @@ public sealed class SessionTypingOptions {
 
     /// <summary>
     /// Gets or sets the keyboard layout the receiving session uses, as a layout identifier such as <c>00000407</c> or a culture
-    /// name such as <c>de-DE</c>. When empty, the layout active on the target window's thread is used.
+    /// name such as <c>de-DE</c>. The selected layout must already be loaded in Windows; no input locale is changed.
+    /// When empty, the layout active on the target window's thread is used.
     /// Ignored by <see cref="SessionTypingProfile.Local"/>, which sends Unicode packets.
     /// </summary>
     public string? KeyboardLayout { get; set; }

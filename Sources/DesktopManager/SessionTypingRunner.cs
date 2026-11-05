@@ -212,14 +212,11 @@ internal sealed class SessionTypingRunner {
                 capsLockTurnedOff = true;
             }
 
-            bool characterStart = true;
             int charactersInChunk = 0;
             for (int index = 0; index < plan.Count; index++) {
-                if (characterStart) {
-                    reason = CheckStop(root, focus, Volatile.Read(ref userInput) != 0, cancellationToken);
-                    if (reason != SessionTypingAbortReason.None) {
-                        break;
-                    }
+                reason = CheckStop(root, focus, Volatile.Read(ref userInput) != 0, cancellationToken);
+                if (reason != SessionTypingAbortReason.None) {
+                    break;
                 }
 
                 Keystroke keystroke = plan[index];
@@ -230,8 +227,7 @@ internal sealed class SessionTypingRunner {
 
                 Track(pressed, keystroke);
                 int delay = keystroke.DelayAfterMilliseconds;
-                characterStart = keystroke.CompletesCharacter;
-                if (characterStart) {
+                if (keystroke.CompletesCharacter) {
                     sent = keystroke.SourceEnd;
                     charactersInChunk++;
                     if (settings.ChunkSize > 0 && charactersInChunk >= settings.ChunkSize && index < plan.Count - 1) {
@@ -241,8 +237,11 @@ internal sealed class SessionTypingRunner {
                 }
 
                 if (delay > 0) {
-                    // A cancelled wait ends early; the next character start reports it after this one is complete.
                     _environment.Delay(delay, cancellationToken);
+                    reason = CheckStop(root, focus, Volatile.Read(ref userInput) != 0, cancellationToken);
+                    if (reason != SessionTypingAbortReason.None) {
+                        break;
+                    }
                 }
             }
         } finally {

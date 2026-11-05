@@ -4,6 +4,7 @@ namespace DesktopManager.PowerShell;
 
 /// <summary>Saves the current desktop window layout to a file.</summary>
 /// <para type="synopsis">Saves the current desktop window layout.</para>
+/// <para>Window positions and sizes are saved in physical desktop pixels, independent of the PowerShell host's DPI awareness.</para>
 [Cmdlet(VerbsData.Save, "DesktopWindowLayout", SupportsShouldProcess = true)]
 [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.10240.0")]
 public sealed class CmdletSaveDesktopWindowLayout : PSCmdlet {
