@@ -12,8 +12,9 @@ namespace DesktopManager;
 /// </summary>
 /// <remarks>
 /// <para>This uses the location-sensitive Native Wi-Fi current-connection query, which <see cref="WifiProfileService"/>
-/// deliberately avoids. Recent Windows versions withhold the SSID and BSSID from apps without location consent, so
-/// those can be <c>null</c> while the signal quality is still reported.</para>
+/// deliberately avoids. Since Windows 11 24H2, Windows refuses the whole query to apps without location consent;
+/// <see cref="GetCurrent"/> then throws <see cref="UnauthorizedAccessException"/>. Older versions may answer with
+/// the SSID and BSSID left out.</para>
 /// <para>Only reads; it never scans, connects or changes Wi-Fi settings.</para>
 /// </remarks>
 [SupportedOSPlatform("windows6.0.6000.0")]
@@ -39,6 +40,7 @@ public static class WifiConnectionService {
     /// <param name="interfaceId">The wireless LAN interface, as returned by <see cref="WifiProfileService.GetInterfaces"/>;
     /// it matches <c>NetworkInterface.Id</c> for the same adapter.</param>
     /// <returns>The current connection, or <c>null</c> when the interface is not connected.</returns>
+    /// <exception cref="UnauthorizedAccessException">Windows needs location access for this app before it answers.</exception>
     /// <exception cref="Win32Exception">The Native Wi-Fi service failed or does not know the interface.</exception>
     public static DesktopWifiConnectionInfo? GetCurrent(Guid interfaceId) {
         uint error = NativeWifiMethods.WlanOpenHandle(
@@ -58,6 +60,9 @@ public static class WifiConnectionService {
                 IntPtr.Zero);
             if (error == NativeWifiMethods.ErrorInvalidState) {
                 return null;
+            }
+            if (error == NativeWifiMethods.ErrorAccessDenied) {
+                throw new UnauthorizedAccessException("Windows answers the current Wi-Fi connection only for apps that have location access (Settings > Privacy & security > Location).");
             }
             try {
                 NativeWifiProfileApi.ThrowWindowsError(error, $"Query the current connection of wireless LAN interface '{interfaceId}'");

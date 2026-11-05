@@ -13,7 +13,7 @@ DesktopManager keeps desktop-state behavior in the shared C# library. PowerShell
 | Personalization and taskbar | `PersonalizationService`, `PersonalizationStateStore`, `TaskbarService` | Reversible personalization snapshots, monitor wallpapers, theme and Start/taskbar settings, taskbar monitor mapping, visibility, position, bounds, and auto-hide |
 | Radios | `RadioService` | Supported Windows radio inventory, explicit On/Off requests, access results, and state change events |
 | Clipboard | `ClipboardHelper`, `ClipboardWatcher` | Text and snapshots, plus a listener that reports each copy and skips ones marked private |
-| Current Wi-Fi connection | `WifiConnectionService` | Network name and BSSID when location consent allows, signal quality, PHY type and link rates |
+| Current Wi-Fi connection | `WifiConnectionService` | Network name, BSSID, signal quality, PHY type and link rates; needs location access on Windows 11 24H2 and later |
 | Saved Wi-Fi profiles | `WifiProfileService` | Wireless interface and saved-profile inventory plus exact profile connection without nearby-network scanning or credential access |
 | Experimental airplane mode | `ExperimentalAirplaneModeService` | Explicit global Enabled/Disabled state through an undocumented Windows shell COM contract, followed by verification |
 | Virtual desktops | `VirtualDesktopService` | Current-desktop check, desktop ID lookup, and moving a top-level window to a known desktop ID |
@@ -135,7 +135,7 @@ DesktopWifiConnectionResult result = await wifi.ConnectProfileAsync("Corporate W
 
 Profile names follow Windows' case-sensitive matching rules. If the same profile name exists on multiple adapters, pass the intended interface ID. The service waits for WLAN Auto Configuration completion or failure notifications; cancellation or timeout stops that wait but cannot cancel an attempt already accepted by Windows.
 
-`WifiConnectionService.GetCurrent(interfaceId)` is the separate, location-sensitive read of the connected network. Without location consent Windows leaves out the SSID and BSSID but still reports the signal and rates.
+`WifiConnectionService.GetCurrent(interfaceId)` is the separate, location-sensitive read of the connected network. Since Windows 11 24H2 the query needs location access for the calling app; without it `GetCurrent` throws `UnauthorizedAccessException`. Older versions may answer with the SSID and BSSID left out.
 
 This is not a general location-permission bypass. Windows still requires location consent for nearby-network scans and related Wi-Fi information. The service does not return profile XML or credentials, and it is currently exposed through the C# library, PowerShell, and CLI rather than MCP.
 

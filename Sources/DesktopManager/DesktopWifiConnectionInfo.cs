@@ -6,7 +6,7 @@ namespace DesktopManager;
 /// Describes the network a wireless LAN interface is currently connected to.
 /// </summary>
 /// <remarks>
-/// Recent Windows versions withhold the SSID and BSSID from apps that do not have location consent, so
+/// Windows versions before 11 24H2 may leave out the SSID and BSSID for apps without location consent, so
 /// <see cref="Ssid"/> and <see cref="Bssid"/> can be <c>null</c> while <see cref="SignalQuality"/> is still reported.
 /// </remarks>
 public sealed class DesktopWifiConnectionInfo {

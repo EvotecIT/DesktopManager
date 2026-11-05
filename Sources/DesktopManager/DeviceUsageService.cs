@@ -20,6 +20,9 @@ public sealed class DeviceUsageService {
     private readonly IReader _reader;
     private readonly Func<long> _bootFileTime;
 
+    // Five minutes in FILETIME units (100 ns).
+    internal const long BootClockAllowance = 5L * 60 * 10_000_000;
+
     /// <summary>Creates a reader for the current user's Windows capability consent store.</summary>
     public DeviceUsageService() : this(new RegistryReader(), BootFileTime) {
     }
@@ -53,7 +56,8 @@ public sealed class DeviceUsageService {
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             long boot = _bootFileTime();
             foreach (Entry entry in _reader.Read(capability)) {
-                if (entry.Start <= 0 || entry.Stop >= entry.Start || entry.Start < boot) {
+                // The boot time is derived from the wall clock, so a correction after boot shifts it; allow a few minutes.
+                if (entry.Start <= 0 || entry.Stop >= entry.Start || entry.Start < boot - BootClockAllowance) {
                     continue;
                 }
 

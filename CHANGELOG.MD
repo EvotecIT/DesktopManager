@@ -1,6 +1,6 @@
 ## Unreleased
 
-- Ignore microphone and camera usage records that started before the last boot, so a crash or power loss no longer leaves an app reported as still using the device.
+- Ignore microphone and camera usage records that started before the last boot (with a few minutes' allowance for clock corrections), so a crash or power loss no longer leaves an app reported as still using the device.
 - Make monitor brightness work: monitor lookup no longer gives up when the enumeration stops early on a match, `GetMonitorBrightness`/`SetMonitorBrightness` accept the device ID or the display name, and `Monitor` gains `GetBrightness()` and `SetBrightness()`.
 - Keep monitor IDs consistent: the fallback enumeration reports the same device path as the normal one, and display-setting fallbacks map it back to the display name.
 - Add `Monitor.Bounds` and `Monitor.WorkingArea`, and make `Monitor.Position` use the bounds already read during enumeration.
@@ -12,9 +12,9 @@
 - Add `WindowThumbnail` for live DWM window previews.
 - Add `AudioDefaultEndpointSession`, which follows the default device as it changes and reports a missing device as unavailable rather than throwing, and `AudioLoopbackCapture` for the samples playing on the default output.
 - Add `ClipboardWatcher`, which reports each copy of text or an image and skips copies apps mark as private, and can put text or an image back without reporting it.
-- Add `WifiConnectionService.GetCurrent` for the connected network, signal and link rates of a Wi-Fi interface. Windows withholds the network name without location consent.
+- Add `WifiConnectionService.GetCurrent` for the connected network, signal and link rates of a Wi-Fi interface. Windows 11 24H2 and later answer only apps that have location access.
 - Add `SystemPowerService.GetActivePowerPlan` for the active plan and the Windows 11 power mode.
-- Read clipboard text within the size of its memory block, and allocate before emptying the clipboard so a failed `SetText` no longer clears it.
+- Read clipboard text within the size of its memory block, and allocate before emptying the clipboard so a failed allocation in `SetText` no longer clears it.
 - Stop the mouse input tests clicking and dragging on the live desktop.
 
 ## 4.7.0 - 2026.11.03

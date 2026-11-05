@@ -20,6 +20,7 @@ internal static class NativeWifiMethods {
     internal const int ConnectionNotificationReasonCodeOffset = 560;
     internal const int ConnectionNotificationMinimumSize = ConnectionNotificationReasonCodeOffset + sizeof(uint);
     internal const uint ErrorInvalidState = 5023;
+    internal const uint ErrorAccessDenied = 5;
     internal const uint InterfaceOpcodeCurrentConnection = 7;
 
     [DllImport("wlanapi.dll")]
