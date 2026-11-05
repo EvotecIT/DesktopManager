@@ -84,10 +84,13 @@ public partial class WindowManager
         /// </summary>
         /// <param name="includeHidden">Whether to include hidden windows.</param>
         /// <param name="includeOwned">Whether to include owned windows.</param>
-        /// <param name="includeCloaked">Whether to include DWM-cloaked windows.</param>
+        /// <param name="includeCloaked">
+        /// Whether to include DWM-cloaked windows, such as windows on other virtual desktops and suspended app frames.
+        /// Off by default, because changing the state of a cloaked frame can make it appear.
+        /// </param>
         /// <param name="ignoreErrors">Whether to ignore failures per window.</param>
         /// <returns>Number of windows minimized.</returns>
-        public int MinimizeAll(bool includeHidden = false, bool includeOwned = true, bool includeCloaked = true, bool ignoreErrors = true) {
+        public int MinimizeAll(bool includeHidden = false, bool includeOwned = true, bool includeCloaked = false, bool ignoreErrors = true) {
             var windows = GetWindows(includeHidden: includeHidden, includeOwned: includeOwned, includeCloaked: includeCloaked);
             return MinimizeWindows(windows, ignoreErrors);
         }
@@ -97,10 +100,13 @@ public partial class WindowManager
         /// </summary>
         /// <param name="includeHidden">Whether to include hidden windows.</param>
         /// <param name="includeOwned">Whether to include owned windows.</param>
-        /// <param name="includeCloaked">Whether to include DWM-cloaked windows.</param>
+        /// <param name="includeCloaked">
+        /// Whether to include DWM-cloaked windows, such as windows on other virtual desktops and suspended app frames.
+        /// Off by default, because restoring a cloaked frame can make it appear.
+        /// </param>
         /// <param name="ignoreErrors">Whether to ignore failures per window.</param>
         /// <returns>Number of windows restored.</returns>
-        public int RestoreAll(bool includeHidden = false, bool includeOwned = true, bool includeCloaked = true, bool ignoreErrors = true) {
+        public int RestoreAll(bool includeHidden = false, bool includeOwned = true, bool includeCloaked = false, bool ignoreErrors = true) {
             var windows = GetWindows(includeHidden: includeHidden, includeOwned: includeOwned, includeCloaked: includeCloaked);
             return RestoreWindows(windows, ignoreErrors);
         }
@@ -113,40 +119,36 @@ public partial class WindowManager
         /// <returns>True if the window was moved; otherwise false.</returns>
         public bool EnsureWindowOnScreen(WindowInfo windowInfo, int padding = 10) {
             ValidateWindowInfo(windowInfo);
-            if (!MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out RECT rect)) {
-                throw new InvalidOperationException("Failed to get window position");
-            }
+            return WindowDpiContext.Execute(() => {
+                if (!MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out RECT rect)) {
+                    throw CreateWindowOperationException(windowInfo.Handle, "Read the window position");
+                }
 
-            var monitors = _monitors.GetMonitors();
-            if (monitors.Count == 0) {
-                throw new InvalidOperationException("No monitors found for window positioning");
-            }
+                var monitors = _monitors.GetMonitors(refresh: true);
+                if (monitors.Count == 0) {
+                    throw new InvalidOperationException("No monitors found for window positioning");
+                }
 
-            if (IsRectOnAnyMonitor(rect, monitors)) {
-                return false;
-            }
+                if (IsRectOnAnyMonitor(rect, monitors)) {
+                    return false;
+                }
 
-            var target = monitors.FirstOrDefault(m => m.IsPrimary) ?? monitors[0];
-            var bounds = target.GetMonitorBounds();
+                var target = monitors.FirstOrDefault(m => m.IsPrimary) ?? monitors[0];
+                var bounds = target.GetMonitorBounds();
 
-            int width = rect.Right - rect.Left;
-            int height = rect.Bottom - rect.Top;
-            if (width <= 0) {
-                width = 200;
-            }
-            if (height <= 0) {
-                height = 200;
-            }
+                int width = rect.Right - rect.Left;
+                int height = rect.Bottom - rect.Top;
+                if (width <= 0) {
+                    width = 200;
+                }
+                if (height <= 0) {
+                    height = 200;
+                }
 
-            int left = bounds.Left + padding;
-            int top = bounds.Top + padding;
-
-            if (!MonitorNativeMethods.SetWindowPos(windowInfo.Handle, IntPtr.Zero, left, top, width, height,
-                MonitorNativeMethods.SWP_NOZORDER | MonitorNativeMethods.SWP_NOACTIVATE)) {
-                throw new InvalidOperationException("Failed to move window on screen");
-            }
-
-            return true;
+                SetWindowPosOrThrow(windowInfo.Handle, IntPtr.Zero, bounds.Left + padding, bounds.Top + padding, width, height,
+                    MonitorNativeMethods.SWP_NOZORDER | MonitorNativeMethods.SWP_NOACTIVATE, "Move the window on screen");
+                return true;
+            });
         }
 
         /// <summary>
@@ -160,44 +162,77 @@ public partial class WindowManager
         }
 
         /// <summary>
-        /// Sets the position and size of a window without activating it.
+        /// Sets the position and size of a window without activating it. For a minimised window this
+        /// changes where it restores to and leaves it minimised.
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
-        /// <param name="left">The left position.</param>
-        /// <param name="top">The top position.</param>
+        /// <param name="left">The left position. Use -1 to keep the current left position.</param>
+        /// <param name="top">The top position. Use -1 to keep the current top position.</param>
         /// <param name="width">The width of the window. Use -1 to keep current width.</param>
         /// <param name="height">The height of the window. Use -1 to keep current height.</param>
+        /// <remarks>
+        /// -1 means "keep" for the position. To move a window to exactly -1, for example on a monitor left of
+        /// the primary one, use <see cref="SetWindowRectangle"/>.
+        /// </remarks>
         public void SetWindowPosition(WindowInfo windowInfo, int left, int top, int width = -1, int height = -1) {
-            const int SWP_NOMOVE = 0x0002;
+            SetWindowBounds(windowInfo,
+                left == -1 ? null : left,
+                top == -1 ? null : top,
+                width < 0 ? null : width,
+                height < 0 ? null : height);
+        }
 
+        /// <summary>
+        /// Moves or resizes a window without activating it, keeping each value that is null. Negative coordinates
+        /// are real positions on monitors left of or above the primary monitor.
+        /// </summary>
+        internal void SetWindowBounds(WindowInfo windowInfo, int? left, int? top, int? width, int? height) {
             ValidateWindowInfo(windowInfo);
-
-            int flags = MonitorNativeMethods.SWP_NOZORDER | MonitorNativeMethods.SWP_NOACTIVATE;
-
-            // If position is -1, don't move
-            if (left == -1 && top == -1) {
-                flags |= SWP_NOMOVE;
+            // A negative size has always meant "keep the current size".
+            width = width < 0 ? null : width;
+            height = height < 0 ? null : height;
+            if (!left.HasValue && !top.HasValue && !width.HasValue && !height.HasValue) {
+                return;
             }
 
-            // If size is -1, don't resize
-            if (width < 0 && height < 0) {
-                flags |= MonitorNativeMethods.SWP_NOSIZE;
-            }
+            WindowDpiContext.Execute(() => {
+                IntPtr handle = windowInfo.Handle;
+                if (MonitorNativeMethods.IsIconic(handle)) {
+                    RECT normal = WorkspaceWindowPlacement.GetNormalBounds(handle);
+                    WorkspaceWindowPlacement.SetMinimizedNormalBounds(handle, MergeBounds(normal, left, top, width, height));
+                    return;
+                }
 
-            if (!MonitorNativeMethods.SetWindowPos(
-                windowInfo.Handle,
-                IntPtr.Zero,
-                left == -1 ? windowInfo.Left : left,
-                top == -1 ? windowInfo.Top : top,
-                width < 0 ? windowInfo.Width : width,
-                height < 0 ? windowInfo.Height : height,
-                flags)) {
-                throw new InvalidOperationException("Failed to set window position");
-            }
+                if (!MonitorNativeMethods.GetWindowRect(handle, out RECT current)) {
+                    throw CreateWindowOperationException(handle, "Read the window position");
+                }
+
+                int flags = MonitorNativeMethods.SWP_NOZORDER | MonitorNativeMethods.SWP_NOACTIVATE;
+                if (!left.HasValue && !top.HasValue) {
+                    flags |= SwpNoMove;
+                }
+                if (!width.HasValue && !height.HasValue) {
+                    flags |= MonitorNativeMethods.SWP_NOSIZE;
+                }
+
+                RECT target = MergeBounds(current, left, top, width, height);
+                SetWindowPosOrThrow(handle, IntPtr.Zero, target.Left, target.Top, target.Right - target.Left, target.Bottom - target.Top,
+                    flags, "Set the window position");
+            });
+        }
+
+        /// <summary>A window rectangle with each supplied value applied and the rest kept.</summary>
+        internal static RECT MergeBounds(RECT current, int? left, int? top, int? width, int? height) {
+            int newLeft = left ?? current.Left;
+            int newTop = top ?? current.Top;
+            int newWidth = width ?? current.Right - current.Left;
+            int newHeight = height ?? current.Bottom - current.Top;
+            return new RECT { Left = newLeft, Top = newTop, Right = newLeft + newWidth, Bottom = newTop + newHeight };
         }
 
         /// <summary>
         /// Sets an exact window rectangle without treating negative coordinates as sentinel values.
+        /// For a minimised window this changes where it restores to and leaves it minimised.
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
         /// <param name="left">The exact left position.</param>
@@ -215,79 +250,49 @@ public partial class WindowManager
                 throw new ArgumentOutOfRangeException(nameof(height), "Window height must be greater than zero.");
             }
 
-            if (!MonitorNativeMethods.SetWindowPos(
-                windowInfo.Handle,
-                IntPtr.Zero,
-                left,
-                top,
-                width,
-                height,
-                MonitorNativeMethods.SWP_NOZORDER)) {
-                throw new InvalidOperationException("Failed to set window rectangle");
-            }
+            WindowDpiContext.Execute(() => {
+                if (MonitorNativeMethods.IsIconic(windowInfo.Handle)) {
+                    WorkspaceWindowPlacement.SetMinimizedNormalBounds(windowInfo.Handle,
+                        new RECT { Left = left, Top = top, Right = left + width, Bottom = top + height });
+                    return;
+                }
+
+                SetWindowPosOrThrow(windowInfo.Handle, IntPtr.Zero, left, top, width, height,
+                    MonitorNativeMethods.SWP_NOZORDER, "Set the window rectangle");
+            });
         }
 
         /// <summary>
-        /// Snaps a window to a predefined region of its monitor.
+        /// Snaps a window to a predefined region of its monitor's work area, so it doesn't cover the taskbar.
+        /// A minimised or maximised window is restored into the region first. The visible frame fills the
+        /// region, leaving no gap for the invisible resize border.
         /// </summary>
         /// <param name="window">The window to snap.</param>
         /// <param name="position">The snap position.</param>
-        public void SnapWindow(WindowInfo window, SnapPosition position) {      
+        public void SnapWindow(WindowInfo window, SnapPosition position) {
             ValidateWindowInfo(window);
+            WindowDpiContext.Execute(() => SnapWindow(window, ResolveLiveMonitor(window), position));
+        }
 
-            var monitor = _monitors.GetMonitors(index: window.MonitorIndex).FirstOrDefault();
-            if (monitor == null) {
-                monitor = _monitors.GetMonitors(primaryOnly: true).FirstOrDefault();
-                if (monitor == null) {
-                    throw new InvalidOperationException("No monitor found for snapping");
-                }
+        private void SnapWindow(WindowInfo window, Monitor monitor, SnapPosition position) {
+            RECT area = monitor.GetMonitorWorkArea();
+            RECT target;
+            if (position == SnapPosition.Center) {
+                RECT visible = MonitorNativeMethods.IsIconic(window.Handle) || IsZoomed(window.Handle)
+                    ? WorkspaceWindowPlacement.GetNormalBounds(window.Handle)
+                    : GetVisibleBounds(window.Handle);
+                target = CenterInArea(area, visible.Right - visible.Left, visible.Bottom - visible.Top);
+            } else {
+                target = GetSnapRectangle(area, position);
             }
 
-            var bounds = monitor.GetMonitorBounds();
-            int monitorWidth = bounds.Right - bounds.Left;
-            int monitorHeight = bounds.Bottom - bounds.Top;
-
-            int width = monitorWidth;
-            int height = monitorHeight;
-            int left = bounds.Left;
-            int top = bounds.Top;
-
-            switch (position) {
-                case SnapPosition.Left:
-                    width = monitorWidth / 2;
-                    break;
-                case SnapPosition.Right:
-                    width = monitorWidth / 2;
-                    left += monitorWidth / 2;
-                    break;
-                case SnapPosition.TopLeft:
-                    width = monitorWidth / 2;
-                    height = monitorHeight / 2;
-                    break;
-                case SnapPosition.TopRight:
-                    width = monitorWidth / 2;
-                    height = monitorHeight / 2;
-                    left += monitorWidth / 2;
-                    break;
-                case SnapPosition.BottomLeft:
-                    width = monitorWidth / 2;
-                    height = monitorHeight / 2;
-                    top += monitorHeight / 2;
-                    break;
-                case SnapPosition.BottomRight:
-                    width = monitorWidth / 2;
-                    height = monitorHeight / 2;
-                    left += monitorWidth / 2;
-                    top += monitorHeight / 2;
-                    break;
-            }
-
-            SetWindowPosition(window, left, top, width, height);
+            PlaceVisibleFrame(window, target, GetBounds(monitor), $"Snap the window to {position}");
         }
 
         /// <summary>
         /// Moves the specified window to the target monitor, at the same place relative to the monitor's work area,
-        /// kept inside the target's work area. A maximised window is maximised again on the target.
+        /// kept inside the target's work area. A maximised window is maximised again on the target, and a minimised
+        /// window stays minimised and restores on the target.
         /// </summary>
         /// <param name="windowInfo">The window to move.</param>
         /// <param name="targetMonitor">The monitor to move the window to.</param>
@@ -301,9 +306,16 @@ public partial class WindowManager
                 throw new ArgumentNullException(nameof(targetMonitor));
             }
 
-            RECT windowRect = new RECT();
-            if (!MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out windowRect)) {
-                throw new InvalidOperationException("Failed to get window position");
+            return WindowDpiContext.Execute(() => MoveWindowToMonitorCore(windowInfo, RefreshMonitor(targetMonitor)));
+        }
+
+        private bool MoveWindowToMonitorCore(WindowInfo windowInfo, Monitor targetMonitor) {
+            bool minimized = MonitorNativeMethods.IsIconic(windowInfo.Handle);
+            RECT windowRect;
+            if (minimized) {
+                windowRect = WorkspaceWindowPlacement.GetNormalBounds(windowInfo.Handle);
+            } else if (!MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out windowRect)) {
+                throw CreateWindowOperationException(windowInfo.Handle, "Read the window position");
             }
 
             var targetBounds = targetMonitor.GetMonitorBounds();
@@ -323,18 +335,25 @@ public partial class WindowManager
                 return false;
             }
 
+            RECT currentArea = currentMonitor != null ? currentMonitor.GetMonitorWorkArea() : currentBounds;
+            if (minimized) {
+                // The on-screen rectangle of a minimised window is the off-screen icon position; move where it restores to instead.
+                WorkspaceWindowPlacement.SetMinimizedNormalBounds(windowInfo.Handle,
+                    PlaceOnMonitor(windowRect, currentArea, targetMonitor.GetMonitorWorkArea()));
+                return true;
+            }
+
             // A maximised window would stay maximised on its old screen: restore it, move it, maximise it on the target.
             bool maximized = IsZoomed(windowInfo.Handle);
             if (maximized) {
                 RestoreWindow(windowInfo);
                 if (!MonitorNativeMethods.GetWindowRect(windowInfo.Handle, out windowRect)) {
-                    throw new InvalidOperationException("Failed to get window position");
+                    throw CreateWindowOperationException(windowInfo.Handle, "Read the window position");
                 }
             }
 
-            RECT currentArea = currentMonitor != null ? currentMonitor.GetMonitorWorkArea() : currentBounds;
             RECT placed = PlaceOnMonitor(windowRect, currentArea, targetMonitor.GetMonitorWorkArea());
-            SetWindowPosition(windowInfo, placed.Left, placed.Top);
+            SetWindowBounds(windowInfo, placed.Left, placed.Top, null, null);
             if (maximized) {
                 MaximizeWindow(windowInfo);
             }
@@ -355,6 +374,8 @@ public partial class WindowManager
             top = Math.Max(toArea.Top, Math.Min(top, toArea.Bottom - height));
             return new RECT { Left = left, Top = top, Right = left + width, Bottom = top + height };
         }
+
+        private const int SwpNoMove = 0x0002;
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
@@ -399,6 +420,11 @@ public partial class WindowManager
         private static void SendWindowCommand(IntPtr handle, WindowCommand command) {
             if (MonitorNativeMethods.SendMessageTimeout(handle, (uint)WindowMessage.WM_SYSCOMMAND,
                     new IntPtr((long)command), IntPtr.Zero, MonitorNativeMethods.SMTO_ABORTIFHUNG, 1000, out _) == IntPtr.Zero) {
+                int error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                // Windows blocks the message outright for an elevated target or a closed window: the outcome is known.
+                if (error == ErrorAccessDenied || error == ErrorInvalidWindowHandle) {
+                    throw CreateWindowOperationException(handle, command.ToString(), error);
+                }
                 throw new NativeOperationOutcomeUnknownException(command.ToString(), 1000);
             }
         }
@@ -408,16 +434,14 @@ public partial class WindowManager
         /// </summary>
         /// <param name="windowInfo">The window information.</param>
         /// <param name="topMost">True to make the window topmost; false to reset.</param>
-        public void SetWindowTopMost(WindowInfo windowInfo, bool topMost) {     
-            const int SWP_NOMOVE = 0x0002;
-            const int SWP_NOSIZE = 0x0001;
-
+        public void SetWindowTopMost(WindowInfo windowInfo, bool topMost) {
             ValidateWindowInfo(windowInfo);
 
             var insertAfter = topMost ? MonitorNativeMethods.HWND_TOPMOST : MonitorNativeMethods.HWND_NOTOPMOST;
-            if (!MonitorNativeMethods.SetWindowPos(windowInfo.Handle, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)) {
-                throw new InvalidOperationException("Failed to set window topmost state");
-            }
+            // Changing the topmost band must not also activate the window and take focus from the user.
+            SetWindowPosOrThrow(windowInfo.Handle, insertAfter, 0, 0, 0, 0,
+                SwpNoMove | MonitorNativeMethods.SWP_NOSIZE | MonitorNativeMethods.SWP_NOACTIVATE,
+                topMost ? "Make the window topmost" : "Clear the window's topmost state");
         }
 
         /// <summary>

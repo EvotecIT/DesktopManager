@@ -1443,7 +1443,8 @@ public sealed partial class DesktopAutomationService {
             }
 
             if (x.HasValue || y.HasValue || width.HasValue || height.HasValue) {
-                _windowManager.SetWindowPosition(window, x ?? -1, y ?? -1, width ?? -1, height ?? -1);
+                // Null keeps a value; any supplied coordinate, including a negative one, is applied exactly.
+                _windowManager.SetWindowBounds(window, x, y, width, height);
             }
 
             if (activate) {

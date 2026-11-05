@@ -45,7 +45,11 @@ public sealed class WindowPlacementService {
         }
 
         ValidateRequest(request);
+        // Window, monitor and target rectangles are compared and applied as physical pixels.
+        return WindowDpiContext.Execute(() => ApplyCore(request));
+    }
 
+    private WindowPlacementResult ApplyCore(WindowPlacementRequest request) {
         var snapshots = new List<WindowPlacementSnapshot>();
         WindowInfo window = ResolveTargetWindow(request.TargetWindowHandle);
         IntPtr resolvedHandle = window.Handle;
@@ -271,24 +275,24 @@ public sealed class WindowPlacementService {
         }
 
         Monitor targetMonitor = monitor ?? ResolveCurrentMonitor(window);
-        RECT targetBounds = GetPlacementBounds(targetMonitor);
-        int width = targetBounds.Right - targetBounds.Left;
-        int height = targetBounds.Bottom - targetBounds.Top;
-        int left = targetBounds.Left;
-
-        if (placement == WindowPlacementKind.RightHalf) {
-            left += width / 2;
-        } else if (placement != WindowPlacementKind.LeftHalf) {
-            throw new InvalidOperationException($"Unsupported window placement '{placement}'.");
-        }
+        RECT target = GetHalfRectangle(placement, GetPlacementBounds(targetMonitor));
 
         _windowManager.RestoreWindow(window);
         WaitForRestoredWindow(window.Handle, request);
         AddSnapshot(snapshots, $"attempt-{attempt}-after-restore", RefreshWindow(window.Handle));
 
         WindowInfo restored = RefreshWindow(window.Handle);
-        _windowManager.SetWindowPosition(restored, left, targetBounds.Top, width / 2, height);
+        // The visible frame fills the half; the invisible resize border would otherwise leave a gap at the edges.
+        _windowManager.PlaceVisibleFrame(restored, target, WindowManager.GetBounds(targetMonitor), $"Place the window in the {placement}");
         AddSnapshot(snapshots, $"attempt-{attempt}-after-move", RefreshWindow(window.Handle));
+    }
+
+    private static RECT GetHalfRectangle(WindowPlacementKind placement, RECT area) {
+        return placement switch {
+            WindowPlacementKind.LeftHalf => WindowManager.GetSnapRectangle(area, SnapPosition.Left),
+            WindowPlacementKind.RightHalf => WindowManager.GetSnapRectangle(area, SnapPosition.Right),
+            _ => throw new InvalidOperationException($"Unsupported window placement '{placement}'.")
+        };
     }
 
     private bool VerifyPlacement(IntPtr handle, WindowPlacementRequest request, Monitor? monitor) {
@@ -316,18 +320,13 @@ public sealed class WindowPlacementService {
             return true;
         }
 
-        RECT expectedBounds = GetPlacementBounds(monitor);
-        int width = expectedBounds.Right - expectedBounds.Left;
-        int expectedLeft = expectedBounds.Left;
-        if (request.Placement == WindowPlacementKind.RightHalf) {
-            expectedLeft += width / 2;
-        }
-
+        // Window rectangles include the invisible resize border, which the tolerance absorbs.
+        RECT expected = GetHalfRectangle(request.Placement, GetPlacementBounds(monitor));
         return window.MonitorIndex == monitor.Index &&
-            IsNear(window.Left, expectedLeft, request.GeometryTolerancePixels) &&
-            IsNear(window.Top, expectedBounds.Top, request.GeometryTolerancePixels) &&
-            IsNear(window.Width, width / 2, request.GeometryTolerancePixels) &&
-            IsNear(window.Height, expectedBounds.Bottom - expectedBounds.Top, request.GeometryTolerancePixels);
+            IsNear(window.Left, expected.Left, request.GeometryTolerancePixels) &&
+            IsNear(window.Top, expected.Top, request.GeometryTolerancePixels) &&
+            IsNear(window.Width, expected.Right - expected.Left, request.GeometryTolerancePixels) &&
+            IsNear(window.Height, expected.Bottom - expected.Top, request.GeometryTolerancePixels);
     }
 
     private bool WaitForWindow(IntPtr handle, Func<WindowInfo, bool> predicate, WindowPlacementRequest request) {
