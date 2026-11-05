@@ -9,9 +9,11 @@ DesktopManager keeps desktop-state behavior in the shared C# library. PowerShell
 | Workstation profiles | `WorkstationProfileService`, `WorkstationProfileStore` | Monitor modes and placement, wallpaper, supported brightness/HDR, active audio, personalization, taskbars, matching, staged display application, and rollback |
 | Audio | `AudioService`, `AudioEndpointWatcher`, `AudioDefaultEndpointSession`, `AudioLoopbackCapture` | Render/capture endpoint inventory, active/unavailable state, volume, mute, independent default roles, endpoint change events, a session that follows the default device, and loopback samples from the default output |
 | Side screens and touch panels | `CursorFence`, `WindowEventWatcher`, `NonActivatingWindow`, `WindowEdgeGestures`, `TouchInputMapping`, `WindowThumbnail` | Keeping the pointer off a screen, window move/show/foreground events, windows that never take focus, edge swipes, which monitors touch input maps to, and live window previews |
-| Power and session | `SystemPowerService`, `DesktopSessionService`, `DesktopSessionWatcher` | AC/battery status, bounded keep-awake leases, lock, sleep/hibernate, sign-out, session identity, connection, remote/console, lock, and meaningful state changes |
+| Power and session | `SystemPowerService`, `DesktopSessionService`, `DesktopSessionWatcher` | AC/battery status, the active power plan and power mode, bounded keep-awake leases, lock, sleep/hibernate, sign-out, session identity, connection, remote/console, lock, and meaningful state changes |
 | Personalization and taskbar | `PersonalizationService`, `PersonalizationStateStore`, `TaskbarService` | Reversible personalization snapshots, monitor wallpapers, theme and Start/taskbar settings, taskbar monitor mapping, visibility, position, bounds, and auto-hide |
 | Radios | `RadioService` | Supported Windows radio inventory, explicit On/Off requests, access results, and state change events |
+| Clipboard | `ClipboardHelper`, `ClipboardWatcher` | Text and snapshots, plus a listener that reports each copy and skips ones marked private |
+| Current Wi-Fi connection | `WifiConnectionService` | Network name and BSSID when location consent allows, signal quality, PHY type and link rates |
 | Saved Wi-Fi profiles | `WifiProfileService` | Wireless interface and saved-profile inventory plus exact profile connection without nearby-network scanning or credential access |
 | Experimental airplane mode | `ExperimentalAirplaneModeService` | Explicit global Enabled/Disabled state through an undocumented Windows shell COM contract, followed by verification |
 | Virtual desktops | `VirtualDesktopService` | Current-desktop check, desktop ID lookup, and moving a top-level window to a known desktop ID |
@@ -132,6 +134,8 @@ DesktopWifiConnectionResult result = await wifi.ConnectProfileAsync("Corporate W
 ```
 
 Profile names follow Windows' case-sensitive matching rules. If the same profile name exists on multiple adapters, pass the intended interface ID. The service waits for WLAN Auto Configuration completion or failure notifications; cancellation or timeout stops that wait but cannot cancel an attempt already accepted by Windows.
+
+`WifiConnectionService.GetCurrent(interfaceId)` is the separate, location-sensitive read of the connected network. Without location consent Windows leaves out the SSID and BSSID but still reports the signal and rates.
 
 This is not a general location-permission bypass. Windows still requires location consent for nearby-network scans and related Wi-Fi information. The service does not return profile XML or credentials, and it is currently exposed through the C# library, PowerShell, and CLI rather than MCP.
 
