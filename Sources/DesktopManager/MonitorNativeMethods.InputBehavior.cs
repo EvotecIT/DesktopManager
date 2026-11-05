@@ -61,21 +61,4 @@ public static partial class MonitorNativeMethods {
     [DllImport("shell32.dll", ExactSpelling = true)]
     internal static extern int SHGetPropertyStoreForWindow(IntPtr window, in Guid interfaceId, out IntPtr store);
 
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
-    private static extern int SetWindowLong32(IntPtr window, int index, int value);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr64(IntPtr window, int index, IntPtr value);
-
-    /// <summary>
-    /// Sets a window value through <c>SetWindowLongPtrW</c> on 64-bit and <c>SetWindowLongW</c> on 32-bit,
-    /// where user32 does not export a pointer-sized variant.
-    /// </summary>
-    internal static void SetWindowLongPtrPortable(IntPtr window, int index, long value) {
-        if (IntPtr.Size == 8) {
-            SetWindowLongPtr64(window, index, new IntPtr(value));
-        } else {
-            SetWindowLong32(window, index, unchecked((int)value));
-        }
-    }
 }

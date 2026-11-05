@@ -76,7 +76,7 @@ public static class NonActivatingWindow {
             return;
         }
 
-        MonitorNativeMethods.SetWindowLongPtrPortable(windowHandle, MonitorNativeMethods.GWL_EXSTYLE, style);
+        MonitorNativeMethods.SetWindowLongPtr(windowHandle, MonitorNativeMethods.GWL_EXSTYLE, new IntPtr(IntPtr.Size == 8 ? style : unchecked((int)style)));
         int error = Marshal.GetLastWin32Error();
         if ((ReadExStyle(windowHandle) & flags) != (enable ? flags : 0)) {
             throw new Win32Exception(error, "Windows did not accept the window's activation style.");

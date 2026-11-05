@@ -154,10 +154,10 @@ public static partial class MonitorNativeMethods {
         return IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
     }
 
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
     private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
-    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
     private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
 
     /// <summary>Offset to retrieve the window procedure.</summary>

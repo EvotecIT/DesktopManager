@@ -192,7 +192,7 @@ public static partial class MonitorNativeMethods
     /// <param name="hWnd">The window handle.</param>
     /// <param name="lpRect">Receives the window rectangle.</param>
     /// <returns>True if successful.</returns>
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     /// <summary>
@@ -245,7 +245,7 @@ public static partial class MonitorNativeMethods
     /// <param name="cy">The new height.</param>
     /// <param name="uFlags">Window sizing and positioning flags.</param>
     /// <returns>True if successful.</returns>
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
 
     /// <summary>
@@ -556,7 +556,7 @@ public static partial class MonitorNativeMethods
     /// <param name="hWnd">Window handle.</param>
     /// <param name="nIndex">The value index to retrieve.</param>
     /// <returns>The requested value as a pointer.</returns>
-    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
     private static extern IntPtr GetWindowLong32(IntPtr hWnd, int nIndex);
 
     /// <summary>
@@ -565,7 +565,7 @@ public static partial class MonitorNativeMethods
     /// <param name="hWnd">Window handle.</param>
     /// <param name="nIndex">The value index to retrieve.</param>
     /// <returns>The requested value as a pointer.</returns>
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
     private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
 
     [DllImport("kernel32.dll", EntryPoint = "SetLastError")]
@@ -952,7 +952,7 @@ public static partial class MonitorNativeMethods
     public const uint EVENT_SYSTEM_MOVESIZEEND = 0x000B;
 
     /// <summary>Installs an event hook.</summary>
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
         WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
 
