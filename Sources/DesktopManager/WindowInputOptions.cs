@@ -15,9 +15,27 @@ public sealed class WindowInputOptions {
     public bool RestoreFocus { get; set; }
 
     /// <summary>
-    /// Gets or sets whether to preserve and restore clipboard text.
+    /// Gets or sets whether to restore the previous clipboard content, in every format it held, after pasting.
+    /// When the clipboard was empty it is emptied again. Content copied by someone else in the meantime is left alone.
     /// </summary>
     public bool PreserveClipboard { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether pasted text is kept out of clipboard history, the cloud clipboard and clipboard monitors.
+    /// </summary>
+    public bool PrivateClipboard { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets how long pasted text stays on the clipboard after the paste is requested, before it is restored or
+    /// cleared. Remote desktop clipboard redirection fetches text lazily, so remote targets need a second or more.
+    /// </summary>
+    public int ClipboardHoldMilliseconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the clipboard is emptied after pasting when <see cref="PreserveClipboard"/> is off,
+    /// as long as it still holds the pasted text.
+    /// </summary>
+    public bool ClearClipboardAfterPaste { get; set; }
 
     /// <summary>
     /// Gets or sets the number of clipboard open retries.

@@ -1264,6 +1264,25 @@ public class DesktopAutomationCoreTests {
 
     [TestMethod]
     /// <summary>
+    /// Ensures hosted-session typing turns activation off for the call without changing the caller's reusable options.
+    /// </summary>
+    public void WindowInputService_NormalizeOptions_HostedSessionLeavesTheCallersOptionsUnchanged() {
+        var options = new WindowInputOptions {
+            ActivateWindow = true,
+            UseHostedSessionScanCodes = true,
+            ClipboardRetryCount = 0
+        };
+
+        WindowInputOptions normalized = WindowInputService.NormalizeOptions(options);
+
+        Assert.IsFalse(normalized.ActivateWindow);
+        Assert.AreEqual(1, normalized.ClipboardRetryCount);
+        Assert.IsTrue(options.ActivateWindow);
+        Assert.AreEqual(0, options.ClipboardRetryCount);
+    }
+
+    [TestMethod]
+    /// <summary>
     /// Ensures script chunking preserves blank lines and line breaks.
     /// </summary>
     public void WindowInputService_CreateScriptChunks_PreservesBlankLines() {
