@@ -86,6 +86,24 @@ public sealed class DeviceUsageServiceTests {
         Assert.IsEmpty(service.GetCameraUsers().Applications);
     }
 
+    [TestMethod]
+    [DataRow(200L, 100L, 150L, DesktopOperationStatus.Success, 1)] // Forward clock correction moves estimated boot past the call.
+    [DataRow(50L, 100L, 75L, DesktopOperationStatus.Unavailable, 0)] // Fast Startup or a backwards correction is ambiguous.
+    [DataRow(50L, 100L, 150L, DesktopOperationStatus.Success, 1)] // Ordinary hibernation keeps this sign-in and call.
+    [DataRow(100L, 110L, 99L, DesktopOperationStatus.Success, 0)] // A call just before a real restart is stale, without an allowance.
+    [DataRow(50L, 0L, 150L, DesktopOperationStatus.Unavailable, 0)] // Session metadata unavailable must not mean no activity.
+    public void DeviceUsers_SessionBoundaryPreservesActiveCallsAndReportsAmbiguousTimestamps(long boot, long signIn, long start, DesktopOperationStatus status, int count) {
+        var reader = new FakeReader(new Dictionary<string, DeviceUsageService.Entry[]> {
+            ["microphone"] = new[] { new DeviceUsageService.Entry("Recorder_family", start, 0) }
+        });
+        var service = new DeviceUsageService(reader, () => boot, () => signIn);
+
+        DeviceUsageResult result = service.GetMicrophoneUsers();
+
+        Assert.AreEqual(status, result.Status);
+        Assert.HasCount(count, result.Applications);
+    }
+
     private sealed class FakeReader : DeviceUsageService.IReader {
         private readonly IReadOnlyDictionary<string, DeviceUsageService.Entry[]> _entries;
 

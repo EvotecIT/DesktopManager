@@ -60,7 +60,17 @@ public sealed partial class AudioLoopbackCapture : IDisposable {
                 return;
             }
             var run = new CaptureRun();
-            run.Thread = new Thread(() => Run(run)) { IsBackground = true, Name = "DesktopManager loopback capture" };
+            run.Thread = new Thread(() => {
+                try {
+                    Run(run);
+                } finally {
+                    lock (_gate) {
+                        if (ReferenceEquals(_run, run)) {
+                            Volatile.Write(ref _run, null);
+                        }
+                    }
+                }
+            }) { IsBackground = true, Name = "DesktopManager loopback capture" };
             run.Thread.SetApartmentState(ApartmentState.MTA);
             Volatile.Write(ref _run, run);
             run.Thread.Start();
@@ -80,9 +90,8 @@ public sealed partial class AudioLoopbackCapture : IDisposable {
             if (run == null) {
                 return;
             }
-            Volatile.Write(ref _run, null);
+            run.RequestStop();
         }
-        run.RequestStop();
         if (run.Thread != Thread.CurrentThread) {
             run.Thread!.Join();
         }

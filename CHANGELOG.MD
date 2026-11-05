@@ -1,6 +1,6 @@
 ## Unreleased
 
-- Ignore microphone and camera usage records that started before the last boot (with a few minutes' allowance for clock corrections), so a crash or power loss no longer leaves an app reported as still using the device.
+- Ignore microphone and camera usage records that predate both boot and the current sign-in, so a crash or power loss no longer leaves an app reported as still using the device. Active records use the recorded sign-in time rather than a moving boot estimate; ambiguous timestamps after Fast Startup or a backwards clock correction return unavailable rather than a successful empty snapshot.
 - Make monitor brightness work: monitor lookup no longer gives up when the enumeration stops early on a match, `GetMonitorBrightness`/`SetMonitorBrightness` accept the device ID or the display name, and `Monitor` gains `GetBrightness()` and `SetBrightness()`.
 - Keep monitor IDs consistent: the fallback enumeration reports the same device path as the normal one, and display-setting fallbacks map it back to the display name.
 - Add `Monitor.Bounds` and `Monitor.WorkingArea`, and make `Monitor.Position` use the bounds already read during enumeration.

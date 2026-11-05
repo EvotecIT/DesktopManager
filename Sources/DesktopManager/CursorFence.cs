@@ -67,12 +67,6 @@ public sealed class CursorFence : IDisposable {
     public CursorFenceMode Mode { get; }
 
     private void Run() {
-        // Hook points, GetCursorPos, SetCursorPos and Bounds must all be physical pixels, whatever the host's DPI awareness.
-        try {
-            MonitorNativeMethods.SetThreadDpiAwarenessContext(new IntPtr(-4));
-        } catch (EntryPointNotFoundException) {
-            // Before Windows 10 1607 there is no per-thread DPI context; the process setting applies.
-        }
         _threadId = MonitorNativeMethods.GetCurrentThreadId();
         // Create the message queue before publishing readiness, so Dispose can always post WM_QUIT.
         MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
@@ -91,7 +85,15 @@ public sealed class CursorFence : IDisposable {
                 return;
             }
 
-            while (MonitorNativeMethods.GetMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0) > 0) {
+            // A bounded wait also observes Stop if a full message queue rejects WM_QUIT.
+            while (!_stopping) {
+                if (!MonitorNativeMethods.PeekMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0, 1)) {
+                    MonitorNativeMethods.MsgWaitForMultipleObjectsEx(0, IntPtr.Zero, 100, 0x04FF, 4);
+                    continue;
+                }
+                if (message.message == MonitorNativeMethods.WM_QUIT) {
+                    break;
+                }
                 MonitorNativeMethods.TranslateMessage(ref message);
                 MonitorNativeMethods.DispatchMessage(ref message);
             }
@@ -105,7 +107,7 @@ public sealed class CursorFence : IDisposable {
             return MonitorNativeMethods.CallNextHookEx(IntPtr.Zero, code, message, data);
         }
 
-        if (!MonitorNativeMethods.GetCursorPos(out MonitorNativeMethods.POINT current)) {
+        if (!MonitorNativeMethods.GetPhysicalCursorPos(out MonitorNativeMethods.POINT current)) {
             return MonitorNativeMethods.CallNextHookEx(IntPtr.Zero, code, message, data);
         }
 
@@ -121,10 +123,10 @@ public sealed class CursorFence : IDisposable {
             return MonitorNativeMethods.CallNextHookEx(IntPtr.Zero, code, message, data);
         }
 
-        // SetCursorPos can re-enter the hook. Corrections pass straight through; nothing on this
+        // Cursor correction can re-enter the hook. Corrections pass straight through; nothing on this
         // callback may queue, log, lock or wait, or Windows drops the hook for timing out.
         _correcting = true;
-        bool moved = MonitorNativeMethods.SetCursorPos(decision.Point.X, decision.Point.Y);
+        bool moved = MonitorNativeMethods.SetPhysicalCursorPos(decision.Point.X, decision.Point.Y);
         _correcting = false;
         return moved ? new IntPtr(1) : MonitorNativeMethods.CallNextHookEx(IntPtr.Zero, code, message, data);
     }
@@ -137,23 +139,19 @@ public sealed class CursorFence : IDisposable {
             return;
         }
 
-        _disposed = true;
         _stopping = true; // Fail open at once, even if a callback is already pending.
-        if (!MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero) && _thread.IsAlive) {
-            int error = Marshal.GetLastWin32Error();
-            RemoveHook();
-            throw new Win32Exception(error);
-        }
+        MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
 
         if (!_thread.Join(TimeSpan.FromSeconds(2))) {
             RemoveHook();
             throw new TimeoutException("The cursor fence thread did not stop.");
         }
 
-        _ready.Dispose();
         if (_stopError != 0) {
             throw new Win32Exception(_stopError);
         }
+        _disposed = true;
+        _ready.Dispose();
     }
 
     private void RemoveHook() {

@@ -183,7 +183,9 @@ public sealed class ClipboardWatcher : IDisposable {
             if (id >= int.MinValue && id <= int.MaxValue && _puts.TryGetValue((int)id, out PutRequest? request)) {
                 request.Run(_window);
                 // The watcher's own put is never reported, however the update for it is queued.
-                _handledSequence = NativeClipboardMethods.GetClipboardSequenceNumber();
+                if (request.Error == null) {
+                    _handledSequence = request.Sequence;
+                }
             }
             return IntPtr.Zero;
         }
@@ -197,7 +199,6 @@ public sealed class ClipboardWatcher : IDisposable {
         if (sequence != 0 && sequence == _handledSequence) {
             return;
         }
-        _handledSequence = sequence;
         if (_disposed || handler == null || NativeClipboardMethods.GetClipboardOwner() == _window) {
             return;
         }
@@ -244,6 +245,8 @@ public sealed class ClipboardWatcher : IDisposable {
                 ? new ClipboardChangedEventArgs(null, dib, DateTimeOffset.Now)
                 : null;
         } finally {
+            // Includes changes caused by delayed rendering during this read, while other writers are excluded.
+            _handledSequence = NativeClipboardMethods.GetClipboardSequenceNumber();
             MonitorNativeMethods.CloseClipboard();
         }
     }
@@ -293,9 +296,11 @@ public sealed class ClipboardWatcher : IDisposable {
 
         internal Exception? Error { get; private set; }
 
+        internal uint Sequence { get; private set; }
+
         internal void Run(IntPtr owner) {
             try {
-                ClipboardHelper.SetData(_format, _data, OpenAttempts, OpenRetryDelayMilliseconds, owner);
+                Sequence = ClipboardHelper.SetData(_format, _data, OpenAttempts, OpenRetryDelayMilliseconds, owner);
             } catch (Exception ex) {
                 Error = ex;
             } finally {

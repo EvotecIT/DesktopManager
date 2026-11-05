@@ -62,7 +62,7 @@ public static class ClipboardHelper {
     }
 
     /// <summary>Replaces the clipboard with one format holding a copy of <paramref name="data"/>.</summary>
-    internal static void SetData(uint format, byte[] data, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
+    internal static uint SetData(uint format, byte[] data, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
         if (data == null) {
             throw new ArgumentNullException(nameof(data));
         }
@@ -99,6 +99,8 @@ public static class ClipboardHelper {
                     throw new InvalidOperationException("SetClipboardData failed.");
                 }
                 transferred = true;
+                // Read while still locked; a later copy must never be mistaken for this write.
+                return NativeClipboardMethods.GetClipboardSequenceNumber();
             } finally {
                 MonitorNativeMethods.CloseClipboard();
             }
