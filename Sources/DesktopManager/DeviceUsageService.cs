@@ -10,18 +10,30 @@ using Microsoft.Win32;
 namespace DesktopManager;
 
 /// <summary>Reads the current user's Windows microphone and camera privacy-indicator records without changing permissions.</summary>
-/// <remarks>Consent-store timestamps describe Windows' last recorded usage and may lag actual device activity.</remarks>
+/// <remarks>
+/// Consent-store timestamps describe Windows' last recorded usage and may lag actual device activity. A record
+/// that started before Windows last booted is ignored: an app cannot hold a device across a restart, so a missing
+/// stop time there means Windows went down mid-use, such as a crash during a call.
+/// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class DeviceUsageService {
     private readonly IReader _reader;
+    private readonly Func<long> _bootFileTime;
 
     /// <summary>Creates a reader for the current user's Windows capability consent store.</summary>
-    public DeviceUsageService() : this(new RegistryReader()) {
+    public DeviceUsageService() : this(new RegistryReader(), BootFileTime) {
     }
 
-    internal DeviceUsageService(IReader reader) {
+    internal DeviceUsageService(IReader reader, Func<long> bootFileTime) {
         _reader = reader ?? throw new ArgumentNullException(nameof(reader));
+        _bootFileTime = bootFileTime ?? throw new ArgumentNullException(nameof(bootFileTime));
     }
+
+    /// <summary>When Windows last started, as a UTC file time like the consent store's timestamps.</summary>
+    private static long BootFileTime() => DateTime.UtcNow.AddMilliseconds(-(double)GetTickCount64()).ToFileTimeUtc();
+
+    [DllImport("kernel32.dll")]
+    private static extern ulong GetTickCount64();
 
     /// <summary>Gets applications Windows currently records as using the microphone.</summary>
     /// <returns>A usage snapshot, or an explicit unsupported or unavailable result.</returns>
@@ -39,8 +51,9 @@ public sealed class DeviceUsageService {
         try {
             var applications = new List<DeviceUsageInfo>();
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            long boot = _bootFileTime();
             foreach (Entry entry in _reader.Read(capability)) {
-                if (entry.Start <= 0 || entry.Stop >= entry.Start) {
+                if (entry.Start <= 0 || entry.Stop >= entry.Start || entry.Start < boot) {
                     continue;
                 }
 

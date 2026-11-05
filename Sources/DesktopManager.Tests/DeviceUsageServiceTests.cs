@@ -32,7 +32,8 @@ public sealed class DeviceUsageServiceTests {
                 new DeviceUsageService.Entry("CameraStopped_family", 200, 201)
             }
         });
-        var service = new DeviceUsageService(reader);
+        // Every fixture record started after this boot.
+        var service = new DeviceUsageService(reader, () => 50);
 
         DeviceUsageResult microphone = service.GetMicrophoneUsers();
         DeviceUsageResult camera = service.GetCameraUsers();
@@ -64,6 +65,25 @@ public sealed class DeviceUsageServiceTests {
                 StringAssert.Contains(result.Message, failure.Message);
             }
         }
+    }
+
+    [TestMethod]
+    public void DeviceUsers_RecordStartedBeforeTheLastBoot_IsNotInUse() {
+        // A crash during a Teams call left its microphone record started at 09:29 with no stop; Windows booted at 10:09.
+        long boot = new DateTime(2026, 11, 5, 9, 9, 16, DateTimeKind.Utc).ToFileTimeUtc();
+        long beforeCrash = new DateTime(2026, 11, 5, 8, 29, 15, DateTimeKind.Utc).ToFileTimeUtc();
+        long afterBoot = new DateTime(2026, 11, 5, 9, 15, 0, DateTimeKind.Utc).ToFileTimeUtc();
+        var reader = new FakeReader(new Dictionary<string, DeviceUsageService.Entry[]> {
+            ["microphone"] = new[] {
+                new DeviceUsageService.Entry("MSTeams_8wekyb3d8bbwe", beforeCrash, 0),
+                new DeviceUsageService.Entry("Vendor.App.Recorder_family", afterBoot, 0)
+            },
+            ["webcam"] = new[] { new DeviceUsageService.Entry("Vendor.Camera_family", beforeCrash, 0) }
+        });
+        var service = new DeviceUsageService(reader, () => boot);
+
+        CollectionAssert.AreEqual(new[] { "Recorder" }, service.GetMicrophoneUsers().Applications.Select(application => application.Name).ToArray());
+        Assert.IsEmpty(service.GetCameraUsers().Applications);
     }
 
     private sealed class FakeReader : DeviceUsageService.IReader {
