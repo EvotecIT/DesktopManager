@@ -275,7 +275,7 @@ Possible values:
 
 Required: False
 Position: named
-Default value: None
+Default value: $true
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

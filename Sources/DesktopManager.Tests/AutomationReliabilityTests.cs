@@ -127,6 +127,7 @@ public class AutomationReliabilityTests {
     [TestCategory("UITest")]
     public void PasteFailure_RestoresClipboardWithoutHidingTheDeliveryError() {
         TestHelper.RequireOwnedWindowUiTests();
+        TestHelper.RequireSystemDesktopChanges();
         Exception? failure = null;
         var thread = new Thread(() => {
             try {

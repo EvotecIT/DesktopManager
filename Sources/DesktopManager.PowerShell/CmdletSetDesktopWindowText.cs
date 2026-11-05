@@ -139,6 +139,7 @@ public sealed class CmdletSetDesktopWindowText : PSCmdlet {
     /// <para type="description">Request exclusion from clipboard history, cloud synchronization and cooperating clipboard managers. Set to $false for ordinary clipboard behavior; this does not prevent other programs from reading clipboard data.</para>
     /// </summary>
     [Parameter(ParameterSetName = "Paste")]
+    [PSDefaultValue(Value = true)]
     public bool PrivateClipboard { get; set; } = true;
 
     /// <summary>

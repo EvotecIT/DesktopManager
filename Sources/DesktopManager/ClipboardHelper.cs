@@ -134,6 +134,8 @@ public static class ClipboardHelper {
 
         // Prepare every transfer before emptying the clipboard so a failed allocation leaves the current content intact.
         var handles = new IntPtr[formats.Count];
+        IntPtr temporaryOwner = owner == IntPtr.Zero ? NativeClipboardSnapshot.CreateOwner() : IntPtr.Zero;
+        if (temporaryOwner != IntPtr.Zero) { owner = temporaryOwner; }
         try {
             for (int index = 0; index < formats.Count; index++) {
                 handles[index] = CopyToGlobal(formats[index].Value);
@@ -168,6 +170,7 @@ public static class ClipboardHelper {
                     MonitorNativeMethods.GlobalFree(handle);
                 }
             }
+            if (temporaryOwner != IntPtr.Zero) { NativeClipboardSnapshot.DestroyWindow(temporaryOwner); }
         }
     }
 
