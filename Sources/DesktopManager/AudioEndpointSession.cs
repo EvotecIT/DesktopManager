@@ -8,6 +8,7 @@ namespace DesktopManager;
 /// Obtain a session from <see cref="AudioService.OpenDefaultEndpoint"/> and dispose it when finished.
 /// Serialize access and disposal on the consumer's COM-initialized thread. Changes to the default
 /// endpoint do not redirect this session. Native activation and operation failures are propagated.
+/// Use <see cref="AudioDefaultEndpointSession"/> to follow the default from any thread.
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class AudioEndpointSession : IDisposable {
