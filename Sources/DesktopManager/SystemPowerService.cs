@@ -9,7 +9,7 @@ namespace DesktopManager;
 /// Reads power state and performs explicit Windows power/session actions.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class SystemPowerService {
+public sealed partial class SystemPowerService {
     internal const uint ExecutionStateSystemRequired = 0x00000001;
     internal const uint ExecutionStateDisplayRequired = 0x00000002;
     internal const uint ExecutionStateAwayModeRequired = 0x00000040;
