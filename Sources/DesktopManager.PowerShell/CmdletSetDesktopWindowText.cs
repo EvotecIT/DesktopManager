@@ -130,10 +130,17 @@ public sealed class CmdletSetDesktopWindowText : PSCmdlet {
     public SwitchParameter RestoreFocus { get; set; }
 
     /// <summary>
-    /// <para type="description">Preserve and restore clipboard text.</para>
+    /// <para type="description">Preserve and restore every clipboard format. Pasting fails before replacing the clipboard if a format cannot be preserved safely; a newer copy is never overwritten.</para>
     /// </summary>
     [Parameter]
     public SwitchParameter PreserveClipboard { get; set; }
+
+    /// <summary>
+    /// <para type="description">Request exclusion from clipboard history, cloud synchronization and cooperating clipboard managers. Set to $false for ordinary clipboard behavior; this does not prevent other programs from reading clipboard data.</para>
+    /// </summary>
+    [Parameter(ParameterSetName = "Paste")]
+    [PSDefaultValue(Value = true)]
+    public bool PrivateClipboard { get; set; } = true;
 
     /// <summary>
     /// <para type="description">Enable safe mode (no activation, preserve clipboard).</para>
@@ -171,6 +178,7 @@ public sealed class CmdletSetDesktopWindowText : PSCmdlet {
                     ActivateWindow = !NoActivate,
                     RestoreFocus = RestoreFocus,
                     PreserveClipboard = PreserveClipboard,
+                    PrivateClipboard = PrivateClipboard,
                     ClipboardRetryCount = ClipboardRetryCount,
                     ClipboardRetryDelayMilliseconds = ClipboardRetryDelayMilliseconds,
                     ActivationRetryCount = ActivationRetryCount,

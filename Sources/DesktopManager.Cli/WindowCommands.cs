@@ -32,6 +32,7 @@ internal static class WindowCommands {
             "transparency" => Transparency(arguments),
             "snap" => Snap(arguments),
             "type" => Type(arguments),
+            "type-session" => SessionTypingCommand.Run(arguments),
             "keys" => Keys(arguments),
             "wait" => Wait(arguments),
             "wait-visual-change" => WaitVisualChange(arguments),
@@ -724,8 +725,11 @@ internal static class WindowCommands {
         bool scriptMode = arguments.GetBoolFlag("script");
         int? delayMilliseconds = arguments.GetIntOption("delay-ms");
         int? scriptLineDelayMilliseconds = arguments.GetIntOption("line-delay-ms");
+        char[] text = SessionTypingCommand.ReadText(arguments);
+        string value = new string(text);
+        Array.Clear(text, 0, text.Length);
         return new WindowTextCommandOptions {
-            Text = arguments.GetRequiredOption("text"),
+            Text = value,
             Paste = arguments.GetBoolFlag("paste"),
             DelayMilliseconds = delayMilliseconds ?? (hostedSession ? 35 : 0),
             ForegroundInput = arguments.GetBoolFlag("foreground-input") || physicalKeys || hostedSession,

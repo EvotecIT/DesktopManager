@@ -121,5 +121,73 @@ public class WindowTypeCommandOptionsTests {
         Assert.AreEqual(0, options.ScriptLineDelayMilliseconds);
         Assert.AreEqual(0, options.DelayMilliseconds);
     }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures secrets can come from an environment variable or standard input instead of the command line, and that a
+    /// piped password does not end with Enter while inner line breaks are kept.
+    /// </summary>
+    public void ReadText_TakesSecretsFromTheEnvironmentOrStandardInput() {
+        var fromEnvironment = global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "window", "type-session", "--text-env", "SESSION_SECRET" });
+        var fromStandardInput = global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "window", "type-session", "--text-stdin" });
+
+        char[] environmentText = global::DesktopManager.Cli.SessionTypingCommand.ReadText(fromEnvironment, new StringReader("unused"), name => name == "SESSION_SECRET" ? "p@ss" : null);
+        char[] pipedText = global::DesktopManager.Cli.SessionTypingCommand.ReadText(fromStandardInput, new StringReader("line1\r\nline2\r\n"), _ => null);
+
+        Assert.AreEqual("p@ss", new string(environmentText));
+        Assert.AreEqual("line1\r\nline2", new string(pipedText));
+    }
+
+    [TestMethod]
+    [DataRow(false, false)]
+    [DataRow(true, false)]
+    [DataRow(true, true)]
+    public void ReadText_RedirectedUnicodeUsesUtf8OrItsBomAndPreservesNonAscii(bool bom, bool utf16) {
+        const string expected = "Grüße Łódź";
+        System.Text.Encoding encoding = utf16 ? System.Text.Encoding.Unicode : new System.Text.UTF8Encoding(bom);
+        byte[] payload = encoding.GetBytes(expected + "\r\n");
+        byte[] bytes = bom ? encoding.GetPreamble().Concat(payload).ToArray() : payload;
+        using var stream = new MemoryStream(bytes);
+        using StreamReader input = global::DesktopManager.Cli.SessionTypingCommand.CreateStandardInputReader(stream);
+        var arguments = global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "window", "type-session", "--text-stdin" });
+
+        char[] text = global::DesktopManager.Cli.SessionTypingCommand.ReadText(arguments, input, _ => null);
+        try { Assert.AreEqual(expected, new string(text)); }
+        finally { Array.Clear(text, 0, text.Length); }
+    }
+
+    [TestMethod]
+    [DataRow(new[] { "--text", "a", "--text-stdin" })]
+    [DataRow(new[] { "--delay-ms", "5" })]
+    [DataRow(new[] { "--text-env", "DESKTOPMANAGER_TEST_UNSET_VARIABLE" })]
+    /// <summary>
+    /// Ensures exactly one text source is required and a missing environment variable is reported instead of typing nothing.
+    /// </summary>
+    public void ReadText_RequiresExactlyOneAvailableSource(string[] options) {
+        var arguments = global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "window", "type-session" }.Concat(options).ToArray());
+
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() =>
+            global::DesktopManager.Cli.SessionTypingCommand.ReadText(arguments, new StringReader(string.Empty), _ => null));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Ensures session typing options accept the dashed spellings shown in help and reject unknown values.
+    /// </summary>
+    public void SessionTypingOptions_ParseDashedValuesAndRejectUnknownOnes() {
+        var arguments = global::DesktopManager.Cli.CommandLineArguments.Parse(new[] {
+            "window", "type-session", "--profile", "vnc", "--line-break", "shift-enter", "--caps-lock", "turn-off", "--layout", "de-DE", "--foreground-timeout-ms", "0"
+        });
+
+        SessionTypingOptions options = global::DesktopManager.Cli.SessionTypingCommand.CreateOptions(arguments);
+
+        Assert.AreEqual(SessionTypingProfile.Vnc, options.Profile);
+        Assert.AreEqual(SessionLineBreakMode.ShiftEnter, options.LineBreak);
+        Assert.AreEqual(CapsLockPolicy.TurnOff, options.CapsLock);
+        Assert.AreEqual("de-DE", options.KeyboardLayout);
+        Assert.AreEqual(TimeSpan.Zero, options.ForegroundTimeout);
+        Assert.ThrowsExactly<global::DesktopManager.Cli.CommandLineException>(() => global::DesktopManager.Cli.SessionTypingCommand.CreateOptions(
+            global::DesktopManager.Cli.CommandLineArguments.Parse(new[] { "window", "type-session", "--profile", "telnet" })));
+    }
 }
 #endif

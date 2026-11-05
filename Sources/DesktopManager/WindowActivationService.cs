@@ -58,10 +58,14 @@ internal static class WindowActivationService {
             }
 
             MonitorNativeMethods.BringWindowToTop(handle);
-            MonitorNativeMethods.SetWindowPos(handle, MonitorNativeMethods.HWND_TOPMOST, 0, 0, 0, 0,
-                SWP_NOMOVE | MonitorNativeMethods.SWP_NOSIZE | MonitorNativeMethods.SWP_NOACTIVATE);
-            MonitorNativeMethods.SetWindowPos(handle, MonitorNativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0,
-                SWP_NOMOVE | MonitorNativeMethods.SWP_NOSIZE | MonitorNativeMethods.SWP_NOACTIVATE);
+            // Briefly making the window topmost lifts it above other windows. A window the user pinned
+            // topmost is already there, and the NOTOPMOST half of the trick would unpin it.
+            if (!IsTopMost(handle)) {
+                MonitorNativeMethods.SetWindowPos(handle, MonitorNativeMethods.HWND_TOPMOST, 0, 0, 0, 0,
+                    SWP_NOMOVE | MonitorNativeMethods.SWP_NOSIZE | MonitorNativeMethods.SWP_NOACTIVATE);
+                MonitorNativeMethods.SetWindowPos(handle, MonitorNativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0,
+                    SWP_NOMOVE | MonitorNativeMethods.SWP_NOSIZE | MonitorNativeMethods.SWP_NOACTIVATE);
+            }
 
             if (MonitorNativeMethods.GetForegroundWindow() == handle) {
                 return true;
@@ -83,6 +87,10 @@ internal static class WindowActivationService {
         }
 
         return MonitorNativeMethods.GetForegroundWindow() == handle;
+    }
+
+    internal static bool IsTopMost(IntPtr handle) {
+        return (MonitorNativeMethods.GetWindowLongPtr(handle, MonitorNativeMethods.GWL_EXSTYLE).ToInt64() & MonitorNativeMethods.WS_EX_TOPMOST) != 0;
     }
 
     public static bool TryActivateWindow(IntPtr handle, int retryCount = 5, int retryDelayMilliseconds = 100) {

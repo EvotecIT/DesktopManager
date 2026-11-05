@@ -41,6 +41,7 @@ public class AutomationReviewRegressionTests {
     [TestCategory("UITest")]
     public void NativeTextInput_PreservesFocusedEditorAndClipboardWhenRejected() {
         TestHelper.RequireForegroundWindowUiTests();
+        TestHelper.RequireSystemDesktopChanges();
         Exception? failure = null;
         var thread = new Thread(() => {
             try {

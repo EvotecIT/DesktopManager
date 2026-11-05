@@ -1,12 +1,11 @@
 using System;
-using System.Linq;
-using System.Runtime.InteropServices;
+using System.Collections.Generic;
 
 namespace DesktopManager;
 
 public partial class WindowManager {
-    private MonitorNativeMethods.WinEventDelegate? _moveDelegate;
-    private IntPtr _moveHook;
+    private readonly object _autoSnapLock = new();
+    private WindowEventWatcher? _autoSnapWatcher;
 
     /// <summary>
     /// Gets options for window snapping.
@@ -22,54 +21,59 @@ public partial class WindowManager {
     }
 
     /// <summary>
-    /// Starts automatic snapping when windows are moved near edges.
+    /// Starts automatic snapping when the user finishes dragging a window near an edge of its monitor's work area.
     /// </summary>
+    /// <remarks>
+    /// Events arrive on a dedicated hook thread, so the calling thread needs no message loop.
+    /// The window snaps on the monitor it was dropped on.
+    /// </remarks>
     public void StartAutoSnap() {
-        if (_moveHook != IntPtr.Zero) {
-            return;
-        }
+        lock (_autoSnapLock) {
+            if (_autoSnapWatcher != null) {
+                return;
+            }
 
-        _moveDelegate = OnMoveEnd;
-        _moveHook = MonitorNativeMethods.SetWinEventHook(
-            MonitorNativeMethods.EVENT_SYSTEM_MOVESIZEEND,
-            MonitorNativeMethods.EVENT_SYSTEM_MOVESIZEEND,
-            IntPtr.Zero,
-            _moveDelegate,
-            0,
-            0,
-            MonitorNativeMethods.WINEVENT_OUTOFCONTEXT);
+            var watcher = new WindowEventWatcher(WindowEventKinds.MoveSizeEnded);
+            watcher.WindowChanged += OnMoveSizeEnded;
+            _autoSnapWatcher = watcher;
+        }
     }
 
     /// <summary>
     /// Stops automatic snapping.
     /// </summary>
     public void StopAutoSnap() {
-        if (_moveHook != IntPtr.Zero) {
-            MonitorNativeMethods.UnhookWinEvent(_moveHook);
-            _moveHook = IntPtr.Zero;
+        WindowEventWatcher? watcher;
+        lock (_autoSnapLock) {
+            watcher = _autoSnapWatcher;
+            _autoSnapWatcher = null;
         }
+
+        watcher?.Dispose();
     }
 
-    private void OnMoveEnd(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) {
-        if (hwnd == IntPtr.Zero) {
+    private void OnMoveSizeEnded(object? sender, WindowChangedEventArgs e) {
+        IntPtr handle = e.Handle;
+        // Child windows report their own move ends; only a top-level window the user dropped can snap.
+        if (GetRootWindowHandle(handle) != handle || MonitorNativeMethods.IsIconic(handle) || IsZoomed(handle)) {
             return;
         }
 
-        var window = new WindowInfo { Handle = hwnd };
-        var position = GetWindowPosition(window);
-        var monitor = _monitors.GetMonitors().FirstOrDefault(m => {
-            var b = m.GetMonitorBounds();
-            return position.Left >= b.Left && position.Left < b.Right && position.Top >= b.Top && position.Top < b.Bottom;
+        WindowDpiContext.Execute(() => {
+            RECT visible = GetVisibleBounds(handle);
+            var window = new WindowInfo { Handle = handle, Left = visible.Left, Top = visible.Top, Right = visible.Right, Bottom = visible.Bottom };
+            List<Monitor> monitors = _monitors.GetMonitors(connectedOnly: true, refresh: true);
+            Monitor? monitor = WindowMonitorResolver.Resolve(window, monitors);
+            if (monitor == null) {
+                return;
+            }
+
+            var position = new WindowPosition { Left = visible.Left, Top = visible.Top, Right = visible.Right, Bottom = visible.Bottom };
+            SnapPosition? snap = GetSnapPosition(position, monitor.GetMonitorWorkArea(), SnapOptions.SnapThreshold);
+            if (snap.HasValue) {
+                SnapWindow(window, monitor, snap.Value);
+            }
         });
-        if (monitor == null) {
-            return;
-        }
-
-        var bounds = monitor.GetMonitorBounds();
-        var snap = GetSnapPosition(position, bounds, SnapOptions.SnapThreshold);
-        if (snap.HasValue) {
-            SnapWindow(window, snap.Value);
-        }
     }
 
     internal static SnapPosition? GetSnapPosition(WindowPosition pos, RECT bounds, int threshold) {

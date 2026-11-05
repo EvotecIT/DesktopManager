@@ -39,13 +39,14 @@ public class ClipboardWatcherTests {
     [TestCategory("UITest")]
     public void ClipboardChanged_ReportsOrdinaryCopiesButNotPrivateCopiesOrItsOwnPuts() {
         TestHelper.RequireOwnedWindowUiTests();
+        TestHelper.RequireSystemDesktopChanges();
         using ClipboardHelper.ClipboardSnapshot original = ClipboardHelper.CaptureSnapshot();
         try {
             var seen = new BlockingCollection<ClipboardChangedEventArgs>();
             using (var watcher = new ClipboardWatcher()) {
                 watcher.ClipboardChanged += (_, copy) => seen.Add(copy);
 
-                SetPrivateText("private copy");
+                ClipboardHelper.SetPasteText("private copy", true, 5, 50, out _);
                 watcher.SetText("restored entry");
                 ClipboardHelper.SetText("ordinary copy");
 
@@ -55,29 +56,6 @@ public class ClipboardWatcherTests {
             }
         } finally {
             original.Restore();
-        }
-    }
-
-    private static void SetPrivateText(string text) {
-        uint marker = NativeClipboardMethods.RegisterClipboardFormat("ExcludeClipboardContentFromMonitorProcessing");
-        ClipboardHelper.OpenClipboardWithRetry(5, 50);
-        try {
-            Assert.IsTrue(MonitorNativeMethods.EmptyClipboard());
-            SetOpenData(MonitorNativeMethods.CF_UNICODETEXT, ClipboardHelper.ToUnicodeTextBytes(text));
-            SetOpenData(marker, new byte[4]);
-        } finally {
-            MonitorNativeMethods.CloseClipboard();
-        }
-    }
-
-    private static void SetOpenData(uint format, byte[] data) {
-        IntPtr memory = MonitorNativeMethods.GlobalAlloc(MonitorNativeMethods.GMEM_MOVEABLE, (UIntPtr)data.Length);
-        IntPtr pointer = MonitorNativeMethods.GlobalLock(memory);
-        System.Runtime.InteropServices.Marshal.Copy(data, 0, pointer, data.Length);
-        MonitorNativeMethods.GlobalUnlock(memory);
-        if (MonitorNativeMethods.SetClipboardData(format, memory) == IntPtr.Zero) {
-            MonitorNativeMethods.GlobalFree(memory);
-            Assert.Fail("SetClipboardData failed.");
         }
     }
 }

@@ -1,9 +1,11 @@
+using System.Linq;
 using System.Management.Automation;
 
 namespace DesktopManager.PowerShell;
 
 /// <summary>Restores window positions from a saved layout.</summary>
 /// <para type="synopsis">Restores desktop window layout.</para>
+/// <para>Saved coordinates are interpreted as physical desktop pixels. Older layouts captured from a DPI-unaware host on a scaled display may contain logical coordinates; inspect their placement and save them again rather than applying an assumed DPI conversion.</para>
 [Cmdlet(VerbsData.Restore, "DesktopWindowLayout", SupportsShouldProcess = true)]
 [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.10240.0")]
 public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {
@@ -51,7 +53,6 @@ public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {
             WriteObject(new WorkspaceRecoveryService().Plan(WorkspaceRecoveryService.Read(Path, Validate), RestoreVirtualDesktops));
             return;
         }
-        var automation = new DesktopAutomationService();
         if (ShouldProcess($"Layout file '{Path}'", "Restore desktop window layout")) {
             if (RestoreVirtualDesktops || RestoreApplicationPins || RestoreWallpapers || ReopenExplorerFolders || PassThru) {
                 WorkspaceRestoreResult result = new WorkspaceRecoveryService().Restore(WorkspaceRecoveryService.Read(Path, Validate), new WorkspaceRestoreOptions {
@@ -70,7 +71,17 @@ public sealed class CmdletRestoreDesktopWindowLayout : PSCmdlet {
                 }
                 if (PassThru) { WriteObject(result); }
             } else {
-                automation.LoadLayout(Path, Validate.IsPresent);
+                // Report saved windows that were skipped, so a layout that matched nothing doesn't look restored.
+                IReadOnlyList<WindowLayoutApplyResult> results = new WindowManager().ApplyLayout(Path, Validate.IsPresent);
+                foreach (WindowLayoutApplyResult result in results) {
+                    if (result.Error == null && !result.Applied) {
+                        WriteWarning($"{result.Match.SavedWindow.Title}: {result.Match.Status}");
+                    }
+                }
+                WindowLayoutApplyResult failed = results.FirstOrDefault(result => result.Error != null);
+                if (failed != null) {
+                    throw new InvalidOperationException(failed.Error);
+                }
             }
         }
     }

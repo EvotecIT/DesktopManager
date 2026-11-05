@@ -28,13 +28,17 @@ public sealed partial class WorkspaceRecoveryService {
                 using IWorkspaceDesktopApi desktops = _desktops();
                 layout.Desktops.AddRange(desktops.GetDesktops());
                 foreach (WindowPosition window in layout.Windows.ToArray()) {
-                    try { desktops.CaptureWindow(window); }
+                    string applicationId = window.AppUserModelId;
+                    try {
+                        desktops.CaptureWindow(window);
+                        if (string.IsNullOrEmpty(window.AppUserModelId)) { window.AppUserModelId = applicationId; }
+                    }
                     catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x8002802B)) {
                         // Shell infrastructure such as the input panel is not an application view.
                         layout.Windows.Remove(window);
                     }
                     catch (Exception ex) {
-                        window.VirtualDesktopId = null; window.PinMode = null; window.AppUserModelId = string.Empty;
+                        window.VirtualDesktopId = null; window.PinMode = null; window.AppUserModelId = applicationId;
                         layout.CaptureWarnings.Add($"{window.Title}: desktop capture failed: {ex.Message}");
                     }
                 }
@@ -211,6 +215,7 @@ internal sealed class WorkspaceWindowApi : IWorkspaceWindowApi {
         WindowPosition live = _manager.GetWindowPosition(window);
         if (live.ProcessId != window.ProcessId || live.ClassName != window.ClassName ||
                 !string.Equals(live.ProcessName, window.ProcessName, StringComparison.OrdinalIgnoreCase) ||
+                !WindowApplicationIdentity.Matches(window.AppUserModelId, live.AppUserModelId) ||
                 WindowTextHelper.GetWindowText(window.Handle) != window.Title) {
             throw new InvalidOperationException("The target window identity changed after workspace planning.");
         }

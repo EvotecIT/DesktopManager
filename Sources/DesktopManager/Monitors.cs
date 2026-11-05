@@ -478,18 +478,19 @@ public class Monitors {
     }
 
     /// <summary>
-    /// Gets the brightness of a monitor by its device ID.
+    /// Gets the brightness of a monitor through DDC/CI.
     /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="deviceId">The monitor device ID or its display source name, such as <c>\\.\DISPLAY1</c>.</param>
     /// <returns>The current brightness level.</returns>
+    /// <exception cref="InvalidOperationException">The monitor is unavailable or refuses the DDC/CI query, which can be temporary.</exception>
     public int GetMonitorBrightness(string deviceId) {
         return _monitorService.GetMonitorBrightness(deviceId);
     }
 
     /// <summary>
-    /// Sets the brightness of a monitor by its device ID.
+    /// Sets the brightness of a monitor through DDC/CI.
     /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="deviceId">The monitor device ID or its display source name, such as <c>\\.\DISPLAY1</c>.</param>
     /// <param name="brightness">The brightness level to set.</param>
     public void SetMonitorBrightness(string deviceId, int brightness) {
         _monitorService.SetMonitorBrightness(deviceId, brightness);

@@ -14,6 +14,10 @@ public static class MouseInputService {
     /// </summary>
     /// <returns>The current cursor position, button state, and cursor visibility.</returns>
     public static DesktopMouseState GetState() {
+        return WindowDpiContext.Execute(GetPhysicalState);
+    }
+
+    private static DesktopMouseState GetPhysicalState() {
         bool hasPosition = MonitorNativeMethods.GetCursorPos(out MonitorNativeMethods.POINT position);
 
         MonitorNativeMethods.CURSORINFO cursorInfo = new() {
@@ -34,9 +38,13 @@ public static class MouseInputService {
     /// <summary>
     /// Moves the mouse cursor to the specified screen coordinates.
     /// </summary>
-    /// <param name="x">X coordinate in pixels.</param>
-    /// <param name="y">Y coordinate in pixels.</param>
+    /// <param name="x">X coordinate in physical desktop pixels.</param>
+    /// <param name="y">Y coordinate in physical desktop pixels.</param>
     public static void MoveCursor(int x, int y) {
+        WindowDpiContext.Execute(() => MovePhysicalCursor(x, y));
+    }
+
+    private static void MovePhysicalCursor(int x, int y) {
         int width = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CXVIRTUALSCREEN);
         int height = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_CYVIRTUALSCREEN);
         int left = MonitorNativeMethods.GetSystemMetrics(MonitorNativeMethods.SM_XVIRTUALSCREEN);
@@ -51,7 +59,8 @@ public static class MouseInputService {
             Dx = normalizedX,
             Dy = normalizedY,
             MouseData = 0,
-            DwFlags = MonitorNativeMethods.MOUSEEVENTF_MOVE | MonitorNativeMethods.MOUSEEVENTF_ABSOLUTE,
+            // Coordinates were normalised against the entire virtual desktop, including secondary monitors.
+            DwFlags = MonitorNativeMethods.MOUSEEVENTF_MOVE | MonitorNativeMethods.MOUSEEVENTF_ABSOLUTE | 0x4000,
             Time = 0,
             ExtraInfo = IntPtr.Zero
         };

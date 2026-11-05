@@ -17,6 +17,8 @@ Save-DesktopWindowLayout [-Path] <string> [-IncludeVirtualDesktops] [-IncludeExp
 ## DESCRIPTION
 Saves the current desktop window layout.
 
+Window positions and sizes are saved in physical desktop pixels, independent of the PowerShell host's DPI awareness.
+
 ## EXAMPLES
 
 ### EXAMPLE 1

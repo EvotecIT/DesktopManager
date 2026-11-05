@@ -52,8 +52,7 @@ public static class WindowInputService {
             throw new ArgumentNullException(nameof(text));
         }
 
-        WindowInputOptions settings = options ?? new WindowInputOptions();
-        NormalizeOptions(settings);
+        WindowInputOptions settings = NormalizeOptions(options ?? new WindowInputOptions());
 
         IntPtr previousForeground = IntPtr.Zero;
         if (settings.ActivateWindow || settings.RestoreFocus) {
@@ -61,15 +60,16 @@ public static class WindowInputService {
         }
 
         IntPtr targetHandle = ResolvePreferredTextHandle(window.Handle);
-        string? clipboardBackup = null;
-        bool restoreClipboard = false;
+        ClipboardHelper.ClipboardSnapshot? snapshot = null;
         if (settings.PreserveClipboard) {
-            restoreClipboard = ClipboardHelper.TryGetText(out clipboardBackup, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+            // Refuse to replace content that cannot be preserved in full.
+            snapshot = ClipboardHelper.CaptureSnapshot();
         }
 
         bool operationFailed = false;
+        uint pastedSequence = 0;
         try {
-            ClipboardHelper.SetText(text, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
+            ClipboardHelper.SetPasteText(text, settings.PrivateClipboard, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds, out pastedSequence);
             if (settings.ActivateWindow) {
                 TryActivateWindow(window.Handle, settings.ActivationRetryCount, settings.ActivationRetryDelayMilliseconds);
             }
@@ -80,13 +80,39 @@ public static class WindowInputService {
             throw;
         } finally {
             RestoreFocus(window, settings, previousForeground);
-            if (restoreClipboard) {
-                try {
-                    ClipboardHelper.SetText(clipboardBackup ?? string.Empty, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
-                } catch when (operationFailed) {
-                    // Cleanup must not hide the original delivery failure.
-                }
+            try {
+                FinishPasteClipboard(settings, pastedSequence, operationFailed, snapshot);
+            } catch when (operationFailed) {
+                // Cleanup must not hide the original delivery failure.
+            } finally {
+                snapshot?.Dispose();
             }
+        }
+    }
+
+    private static void FinishPasteClipboard(WindowInputOptions settings, uint pastedSequence, bool operationFailed, ClipboardHelper.ClipboardSnapshot? snapshot) {
+        if (snapshot == null && !settings.ClearClipboardAfterPaste) {
+            return;
+        }
+
+        if (pastedSequence == 0) {
+            // No clipboard write occurred; in particular, do not overwrite a concurrent copy after allocation/open failure.
+            return;
+        }
+
+        if (!operationFailed && settings.ClipboardHoldMilliseconds > 0) {
+            Thread.Sleep(settings.ClipboardHoldMilliseconds);
+        }
+
+        // Someone else copied in the meantime: their content wins and the pasted text is already gone.
+        if (NativeClipboardMethods.GetClipboardSequenceNumber() != pastedSequence) {
+            return;
+        }
+
+        if (snapshot != null) {
+            snapshot.Restore(pastedSequence);
+        } else {
+            ClipboardHelper.ClearIfUnchanged(pastedSequence, settings.ClipboardRetryCount, settings.ClipboardRetryDelayMilliseconds);
         }
     }
 
@@ -116,8 +142,7 @@ public static class WindowInputService {
             throw new ArgumentNullException(nameof(text));
         }
 
-        WindowInputOptions settings = options ?? new WindowInputOptions();
-        NormalizeOptions(settings);
+        WindowInputOptions settings = NormalizeOptions(options ?? new WindowInputOptions());
         IntPtr focusedTextHandle = WindowActivationService.GetFocusedControlHandle(window.Handle);
 
         IntPtr previousForeground = IntPtr.Zero;
@@ -172,8 +197,7 @@ public static class WindowInputService {
             throw new ArgumentException("No keys specified", nameof(keys));
         }
 
-        WindowInputOptions settings = options ?? new WindowInputOptions();
-        NormalizeOptions(settings);
+        WindowInputOptions settings = NormalizeOptions(options ?? new WindowInputOptions());
 
         IntPtr previousForeground = IntPtr.Zero;
         if (settings.ActivateWindow || settings.RestoreFocus) {
@@ -210,37 +234,30 @@ public static class WindowInputService {
         }
     }
 
-    private static void NormalizeOptions(WindowInputOptions options) {
-        if (options.UseHostedSessionScanCodes) {
-            options.ActivateWindow = false;
-        }
-
-        if (options.ClipboardRetryCount < 1) {
-            options.ClipboardRetryCount = 1;
-        }
-        if (options.ClipboardRetryDelayMilliseconds < 0) {
-            options.ClipboardRetryDelayMilliseconds = 0;
-        }
-        if (options.ActivationRetryCount < 1) {
-            options.ActivationRetryCount = 1;
-        }
-        if (options.ActivationRetryDelayMilliseconds < 0) {
-            options.ActivationRetryDelayMilliseconds = 0;
-        }
-        if (options.InputRetryCount < 1) {
-            options.InputRetryCount = 1;
-        }
-        if (options.KeyDelayMilliseconds < 0) {
-            options.KeyDelayMilliseconds = 0;
-        }
-        if (options.ScriptChunkLength < 1) {
-            options.ScriptChunkLength = 1;
-        }
-        if (options.ScriptLineDelayMilliseconds < 0) {
-            options.ScriptLineDelayMilliseconds = 0;
-        }
+    /// <summary>Returns a corrected copy of <paramref name="options"/>; the caller's object is never changed.</summary>
+    internal static WindowInputOptions NormalizeOptions(WindowInputOptions options) {
+        return new WindowInputOptions {
+            ActivateWindow = options.ActivateWindow && !options.UseHostedSessionScanCodes,
+            RestoreFocus = options.RestoreFocus,
+            PreserveClipboard = options.PreserveClipboard,
+            PrivateClipboard = options.PrivateClipboard,
+            ClipboardHoldMilliseconds = Math.Max(0, options.ClipboardHoldMilliseconds),
+            ClearClipboardAfterPaste = options.ClearClipboardAfterPaste,
+            ClipboardRetryCount = Math.Max(1, options.ClipboardRetryCount),
+            ClipboardRetryDelayMilliseconds = Math.Max(0, options.ClipboardRetryDelayMilliseconds),
+            ActivationRetryCount = Math.Max(1, options.ActivationRetryCount),
+            ActivationRetryDelayMilliseconds = Math.Max(0, options.ActivationRetryDelayMilliseconds),
+            InputRetryCount = Math.Max(1, options.InputRetryCount),
+            KeyDelayMilliseconds = Math.Max(0, options.KeyDelayMilliseconds),
+            UseSendInput = options.UseSendInput,
+            RequireForegroundWindowForTyping = options.RequireForegroundWindowForTyping,
+            UsePhysicalKeyboardLayout = options.UsePhysicalKeyboardLayout,
+            UseHostedSessionScanCodes = options.UseHostedSessionScanCodes,
+            TypeTextAsScript = options.TypeTextAsScript,
+            ScriptChunkLength = Math.Max(1, options.ScriptChunkLength),
+            ScriptLineDelayMilliseconds = Math.Max(0, options.ScriptLineDelayMilliseconds)
+        };
     }
-
     internal static WindowTextDeliveryMode ResolveTextDeliveryMode(WindowInputOptions options, bool targetOwnsForeground) {
         if (options == null) {
             throw new ArgumentNullException(nameof(options));

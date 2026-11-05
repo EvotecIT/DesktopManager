@@ -36,6 +36,14 @@ internal static class SmokeChecks {
                 break;
             case "clipboard":
                 NativeFixtures.DuplicateClipboardMemory();
+                IntPtr clipboardOwner = NativeClipboardSnapshot.CreateOwner();
+                try {
+                    MonitorNativeMethods.GetWindowThreadProcessId(clipboardOwner, out uint ownerProcess);
+                    Require(ownerProcess == (uint)Environment.ProcessId, "The clipboard owner window must belong to this process.");
+                } finally {
+                    Require(NativeClipboardSnapshot.DestroyWindow(clipboardOwner), "The owned clipboard window must be destroyed.");
+                }
+                Console.WriteLine("Message-only clipboard owner created and destroyed; no clipboard writes.");
                 // Friend access exercises the actual preservation boundary without sending input or restoring data.
                 uint sequence = GetClipboardSequenceNumber();
                 int formats = CountClipboardFormats();
@@ -83,6 +91,9 @@ internal static class SmokeChecks {
                 break;
             case "uia":
                 using (var harness = new NativeWindowHarness()) {
+                    WindowPosition position = new WindowManager().GetWindowPosition(new WindowInfo { Handle = harness.Handle });
+                    Require(position.ProcessId == (uint)Environment.ProcessId && position.Right > position.Left && position.Bottom > position.Top,
+                        "Native AOT must read the owned window position and its optional application identity.");
                     var controls = new DesktopAutomationService().GetControls(
                         new WindowQueryOptions { Handle = harness.Handle, ProcessId = Environment.ProcessId, IncludeHidden = true },
                         new WindowControlQueryOptions { UseUiAutomation = true, IncludeUiAutomation = false, EnsureForegroundWindow = false, AllowForegroundInputFallback = false });

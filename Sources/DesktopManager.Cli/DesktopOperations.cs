@@ -2746,6 +2746,24 @@ internal static partial class DesktopOperations {
             case "bottom-right":
                 position = SnapPosition.BottomRight;
                 return true;
+            case "top":
+                position = SnapPosition.Top;
+                return true;
+            case "bottom":
+                position = SnapPosition.Bottom;
+                return true;
+            case "left-third":
+                position = SnapPosition.LeftThird;
+                return true;
+            case "center-third":
+                position = SnapPosition.CenterThird;
+                return true;
+            case "right-third":
+                position = SnapPosition.RightThird;
+                return true;
+            case "center":
+                position = SnapPosition.Center;
+                return true;
             default:
                 position = default;
                 return false;

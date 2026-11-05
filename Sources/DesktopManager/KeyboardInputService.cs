@@ -340,16 +340,20 @@ public static class KeyboardInputService {
 
     private static bool TryCreateUsLetterStroke(char character, out ScanCodeStroke stroke) {
         stroke = default;
-        char upper = char.ToUpperInvariant(character);
-        if (upper < 'A' || upper > 'Z') {
+        bool upper = character >= 'A' && character <= 'Z';
+        if (!upper && (character < 'a' || character > 'z')) {
             return false;
         }
 
-        VirtualKey key = (VirtualKey)Enum.Parse(typeof(VirtualKey), $"VK_{upper}", ignoreCase: false);
-        ushort scanCode = GetScanCodeForVirtualKey(key);
-        bool shiftRequired = char.IsUpper(character);
-        return TrySetUsStroke(scanCode, shiftRequired, out stroke);
+        // Fixed US positions; the local layout must not move letters (AZERTY, QWERTZ) in the remote session.
+        int index = upper ? character - 'A' : character - 'a';
+        return TrySetUsStroke(UsLetterScanCodes[index], upper, out stroke);
     }
+
+    private static readonly ushort[] UsLetterScanCodes = {
+        0x1E, 0x30, 0x2E, 0x20, 0x12, 0x21, 0x22, 0x23, 0x17, 0x24, 0x25, 0x26, 0x32,
+        0x31, 0x18, 0x19, 0x10, 0x13, 0x1F, 0x14, 0x16, 0x2F, 0x11, 0x2D, 0x15, 0x2C
+    };
 
     private static bool TryCreateUsDigitOrShiftedDigitStroke(char character, out ScanCodeStroke stroke) {
         stroke = default;
@@ -407,10 +411,6 @@ public static class KeyboardInputService {
         }
 
         SendCharacterToForeground(character, delayMilliseconds);
-    }
-
-    private static ushort GetScanCodeForVirtualKey(VirtualKey key) {
-        return unchecked((ushort)MonitorNativeMethods.MapVirtualKey((uint)key, 0));
     }
 
     private static void SendScanCodeStroke(ScanCodeStroke stroke, int delayMilliseconds) {

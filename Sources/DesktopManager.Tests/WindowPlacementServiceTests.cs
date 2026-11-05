@@ -84,6 +84,20 @@ public class WindowPlacementServiceTests {
     }
 
     [TestMethod]
+    [DataRow(7, true)]
+    [DataRow(11, false)]
+    public void IsExpectedPlacement_HalfUsesVisibleFrameAndTheDpiUnawareEdgeClamp(int border, bool perMonitorAware) {
+        Monitor monitor = CreateMonitor(1, 0, 0, 1920, 1080, 0, 0, 1920, 1040);
+        var request = new WindowPlacementRequest { Placement = WindowPlacementKind.LeftHalf, GeometryTolerancePixels = 10 };
+        var window = new WindowInfo { MonitorIndex = 1, Left = perMonitorAware ? -border : 0, Top = 0, Right = 960 + border, Bottom = 1040 + border };
+        var frame = new RECT { Left = perMonitorAware ? 0 : border, Top = 0, Right = 960, Bottom = 1040 };
+
+        Assert.IsTrue(WindowPlacementService.IsExpectedPlacement(window, request, monitor, frame, perMonitorAware));
+        frame.Right += 11;
+        Assert.IsFalse(WindowPlacementService.IsExpectedPlacement(window, request, monitor, frame, perMonitorAware));
+    }
+
+    [TestMethod]
     /// <summary>
     /// Restore and exact rectangle placements do not need target monitor resolution.
     /// </summary>
