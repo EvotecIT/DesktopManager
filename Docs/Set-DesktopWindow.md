@@ -23,21 +23,21 @@ Sets the position, size and state of a window on the desktop. You can identify t
 
 ### EXAMPLE 1
 ```powershell
-Set-DesktopWindowPosition -Name "Calculator" -Left 100 -Top 100
+Set-DesktopWindow -Name "Calculator" -Left 100 -Top 100
 ```
 
 Move a specific window to coordinates (100,100)
 
 ### EXAMPLE 2
 ```powershell
-Set-DesktopWindowPosition -Name "Notepad" -Left 100 -Top 100 -Width 800 -Height 600
+Set-DesktopWindow -Name "Notepad" -Left 100 -Top 100 -Width 800 -Height 600
 ```
 
 Set window position and size
 
 ### EXAMPLE 3
 ```powershell
-Set-DesktopWindowPosition -Name "Calculator" -State Minimize
+Set-DesktopWindow -Name "Calculator" -State Minimize
 ```
 
 Minimize a window

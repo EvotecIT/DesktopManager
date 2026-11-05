@@ -22,7 +22,7 @@ Build-Module -ModuleName 'DesktopManager' {
         Author                 = 'Przemyslaw Klys'
         CompanyName            = 'Evotec'
         Copyright              = "(c) 2011 - $((Get-Date).Year) Przemyslaw Klys @ Evotec. All rights reserved."
-        Description            = 'Desktop Manager is a PowerShell module that allows easy way to change wallpaper on multiple screens/monitors.'
+        Description            = 'Desktop Manager automates the Windows desktop: wallpapers and monitors, windows and their layouts, virtual desktops, audio and media, input and workspace recovery.'
         Tags                   = @('windows', 'image', 'wallpaper', 'monitor')
         ProjectUri             = 'https://github.com/EvotecIT/DesktopManager'
         IconUri                = 'https://evotec.xyz/wp-content/uploads/2022/12/DesktopManager.png'
