@@ -89,7 +89,9 @@ public partial class MonitorService {
         }
     }
 
-    private RECT GetMonitorBoundsFallback(string deviceName) {
+    private RECT GetMonitorBoundsFallback(string monitorId) {
+        // Display settings take the adapter name; a device path from GetMonitors is mapped to it first.
+        string deviceName = ResolveDisplaySource(monitorId);
         RECT rect = new RECT();
         DEVMODE mode = new DEVMODE();
         mode.dmSize = (short)Marshal.SizeOf<DEVMODE>();
