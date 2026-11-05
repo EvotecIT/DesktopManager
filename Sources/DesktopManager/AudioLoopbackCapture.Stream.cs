@@ -76,7 +76,9 @@ public sealed partial class AudioLoopbackCapture {
             return 0;
         } catch (Exception exception) when (AudioEndpointAvailability.IsUnavailable(exception)) {
             return UnavailableRetryMilliseconds;
-        } catch (Exception exception) when (exception is COMException || exception is InvalidCastException) {
+        } catch (Exception exception) {
+            // This runs on the capture thread, where an escaping exception would end the host process. HRESULTs
+            // also surface as ArgumentException, OutOfMemoryException and others, so every failure retries.
             DesktopManagerDiagnostics.Report($"Loopback capture failed and will retry: {exception.Message} (0x{exception.HResult:X8})");
             return FailureRetryMilliseconds;
         } finally {

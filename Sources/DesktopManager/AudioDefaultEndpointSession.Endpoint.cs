@@ -11,7 +11,13 @@ public sealed partial class AudioDefaultEndpointSession {
         }
         T? result = default;
         string unavailable = string.Empty;
+        bool disposedMeanwhile = false;
         bool succeeded = _thread.Invoke(() => {
+            // Dispose queues its cleanup on this thread too; work queued behind it must not reopen anything.
+            if (Volatile.Read(ref _disposed) != 0) {
+                disposedMeanwhile = true;
+                return false;
+            }
             // A failure can mean the default just moved; one reopen reaches the new default before Windows notifies.
             for (int attempt = 0; attempt < 2; attempt++) {
                 IAudioEndpointBackend? backend = ResolveBackend(out unavailable);
@@ -28,6 +34,9 @@ public sealed partial class AudioDefaultEndpointSession {
             }
             return false;
         });
+        if (disposedMeanwhile) {
+            throw new ObjectDisposedException(nameof(AudioDefaultEndpointSession));
+        }
         value = result;
         reason = unavailable;
         return succeeded;
