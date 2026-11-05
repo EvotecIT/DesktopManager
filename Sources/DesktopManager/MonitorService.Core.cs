@@ -151,7 +151,8 @@ public partial class MonitorService {
                 if (MonitorNativeMethods.EnumDisplayDevices(info.szDevice, 0, ref device, (uint)EnumDisplayDevicesFlags.EDD_GET_DEVICE_INTERFACE_NAME)) {
                     var monitor = new Monitor(this) {
                         Index = index,
-                        DeviceId = info.szDevice,
+                        // The interface path is what the normal path reports as DeviceId; keep the name only when Windows has no path.
+                        DeviceId = string.IsNullOrWhiteSpace(device.DeviceID) ? info.szDevice : device.DeviceID,
                         DeviceName = ResolveDisplaySourceName(info.szDevice, device.DeviceName),
                         DeviceString = device.DeviceString,
                         StateFlags = device.StateFlags,

@@ -400,18 +400,34 @@ public partial class MonitorService {
         }
     }
 
+    /// <summary>
+    /// The display source name, such as <c>\\.\DISPLAY1</c>, for either form a caller may hold: that name itself, or a
+    /// monitor's <see cref="Monitor.DeviceId"/> device path.
+    /// </summary>
+    internal string ResolveDisplaySource(string deviceId) {
+        if (deviceId.StartsWith(@"\\.\", StringComparison.OrdinalIgnoreCase)) {
+            return deviceId;
+        }
+
+        Monitor? monitor = GetMonitors().FirstOrDefault(candidate => string.Equals(candidate.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase));
+        return monitor != null && !string.IsNullOrWhiteSpace(monitor.DeviceName) ? monitor.DeviceName : deviceId;
+    }
+
     private PHYSICAL_MONITOR[] GetPhysicalMonitors(string deviceId) {
         IntPtr found = IntPtr.Zero;
+        string source = ResolveDisplaySource(deviceId);
         MonitorNativeMethods.MonitorEnumProc proc = (IntPtr h, IntPtr hdc, ref RECT r, IntPtr data) => {
             MONITORINFOEX info = new MONITORINFOEX();
             info.cbSize = Marshal.SizeOf<MONITORINFOEX>();
-            if (MonitorNativeMethods.GetMonitorInfo(h, ref info) && info.szDevice == deviceId) {
+            if (MonitorNativeMethods.GetMonitorInfo(h, ref info) && string.Equals(info.szDevice, source, StringComparison.OrdinalIgnoreCase)) {
                 found = h;
                 return false;
             }
             return true;
         };
-        if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero)) {
+        // Stopping the enumeration once the monitor is found makes EnumDisplayMonitors return false, so only a false
+        // return without a match is a failure.
+        if (!MonitorNativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero) && found == IntPtr.Zero) {
             DesktopManagerDiagnostics.Report("EnumDisplayMonitors failed");
             return Array.Empty<PHYSICAL_MONITOR>();
         }
@@ -436,7 +452,7 @@ public partial class MonitorService {
     /// <summary>
     /// Gets the current brightness of a monitor.
     /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="deviceId">The monitor's <see cref="Monitor.DeviceId"/> or its display source name, such as <c>\\.\DISPLAY1</c>.</param>
     /// <returns>The current brightness level.</returns>
     public int GetMonitorBrightness(string deviceId) {
         var monitors = GetPhysicalMonitors(deviceId);
@@ -461,7 +477,7 @@ public partial class MonitorService {
     /// <summary>
     /// Sets the brightness of a monitor.
     /// </summary>
-    /// <param name="deviceId">The device ID of the monitor.</param>
+    /// <param name="deviceId">The monitor's <see cref="Monitor.DeviceId"/> or its display source name, such as <c>\\.\DISPLAY1</c>.</param>
     /// <param name="brightness">Brightness value to set.</param>
     public void SetMonitorBrightness(string deviceId, int brightness) {
         var monitors = GetPhysicalMonitors(deviceId);
