@@ -83,7 +83,7 @@ internal static class NativeClipboardSnapshot {
         return owner;
     }
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern IntPtr CreateWindowEx(uint extendedStyle, string className, string? name, uint style, int x, int y, int width, int height, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr parameter);
     [DllImport("user32.dll")] internal static extern bool DestroyWindow(IntPtr window);
 
