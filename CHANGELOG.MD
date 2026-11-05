@@ -15,6 +15,17 @@
 - Add `WifiConnectionService.GetCurrent` for the connected network, signal and link rates of a Wi-Fi interface. Windows 11 24H2 and later answer only apps that have location access.
 - Add `SystemPowerService.GetActivePowerPlan` for the active plan and the Windows 11 power mode.
 - Read clipboard text within the size of its memory block, and allocate before emptying the clipboard so a failed allocation in `SetText` no longer clears it.
+- Add `SessionTypingService`, `Send-DesktopSessionText` and `window type-session` for typing into RDP, Citrix and VNC sessions and paste-blocked fields: scan codes for the remote keyboard layout, profile pacing, waiting for the target to come forward, Caps Lock and held-key checks, and stopping when focus moves or you type. See `Docs/DesktopManager.SessionTyping.md`.
+- **Changed:** text the library pastes is now kept out of clipboard history, the cloud clipboard and clipboard managers (`WindowInputOptions.PrivateClipboard`), and `PreserveClipboard` restores every format, or empties the clipboard if it was empty.
+- Hosted-session typing presses letters at US key positions on any local layout; on AZERTY or QWERTZ machines it used to send the wrong letters. Typing options are copied rather than changed on the caller's object.
+- `window type` accepts `--text-stdin` and `--text-env` so text stays off the command line.
+- **Changed:** window positions are read and set in physical pixels whatever the caller's DPI awareness, so values from `GetWindows` can differ on scaled displays and now match what the move methods accept.
+- Activating a window no longer removes its always-on-top state, and setting topmost no longer activates it.
+- Auto-snap snaps on the monitor the window was dropped on and works from any thread. `SnapWindow` uses the work area, restores a maximised or minimised window first and allows for the invisible border; snap positions gain top and bottom halves, thirds and centre.
+- Moving or resizing a minimised window changes where it restores to and leaves it minimised.
+- **Changed:** `Set-DesktopWindow` applies negative coordinates, `-TopMost:$false` clears topmost, and it skips hidden and cloaked windows unless `-IncludeHidden` or `-IncludeCloaked` is given. `MinimizeAll` and `RestoreAll` leave cloaked windows (including those on other virtual desktops) alone by default.
+- Window errors include the Windows error and say when the target runs elevated. Moving another app's window to a virtual desktop explains the access-denied case, and `Move-DesktopWindowToVirtualDesktop -Experimental` can do it.
+- Saved layouts match a window whose title changed by process, class and application, and `Restore-DesktopWindowLayout` warns about windows it couldn't find.
 - Stop the mouse input tests clicking and dragging on the live desktop.
 
 ## 4.7.0 - 2026.11.03
