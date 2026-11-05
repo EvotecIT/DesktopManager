@@ -57,36 +57,83 @@ public static class ClipboardHelper {
     /// <summary>Encodes text as null-terminated UTF-16 exactly as stored, without replacing unpaired surrogates.</summary>
     internal static byte[] ToUnicodeTextBytes(string text) {
         byte[] bytes = new byte[(text.Length + 1) * 2];
-        Buffer.BlockCopy(text.ToCharArray(), 0, bytes, 0, text.Length * 2);
+        // Written directly so no intermediate copy of possibly secret text is left behind.
+        for (int index = 0; index < text.Length; index++) {
+            char character = text[index];
+            bytes[index * 2] = (byte)character;
+            bytes[(index * 2) + 1] = (byte)(character >> 8);
+        }
+
         return bytes;
+    }
+
+    /// <summary>
+    /// Builds the formats for text the library pastes. Private text also carries the markers that keep it out of clipboard
+    /// history, the cloud clipboard and clipboard monitors.
+    /// </summary>
+    internal static List<KeyValuePair<uint, byte[]>> BuildPasteFormats(string text, bool privateText) {
+        var formats = new List<KeyValuePair<uint, byte[]>> {
+            new(MonitorNativeMethods.CF_UNICODETEXT, ToUnicodeTextBytes(text))
+        };
+        if (privateText) {
+            AddRegisteredFormat(formats, "ExcludeClipboardContentFromMonitorProcessing", new byte[4]);
+            AddRegisteredFormat(formats, "CanIncludeInClipboardHistory", new byte[4]);
+            AddRegisteredFormat(formats, "CanUploadToCloudClipboard", new byte[4]);
+        }
+
+        return formats;
+    }
+
+    private static void AddRegisteredFormat(List<KeyValuePair<uint, byte[]>> formats, string name, byte[] data) {
+        uint format = NativeClipboardMethods.RegisterClipboardFormat(name);
+        if (format == 0) {
+            throw new InvalidOperationException($"Unable to register the {name} clipboard format.");
+        }
+
+        formats.Add(new KeyValuePair<uint, byte[]>(format, data));
+    }
+
+    /// <summary>Puts text on the clipboard for pasting and returns the clipboard sequence number that identifies it.</summary>
+    internal static uint SetPasteText(string text, bool privateText, int retryCount, int retryDelayMilliseconds) {
+        List<KeyValuePair<uint, byte[]>> formats = BuildPasteFormats(text, privateText);
+        try {
+            return SetFormats(formats, retryCount, retryDelayMilliseconds, IntPtr.Zero);
+        } finally {
+            foreach (var format in formats) {
+                Array.Clear(format.Value, 0, format.Value.Length);
+            }
+        }
+    }
+
+    /// <summary>Empties the clipboard only while it still holds the content identified by <paramref name="sequenceNumber"/>.</summary>
+    internal static bool ClearIfUnchanged(uint sequenceNumber, int retryCount, int retryDelayMilliseconds) {
+        OpenClipboardWithRetry(retryCount, retryDelayMilliseconds);
+        try {
+            return NativeClipboardMethods.GetClipboardSequenceNumber() == sequenceNumber && MonitorNativeMethods.EmptyClipboard();
+        } finally {
+            MonitorNativeMethods.CloseClipboard();
+        }
     }
 
     /// <summary>Replaces the clipboard with one format holding a copy of <paramref name="data"/>.</summary>
     internal static void SetData(uint format, byte[] data, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
-        if (data == null) {
-            throw new ArgumentNullException(nameof(data));
-        }
-        if (data.Length == 0) {
-            throw new ArgumentException("Clipboard data cannot be empty.", nameof(data));
+        SetFormats(new[] { new KeyValuePair<uint, byte[]>(format, data) }, retryCount, retryDelayMilliseconds, owner);
+    }
+
+    /// <summary>
+    /// Replaces the clipboard with copies of <paramref name="formats"/> and returns the clipboard sequence number read
+    /// while the clipboard was still open, so it identifies exactly this content.
+    /// </summary>
+    internal static uint SetFormats(IReadOnlyList<KeyValuePair<uint, byte[]>> formats, int retryCount, int retryDelayMilliseconds, IntPtr owner) {
+        if (formats == null) {
+            throw new ArgumentNullException(nameof(formats));
         }
 
-        // Prepare the transfer before emptying the clipboard so a failed allocation leaves the current content intact.
-        IntPtr hGlobal = MonitorNativeMethods.GlobalAlloc(MonitorNativeMethods.GMEM_MOVEABLE, (UIntPtr)data.Length);
-        if (hGlobal == IntPtr.Zero) {
-            throw new InvalidOperationException("GlobalAlloc failed.");
-        }
-
-        bool transferred = false;
+        // Prepare every transfer before emptying the clipboard so a failed allocation leaves the current content intact.
+        var handles = new IntPtr[formats.Count];
         try {
-            IntPtr target = MonitorNativeMethods.GlobalLock(hGlobal);
-            if (target == IntPtr.Zero) {
-                throw new InvalidOperationException("GlobalLock failed.");
-            }
-
-            try {
-                Marshal.Copy(data, 0, target, data.Length);
-            } finally {
-                MonitorNativeMethods.GlobalUnlock(hGlobal);
+            for (int index = 0; index < formats.Count; index++) {
+                handles[index] = CopyToGlobal(formats[index].Value);
             }
 
             OpenClipboardWithRetry(retryCount, retryDelayMilliseconds, owner);
@@ -95,17 +142,69 @@ public static class ClipboardHelper {
                     throw new InvalidOperationException("Unable to empty clipboard.");
                 }
 
-                if (MonitorNativeMethods.SetClipboardData(format, hGlobal) == IntPtr.Zero) {
-                    throw new InvalidOperationException("SetClipboardData failed.");
+                for (int index = 0; index < formats.Count; index++) {
+                    if (MonitorNativeMethods.SetClipboardData(formats[index].Key, handles[index]) == IntPtr.Zero) {
+                        throw new InvalidOperationException("SetClipboardData failed.");
+                    }
+
+                    handles[index] = IntPtr.Zero;
                 }
-                transferred = true;
+
+                return NativeClipboardMethods.GetClipboardSequenceNumber();
             } finally {
                 MonitorNativeMethods.CloseClipboard();
             }
         } finally {
-            if (!transferred) {
-                MonitorNativeMethods.GlobalFree(hGlobal);
+            foreach (IntPtr handle in handles) {
+                if (handle != IntPtr.Zero) {
+                    ZeroGlobal(handle);
+                    MonitorNativeMethods.GlobalFree(handle);
+                }
             }
+        }
+    }
+
+    private static IntPtr CopyToGlobal(byte[] data) {
+        if (data == null) {
+            throw new ArgumentNullException(nameof(data));
+        }
+        if (data.Length == 0) {
+            throw new ArgumentException("Clipboard data cannot be empty.", nameof(data));
+        }
+
+        IntPtr hGlobal = MonitorNativeMethods.GlobalAlloc(MonitorNativeMethods.GMEM_MOVEABLE, (UIntPtr)data.Length);
+        if (hGlobal == IntPtr.Zero) {
+            throw new InvalidOperationException("GlobalAlloc failed.");
+        }
+
+        IntPtr target = MonitorNativeMethods.GlobalLock(hGlobal);
+        if (target == IntPtr.Zero) {
+            MonitorNativeMethods.GlobalFree(hGlobal);
+            throw new InvalidOperationException("GlobalLock failed.");
+        }
+
+        try {
+            Marshal.Copy(data, 0, target, data.Length);
+        } finally {
+            MonitorNativeMethods.GlobalUnlock(hGlobal);
+        }
+
+        return hGlobal;
+    }
+
+    private static void ZeroGlobal(IntPtr handle) {
+        ulong size = NativeClipboardSnapshot.GlobalSize(handle).ToUInt64();
+        IntPtr pointer = MonitorNativeMethods.GlobalLock(handle);
+        if (pointer == IntPtr.Zero) {
+            return;
+        }
+
+        try {
+            for (ulong offset = 0; offset < size; offset++) {
+                Marshal.WriteByte(pointer, (int)offset, 0);
+            }
+        } finally {
+            MonitorNativeMethods.GlobalUnlock(handle);
         }
     }
 

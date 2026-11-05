@@ -87,15 +87,24 @@ public class KeyboardInputServiceTests {
     /// <summary>
     /// Ensures hosted-session US scancode mapping keeps letters on their physical key positions.
     /// </summary>
-    public void TryCreateUsKeyboardScanCodeStroke_MapsLettersAndCase() {
-        bool lowerMapped = KeyboardInputService.TryCreateUsKeyboardScanCodeStroke('a', out KeyboardInputService.ScanCodeStroke lowerStroke);
-        bool upperMapped = KeyboardInputService.TryCreateUsKeyboardScanCodeStroke('A', out KeyboardInputService.ScanCodeStroke upperStroke);
+    [DataRow('a', (ushort)0x1E, false)]
+    [DataRow('A', (ushort)0x1E, true)]
+    [DataRow('q', (ushort)0x10, false)]
+    [DataRow('w', (ushort)0x11, false)]
+    [DataRow('y', (ushort)0x15, false)]
+    [DataRow('Z', (ushort)0x2C, true)]
+    [DataRow('m', (ushort)0x32, false)]
+    public void TryCreateUsKeyboardScanCodeStroke_MapsLettersToUsPositionsWhateverTheLocalLayout(char character, ushort expectedScanCode, bool expectedShiftRequired) {
+        bool mapped = KeyboardInputService.TryCreateUsKeyboardScanCodeStroke(character, out KeyboardInputService.ScanCodeStroke stroke);
 
-        Assert.IsTrue(lowerMapped);
-        Assert.IsTrue(upperMapped);
-        Assert.AreEqual(lowerStroke.ScanCode, upperStroke.ScanCode);
-        Assert.IsFalse(lowerStroke.ShiftRequired);
-        Assert.IsTrue(upperStroke.ShiftRequired);
+        Assert.IsTrue(mapped);
+        Assert.AreEqual(expectedScanCode, stroke.ScanCode);
+        Assert.AreEqual(expectedShiftRequired, stroke.ShiftRequired);
+    }
+
+    [TestMethod]
+    public void TryCreateUsKeyboardScanCodeStroke_DoesNotTypeDotlessIAsTheIKey() {
+        Assert.IsFalse(KeyboardInputService.TryCreateUsKeyboardScanCodeStroke('ı', out _));
     }
 
     [TestMethod]

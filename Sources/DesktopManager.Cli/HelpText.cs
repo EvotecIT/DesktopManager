@@ -203,7 +203,8 @@ Window commands:
   desktopmanager window visibility [selector] (--show | --hide) [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window transparency [selector] --alpha <value> [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window snap [selector] --position <left|right|top|bottom|top-left|top-right|bottom-left|bottom-right|left-third|center-third|right-third|center> [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
-  desktopmanager window type [selector] --text <value> [--paste] [--foreground-input] [--physical-keys] [--hosted-session] [--script] [--chunk-size <value>] [--line-delay-ms <value>] [--delay-ms <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window type [selector] (--text <value> | --text-stdin | --text-env <name>) [--paste] [--foreground-input] [--physical-keys] [--hosted-session] [--script] [--chunk-size <value>] [--line-delay-ms <value>] [--delay-ms <value>] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
+  desktopmanager window type-session [selector] (--text <value> | --text-stdin | --text-env <name>) [--profile <rdp|citrix|vnc|local>] [--layout <klid|culture>] [--line-break <enter|shift-enter|none>] [--strip-indent] [--unmapped <fail|unicode|skip>] [--caps-lock <fail|turn-off|compensate>] [--foreground-timeout-ms <value>] [--activate] [--delay-ms <value>] [--modifier-hold-ms <value>] [--line-delay-ms <value>] [--chunk-size <value>] [--chunk-pause-ms <value>] [--allow-focus-change] [--ignore-user-input] [--json]
   desktopmanager window keys [selector] --keys <value>[,<value>...] [--no-activate] [--capture-before] [--capture-after] [--artifact-directory <path>] [--verify] [--verify-tolerance-px <value>] [--all] [--json]
   desktopmanager window wait [selector] [--timeout-ms <value>] [--interval-ms <value>] [--all] [--json]
   desktopmanager window wait-visual-change [selector] [--target <name>] [--client-area] [--timeout-ms <value>] [--interval-ms <value>] [--minimum-changed-ratio <value>] [--difference-threshold <value>] [--json]
@@ -259,6 +260,9 @@ Examples:
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "safe probe" --physical-keys
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "safe probe" --hosted-session
   desktopmanager window type --process Devolutions.RemoteDesktopManager --text "Write-Host 'hi'`nGet-Date" --script --foreground-input --line-delay-ms 20
+  desktopmanager window type-session --process Devolutions.RemoteDesktopManager --text-env RDP_PASSWORD
+  Get-Content .\setup.ps1 -Raw | desktopmanager window type-session --process Devolutions.RemoteDesktopManager --text-stdin --layout de-DE --strip-indent
+  desktopmanager window type-session --process Devolutions.RemoteDesktopManager --text-env MAC_PASSWORD --profile vnc
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --activate
   desktopmanager window move --title "Visual Studio Code" --x 0 --y 0 --width 1920 --height 1400 --verify --verify-tolerance-px 12
   desktopmanager window place --title "Remote Desktop Manager*" --placement maximize --monitor 1 --verify
@@ -278,6 +282,8 @@ Examples:
   desktopmanager window wait --process notepad --timeout-ms 5000
 
 Notes:
+  type-session sends each character as the scan codes of the session's keyboard layout (Unicode packets for --profile local). It waits for you to click into the window, refuses elevated targets, waits for held modifier keys and checks Caps Lock, and stops when focus changes or you press a key, click or scroll.
+  Use --text-env or --text-stdin for secrets so they stay off the command line; standard input loses one trailing line break. The text is never printed.
   --hosted-session expects the target editor surface to already own focus.
   Hosted-session typing stops immediately if foreground ownership changes mid-input.
   Hosted-session harness diagnostics are written under Artifacts\HostedSessionTyping with a .json snapshot and a companion .summary.txt file.
