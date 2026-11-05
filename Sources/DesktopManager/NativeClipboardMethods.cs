@@ -20,6 +20,9 @@ internal static class NativeClipboardMethods {
     [DllImport("user32.dll")]
     internal static extern IntPtr GetClipboardOwner();
 
+    [DllImport("user32.dll")]
+    internal static extern uint GetClipboardSequenceNumber();
+
     [DllImport("user32.dll", EntryPoint = "RegisterClipboardFormatW", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern uint RegisterClipboardFormat(string format);
 

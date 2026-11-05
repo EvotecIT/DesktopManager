@@ -42,6 +42,8 @@ public sealed class ClipboardWatcher : IDisposable {
     private uint _threadId;
     private int _nextPut;
     private volatile bool _disposed;
+    // The clipboard state already handled; only the watcher thread touches it.
+    private uint _handledSequence;
 
     /// <summary>
     /// Starts listening for clipboard changes.
@@ -177,8 +179,11 @@ public sealed class ClipboardWatcher : IDisposable {
         }
         if (msg == WM_PUT) {
             // Only requests this instance queued are honored; any other sender's WM_PUT is ignored.
-            if (_puts.TryGetValue(wParam.ToInt32(), out PutRequest? request)) {
+            long id = wParam.ToInt64();
+            if (id >= int.MinValue && id <= int.MaxValue && _puts.TryGetValue((int)id, out PutRequest? request)) {
                 request.Run(_window);
+                // The watcher's own put is never reported, however the update for it is queued.
+                _handledSequence = NativeClipboardMethods.GetClipboardSequenceNumber();
             }
             return IntPtr.Zero;
         }
@@ -187,6 +192,12 @@ public sealed class ClipboardWatcher : IDisposable {
 
     private void OnClipboardUpdate() {
         EventHandler<ClipboardChangedEventArgs>? handler = ClipboardChanged;
+        // Several queued updates all read the newest content; report each clipboard state once.
+        uint sequence = NativeClipboardMethods.GetClipboardSequenceNumber();
+        if (sequence != 0 && sequence == _handledSequence) {
+            return;
+        }
+        _handledSequence = sequence;
         if (_disposed || handler == null || NativeClipboardMethods.GetClipboardOwner() == _window) {
             return;
         }
