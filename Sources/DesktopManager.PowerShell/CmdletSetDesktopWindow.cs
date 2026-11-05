@@ -18,6 +18,14 @@ namespace DesktopManager.PowerShell {
     ///   <para>Minimize a window</para>
     ///   <code>Set-DesktopWindow -Name "Calculator" -State Minimize</code>
     /// </example>
+    /// <example>
+    ///   <para>Move a window to a monitor left of the primary monitor</para>
+    ///   <code>Set-DesktopWindow -Name "Notepad" -Left -1800 -Top 100</code>
+    /// </example>
+    /// <example>
+    ///   <para>Clear a window's topmost state</para>
+    ///   <code>Set-DesktopWindow -Name "Notepad" -TopMost:$false</code>
+    /// </example>
     [Cmdlet(VerbsCommon.Set, "DesktopWindow", SupportsShouldProcess = true)]
     public class CmdletSetDesktopWindow : PSCmdlet {
         /// <summary>
@@ -27,13 +35,13 @@ namespace DesktopManager.PowerShell {
         public string Name { get; set; }
 
         /// <summary>
-        /// <para type="description">The left position of the window.</para>
+        /// <para type="description">The left position of the window. Negative values reach monitors left of the primary monitor.</para>
         /// </summary>
         [Parameter(Mandatory = false)]
         public int Left { get; set; } = -1;
 
         /// <summary>
-        /// <para type="description">The top position of the window.</para>
+        /// <para type="description">The top position of the window. Negative values reach monitors above the primary monitor.</para>
         /// </summary>
         [Parameter(Mandatory = false)]
         public int Top { get; set; } = -1;
@@ -63,7 +71,7 @@ namespace DesktopManager.PowerShell {
         public WindowState? State { get; set; }
 
         /// <summary>
-        /// <para type="description">Set the window as top-most.</para>
+        /// <para type="description">Set the window as top-most. Use -TopMost:$false to clear it.</para>
         /// </summary>
         [Parameter(Mandatory = false)]
         public SwitchParameter TopMost { get; set; }
@@ -73,6 +81,18 @@ namespace DesktopManager.PowerShell {
         /// </summary>
         [Parameter(Mandatory = false)]
         public SwitchParameter Activate { get; set; }
+
+        /// <summary>
+        /// <para type="description">Also change hidden windows that match the name. Hidden windows are skipped by default.</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public SwitchParameter IncludeHidden { get; set; }
+
+        /// <summary>
+        /// <para type="description">Also change DWM-cloaked windows that match the name, including windows on other virtual desktops. Cloaked windows, such as suspended app frames, are skipped by default because changing them can make them appear.</para>
+        /// </summary>
+        [Parameter(Mandatory = false)]
+        public SwitchParameter IncludeCloaked { get; set; }
 
         /// <summary>
         /// <para type="description">Re-query the mutated window and report the observed postcondition instead of relying only on mutation success.</para>
@@ -99,11 +119,16 @@ namespace DesktopManager.PowerShell {
             var automation = new DesktopAutomationService();
             IReadOnlyList<WindowInfo> windows = automation.GetWindows(new WindowQueryOptions {
                 TitlePattern = Name,
-                IncludeHidden = true,
-                IncludeCloaked = true,
+                IncludeHidden = IncludeHidden.IsPresent,
+                IncludeCloaked = IncludeCloaked.IsPresent,
                 IncludeOwned = true,
                 IncludeEmptyTitles = true
             });
+            int? left = Bound(nameof(Left)) ? Left : null;
+            int? top = Bound(nameof(Top)) ? Top : null;
+            int? width = Bound(nameof(Width)) && Width >= 0 ? Width : null;
+            int? height = Bound(nameof(Height)) && Height >= 0 ? Height : null;
+            bool? topMost = Bound(nameof(TopMost)) ? TopMost.ToBool() : null;
 
             Monitor targetMonitor = null;
             if (MonitorIndex.HasValue) {
@@ -125,7 +150,7 @@ namespace DesktopManager.PowerShell {
                         if (targetMonitor != null) {
                             automation.MoveWindowToMonitor(window.Handle, targetMonitor.Index);
                         }
-                        if (Left >= 0 || Top >= 0 || Width >= 0 || Height >= 0) {
+                        if (left.HasValue || top.HasValue || width.HasValue || height.HasValue) {
                             automation.MoveWindows(
                                 new WindowQueryOptions {
                                     Handle = window.Handle,
@@ -135,10 +160,10 @@ namespace DesktopManager.PowerShell {
                                     IncludeEmptyTitles = true
                                 },
                                 monitorIndex: null,
-                                x: Left >= 0 ? Left : null,
-                                y: Top >= 0 ? Top : null,
-                                width: Width >= 0 ? Width : null,
-                                height: Height >= 0 ? Height : null,
+                                x: left,
+                                y: top,
+                                width: width,
+                                height: height,
                                 activate: false,
                                 all: false);
                         }
@@ -159,8 +184,8 @@ namespace DesktopManager.PowerShell {
                                     break;
                             }
                         }
-                        if (!closedWindow && TopMost.IsPresent) {
-                            automation.SetWindowTopMost(window.Handle, true);
+                        if (!closedWindow && topMost.HasValue) {
+                            automation.SetWindowTopMost(window.Handle, topMost.Value);
                         }
                         if (!closedWindow && Activate.IsPresent) {
                             automation.ActivateWindow(window.Handle);
@@ -173,12 +198,12 @@ namespace DesktopManager.PowerShell {
                                 window,
                                 VerificationTolerancePixels,
                                 expectedMonitorIndex: targetMonitor?.Index ?? MonitorIndex,
-                                expectedLeft: Left >= 0 ? Left : null,
-                                expectedTop: Top >= 0 ? Top : null,
-                                expectedWidth: Width >= 0 ? Width : null,
-                                expectedHeight: Height >= 0 ? Height : null,
+                                expectedLeft: left,
+                                expectedTop: top,
+                                expectedWidth: width,
+                                expectedHeight: height,
                                 expectedState: closedWindow ? null : State,
-                                expectedTopMost: !closedWindow && TopMost.IsPresent ? true : null,
+                                expectedTopMost: closedWindow ? null : topMost,
                                 requireForeground: !closedWindow && Activate.IsPresent,
                                 expectClosed: closedWindow);
                         }
@@ -207,12 +232,12 @@ namespace DesktopManager.PowerShell {
                 };
             }
 
-            if (MonitorIndex.HasValue || Left >= 0 || Top >= 0 || Width >= 0 || Height >= 0) {
+            if (MonitorIndex.HasValue || Bound(nameof(Left)) || Bound(nameof(Top)) || Width >= 0 || Height >= 0) {
                 return "move";
             }
 
-            if (TopMost.IsPresent) {
-                return "topmost";
+            if (Bound(nameof(TopMost))) {
+                return TopMost.IsPresent ? "topmost" : "clear-topmost";
             }
 
             if (Activate.IsPresent) {
@@ -231,20 +256,25 @@ namespace DesktopManager.PowerShell {
             if (MonitorIndex.HasValue) {
                 parts.Add($"Move to monitor {MonitorIndex.Value}");
             }
-            if (Left >= 0 || Top >= 0) {
-                parts.Add($"Move to ({Left}, {Top})");
+            if (Bound(nameof(Left)) || Bound(nameof(Top))) {
+                parts.Add($"Move to ({(Bound(nameof(Left)) ? Left.ToString() : "current")}, {(Bound(nameof(Top)) ? Top.ToString() : "current")})");
             }
             if (Width >= 0 || Height >= 0) {
                 parts.Add($"Resize to {Width}x{Height}");
             }
-            if (TopMost.IsPresent) {
-                parts.Add("TopMost");
+            if (Bound(nameof(TopMost))) {
+                parts.Add(TopMost.IsPresent ? "TopMost" : "Clear TopMost");
             }
             if (Activate.IsPresent) {
                 parts.Add("Activate");
             }
 
             return string.Join(" and ", parts);
+        }
+
+        // Bound rather than compared with a sentinel, so negative coordinates and -TopMost:$false are honoured.
+        private bool Bound(string parameterName) {
+            return MyInvocation.BoundParameters.ContainsKey(parameterName);
         }
     }
 }
