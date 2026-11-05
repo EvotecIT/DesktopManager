@@ -36,6 +36,14 @@ internal static class SmokeChecks {
                 break;
             case "clipboard":
                 NativeFixtures.DuplicateClipboardMemory();
+                IntPtr clipboardOwner = NativeClipboardSnapshot.CreateOwner();
+                try {
+                    MonitorNativeMethods.GetWindowThreadProcessId(clipboardOwner, out uint ownerProcess);
+                    Require(ownerProcess == (uint)Environment.ProcessId, "The clipboard owner window must belong to this process.");
+                } finally {
+                    Require(NativeClipboardSnapshot.DestroyWindow(clipboardOwner), "The owned clipboard window must be destroyed.");
+                }
+                Console.WriteLine("Message-only clipboard owner created and destroyed; no clipboard writes.");
                 // Friend access exercises the actual preservation boundary without sending input or restoring data.
                 uint sequence = GetClipboardSequenceNumber();
                 int formats = CountClipboardFormats();

@@ -30,7 +30,7 @@ The checks cover:
 - Shell item arrays with an owned Unicode-named file, including agile retention
   and resolution from another initialized MTA. No slideshow is applied.
 - Live clipboard capture/disposal and independent duplication of an owned
-  Unicode-text HGLOBAL. Neither fixture handle is placed on the clipboard.
+  Unicode-text HGLOBAL, plus creation and disposal of a message-only clipboard owner. Neither fixture handle is placed on the clipboard.
 - Live Explorer folder capture plus an unregistered native folder view whose
   PIDL must resolve to its owned temporary directory. No Explorer window is opened.
 - Experimental desktop enumeration, Core Audio endpoints/default roles, and
