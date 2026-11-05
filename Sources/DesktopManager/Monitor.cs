@@ -197,7 +197,7 @@ public class Monitor {
     /// Gets the monitor's brightness through its own controls (DDC/CI).
     /// </summary>
     /// <returns>The current brightness level.</returns>
-    /// <exception cref="InvalidOperationException">The monitor does not support DDC/CI brightness.</exception>
+    /// <exception cref="InvalidOperationException">The monitor does not answer the DDC/CI brightness request, including a temporary hardware refusal.</exception>
     public int GetBrightness() {
         return _monitorService.GetMonitorBrightness(string.IsNullOrWhiteSpace(DeviceName) ? DeviceId : DeviceName);
     }
@@ -206,7 +206,7 @@ public class Monitor {
     /// Sets the monitor's brightness through its own controls (DDC/CI).
     /// </summary>
     /// <param name="brightness">The brightness level to set.</param>
-    /// <exception cref="InvalidOperationException">The monitor does not support DDC/CI brightness.</exception>
+    /// <exception cref="InvalidOperationException">The monitor does not answer the DDC/CI brightness request, including a temporary hardware refusal.</exception>
     public void SetBrightness(int brightness) {
         _monitorService.SetMonitorBrightness(string.IsNullOrWhiteSpace(DeviceName) ? DeviceId : DeviceName, brightness);
     }

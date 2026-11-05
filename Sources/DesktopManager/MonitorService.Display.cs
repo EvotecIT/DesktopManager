@@ -456,6 +456,7 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="deviceId">The monitor's <see cref="Monitor.DeviceId"/> or its display source name, such as <c>\\.\DISPLAY1</c>.</param>
     /// <returns>The current brightness level.</returns>
+    /// <exception cref="InvalidOperationException">The monitor is unavailable or refuses the DDC/CI query, which can be temporary.</exception>
     public int GetMonitorBrightness(string deviceId) {
         var monitors = GetPhysicalMonitors(deviceId);
         if (monitors.Length == 0) {

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
@@ -72,25 +73,37 @@ public static class ClipboardHelper {
     /// history, the cloud clipboard and clipboard monitors.
     /// </summary>
     internal static List<KeyValuePair<uint, byte[]>> BuildPasteFormats(string text, bool privateText) {
-        var formats = new List<KeyValuePair<uint, byte[]>> {
-            new(MonitorNativeMethods.CF_UNICODETEXT, ToUnicodeTextBytes(text))
-        };
+        var formats = new List<KeyValuePair<uint, byte[]>>();
         if (privateText) {
             AddRegisteredFormat(formats, "ExcludeClipboardContentFromMonitorProcessing", new byte[4]);
             AddRegisteredFormat(formats, "CanIncludeInClipboardHistory", new byte[4]);
             AddRegisteredFormat(formats, "CanUploadToCloudClipboard", new byte[4]);
         }
 
+        // Register and write every privacy marker before making the text available.
+        formats.Add(new KeyValuePair<uint, byte[]>(MonitorNativeMethods.CF_UNICODETEXT, ToUnicodeTextBytes(text)));
         return formats;
     }
 
     private static void AddRegisteredFormat(List<KeyValuePair<uint, byte[]>> formats, string name, byte[] data) {
+        formats.Add(new KeyValuePair<uint, byte[]>(RegisterFormat(name), data));
+    }
+
+    private static uint RegisterFormat(string name) {
         uint format = NativeClipboardMethods.RegisterClipboardFormat(name);
         if (format == 0) {
             throw new InvalidOperationException($"Unable to register the {name} clipboard format.");
         }
+        return format;
+    }
 
-        formats.Add(new KeyValuePair<uint, byte[]>(format, data));
+    /// <summary>Restores existing privacy metadata first, preserving the captured order within both groups.</summary>
+    internal static IEnumerable<KeyValuePair<uint, IntPtr>> OrderRestoreFormats(IEnumerable<KeyValuePair<uint, IntPtr>> formats) {
+        var privacyFormats = new HashSet<uint> {
+            RegisterFormat("ExcludeClipboardContentFromMonitorProcessing"), RegisterFormat("Clipboard Viewer Ignore"),
+            RegisterFormat("CanIncludeInClipboardHistory"), RegisterFormat("CanUploadToCloudClipboard")
+        };
+        return formats.OrderBy(entry => privacyFormats.Contains(entry.Key) ? 0 : 1);
     }
 
     /// <summary>Puts text on the clipboard and identifies even a partial write, so cleanup can preserve a newer copy.</summary>
@@ -157,6 +170,10 @@ public static class ClipboardHelper {
                     handles[index] = IntPtr.Zero;
                 }
 
+            } catch {
+                // Do not publish a partial transfer, even when the caller did not request preservation.
+                if (cleared) { MonitorNativeMethods.EmptyClipboard(); }
+                throw;
             } finally {
                 if (cleared) {
                     sequence = NativeClipboardMethods.GetClipboardSequenceNumber();
@@ -328,10 +345,11 @@ public static class ClipboardHelper {
             var pending = new List<KeyValuePair<uint, IntPtr>>();
             IntPtr owner = NativeClipboardSnapshot.CreateOwner();
             bool opened = false;
+            bool cleared = false;
             try {
                 ulong bytes = 0;
                 // Prepare every transfer before clearing the current clipboard; retain originals for retries.
-                foreach (var entry in _formats) {
+                foreach (var entry in OrderRestoreFormats(_formats)) {
                     pending.Add(new KeyValuePair<uint, IntPtr>(entry.Key, NativeClipboardSnapshot.Duplicate(entry.Key, entry.Value, ref bytes)));
                 }
                 OpenClipboardWithRetry(5, 50, owner);
@@ -341,6 +359,7 @@ public static class ClipboardHelper {
                     return;
                 }
                 if (!MonitorNativeMethods.EmptyClipboard()) { throw new InvalidOperationException("Unable to empty clipboard."); }
+                cleared = true;
                 for (int i = 0; i < pending.Count; i++) {
                     var entry = pending[i];
                     if (MonitorNativeMethods.SetClipboardData(entry.Key, entry.Value) == IntPtr.Zero) {
@@ -349,6 +368,9 @@ public static class ClipboardHelper {
                     pending[i] = new KeyValuePair<uint, IntPtr>(entry.Key, IntPtr.Zero);
                 }
                 _restored = true;
+            } catch {
+                if (cleared) { MonitorNativeMethods.EmptyClipboard(); }
+                throw;
             } finally {
                 if (opened) { MonitorNativeMethods.CloseClipboard(); }
                 foreach (var entry in pending) { NativeClipboardSnapshot.Free(entry.Key, entry.Value); }

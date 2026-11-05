@@ -7,15 +7,17 @@ namespace DesktopManager.Tests;
 [TestClass]
 public class ClipboardPasteFormatTests {
     [TestMethod]
-    public void BuildPasteFormats_PrivateTextOptsOutOfHistoryCloudAndMonitors() {
+    public void BuildPasteFormats_PrivateMarkersPrecedeTextAndExcludeHistoryCloudAndMonitors() {
         List<KeyValuePair<uint, byte[]>> formats = ClipboardHelper.BuildPasteFormats("pw", privateText: true);
 
-        Assert.AreEqual(MonitorNativeMethods.CF_UNICODETEXT, formats[0].Key);
-        CollectionAssert.AreEqual(new byte[] { (byte)'p', 0, (byte)'w', 0, 0, 0 }, formats[0].Value);
+        Assert.AreEqual(4, formats.Count);
+        Assert.AreEqual(MonitorNativeMethods.CF_UNICODETEXT, formats[formats.Count - 1].Key, "Private markers must be transferred before secret text.");
+        CollectionAssert.AreEqual(new byte[] { (byte)'p', 0, (byte)'w', 0, 0, 0 }, formats[formats.Count - 1].Value);
         foreach (string name in new[] { "ExcludeClipboardContentFromMonitorProcessing", "CanIncludeInClipboardHistory", "CanUploadToCloudClipboard" }) {
             uint format = NativeClipboardMethods.RegisterClipboardFormat(name);
-            byte[]? value = formats.FirstOrDefault(entry => entry.Key == format).Value;
-            Assert.IsNotNull(value, name + " is missing.");
+            int markerIndex = formats.FindIndex(entry => entry.Key == format);
+            Assert.IsTrue(markerIndex >= 0 && markerIndex < formats.Count - 1, name + " must precede secret text.");
+            byte[] value = formats[markerIndex].Value;
             // The history and cloud flags are DWORD 0, which means "do not include".
             CollectionAssert.AreEqual(new byte[4], value, name);
         }
