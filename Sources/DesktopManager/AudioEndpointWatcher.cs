@@ -21,10 +21,16 @@ namespace DesktopManager;
 public sealed partial class AudioEndpointWatcher : IMMNotificationClient, IDisposable {
     private readonly IMMDeviceEnumerator _enumerator;
     private readonly IntPtr _callbackReference;
+    private readonly Action<AudioEndpointChangeKind>? _notified;
     private int _disposed;
 
     /// <summary>Initializes and registers a Core Audio notification watcher.</summary>
-    public AudioEndpointWatcher() {
+    public AudioEndpointWatcher() : this(null) {
+    }
+
+    /// <param name="notified">Runs synchronously on the Core Audio callback thread, so it must be quick and must not call back into Core Audio.</param>
+    internal AudioEndpointWatcher(Action<AudioEndpointChangeKind>? notified) {
+        _notified = notified;
         _enumerator = CoreAudioNative.CreateEnumerator();
         try {
             // Core Audio borrows this interface without AddRef. Keep a COM reference (and
@@ -106,6 +112,7 @@ public sealed partial class AudioEndpointWatcher : IMMNotificationClient, IDispo
     }
 
     private void Raise(AudioEndpointChangedEventArgs args) {
+        _notified?.Invoke(args.ChangeKind);
         // Subscribers may dispose the watcher. Never run them inside IMMNotificationClient.
         ThreadPool.QueueUserWorkItem(_ => Deliver(args));
     }
