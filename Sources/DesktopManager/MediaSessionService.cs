@@ -89,7 +89,7 @@ public sealed class MediaSessionService : IDisposable {
                 using MediaSessionServiceData? data = await backend.GetCurrentAsync().ConfigureAwait(false);
                 MediaSessionInfo? session = data == null ? null : new MediaSessionInfo(
                     data.Title, string.IsNullOrWhiteSpace(data.Artist) ? data.AlbumArtist : data.Artist,
-                    data.SourceAppId, FriendlySource(data.SourceAppId), await ReadArtworkAsync(data.Artwork).ConfigureAwait(false),
+                    data.SourceAppId, MediaSourceNameResolver.Resolve(data.SourceAppId), await ReadArtworkAsync(data.Artwork).ConfigureAwait(false),
                     data.IsPlaying, data.Position, data.Duration < TimeSpan.Zero ? TimeSpan.Zero : data.Duration, data.PositionUpdated);
                 result = data != null && data.Version != backend.Version
                     ? new MediaSessionResult(DesktopOperationStatus.Unavailable, "The media session changed during the read; refresh again.")
@@ -144,19 +144,6 @@ public sealed class MediaSessionService : IDisposable {
             DesktopManagerDiagnostics.Report($"Media artwork could not be read: {ex.Message}");
             return null;
         }
-    }
-
-    private static string FriendlySource(string appId) {
-        string[] parts = appId.Split('!', '\\');
-        string name = parts[parts.Length - 1];
-        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) {
-            name = name.Substring(0, name.Length - 4);
-        }
-        int dot = name.LastIndexOf('.');
-        if (dot >= 0 && dot < name.Length - 1 && name.IndexOf(' ') < 0) {
-            name = name.Substring(dot + 1);
-        }
-        return name.Length == 0 ? "Media" : char.ToUpperInvariant(name[0]) + name.Substring(1);
     }
 
     private void OnChanged(object? sender, EventArgs args) {

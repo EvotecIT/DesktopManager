@@ -25,7 +25,7 @@ public sealed class MediaSessionInfo {
     public string Artist { get; }
     /// <summary>Gets the source application's Windows app user model identifier.</summary>
     public string SourceAppId { get; }
-    /// <summary>Gets a display name derived from the source identifier.</summary>
+    /// <summary>Gets the source application's display name, such as "Microsoft Edge"; falls back to a name derived from <see cref="SourceAppId"/>.</summary>
     public string SourceName { get; }
     /// <summary>Gets a copy of the encoded artwork bytes, or null when absent, unreadable, or larger than 16 MiB.</summary>
     public byte[]? ArtworkData => _artworkData == null ? null : (byte[])_artworkData.Clone();
