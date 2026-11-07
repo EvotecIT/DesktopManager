@@ -122,7 +122,7 @@ public partial class WindowManager {
         }
     }
 
-    private static string? TryGetProcessPath(uint processId) {
+    internal static string? TryGetProcessPath(uint processId) {
         IntPtr handle = MonitorNativeMethods.OpenProcess(
             MonitorNativeMethods.PROCESS_QUERY_LIMITED_INFORMATION,
             false,
