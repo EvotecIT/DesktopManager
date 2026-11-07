@@ -78,8 +78,12 @@ internal static class MediaSourceNameResolver {
     private static string? GetExecutableDescription(string appId) {
         string? path = Path.IsPathRooted(appId) ? appId : FindRunningExecutable(appId);
         // Metadata is optional. Avoid UNC paths and mapped network drives while media operations are serialized.
-        if (path == null || path.StartsWith(@"\\", StringComparison.Ordinal)
-            || new DriveInfo(Path.GetPathRoot(path)!).DriveType != DriveType.Fixed || !File.Exists(path)) {
+        if (path == null || path.StartsWith(@"\\", StringComparison.Ordinal)) {
+            return null;
+        }
+        string? root = Path.GetPathRoot(path);
+        if (string.IsNullOrEmpty(root) || root!.Length < 2 || root[1] != ':'
+            || new DriveInfo(root).DriveType != DriveType.Fixed || !File.Exists(path)) {
             return null;
         }
         try {
