@@ -10,6 +10,10 @@ public sealed partial class SystemPowerService {
     private static readonly Guid BestPowerEfficiencyOverlay = new("961cc777-2547-4f9d-8174-7d86181b8a7a");
     private static readonly Guid BetterBatteryOverlay = new("3af9b8d9-7c97-431d-ad78-34a8bfea439f");
     private static readonly Guid BestPerformanceOverlay = new("ded574b5-45a0-4f42-8737-46345c09c238");
+    private const string PowerSchemesKey = @"SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes";
+    private static readonly IntPtr HKeyLocalMachine = new(unchecked((int)0x80000002));
+    private const int KeyQueryValue = 0x0001;
+    private static readonly PowerOverlayCache OverlayCache = new(ReadOverlayStamp, ReadOverlayScheme);
 
     /// <summary>
     /// Reads the active power plan and the power mode chosen in Settings. This only reads; it never changes either.
@@ -34,7 +38,7 @@ public sealed partial class SystemPowerService {
             LocalFree(schemePointer);
         }
 
-        return new SystemPowerPlan(schemeId, name, ReadOverlayScheme());
+        return new SystemPowerPlan(schemeId, name, OverlayCache.Get(schemeId));
     }
 
     internal static SystemPowerMode ToPowerMode(Guid overlay) {
@@ -85,7 +89,38 @@ public sealed partial class SystemPowerService {
         }
     }
 
+    /// <summary>
+    /// Settings stores the chosen overlays as values of the power schemes key, so its last write time moves
+    /// whenever they or the active plan change; the power source decides which overlay applies.
+    /// </summary>
+    private static PowerOverlayStamp? ReadOverlayStamp() {
+        if (!GetSystemPowerStatus(out NativeSystemPowerStatus status)
+            || RegOpenKeyEx(HKeyLocalMachine, PowerSchemesKey, 0, KeyQueryValue, out IntPtr key) != 0) {
+            return null;
+        }
+
+        try {
+            return RegQueryInfoKey(key, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero,
+                IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, out long lastWriteTime) == 0
+                ? new PowerOverlayStamp(lastWriteTime, status.ACLineStatus, status.SystemStatusFlag)
+                : (PowerOverlayStamp?)null;
+        } finally {
+            RegCloseKey(key);
+        }
+    }
+
     private const uint ErrorMoreData = 234;
+
+    [DllImport("advapi32.dll", EntryPoint = "RegOpenKeyExW", CharSet = CharSet.Unicode)]
+    private static extern int RegOpenKeyEx(IntPtr key, string subKey, int options, int desired, out IntPtr result);
+
+    [DllImport("advapi32.dll", EntryPoint = "RegQueryInfoKeyW")]
+    private static extern int RegQueryInfoKey(IntPtr key, IntPtr className, IntPtr classNameLength, IntPtr reserved,
+        IntPtr subKeys, IntPtr maxSubKeyLength, IntPtr maxClassLength, IntPtr values, IntPtr maxValueNameLength,
+        IntPtr maxValueLength, IntPtr securityDescriptorLength, out long lastWriteTime);
+
+    [DllImport("advapi32.dll")]
+    private static extern int RegCloseKey(IntPtr key);
 
     [DllImport("powrprof.dll")]
     private static extern uint PowerGetActiveScheme(IntPtr userRootPowerKey, out IntPtr activePolicyGuid);

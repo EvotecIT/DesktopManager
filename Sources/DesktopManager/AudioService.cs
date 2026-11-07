@@ -12,14 +12,22 @@ namespace DesktopManager;
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public partial class AudioService {
+    private static readonly AudioDefaultEndpointCache DefaultEndpoints =
+        new(notified => new AudioEndpointWatcher(notified));
+
     private readonly IPolicyConfigClient _policy;
+    private readonly AudioDefaultEndpointCache _defaultEndpoints;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AudioService"/> class.
     /// </summary>
     /// <param name="policy">Optional policy configuration client.</param>
-    public AudioService(IPolicyConfigClient? policy = null) {
+    public AudioService(IPolicyConfigClient? policy = null) : this(policy, DefaultEndpoints) {
+    }
+
+    internal AudioService(IPolicyConfigClient? policy, AudioDefaultEndpointCache defaultEndpoints) {
         _policy = policy ?? new PolicyConfigClient();
+        _defaultEndpoints = defaultEndpoints;
     }
 
     /// <summary>
@@ -46,8 +54,13 @@ public partial class AudioService {
             ? new[] { AudioRole.Console, AudioRole.Multimedia, AudioRole.Communications }
             : roles.Distinct().ToArray();
         ERole[] nativeRoles = selectedRoles.Select(ToNativeRole).ToArray();
-        foreach (ERole role in nativeRoles) {
-            _policy.SetDefaultEndpoint(deviceId, role);
+        try {
+            foreach (ERole role in nativeRoles) {
+                _policy.SetDefaultEndpoint(deviceId, role);
+            }
+        } finally {
+            // Core Audio reports the change asynchronously; a read straight after this call must not see the old default.
+            _defaultEndpoints.OnEndpointChanged(AudioEndpointChangeKind.DefaultChanged);
         }
     }
 
@@ -84,9 +97,38 @@ public partial class AudioService {
             throw new ArgumentNullException(nameof(deviceId));
         }
 
-        AudioEndpointInfo? endpoint = GetEndpoints().FirstOrDefault(candidate =>
-            string.Equals(candidate.Id, deviceId, StringComparison.OrdinalIgnoreCase));
-        return endpoint ?? throw new InvalidOperationException($"Audio endpoint '{deviceId}' was not found.");
+        // Open only the requested endpoint. Enumerating every endpoint activates volume on each one, which
+        // costs tens to hundreds of milliseconds on machines with many disconnected devices.
+        IMMDeviceEnumerator enumerator = CoreAudioNative.CreateEnumerator();
+        IMMDevice? device = null;
+        try {
+            if (enumerator.GetDevice(deviceId, out device) < 0 || device == null) {
+                throw EndpointNotFound(deviceId, null);
+            }
+
+            try {
+                AudioDataFlow dataFlow = GetDataFlow(device);
+                IReadOnlyDictionary<AudioRole, string> defaults = _defaultEndpoints.Get(
+                    dataFlow,
+                    () => GetDefaultEndpointIds(enumerator, dataFlow));
+                return CreateEndpointInfo(device, dataFlow, defaults);
+            } catch (Exception ex) when (ex is COMException || ex is InvalidCastException) {
+                DesktopManagerDiagnostics.Report($"Audio endpoint '{deviceId}' could not be read: {ex.Message}");
+                throw EndpointNotFound(deviceId, ex);
+            }
+        } finally {
+            NativeComActivation.Release(device);
+            NativeComActivation.Release(enumerator);
+        }
+    }
+
+    private static InvalidOperationException EndpointNotFound(string deviceId, Exception? innerException) {
+        return new InvalidOperationException($"Audio endpoint '{deviceId}' was not found.", innerException);
+    }
+
+    private static AudioDataFlow GetDataFlow(IMMDevice device) {
+        Marshal.ThrowExceptionForHR(((IMMEndpoint)device).GetDataFlow(out NativeAudioDataFlow dataFlow));
+        return dataFlow == NativeAudioDataFlow.Capture ? AudioDataFlow.Capture : AudioDataFlow.Render;
     }
 
     /// <summary>Sets master volume for an audio endpoint.</summary>
@@ -175,7 +217,11 @@ public partial class AudioService {
         Marshal.ThrowExceptionForHR(device.GetId(out string id));
         Marshal.ThrowExceptionForHR(device.GetState(out AudioEndpointState state));
         string name = GetFriendlyName(device) ?? id;
-        GetVolumeState(device, out float? volumePercent, out bool? isMuted);
+        float? volumePercent = null;
+        bool? isMuted = null;
+        if (state == AudioEndpointState.Active) {
+            GetVolumeState(device, out volumePercent, out isMuted);
+        }
         AudioRole[] roles = defaults
             .Where(pair => string.Equals(pair.Value, id, StringComparison.OrdinalIgnoreCase))
             .Select(pair => pair.Key)

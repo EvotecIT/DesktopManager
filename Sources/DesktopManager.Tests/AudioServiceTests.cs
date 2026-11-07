@@ -91,6 +91,40 @@ public class AudioServiceTests {
     }
 
     [TestMethod]
+    public void GetEndpoint_InactiveDevices_DoNotThrowVolumeActivationExceptions() {
+        var service = new AudioService();
+        AudioEndpointInfo[] inactive = service.GetEndpoints()
+            .Where(endpoint => endpoint.State != AudioEndpointState.Active).ToArray();
+        if (inactive.Length == 0) {
+            Assert.Inconclusive("This machine has no inactive endpoints to verify.");
+        }
+        int threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+        int exceptions = 0;
+        var reads = new List<AudioEndpointInfo>();
+        void OnException(object? sender, System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs args) {
+            if (System.Threading.Thread.CurrentThread.ManagedThreadId == threadId
+                && args.Exception is System.Runtime.InteropServices.COMException) {
+                exceptions++;
+            }
+        }
+        AppDomain.CurrentDomain.FirstChanceException += OnException;
+        try {
+            foreach (AudioEndpointInfo endpoint in inactive) {
+                AudioEndpointInfo read = service.GetEndpoint(endpoint.Id);
+                Assert.AreEqual(endpoint.Id, read.Id);
+                reads.Add(read);
+            }
+        } finally {
+            AppDomain.CurrentDomain.FirstChanceException -= OnException;
+        }
+        Assert.AreEqual(0, exceptions, "Inactive endpoints must not activate volume and then swallow COM exceptions.");
+        foreach (AudioEndpointInfo read in reads) {
+            Assert.IsNull(read.VolumePercent);
+            Assert.IsNull(read.IsMuted);
+        }
+    }
+
+    [TestMethod]
     /// <summary>
     /// Registers the managed notification callback with Core Audio and unregisters the same callback on dispose.
     /// The constructor and Dispose throw when Core Audio rejects the registration or unregistration HRESULT.

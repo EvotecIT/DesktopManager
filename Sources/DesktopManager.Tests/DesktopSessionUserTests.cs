@@ -168,4 +168,11 @@ public sealed class DesktopSessionUserTests {
         Assert.AreEqual("sessionId", exception.ParamName);
         Assert.AreEqual(sessionId, exception.ActualValue);
     }
+
+    [TestMethod]
+    public void CurrentProcessSessionId_MatchesProcessSessionId() {
+        using System.Diagnostics.Process process = System.Diagnostics.Process.GetCurrentProcess();
+
+        Assert.AreEqual(process.SessionId, DesktopSessionService.CurrentProcessSessionId);
+    }
 }

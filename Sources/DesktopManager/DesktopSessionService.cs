@@ -23,7 +23,7 @@ public sealed partial class DesktopSessionService {
     /// <summary>Gets the session hosting the current DesktopManager process.</summary>
     /// <returns>The current session snapshot.</returns>
     public DesktopSessionInfo GetCurrentSession() {
-        int sessionId = Process.GetCurrentProcess().SessionId;
+        int sessionId = CurrentProcessSessionId;
         string userName = QueryString(sessionId, WtsUserName);
         string domainName = QueryString(sessionId, WtsDomainName);
         string clientName = QueryString(sessionId, WtsClientName);

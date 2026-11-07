@@ -64,11 +64,7 @@ public sealed partial class DesktopSessionService {
         }
     }
 
-    private static int GetProcessSessionId() {
-        using (Process process = Process.GetCurrentProcess()) {
-            return process.SessionId;
-        }
-    }
+    private static int GetProcessSessionId() => CurrentProcessSessionId;
 
     private static int GetActiveConsoleSessionId() {
         uint sessionId = WTSGetActiveConsoleSessionId();

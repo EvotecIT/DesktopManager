@@ -90,6 +90,18 @@ internal partial interface IMMDevice {
 [ComImport]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 #endif
+[Guid("1BE09788-6894-4089-8586-9A2A6C265AC5")]
+internal partial interface IMMEndpoint {
+    [PreserveSig]
+    int GetDataFlow(out NativeAudioDataFlow dataFlow);
+}
+
+#if NET8_0_OR_GREATER
+[GeneratedComInterface]
+#else
+[ComImport]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#endif
 [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
 internal partial interface IPropertyStore {
     [PreserveSig]
