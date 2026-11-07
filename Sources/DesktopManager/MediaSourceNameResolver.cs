@@ -17,10 +17,23 @@ internal static class MediaSourceNameResolver {
         if (string.IsNullOrWhiteSpace(appId)) {
             return FallbackName(appId ?? string.Empty);
         }
-        return Cache.GetOrAdd(appId, static id => ResolveUncached(id));
+        // Executable basenames can refer to a different process on the next read, and files can be replaced.
+        if (appId.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            || appId.IndexOf('\\') >= 0 || appId.IndexOf('/') >= 0) {
+            return ResolveUncached(appId) ?? FallbackName(appId);
+        }
+        if (Cache.TryGetValue(appId, out string? cached)) {
+            return cached;
+        }
+        string? resolved = ResolveUncached(appId);
+        if (resolved == null) {
+            // A source may have exited or not registered yet. Let the next read try again.
+            return FallbackName(appId);
+        }
+        return Cache.GetOrAdd(appId, resolved);
     }
 
-    private static string ResolveUncached(string appId) {
+    private static string? ResolveUncached(string appId) {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             try {
                 string? name = Path.IsPathRooted(appId) ? null : GetAppsFolderName(appId);
@@ -32,7 +45,7 @@ internal static class MediaSourceNameResolver {
                 DesktopManagerDiagnostics.Report($"Media source name could not be resolved: {ex.Message}");
             }
         }
-        return FallbackName(appId);
+        return null;
     }
 
     internal static string? GetAppsFolderName(string appId) {
@@ -64,7 +77,9 @@ internal static class MediaSourceNameResolver {
 
     private static string? GetExecutableDescription(string appId) {
         string? path = Path.IsPathRooted(appId) ? appId : FindRunningExecutable(appId);
-        if (path == null || !File.Exists(path)) {
+        // Metadata is optional. Avoid UNC paths and mapped network drives while media operations are serialized.
+        if (path == null || path.StartsWith(@"\\", StringComparison.Ordinal)
+            || new DriveInfo(Path.GetPathRoot(path)!).DriveType != DriveType.Fixed || !File.Exists(path)) {
             return null;
         }
         try {
@@ -81,13 +96,16 @@ internal static class MediaSourceNameResolver {
         }
         Process[] processes = Process.GetProcessesByName(appId.Substring(0, appId.Length - 4));
         try {
+            string? candidate = null;
             foreach (Process process in processes) {
                 string? path = WindowManager.TryGetProcessPath((uint)process.Id);
-                if (!string.IsNullOrEmpty(path)) {
-                    return path;
+                if (string.IsNullOrEmpty(path)
+                    || (candidate != null && !string.Equals(candidate, path, StringComparison.OrdinalIgnoreCase))) {
+                    return null;
                 }
+                candidate = path;
             }
-            return null;
+            return candidate;
         } finally {
             foreach (Process process in processes) {
                 process.Dispose();
