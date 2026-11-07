@@ -12,17 +12,22 @@ namespace DesktopManager;
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public partial class AudioService {
-    internal static readonly AudioDefaultEndpointCache DefaultEndpoints =
+    private static readonly AudioDefaultEndpointCache DefaultEndpoints =
         new(notified => new AudioEndpointWatcher(notified));
 
     private readonly IPolicyConfigClient _policy;
+    private readonly AudioDefaultEndpointCache _defaultEndpoints;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AudioService"/> class.
     /// </summary>
     /// <param name="policy">Optional policy configuration client.</param>
-    public AudioService(IPolicyConfigClient? policy = null) {
+    public AudioService(IPolicyConfigClient? policy = null) : this(policy, DefaultEndpoints) {
+    }
+
+    internal AudioService(IPolicyConfigClient? policy, AudioDefaultEndpointCache defaultEndpoints) {
         _policy = policy ?? new PolicyConfigClient();
+        _defaultEndpoints = defaultEndpoints;
     }
 
     /// <summary>
@@ -55,7 +60,7 @@ public partial class AudioService {
             }
         } finally {
             // Core Audio reports the change asynchronously; a read straight after this call must not see the old default.
-            DefaultEndpoints.OnEndpointChanged(AudioEndpointChangeKind.DefaultChanged);
+            _defaultEndpoints.OnEndpointChanged(AudioEndpointChangeKind.DefaultChanged);
         }
     }
 
@@ -103,7 +108,7 @@ public partial class AudioService {
 
             try {
                 AudioDataFlow dataFlow = GetDataFlow(device);
-                IReadOnlyDictionary<AudioRole, string> defaults = DefaultEndpoints.Get(
+                IReadOnlyDictionary<AudioRole, string> defaults = _defaultEndpoints.Get(
                     dataFlow,
                     () => GetDefaultEndpointIds(enumerator, dataFlow));
                 return CreateEndpointInfo(device, dataFlow, defaults);
@@ -212,7 +217,11 @@ public partial class AudioService {
         Marshal.ThrowExceptionForHR(device.GetId(out string id));
         Marshal.ThrowExceptionForHR(device.GetState(out AudioEndpointState state));
         string name = GetFriendlyName(device) ?? id;
-        GetVolumeState(device, out float? volumePercent, out bool? isMuted);
+        float? volumePercent = null;
+        bool? isMuted = null;
+        if (state == AudioEndpointState.Active) {
+            GetVolumeState(device, out volumePercent, out isMuted);
+        }
         AudioRole[] roles = defaults
             .Where(pair => string.Equals(pair.Value, id, StringComparison.OrdinalIgnoreCase))
             .Select(pair => pair.Key)

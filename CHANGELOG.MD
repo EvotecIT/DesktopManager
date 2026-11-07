@@ -1,3 +1,11 @@
+## 4.9.0 - 2026.11.07
+
+- Resolve media source application IDs to their registered display names or executable file descriptions, while keeping the raw ID in `SourceAppId`. Retry unavailable names and avoid reusing names from a different executable with the same basename.
+- Read a single audio endpoint directly instead of enumerating every device. Disabled, unplugged and not-present endpoints skip volume activation and return unavailable volume and mute values without expected activation exceptions.
+- Cache default audio endpoint IDs with synchronous notification invalidation and a 30-second maximum age. Explicit default-device changes invalidate the cache immediately.
+- Cache the process session ID and successful sign-in-time reads, and prevent a concurrent failed read from clearing a valid sign-in time.
+- Reuse the effective power mode while its plan, registry stamp and power source stay unchanged. Failed overlay reads retry on the next call.
+
 ## 4.8.0 - 2026.11.05
 
 - Ignore microphone and camera usage records that predate both boot and the current sign-in, so a crash or power loss no longer leaves an app reported as still using the device. Active records use the recorded sign-in time rather than a moving boot estimate; ambiguous timestamps after Fast Startup or a backwards clock correction return unavailable rather than a successful empty snapshot.

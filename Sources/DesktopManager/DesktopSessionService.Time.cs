@@ -12,7 +12,10 @@ public sealed partial class DesktopSessionService {
         long logonFileTime = Interlocked.Read(ref _logonFileTime);
         if (logonFileTime == 0) {
             logonFileTime = QueryLogonFileTime(CurrentProcessSessionId);
-            Interlocked.Exchange(ref _logonFileTime, logonFileTime);
+            if (logonFileTime != 0) {
+                Interlocked.CompareExchange(ref _logonFileTime, logonFileTime, 0);
+            }
+            logonFileTime = Interlocked.Read(ref _logonFileTime);
         }
         return logonFileTime;
     }

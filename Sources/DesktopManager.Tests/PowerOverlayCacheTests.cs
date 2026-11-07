@@ -45,6 +45,19 @@ public sealed class PowerOverlayCacheTests {
     }
 
     [TestMethod]
+    public void Get_FailedOverlayRead_RetriesWithoutAStampChange() {
+        int reads = 0;
+        var cache = new PowerOverlayCache(
+            () => new PowerOverlayStamp(100, 1, 0),
+            () => ++reads == 1 ? (Guid?)null : BestPerformance);
+
+        Assert.IsNull(cache.Get(Balanced));
+        Assert.AreEqual(BestPerformance, cache.Get(Balanced));
+        Assert.AreEqual(BestPerformance, cache.Get(Balanced));
+        Assert.AreEqual(2, reads, "An unavailable read must retry; a recovered overlay can be cached.");
+    }
+
+    [TestMethod]
     public void Get_AfterMaximumAge_ReadsAgain() {
         TimeSpan now = TimeSpan.FromHours(1);
         int reads = 0;

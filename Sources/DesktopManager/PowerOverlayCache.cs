@@ -43,7 +43,7 @@ internal sealed class PowerOverlayCache {
         // Read outside the lock so a slow Windows call never blocks other callers. The stamp was taken first,
         // so a change racing with this read leaves an older stamp behind and the next call reads again.
         Guid? overlay = _readOverlay();
-        if (stamp.HasValue) {
+        if (stamp.HasValue && overlay.HasValue) {
             lock (_gate) {
                 _hasValue = true;
                 _scheme = activeScheme;

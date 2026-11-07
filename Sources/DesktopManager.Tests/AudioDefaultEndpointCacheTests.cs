@@ -79,19 +79,18 @@ public sealed class AudioDefaultEndpointCacheTests {
 
     [TestMethod]
     public void SetDefaultAudioDevice_ForgetsCachedDefaults() {
-        var service = new AudioService(new NoOpPolicyConfig());
+        var cache = new AudioDefaultEndpointCache(_ => new Subscription());
+        var service = new AudioService(new NoOpPolicyConfig(), cache);
         int queries = 0;
-        try {
-            AudioService.DefaultEndpoints.Get(AudioDataFlow.Render, () => { queries++; return SpeakersDefault; });
+        IReadOnlyDictionary<AudioRole, string> Query() { queries++; return SpeakersDefault; }
+        cache.Get(AudioDataFlow.Render, Query);
+        cache.Get(AudioDataFlow.Render, Query);
+        Assert.AreEqual(1, queries, "Prove the first answer was cached before changing the default.");
 
-            service.SetDefaultAudioDevice("headset", AudioRole.Multimedia);
-            AudioService.DefaultEndpoints.Get(AudioDataFlow.Render, () => { queries++; return SpeakersDefault; });
+        service.SetDefaultAudioDevice("headset", AudioRole.Multimedia);
+        cache.Get(AudioDataFlow.Render, Query);
 
-            Assert.AreEqual(2, queries);
-        } finally {
-            // Leave no fake defaults behind for other tests in this process.
-            AudioService.DefaultEndpoints.OnEndpointChanged(AudioEndpointChangeKind.DefaultChanged);
-        }
+        Assert.AreEqual(2, queries);
     }
 
     private sealed class Subscription : IDisposable {
