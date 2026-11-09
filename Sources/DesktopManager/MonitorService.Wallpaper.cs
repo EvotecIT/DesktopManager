@@ -158,12 +158,7 @@ public partial class MonitorService {
         if (imageStream == null) {
             throw new ArgumentNullException(nameof(imageStream));
         }
-        string temp = WriteStreamToTempFile(imageStream);
-        try {
-            SetWallpaperInternal(monitorId, temp, false);
-        } finally {
-            DeleteTempFile(temp);
-        }
+        SetTemporaryWallpaper(imageStream, temp => SetWallpaperInternal(monitorId, temp, false));
     }
 
     /// <summary>
@@ -307,12 +302,7 @@ public partial class MonitorService {
         if (imageStream == null) {
             throw new ArgumentNullException(nameof(imageStream));
         }
-        string temp = WriteStreamToTempFile(imageStream);
-        try {
-            SetWallpaperInternal(temp, false);
-        } finally {
-            DeleteTempFile(temp);
-        }
+        SetTemporaryWallpaper(imageStream, temp => SetWallpaperInternal(temp, false));
     }
 
     /// <summary>

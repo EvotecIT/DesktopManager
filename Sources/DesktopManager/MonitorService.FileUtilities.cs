@@ -4,6 +4,23 @@ using System.IO;
 namespace DesktopManager;
 
 public partial class MonitorService {
+    private static void SetTemporaryWallpaper(Stream stream, Action<string> operation) {
+        string temp = WriteStreamToTempFile(stream);
+        try {
+            WallpaperComApartment.Invoke(() => {
+                try { operation(temp); return true; }
+                finally { DeleteTempFile(temp); }
+            });
+        } catch (NativeOperationOutcomeUnknownException) {
+            // An executing operation still owns the input file, even after its caller returns.
+            throw;
+        } catch {
+            // Failed admission or cancellation before execution leaves no worker using the file.
+            DeleteTempFile(temp);
+            throw;
+        }
+    }
+
     private static string WriteStreamToTempFile(Stream stream) {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         long? originalPosition = null;
