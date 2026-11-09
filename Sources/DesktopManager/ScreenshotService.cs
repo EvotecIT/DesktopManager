@@ -146,7 +146,7 @@ public static partial class ScreenshotService {
         }
 
 #if NET8_0_OR_GREATER
-        return ReadTextCoreAsync(bitmap, languageTag).GetAwaiter().GetResult();
+        return WorkerInvocation<DesktopOcrReadResult>.WaitFor(ReadTextCoreAsync(bitmap, languageTag), "OCR", 30000);
 #else
         throw new PlatformNotSupportedException("OCR text extraction requires the modern Windows DesktopManager targets.");
 #endif

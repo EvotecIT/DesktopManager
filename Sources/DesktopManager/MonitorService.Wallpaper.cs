@@ -172,7 +172,7 @@ public partial class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string monitorId, string url) {
-        SetWallpaperFromUrlAsync(monitorId, url).GetAwaiter().GetResult();
+        WorkerInvocation<bool>.WaitFor(SetWallpaperFromUrlAsync(monitorId, url), "Wallpaper download", 30000);
     }
 
     /// <summary>
@@ -255,7 +255,7 @@ public partial class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(int index, string url) {
-        SetWallpaperFromUrlAsync(index, url).GetAwaiter().GetResult();
+        WorkerInvocation<bool>.WaitFor(SetWallpaperFromUrlAsync(index, url), "Wallpaper download", 30000);
     }
 
     /// <summary>
@@ -320,7 +320,7 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string url) {
-        SetWallpaperFromUrlAsync(url).GetAwaiter().GetResult();
+        WorkerInvocation<bool>.WaitFor(SetWallpaperFromUrlAsync(url), "Wallpaper download", 30000);
     }
 
     /// <summary>

@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -26,7 +27,7 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
 
     private readonly Dictionary<int, Action<IntPtr>> _callbacks = new();
     private readonly object _syncRoot = new();
-    private readonly ManualResetEventSlim _ready = new(false);
+    private readonly WorkerGate _commands = new();
     private int _nextId;
     private Process? _process;
     private StreamWriter? _input;
@@ -50,7 +51,8 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
         }
 
         options ??= new ExternalHotkeyHostOptions();
-        lock (_syncRoot) {
+        _commands.Enter("Hotkey helper command");
+        try {
             if (_disposed) {
                 throw new ObjectDisposedException(nameof(ExternalHotkeyHostClient));
             }
@@ -58,7 +60,7 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
             EnsureStarted(options);
 
             int id = ++_nextId;
-            _callbacks[id] = callback;
+            lock (_syncRoot) { _callbacks[id] = callback; }
             Send(new ExternalHotkeyHostCommand {
                 Type = ExternalHotkeyHostCommandTypes.Register,
                 RegistrationId = id,
@@ -68,7 +70,7 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
                 ExclusiveForegroundProcessNames = new List<string>(options.ExclusiveForegroundProcessNames)
             });
             return id;
-        }
+        } finally { _commands.Exit(); }
     }
 
     /// <summary>
@@ -76,8 +78,9 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
     /// </summary>
     /// <param name="registrationId">Registration identifier returned by <see cref="RegisterHotkey"/>.</param>
     public void UnregisterHotkey(int registrationId) {
-        lock (_syncRoot) {
-            _callbacks.Remove(registrationId);
+        _commands.Enter("Hotkey helper command");
+        try {
+            lock (_syncRoot) { _callbacks.Remove(registrationId); }
             if (_process == null || _process.HasExited) {
                 return;
             }
@@ -86,28 +89,34 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
                 Type = ExternalHotkeyHostCommandTypes.Unregister,
                 RegistrationId = registrationId
             });
-        }
+        } finally { _commands.Exit(); }
     }
 
     /// <inheritdoc />
     public void Dispose() {
-        lock (_syncRoot) {
+        _commands.Enter("Hotkey helper shutdown");
+        try {
             if (_disposed) {
                 return;
             }
 
             _disposed = true;
-            _callbacks.Clear();
+            lock (_syncRoot) { _callbacks.Clear(); }
             if (_process != null && !_process.HasExited) {
                 TrySendShutdown();
+            }
+
+            if (_process != null && !_process.HasExited && !_process.WaitForExit(2000)) {
+                TryStopHelper(_process);
+                _input = null;
+                _process = null;
             }
 
             _input?.Dispose();
             _process?.Dispose();
             _input = null;
             _process = null;
-            _ready.Dispose();
-        }
+        } finally { _commands.Exit(); }
     }
 
     private void EnsureStarted(ExternalHotkeyHostOptions options) {
@@ -116,7 +125,6 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
         }
 
         string helperPath = ResolveHelperPath(options.HelperPath);
-        _ready.Reset();
         var startInfo = new ProcessStartInfo(helperPath) {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -128,19 +136,19 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
 
         _process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Unable to start hotkey helper '{helperPath}'.");
         _input = _process.StandardInput;
-        _readerThread = new Thread(ReadEvents) {
+        var process = _process;
+        var ready = new ThreadStartup();
+        _readerThread = new Thread(() => ReadEvents(process, ready)) {
             IsBackground = true,
             Name = "DesktopManager hotkey host reader"
         };
-        _readerThread.Start(_process);
-
-        int timeout = Math.Max(1000, options.StartupTimeoutMilliseconds);
-        if (!_ready.Wait(timeout)) {
-            string error = TryReadError(_process);
-            TryStopHelper(_process);
+        try {
+            ready.Start(_readerThread, "hotkey helper", Math.Max(1000, options.StartupTimeoutMilliseconds));
+        } catch {
+            TryStopHelper(process);
             _input = null;
             _process = null;
-            throw new InvalidOperationException($"Hotkey helper '{helperPath}' did not become ready within {timeout} ms.{error}");
+            throw;
         }
     }
 
@@ -172,8 +180,19 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
         }
 
         string line = JsonSerializer.Serialize(command, ExternalHotkeyHostJsonContext.Default.ExternalHotkeyHostCommand);
-        _input.WriteLine(line);
-        _input.Flush();
+        try {
+            WorkerInvocation<bool>.WaitFor(SendAsync(_input, line), "Hotkey helper command", 5000);
+        } catch (TimeoutException) {
+            if (_process != null) { TryStopHelper(_process); }
+            _input = null;
+            _process = null;
+            throw;
+        }
+    }
+
+    private static async Task SendAsync(StreamWriter input, string line) {
+        await input.WriteLineAsync(line).ConfigureAwait(false);
+        await input.FlushAsync().ConfigureAwait(false);
     }
 
     private void TrySendShutdown() {
@@ -185,60 +204,36 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
         }
     }
 
-    private void ReadEvents(object? state) {
-        var process = (Process)state!;
+    private void ReadEvents(Process process, ThreadStartup ready) {
+        bool reported = false;
         try {
             string? line;
             while ((line = process.StandardOutput.ReadLine()) != null) {
                 ExternalHotkeyHostEvent? hotkeyEvent = JsonSerializer.Deserialize(
-                    line,
-                    ExternalHotkeyHostJsonContext.Default.ExternalHotkeyHostEvent);
-                if (hotkeyEvent != null) {
-                    Dispatch(hotkeyEvent);
-                }
+                    line, ExternalHotkeyHostJsonContext.Default.ExternalHotkeyHostEvent);
+                if (hotkeyEvent == null) { continue; }
+                if (string.Equals(hotkeyEvent.Type, ExternalHotkeyHostEventTypes.Ready, StringComparison.OrdinalIgnoreCase)) {
+                    if (!reported) {
+                        reported = true;
+                        ready.Signal();
+                    }
+                } else { Dispatch(hotkeyEvent); }
             }
         } catch (IOException) {
         } catch (ObjectDisposedException) {
         } catch (JsonException) {
+        } finally {
+            if (!reported) { ready.Signal(new InvalidOperationException("The hotkey helper exited before reporting readiness.")); }
         }
     }
 
     private void Dispatch(ExternalHotkeyHostEvent hotkeyEvent) {
-        if (string.Equals(hotkeyEvent.Type, ExternalHotkeyHostEventTypes.Ready, StringComparison.OrdinalIgnoreCase)) {
-            _ready.Set();
-            return;
-        }
-
-        if (!string.Equals(hotkeyEvent.Type, ExternalHotkeyHostEventTypes.Triggered, StringComparison.OrdinalIgnoreCase)) {
-            return;
-        }
-
+        if (!string.Equals(hotkeyEvent.Type, ExternalHotkeyHostEventTypes.Triggered, StringComparison.OrdinalIgnoreCase)) { return; }
         Action<IntPtr>? callback;
-        lock (_syncRoot) {
-            _callbacks.TryGetValue(hotkeyEvent.RegistrationId, out callback);
-        }
-
-        if (callback == null) {
-            return;
-        }
-
+        lock (_syncRoot) { _callbacks.TryGetValue(hotkeyEvent.RegistrationId, out callback); }
+        if (callback == null) { return; }
         IntPtr foregroundHandle = new(hotkeyEvent.ForegroundWindowHandle);
         ThreadPool.QueueUserWorkItem(_ => callback(foregroundHandle));
-    }
-
-    private static string TryReadError(Process process) {
-        try {
-            if (!process.HasExited) {
-                return string.Empty;
-            }
-
-            string error = process.StandardError.ReadToEnd();
-            return string.IsNullOrWhiteSpace(error) ? string.Empty : $" Error: {error.Trim()}";
-        } catch (InvalidOperationException) {
-            return string.Empty;
-        } catch (Win32Exception) {
-            return string.Empty;
-        }
     }
 
     private static void TryStopHelper(Process process) {

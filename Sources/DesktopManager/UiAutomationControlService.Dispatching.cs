@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -85,62 +84,22 @@ internal sealed partial class UiAutomationControlService {
     /// deliberately framework-neutral so WPF, WinForms, and other HWND-backed providers share
     /// the same behavior on .NET Framework and modern .NET.
     /// </summary>
-    private static bool TryRunWithCurrentUiMessagePump<T>(Func<T> operation, out T result) {
+    private static bool TryRunWithCurrentUiMessagePump<T>(Func<T> operation, out T result,
+        int timeoutMilliseconds, Action<T>? abandonedResultHandler) {
         result = default!;
-        if (!ShouldPumpCurrentThread()) {
-            return false;
+        if (!ShouldPumpCurrentThread()) { return false; }
+        using var invocation = new WorkerInvocation<T>(abandonedResultHandler);
+        bool admitted = false;
+        try {
+            admitted = ThreadPool.QueueUserWorkItem(_ => invocation.Execute(operation));
+            if (!admitted) { throw new InvalidOperationException("The UI Automation operation could not be queued."); }
+        } catch {
+            if (!admitted) { invocation.Reject(); }
+            throw;
         }
-
-        T workerResult = default!;
-        ExceptionDispatchInfo? workerException = null;
-        using var completed = new EventWaitHandle(false, EventResetMode.ManualReset);
-        ThreadPool.QueueUserWorkItem(_ => {
-            try {
-                workerResult = operation();
-            } catch (Exception ex) {
-                workerException = ExceptionDispatchInfo.Capture(ex);
-            } finally {
-                completed.Set();
-            }
-        });
-
-        bool repostQuit = false;
-        int quitCode = 0;
-        IntPtr[] handles = { completed.SafeWaitHandle.DangerousGetHandle() };
-        while (true) {
-            uint waitResult = MsgWaitForMultipleObjectsEx(
-                1,
-                handles,
-                InfiniteWait,
-                MessageQueueInput,
-                MessageWaitInputAvailable);
-            if (waitResult == WaitObject0) {
-                break;
-            }
-
-            if (waitResult == WaitFailed) {
-                completed.WaitOne();
-                break;
-            }
-
-            while (PeekMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0, PeekMessageRemove)) {
-                if (message.message == WindowMessageQuit) {
-                    repostQuit = true;
-                    quitCode = unchecked((int)message.wParam.ToInt64());
-                    continue;
-                }
-
-                MonitorNativeMethods.TranslateMessage(ref message);
-                MonitorNativeMethods.DispatchMessage(ref message);
-            }
-        }
-
-        if (repostQuit) {
-            PostQuitMessage(quitCode);
-        }
-
-        workerException?.Throw();
-        result = workerResult;
+        bool observed = WaitForSignalWithCurrentUiMessagePump(invocation.CompletionSignal, timeoutMilliseconds);
+        try { result = invocation.GetResult("UI Automation", timeoutMilliseconds, observed); }
+        catch (NativeOperationOutcomeUnknownException) { throw new UiAutomationOperationInFlightException(timeoutMilliseconds); }
         return true;
     }
 

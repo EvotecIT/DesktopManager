@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -13,11 +11,23 @@ namespace DesktopManager;
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class HotkeyService : IDisposable {
-    private static readonly Lazy<HotkeyService> _instance = new(() => new HotkeyService());
+    private static readonly WorkerGate InstanceGate = new();
+    private static HotkeyService? _instance;
 
     /// <summary>Gets the shared instance.</summary>
     /// <exception cref="TimeoutException">The message thread did not report readiness within five seconds.</exception>
-    public static HotkeyService Instance => _instance.Value;
+    public static HotkeyService Instance {
+        get {
+            var instance = Volatile.Read(ref _instance);
+            if (instance != null) { return instance; }
+            InstanceGate.Enter("Hotkey service startup");
+            try {
+                instance = _instance;
+                if (instance == null) { Volatile.Write(ref _instance, instance = new HotkeyService()); }
+                return instance;
+            } finally { InstanceGate.Exit(); }
+        }
+    }
 
     private readonly Dictionary<int, Action> _callbacks = new();
     private int _nextId;
@@ -47,54 +57,38 @@ public sealed class HotkeyService : IDisposable {
     }
 
     private void Invoke(Action action) {
-        if (_thread == null || Volatile.Read(ref _disposed) != 0) {
+        Thread? thread = _thread;
+        if (thread == null || Volatile.Read(ref _disposed) != 0) {
             throw new ObjectDisposedException(nameof(HotkeyService));
         }
 
-        if (Thread.CurrentThread.ManagedThreadId == _thread.ManagedThreadId) {
+        if (Thread.CurrentThread == thread) {
             action();
             return;
         }
 
-        var done = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        Exception? ex = null;
-        int state = 0;
-        lock (_actions) {
-            if (_disposed != 0) {
-                throw new ObjectDisposedException(nameof(HotkeyService));
-            }
-            if (_actions.Count >= 64) {
-                throw new TimeoutException("The hotkey message queue is full; the operation was not started.");
-            }
-            _actions.Enqueue(() => {
-                if (Interlocked.CompareExchange(ref state, 1, 0) != 0) {
-                    return;
-                }
-                try {
-                    if (Volatile.Read(ref _disposed) != 0) {
-                        throw new ObjectDisposedException(nameof(HotkeyService));
-                    }
+        using var invocation = new WorkerInvocation<bool>();
+        bool admitted = false;
+        try {
+            lock (_actions) {
+                if (Volatile.Read(ref _disposed) != 0) { throw new ObjectDisposedException(nameof(HotkeyService)); }
+                if (_actions.Count >= 64) { throw new TimeoutException("The hotkey message queue is full; the operation was not started."); }
+                _actions.Enqueue(() => invocation.Execute(() => {
+                    if (Volatile.Read(ref _disposed) != 0) { throw new ObjectDisposedException(nameof(HotkeyService)); }
                     action();
-                } catch (Exception e) {
-                    ex = e;
-                } finally {
-                    done.TrySetResult(true);
+                    return true;
+                }));
+                admitted = true;
+                if (!MonitorNativeMethods.PostMessage(_hwnd, WM_RUN, IntPtr.Zero, IntPtr.Zero)) {
+                    invocation.CancelPending();
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
                 }
-            });
-            if (!MonitorNativeMethods.PostMessage(_hwnd, WM_RUN, IntPtr.Zero, IntPtr.Zero)) {
-                Interlocked.CompareExchange(ref state, 2, 0);
-                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
             }
+        } catch {
+            if (!admitted) { invocation.Reject(); }
+            throw;
         }
-        if (!done.Task.Wait(5000)) {
-            if (Interlocked.CompareExchange(ref state, 2, 0) == 0) {
-                throw new TimeoutException("The hotkey operation was canceled before it started.");
-            }
-            throw new NativeOperationOutcomeUnknownException("Hotkey registration", 5000);
-        }
-        if (ex != null) {
-            ExceptionDispatchInfo.Capture(ex).Throw();
-        }
+        invocation.GetResult("Hotkey registration", 5000);
     }
 
     /// <summary>Window handle used for hotkey messages.</summary>

@@ -30,7 +30,7 @@ internal sealed partial class UiAutomationControlService {
             MonitorNativeMethods.GetWindowThreadProcessId(targetWindowHandle, out uint processId);
             if (TryRunWithCurrentUiMessagePump(
                     () => Dispatchers.Invoke(processId, operation, invocationTimeoutMilliseconds, abandonedResultHandler),
-                    out T pumpedResult)) {
+                    out T pumpedResult, invocationTimeoutMilliseconds, abandonedResultHandler)) {
                 return pumpedResult;
             }
 

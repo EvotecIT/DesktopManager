@@ -24,7 +24,8 @@ internal static class DesktopManagerWrapper {
             catch { NativeComActivation.Release(instance); throw; }
         }, System.Threading.LazyThreadSafetyMode.PublicationOnly);
 
-        private T Call<T>(Func<IDesktopManager, T> operation) => WallpaperComApartment.Invoke(() => operation(_instance.Value));
+        private T Call<T>(Func<IDesktopManager, T> operation, Action<T>? abandonedResultHandler = null) =>
+            WallpaperComApartment.Invoke(() => operation(_instance.Value), abandonedResultHandler);
 
         private void Call(Action<IDesktopManager> operation) => Call(manager => { operation(manager); return true; });
 
@@ -39,10 +40,14 @@ internal static class DesktopManagerWrapper {
         public DesktopWallpaperPosition GetPosition() => Call(manager => manager.GetPosition());
         public void SetSlideshow(IntPtr items) => Call(manager => manager.SetSlideshow(items));
         public uint GetSlideshow(out IntPtr items) {
-            IntPtr result = IntPtr.Zero;
-            var status = Call(manager => manager.GetSlideshow(out result));
-            items = result;
-            return status;
+            var result = Call(manager => {
+                uint status = manager.GetSlideshow(out IntPtr pointer);
+                return (status, pointer);
+            }, abandonedResultHandler: captured => {
+                if (captured.pointer != IntPtr.Zero) { System.Runtime.InteropServices.Marshal.Release(captured.pointer); }
+            });
+            items = result.pointer;
+            return result.status;
         }
         public void SetSlideshowOptions(DesktopSlideshowOptions options, uint slideshowTick) =>
             Call(manager => manager.SetSlideshowOptions(options, slideshowTick));

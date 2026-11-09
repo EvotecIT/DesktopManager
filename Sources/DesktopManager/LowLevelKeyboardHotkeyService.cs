@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
@@ -18,11 +17,23 @@ namespace DesktopManager;
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class LowLevelKeyboardHotkeyService : IDisposable {
-    private static readonly Lazy<LowLevelKeyboardHotkeyService> _instance = new(() => new LowLevelKeyboardHotkeyService());
+    private static readonly WorkerGate InstanceGate = new();
+    private static LowLevelKeyboardHotkeyService? _instance;
 
     /// <summary>Gets the shared instance.</summary>
     /// <exception cref="TimeoutException">The hook thread did not report readiness within five seconds.</exception>
-    public static LowLevelKeyboardHotkeyService Instance => _instance.Value;
+    public static LowLevelKeyboardHotkeyService Instance {
+        get {
+            var instance = Volatile.Read(ref _instance);
+            if (instance != null) { return instance; }
+            InstanceGate.Enter("Hotkey service startup");
+            try {
+                instance = _instance;
+                if (instance == null) { Volatile.Write(ref _instance, instance = new LowLevelKeyboardHotkeyService()); }
+                return instance;
+            } finally { InstanceGate.Exit(); }
+        }
+    }
 
     private readonly Dictionary<int, LowLevelKeyboardHotkeyRegistration> _registrations = new();
     private readonly HashSet<int> _pressedRegistrations = new();
@@ -126,31 +137,28 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
             return;
         }
 
-        using var done = new ManualResetEventSlim(false);
-        Exception? ex = null;
-        lock (_actions) {
-            if (_stopping) {
-                throw new ObjectDisposedException(nameof(LowLevelKeyboardHotkeyService));
-            }
-            _actions.Enqueue(() => {
-                try {
-                    if (_stopping) {
-                        throw new ObjectDisposedException(nameof(LowLevelKeyboardHotkeyService));
-                    }
+        using var invocation = new WorkerInvocation<bool>();
+        bool admitted = false;
+        try {
+            lock (_actions) {
+                if (_stopping) { throw new ObjectDisposedException(nameof(LowLevelKeyboardHotkeyService)); }
+                if (_actions.Count >= 64) { throw new TimeoutException("The hotkey message queue is full; the operation was not started."); }
+                _actions.Enqueue(() => invocation.Execute(() => {
+                    if (_stopping) { throw new ObjectDisposedException(nameof(LowLevelKeyboardHotkeyService)); }
                     action();
-                } catch (Exception e) {
-                    ex = e;
-                } finally {
-                    done.Set();
+                    return true;
+                }));
+                admitted = true;
+                if (!MonitorNativeMethods.PostThreadMessage(_threadId, WM_RUN, IntPtr.Zero, IntPtr.Zero)) {
+                    invocation.CancelPending();
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
                 }
-            });
-            MonitorNativeMethods.PostThreadMessage(_threadId, WM_RUN, IntPtr.Zero, IntPtr.Zero);
+            }
+        } catch {
+            if (!admitted) { invocation.Reject(); }
+            throw;
         }
-
-        done.Wait();
-        if (ex != null) {
-            ExceptionDispatchInfo.Capture(ex).Throw();
-        }
+        invocation.GetResult("Hotkey registration", 5000);
     }
 
     private void MessageLoop() {

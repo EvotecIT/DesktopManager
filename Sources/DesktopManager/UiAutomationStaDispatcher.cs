@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -55,8 +53,9 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
         Action<T>? abandonedResultHandler = null) {
         if (operation == null) { throw new ArgumentNullException(nameof(operation)); }
         if (timeoutMilliseconds <= 0) { throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds)); }
-        var item = new WorkItem<T>(operation, abandonedResultHandler);
-        Add(item);
+        using var item = new WorkItem<T>(operation, abandonedResultHandler);
+        try { Add(item); }
+        catch { item.Reject(); throw; }
         return item.GetResult(timeoutMilliseconds);
     }
 
@@ -148,52 +147,25 @@ internal sealed class UiAutomationStaDispatcher : IDisposable {
         }
     }
 
-    private sealed class WorkItem<T> : IWorkItem {
-        private const int Queued = 0, Executing = 1, Completed = 2, Abandoned = 3, AbandonedInFlight = 4;
+    private sealed class WorkItem<T> : IWorkItem, IDisposable {
         private readonly Func<UiAutomationControlService, T> _operation;
-        private readonly Action<T>? _abandonedResultHandler;
-        private readonly TaskCompletionSource<bool> _completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private ExceptionDispatchInfo? _exception;
-        private T _result = default!;
-        private int _state;
+        private readonly WorkerInvocation<T> _invocation;
         internal WorkItem(Func<UiAutomationControlService, T> operation, Action<T>? abandonedResultHandler) {
             _operation = operation;
-            _abandonedResultHandler = abandonedResultHandler;
+            _invocation = new WorkerInvocation<T>(abandonedResultHandler);
         }
-        public bool IsAbandonedInFlight => Volatile.Read(ref _state) == AbandonedInFlight;
+        public bool IsAbandonedInFlight => _invocation.IsAbandonedInFlight;
         public void Cancel() {
-            if (Interlocked.CompareExchange(ref _state, Completed, Queued) == Queued) {
-                _exception = ExceptionDispatchInfo.Capture(new ObjectDisposedException(nameof(UiAutomationStaDispatcher)));
-                _completed.TrySetResult(true);
-            }
+            _invocation.Execute(() => throw new ObjectDisposedException(nameof(UiAutomationStaDispatcher)));
         }
         public void Execute(UiAutomationControlService service) {
-            if (Interlocked.CompareExchange(ref _state, Executing, Queued) != Queued) { return; }
-            try {
-                _result = _operation(service);
-            } catch (Exception ex) {
-                _exception = ExceptionDispatchInfo.Capture(ex);
-            } finally {
-                int priorState = Interlocked.CompareExchange(ref _state, Completed, Executing);
-                if (priorState == AbandonedInFlight && _exception == null && _abandonedResultHandler != null) {
-                    try { _abandonedResultHandler(_result); } catch { /* Late-result cleanup is best effort. */ }
-                }
-                Volatile.Write(ref _state, Completed);
-                _completed.TrySetResult(true);
-            }
+            _invocation.Execute(() => _operation(service));
         }
         internal T GetResult(int timeoutMilliseconds) {
-            if (!_completed.Task.Wait(timeoutMilliseconds)) {
-                if (Interlocked.CompareExchange(ref _state, Abandoned, Queued) == Queued) {
-                    throw new TimeoutException($"UI Automation did not complete within {timeoutMilliseconds}ms and was canceled before it started.");
-                }
-                if (Interlocked.CompareExchange(ref _state, AbandonedInFlight, Executing) == Executing) {
-                    throw new UiAutomationOperationInFlightException(timeoutMilliseconds);
-                }
-                _completed.Task.GetAwaiter().GetResult();
-            }
-            _exception?.Throw();
-            return _result;
+            try { return _invocation.GetResult("UI Automation", timeoutMilliseconds); }
+            catch (NativeOperationOutcomeUnknownException) { throw new UiAutomationOperationInFlightException(timeoutMilliseconds); }
         }
+        internal void Reject() => _invocation.Reject();
+        public void Dispose() => _invocation.Dispose();
     }
 }
