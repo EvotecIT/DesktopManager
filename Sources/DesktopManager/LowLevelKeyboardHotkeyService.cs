@@ -116,11 +116,12 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
     }
 
     private void Invoke(Action action) {
-        if (_thread == null) {
+        Thread? thread = _thread;
+        if (thread == null || _stopping) {
             throw new ObjectDisposedException(nameof(LowLevelKeyboardHotkeyService));
         }
 
-        if (Thread.CurrentThread.ManagedThreadId == _thread.ManagedThreadId) {
+        if (Thread.CurrentThread == thread) {
             action();
             return;
         }
@@ -128,8 +129,14 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
         using var done = new ManualResetEventSlim(false);
         Exception? ex = null;
         lock (_actions) {
+            if (_stopping) {
+                throw new ObjectDisposedException(nameof(LowLevelKeyboardHotkeyService));
+            }
             _actions.Enqueue(() => {
                 try {
+                    if (_stopping) {
+                        throw new ObjectDisposedException(nameof(LowLevelKeyboardHotkeyService));
+                    }
                     action();
                 } catch (Exception e) {
                     ex = e;
@@ -137,9 +144,9 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
                     done.Set();
                 }
             });
+            MonitorNativeMethods.PostThreadMessage(_threadId, WM_RUN, IntPtr.Zero, IntPtr.Zero);
         }
 
-        MonitorNativeMethods.PostThreadMessage(_threadId, WM_RUN, IntPtr.Zero, IntPtr.Zero);
         done.Wait();
         if (ex != null) {
             ExceptionDispatchInfo.Capture(ex).Throw();
@@ -188,6 +195,8 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
                 MonitorNativeMethods.DispatchMessage(ref msg);
             }
         } finally {
+            // Stop can bypass queued WM_RUN messages. Complete their waiters with disposal errors.
+            RunQueuedActions();
             if (_hookHandle != IntPtr.Zero) {
                 MonitorNativeMethods.UnhookWindowsHookEx(_hookHandle);
                 _hookHandle = IntPtr.Zero;
@@ -359,10 +368,17 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
 
     /// <inheritdoc />
     public void Dispose() {
-        if (_thread != null) {
+        Thread? thread;
+        lock (_actions) {
+            thread = _thread;
+            if (thread == null) {
+                return;
+            }
             _stopping = true;
             MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
-            if (Thread.CurrentThread != _thread && !_thread.Join(TimeSpan.FromSeconds(2))) {
+        }
+        if (thread != null) {
+            if (Thread.CurrentThread != thread && !thread.Join(TimeSpan.FromSeconds(2))) {
                 throw new TimeoutException("The low-level keyboard hook thread did not stop within two seconds.");
             }
             _thread = null;
