@@ -6,19 +6,12 @@ namespace DesktopManager;
 public partial class MonitorService {
     private static void SetTemporaryWallpaper(Stream stream, Action<string> operation) {
         string temp = WriteStreamToTempFile(stream);
-        try {
-            WallpaperComApartment.Invoke(() => {
-                try { operation(temp); return true; }
-                finally { DeleteTempFile(temp); }
-            });
-        } catch (NativeOperationOutcomeUnknownException) {
-            // An executing operation still owns the input file, even after its caller returns.
-            throw;
-        } catch {
-            // Failed admission or cancellation before execution leaves no worker using the file.
-            DeleteTempFile(temp);
-            throw;
-        }
+        // Transfer the input to the request: cancellation retires it before execution,
+        // while an executing request retains it even if its caller's wait throws.
+        WallpaperComApartment.Invoke(() => {
+            operation(temp);
+            return true;
+        }, operationCleanup: () => DeleteTempFile(temp));
     }
 
     private static string WriteStreamToTempFile(Stream stream) {

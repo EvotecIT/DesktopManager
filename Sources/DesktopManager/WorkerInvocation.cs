@@ -11,11 +11,15 @@ internal sealed class WorkerInvocation<T> : IDisposable {
     private const int Queued = 0, Executing = 1, Completed = 2, Abandoned = 3, AbandonedInFlight = 4;
     private readonly WorkerCompletion _completion = new();
     private readonly Action<T>? _abandonedResultHandler;
+    private Action? _operationCleanup;
     private ExceptionDispatchInfo? _exception;
     private T _result = default!;
     private int _state;
 
-    internal WorkerInvocation(Action<T>? abandonedResultHandler = null) => _abandonedResultHandler = abandonedResultHandler;
+    internal WorkerInvocation(Action<T>? abandonedResultHandler = null, Action? operationCleanup = null) {
+        _abandonedResultHandler = abandonedResultHandler;
+        _operationCleanup = operationCleanup;
+    }
 
     internal bool IsAbandonedInFlight => Volatile.Read(ref _state) == AbandonedInFlight;
     internal WaitHandle CompletionSignal => _completion.Signal;
@@ -60,6 +64,7 @@ internal sealed class WorkerInvocation<T> : IDisposable {
     }
 
     private void Finish() {
+        CleanupOperation();
         int previous = Interlocked.CompareExchange(ref _state, Completed, Executing);
         if (previous == AbandonedInFlight && _exception == null && _abandonedResultHandler != null) {
             try { _abandonedResultHandler(_result); }
@@ -70,9 +75,21 @@ internal sealed class WorkerInvocation<T> : IDisposable {
     }
 
     // Only used when admission failed and no worker can execute this request.
-    internal void Reject() => _completion.Complete();
+    internal void Reject() {
+        CleanupOperation();
+        _completion.Complete();
+    }
 
-    internal void CancelPending() => Interlocked.CompareExchange(ref _state, Abandoned, Queued);
+    internal void CancelPending() {
+        if (Interlocked.CompareExchange(ref _state, Abandoned, Queued) == Queued) { CleanupOperation(); }
+    }
+
+    private void CleanupOperation() {
+        var cleanup = Interlocked.Exchange(ref _operationCleanup, null);
+        if (cleanup == null) { return; }
+        try { cleanup(); }
+        catch (Exception exception) { DesktopManagerDiagnostics.Report($"Worker operation cleanup failed: {exception.Message}"); }
+    }
 
     internal T GetResult(string operation, int timeoutMilliseconds = DefaultTimeoutMilliseconds) {
         return GetResult(operation, timeoutMilliseconds, _completion.Wait(timeoutMilliseconds));
@@ -81,6 +98,7 @@ internal sealed class WorkerInvocation<T> : IDisposable {
     internal T GetResult(string operation, int timeoutMilliseconds, bool completionObserved) {
         if (!completionObserved) {
             if (Interlocked.CompareExchange(ref _state, Abandoned, Queued) == Queued) {
+                CleanupOperation();
                 throw new TimeoutException($"{operation} did not complete within {timeoutMilliseconds}ms and was canceled before it started.");
             }
             if (Interlocked.CompareExchange(ref _state, AbandonedInFlight, Executing) == Executing) {

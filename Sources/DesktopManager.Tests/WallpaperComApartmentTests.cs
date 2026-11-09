@@ -7,9 +7,10 @@ namespace DesktopManager.Tests;
 [DoNotParallelize]
 public class WallpaperComApartmentTests {
     [TestMethod]
-    [DataRow(false)]
-    [DataRow(true)]
-    public void SetWallpaper_FromStream_KeepsInputUntilTimedOutWorkerFinishes(bool allMonitors) {
+    [DataRow(false, false)]
+    [DataRow(true, false)]
+    [DataRow(false, true)]
+    public void SetWallpaper_FromStream_KeepsInputUntilAbandonedWorkerFinishes(bool allMonitors, bool interruptWait) {
         WallpaperComApartment.Invoke(() => true);
         using var started = new ManualResetEvent(false);
         using var release = new ManualResetEvent(false);
@@ -18,19 +19,25 @@ public class WallpaperComApartmentTests {
         var service = new MonitorService(native);
         Exception? failure = null;
         var caller = new Thread(() => {
-            SynchronizationContext.SetSynchronizationContext(new InFlightTimeoutContext(started));
+            if (!interruptWait) { SynchronizationContext.SetSynchronizationContext(new InFlightTimeoutContext(started)); }
             try {
                 using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
-                Assert.ThrowsExactly<NativeOperationOutcomeUnknownException>(() => {
+                Action apply = () => {
                     if (allMonitors) { service.SetWallpaper(stream); }
                     else { service.SetWallpaper("test-monitor", stream); }
-                });
+                };
+                if (interruptWait) { Assert.ThrowsExactly<ThreadInterruptedException>(apply); }
+                else { Assert.ThrowsExactly<NativeOperationOutcomeUnknownException>(apply); }
             } catch (Exception exception) { failure = exception; }
             finally { SynchronizationContext.SetSynchronizationContext(null); }
         }) { IsBackground = true };
         caller.SetApartmentState(ApartmentState.STA);
         caller.Start();
         try {
+            if (interruptWait) {
+                Assert.IsTrue(started.WaitOne(5000), "The worker must own the input before its caller is interrupted.");
+                caller.Interrupt();
+            }
             Assert.IsTrue(caller.Join(5000), "The caller must return while wallpaper work is still running.");
             if (failure != null) { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw(); }
             Assert.IsNotNull(native.InputPath);

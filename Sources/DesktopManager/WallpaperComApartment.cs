@@ -15,15 +15,17 @@ internal static class WallpaperComApartment {
     /// <summary>Runs on the wallpaper apartment with a fifteen-second completion deadline.</summary>
     /// <exception cref="TimeoutException">Startup/admission timed out, or queued work was canceled before execution.</exception>
     /// <exception cref="NativeOperationOutcomeUnknownException">The operation is still running; inspect state before retrying mutations.</exception>
-    internal static T Invoke<T>(Func<T> operation, Action<T>? abandonedResultHandler = null) {
-        if (_isCurrent) { return operation(); }
-        var queue = GetQueue();
+    internal static T Invoke<T>(Func<T> operation, Action<T>? abandonedResultHandler = null, Action? operationCleanup = null) {
+        if (_isCurrent) {
+            try { return operation(); }
+            finally { operationCleanup?.Invoke(); }
+        }
         using var invocation = new WorkerInvocation<T>(abandonedResultHandler ?? (result => {
             if (result is IDisposable disposable) { disposable.Dispose(); }
-        }));
+        }), operationCleanup);
         bool admitted = false;
         try {
-            admitted = queue.TryAdd(() => invocation.Execute(operation));
+            admitted = GetQueue().TryAdd(() => invocation.Execute(operation));
             if (!admitted) { throw new TimeoutException("The wallpaper COM queue is full; the operation was not started."); }
         } catch {
             if (!admitted) { invocation.Reject(); }
