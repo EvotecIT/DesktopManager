@@ -61,6 +61,7 @@ public partial class MonitorService {
     private async Task SetSystemWallpaperFromUrlFallbackAsync(string url, CancellationToken cancellationToken) {
         Uri uri = CreateWallpaperUri(url);
         using MemoryStream stream = await DownloadWallpaperAsync(uri, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         SetSystemWallpaperFallback(stream);
         WallpaperHistory.AddEntry(url);
     }
@@ -167,7 +168,7 @@ public partial class MonitorService {
     /// <param name="monitorId">The monitor ID.</param>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string monitorId, string url) {
-        WorkerInvocation<bool>.WaitFor(SetWallpaperFromUrlAsync(monitorId, url), "Wallpaper download", 30000);
+        WaitForWallpaperDownload(token => SetWallpaperFromUrlAsync(monitorId, url, token));
     }
 
     /// <summary>
@@ -194,6 +195,7 @@ public partial class MonitorService {
 
         Uri uri = CreateWallpaperUri(url);
         using MemoryStream stream = await DownloadWallpaperAsync(uri, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         SetWallpaper(monitorId, stream);
         WallpaperHistory.AddEntry(url);
     }
@@ -250,7 +252,7 @@ public partial class MonitorService {
     /// <param name="index">The index of the monitor.</param>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(int index, string url) {
-        WorkerInvocation<bool>.WaitFor(SetWallpaperFromUrlAsync(index, url), "Wallpaper download", 30000);
+        WaitForWallpaperDownload(token => SetWallpaperFromUrlAsync(index, url, token));
     }
 
     /// <summary>
@@ -310,7 +312,7 @@ public partial class MonitorService {
     /// </summary>
     /// <param name="url">URL pointing to the image.</param>
     public void SetWallpaperFromUrl(string url) {
-        WorkerInvocation<bool>.WaitFor(SetWallpaperFromUrlAsync(url), "Wallpaper download", 30000);
+        WaitForWallpaperDownload(token => SetWallpaperFromUrlAsync(url, token));
     }
 
     /// <summary>
@@ -331,6 +333,7 @@ public partial class MonitorService {
     public async Task SetWallpaperFromUrlAsync(string url, CancellationToken cancellationToken) {
         Uri uri = CreateWallpaperUri(url);
         using MemoryStream stream = await DownloadWallpaperAsync(uri, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         SetWallpaper(stream);
         WallpaperHistory.AddEntry(url);
     }

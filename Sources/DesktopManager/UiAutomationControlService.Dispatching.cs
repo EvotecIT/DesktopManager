@@ -97,8 +97,10 @@ internal sealed partial class UiAutomationControlService {
             if (!admitted) { invocation.Reject(); }
             throw;
         }
-        bool observed = WaitForSignalWithCurrentUiMessagePump(invocation.CompletionSignal, timeoutMilliseconds);
-        try { result = invocation.GetResult("UI Automation", timeoutMilliseconds, observed); }
+        // Let the inner dispatcher publish its queued/in-flight outcome before the outer safety bound.
+        int outerTimeout = timeoutMilliseconds > int.MaxValue - 1000 ? int.MaxValue : timeoutMilliseconds + 1000;
+        bool observed = WaitForSignalWithCurrentUiMessagePump(invocation.CompletionSignal, outerTimeout);
+        try { result = invocation.GetResult("UI Automation", outerTimeout, observed); }
         catch (NativeOperationOutcomeUnknownException) { throw new UiAutomationOperationInFlightException(timeoutMilliseconds); }
         return true;
     }

@@ -1,7 +1,7 @@
 ## 4.9.1 - 2026.11.09
 
 - Bound cursor-fence startup to five seconds, request stop on timeout, and allow up to two further seconds for hook-thread cleanup before throwing `TimeoutException`.
-- Use bounded kernel-event completion waits for wallpaper and audio COM calls, hotkey registration, clipboard writes, UI Automation and synchronous calls that wait for asynchronous work. A timeout cancels work that has not started; in-flight operations report an unknown outcome and clean up late owned results. This avoids blocking STA callers in task or slim-event condition waits after a worker has already completed.
+- Use bounded kernel-event completion waits for wallpaper and audio COM calls, hotkey registration, clipboard writes, UI Automation dispatch and synchronous calls that wait for asynchronous work. UI Automation mutations targeting a window owned by the calling thread still run inline. A timeout cancels work that has not started; in-flight operations report an unknown outcome and clean up late owned results. This avoids unlimited STA completion waits after a worker has already completed.
 - Allow shared wallpaper and hotkey services to retry a failed startup without caching its exception for the process lifetime.
 - Use the same bounded startup handshake for window events, clipboard listeners, hotkey services, monitor notification windows, session-typing input monitoring, keep-awake leases, and audio and wallpaper COM threads. Late startup observes the stop request and releases native resources.
 

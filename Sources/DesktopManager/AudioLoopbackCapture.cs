@@ -102,12 +102,14 @@ public sealed partial class AudioLoopbackCapture : IDisposable {
         }
     }
 
-    /// <summary>Stops capturing and prevents restarting. Repeated calls have no effect.</summary>
+    /// <summary>Requests capture shutdown and prevents restarting.</summary>
+    /// <remarks>Waits up to two seconds. If shutdown is still pending, reports diagnostics and leaves cleanup with the capture thread.</remarks>
     public void Dispose() {
         lock (_gate) {
             _disposed = true;
         }
-        Stop();
+        try { Stop(); }
+        catch (TimeoutException exception) { DesktopManagerDiagnostics.Report($"Loopback capture shutdown is pending: {exception.Message}"); }
     }
 
     /// <summary>Owns one capture thread and its stop/default-change signals.</summary>

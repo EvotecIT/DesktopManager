@@ -45,6 +45,7 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
     /// <param name="options">Helper and capture options.</param>
     /// <param name="callback">Callback invoked with the foreground window captured by the helper hook.</param>
     /// <returns>Registration identifier.</returns>
+    /// <exception cref="TimeoutException">Command admission or sending exceeded five seconds, or helper readiness exceeded the configured startup deadline.</exception>
     public int RegisterHotkey(HotkeyModifiers modifiers, VirtualKey key, ExternalHotkeyHostOptions? options, Action<IntPtr> callback) {
         if (callback == null) {
             throw new ArgumentNullException(nameof(callback));
@@ -77,6 +78,7 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
     /// Unregisters a hotkey from the helper process.
     /// </summary>
     /// <param name="registrationId">Registration identifier returned by <see cref="RegisterHotkey"/>.</param>
+    /// <exception cref="TimeoutException">Command admission or sending exceeded five seconds.</exception>
     public void UnregisterHotkey(int registrationId) {
         _commands.Enter("Hotkey helper command");
         try {
@@ -92,7 +94,8 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
         } finally { _commands.Exit(); }
     }
 
-    /// <inheritdoc />
+    /// <summary>Stops the helper after bounded command admission, sending and process-exit waits.</summary>
+    /// <exception cref="TimeoutException">Command admission or sending exceeded five seconds. A send timeout stops the helper.</exception>
     public void Dispose() {
         _commands.Enter("Hotkey helper shutdown");
         try {
@@ -207,8 +210,9 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
     private void ReadEvents(Process process, ThreadStartup ready) {
         bool reported = false;
         try {
+            StreamReader output = process.StandardOutput;
             string? line;
-            while ((line = process.StandardOutput.ReadLine()) != null) {
+            while ((line = output.ReadLine()) != null) {
                 ExternalHotkeyHostEvent? hotkeyEvent = JsonSerializer.Deserialize(
                     line, ExternalHotkeyHostJsonContext.Default.ExternalHotkeyHostEvent);
                 if (hotkeyEvent == null) { continue; }
@@ -221,6 +225,7 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
             }
         } catch (IOException) {
         } catch (ObjectDisposedException) {
+        } catch (InvalidOperationException) {
         } catch (JsonException) {
         } finally {
             if (!reported) { ready.Signal(new InvalidOperationException("The hotkey helper exited before reporting readiness.")); }

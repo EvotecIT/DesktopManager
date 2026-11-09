@@ -4,6 +4,15 @@ using System.IO;
 namespace DesktopManager;
 
 public partial class MonitorService {
+    private static void WaitForWallpaperDownload(Func<System.Threading.CancellationToken, System.Threading.Tasks.Task> operation) {
+        using var cancellation = new System.Threading.CancellationTokenSource();
+        try { WorkerInvocation<bool>.WaitFor(operation(cancellation.Token), "Wallpaper download", 30000); }
+        catch {
+            cancellation.Cancel();
+            throw;
+        }
+    }
+
     private static void SetTemporaryWallpaper(Stream stream, Action<string> operation) {
         string temp = WriteStreamToTempFile(stream);
         // Transfer the input to the request: cancellation retires it before execution,
