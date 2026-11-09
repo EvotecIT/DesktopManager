@@ -4,15 +4,15 @@ param(
 
     [bool] $SignModule = $true,
 
-    [string] $ModuleVersion = '4.X.0',
-
-    [switch] $SkipInstall,
-
     [string] $ProjectBuildConfigPath = 'Build\project.build.json',
 
     [string] $PowerShellGalleryApiKeyPath = 'C:\Support\Important\PowerShellGalleryAPI.txt',
 
-    [string] $GitHubApiKeyPath = 'C:\Support\Important\GitHubAPI.txt'
+    [string] $GitHubApiKeyPath = 'C:\Support\Important\GitHubAPI.txt',
+
+    [string] $ModuleVersion = '4.X.0',
+
+    [switch] $SkipInstall
 )
 
 Import-Module PSPublishModule -MinimumVersion '3.0.130' -Force -ErrorAction Stop
