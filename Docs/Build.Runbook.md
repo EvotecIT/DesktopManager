@@ -41,6 +41,8 @@ Build the NuGet package and PowerShell module only:
 .\Build\Build-Module.ps1 -ConfigurationGateMode Build
 ```
 
+Add `-SkipInstall` to keep the build artefacts in their output folders without installing a local module copy.
+
 Refresh the module manifest without compiling or signing:
 
 ```powershell
@@ -88,6 +90,10 @@ Publish the NuGet package, PowerShell module, and GitHub module release in one o
 ```powershell
 .\Build\Build-Module.ps1 -ConfigurationGateMode Publish
 ```
+
+For a patch release, set `ExpectedVersion` to the exact version in the selected project build configuration
+and pass the same value with `-ModuleVersion`, together with `-ProjectBuildConfigPath` for that configuration.
+The default `4.X.0` pattern selects the next minor version for both release surfaces.
 
 Publish a specific CLI runtime:
 
