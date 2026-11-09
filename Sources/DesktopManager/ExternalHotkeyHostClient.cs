@@ -62,14 +62,19 @@ public sealed class ExternalHotkeyHostClient : IDisposable {
 
             int id = ++_nextId;
             lock (_syncRoot) { _callbacks[id] = callback; }
-            Send(new ExternalHotkeyHostCommand {
-                Type = ExternalHotkeyHostCommandTypes.Register,
-                RegistrationId = id,
-                Modifiers = (int)(modifiers & ~HotkeyModifiers.NoRepeat),
-                Key = (int)key,
-                SuppressPotentialChordKeys = options.SuppressPotentialChordKeys,
-                ExclusiveForegroundProcessNames = new List<string>(options.ExclusiveForegroundProcessNames)
-            });
+            try {
+                Send(new ExternalHotkeyHostCommand {
+                    Type = ExternalHotkeyHostCommandTypes.Register,
+                    RegistrationId = id,
+                    Modifiers = (int)(modifiers & ~HotkeyModifiers.NoRepeat),
+                    Key = (int)key,
+                    SuppressPotentialChordKeys = options.SuppressPotentialChordKeys,
+                    ExclusiveForegroundProcessNames = new List<string>(options.ExclusiveForegroundProcessNames)
+                });
+            } catch {
+                lock (_syncRoot) { _callbacks.Remove(id); }
+                throw;
+            }
             return id;
         } finally { _commands.Exit(); }
     }
