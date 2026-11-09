@@ -57,15 +57,14 @@ internal sealed class DesktopCommandRunner : IDesktopCommandRunner {
             }
             // Descendants can retain stdout/stderr after the launched process exits.
             // Exit and both drains share one deadline; never join a live pipe task.
-            using var drainDeadline = new CancellationTokenSource();
-            var delay = Task.Delay(RemainingMilliseconds(elapsed), drainDeadline.Token);
-            if (Task.WhenAny(drains, delay).GetAwaiter().GetResult() != drains) {
+            string[] drained;
+            try {
+                drained = WorkerInvocation<string[]>.WaitFor(drains, "Desktop command output", Math.Max(1, RemainingMilliseconds(elapsed)));
+            } catch (NativeOperationOutcomeUnknownException) {
                 throw DeadlineExceeded();
             }
-            drainDeadline.Cancel();
-            drains.GetAwaiter().GetResult();
-            var result = output.GetAwaiter().GetResult();
-            var diagnostic = error.GetAwaiter().GetResult();
+            var result = drained[0];
+            var diagnostic = drained[1];
             if (process.ExitCode != 0) {
                 throw new InvalidOperationException("The desktop command failed (exit " + process.ExitCode + "): " + diagnostic.Trim());
             }

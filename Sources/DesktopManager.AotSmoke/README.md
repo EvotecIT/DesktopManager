@@ -25,6 +25,8 @@ require an isolated cache.
 
 The checks cover:
 
+- STA cursor-fence startup/disposal and the monitor-to-wallpaper worker invocation path. The invocation probe
+  observes real completed work, then simulates a failed wait observation to verify bounded kernel waits and result delivery.
 - Monitor bounds/DPI, wallpaper metadata, slideshow reads, and checkpoint
   capture/disposal. Checkpoints are never restored.
 - Shell item arrays with an owned Unicode-named file, including agile retention

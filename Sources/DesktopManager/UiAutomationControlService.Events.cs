@@ -4,7 +4,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -232,19 +231,22 @@ internal sealed partial class UiAutomationControlService {
                 return;
             }
 
+            using var completion = new WorkerCompletion();
+            bool admitted = false;
             try {
-                var completion = new TaskCompletionSource<bool>();
                 _dispatcher.PostSubscriptionCleanup(_ => {
                     try {
                         RunCleanup();
                     } finally {
-                        completion.TrySetResult(true);
+                        completion.Complete();
                     }
                 });
+                admitted = true;
                 if (timeoutMilliseconds > 0) {
-                    completion.Task.Wait(timeoutMilliseconds);
+                    completion.Wait(timeoutMilliseconds);
                 }
             } catch (Exception) {
+                if (!admitted) { completion.Complete(); }
                 // A disposed or wedged dispatcher must not make wait cleanup block indefinitely.
             }
         }

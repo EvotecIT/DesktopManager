@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -9,40 +8,70 @@ namespace DesktopManager;
 /// checkpoint resolution run here so native pointers never enter a caller's STA.
 /// </summary>
 internal static class WallpaperComApartment {
-    private static readonly Lazy<BlockingCollection<Action>> Queue = new(Start);
+    private static readonly WorkerGate StartGate = new();
+    private static BlockingCollection<Action>? _queue;
     [ThreadStatic] private static bool _isCurrent;
 
-    internal static T Invoke<T>(Func<T> operation) {
-        if (_isCurrent) { return operation(); }
-        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-        Queue.Value.Add(() => {
-            try { completion.SetResult(operation()); }
-            catch (Exception exception) { completion.SetException(exception); }
-        });
-        return completion.Task.GetAwaiter().GetResult();
+    /// <summary>Runs on the wallpaper apartment with a fifteen-second completion deadline.</summary>
+    /// <exception cref="TimeoutException">Startup/admission timed out, or queued work was canceled before execution.</exception>
+    /// <exception cref="NativeOperationOutcomeUnknownException">The operation is still running; inspect state before retrying mutations.</exception>
+    internal static T Invoke<T>(Func<T> operation, Action<T>? abandonedResultHandler = null, Action? operationCleanup = null) {
+        if (_isCurrent) {
+            try { return operation(); }
+            finally { operationCleanup?.Invoke(); }
+        }
+        using var invocation = new WorkerInvocation<T>(abandonedResultHandler ?? (result => {
+            if (result is IDisposable disposable) { disposable.Dispose(); }
+        }), operationCleanup);
+        bool admitted = false;
+        try {
+            admitted = GetQueue().TryAdd(() => invocation.Execute(operation));
+            if (!admitted) { throw new TimeoutException("The wallpaper COM queue is full; the operation was not started."); }
+        } catch {
+            if (!admitted) { invocation.Reject(); }
+            throw;
+        }
+        return invocation.GetResult("Wallpaper COM");
+    }
+
+    private static BlockingCollection<Action> GetQueue() {
+        var queue = Volatile.Read(ref _queue);
+        if (queue != null) { return queue; }
+        StartGate.Enter("Wallpaper COM startup");
+        try {
+            // Publish only successful starts, so a transient startup failure can be retried.
+            queue = _queue;
+            if (queue == null) { Volatile.Write(ref _queue, queue = Start()); }
+            return queue;
+        } finally { StartGate.Exit(); }
     }
 
     private static BlockingCollection<Action> Start() {
-        var queue = new BlockingCollection<Action>();
-        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var queue = new BlockingCollection<Action>(64);
+        var ready = new ThreadStartup();
         var thread = new Thread(() => {
-            int result = MonitorNativeMethods.CoInitializeEx(IntPtr.Zero, 0);
-            if (result < 0) {
-                ready.SetException(Marshal.GetExceptionForHR(result)!);
+            try {
+                AudioComThread.EnterApartment();
+            } catch (Exception exception) {
+                ready.Signal(exception);
                 return;
             }
             _isCurrent = true;
-            ready.SetResult(true);
+            ready.Signal();
             try {
                 foreach (var action in queue.GetConsumingEnumerable()) { action(); }
             } finally {
                 _isCurrent = false;
-                if (result >= 0) { MonitorNativeMethods.CoUninitialize(); }
+                AudioComThread.LeaveApartment();
             }
         }) { IsBackground = true, Name = "DesktopManager wallpaper COM" };
         thread.SetApartmentState(ApartmentState.MTA);
-        thread.Start();
-        ready.Task.GetAwaiter().GetResult();
+        try {
+            ready.Start(thread, "wallpaper COM thread");
+        } catch {
+            queue.CompleteAdding();
+            throw;
+        }
         return queue;
     }
 }

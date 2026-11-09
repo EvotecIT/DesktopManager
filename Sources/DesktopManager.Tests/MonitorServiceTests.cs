@@ -9,6 +9,61 @@ namespace DesktopManager.Tests;
 /// Test class for MonitorServiceTests.
 /// </summary>
 public class MonitorServiceTests {
+    [TestMethod]
+    [DoNotParallelize]
+    public void SetWallpaperFromUrl_StaTimeout_CancelsDownloadAndRejectsLateImage() {
+        var native = new FakeDesktopManager();
+        var download = new DelayedDownloadMonitorService(native);
+        using var disposed = new ManualResetEvent(false);
+        using var image = new DownloadedImage(disposed);
+        Exception? failure = null;
+        var caller = new Thread(() => {
+            SynchronizationContext.SetSynchronizationContext(new DownloadTimeoutContext());
+            try {
+                Assert.ThrowsExactly<NativeOperationOutcomeUnknownException>(() =>
+                    download.SetWallpaperFromUrl("test-monitor", "https://example.invalid/wallpaper.png"));
+            } catch (Exception exception) { failure = exception; }
+            finally { SynchronizationContext.SetSynchronizationContext(null); }
+        }) { IsBackground = true };
+        caller.SetApartmentState(ApartmentState.STA);
+        caller.Start();
+        try {
+            Assert.IsTrue(caller.Join(5000), "The synchronous caller must leave the stalled download wait.");
+            if (failure != null) { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw(); }
+            Assert.IsTrue(download.Token.IsCancellationRequested, "A timed-out caller must cancel the network operation.");
+            // Network completion can race cancellation; the image must still be rejected before application.
+            download.Completion.SetResult(image);
+            Assert.IsTrue(disposed.WaitOne(5000), "The late image must be retired by the asynchronous operation.");
+            Assert.AreEqual(0, native.SetWallpaperCalls.Count, "A cancelled download must not apply a late image.");
+        } finally {
+            download.Completion.TrySetCanceled();
+        }
+    }
+
+    private sealed class DelayedDownloadMonitorService : MonitorService {
+        internal readonly TaskCompletionSource<MemoryStream> Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal CancellationToken Token;
+        internal DelayedDownloadMonitorService(IDesktopManager native) : base(native) { }
+        internal override Task<MemoryStream> DownloadWallpaperAsync(Uri uri, CancellationToken cancellationToken) {
+            Token = cancellationToken;
+            return Completion.Task;
+        }
+    }
+
+    private sealed class DownloadedImage : MemoryStream {
+        private readonly EventWaitHandle _disposed;
+        internal DownloadedImage(EventWaitHandle disposed) : base(new byte[] { 1, 2, 3 }) => _disposed = disposed;
+        protected override void Dispose(bool disposing) {
+            base.Dispose(disposing);
+            if (disposing) { _disposed.Set(); }
+        }
+    }
+
+    private sealed class DownloadTimeoutContext : SynchronizationContext {
+        internal DownloadTimeoutContext() => SetWaitNotificationRequired();
+        public override int Wait(IntPtr[] handles, bool waitAll, int millisecondsTimeout) => WaitHandle.WaitTimeout;
+    }
+
     private sealed class RecordingMonitorService : MonitorService {
         public RecordingMonitorService(IDesktopManager desktopManager)
             : base(desktopManager) {

@@ -12,6 +12,13 @@ wallpaper and monitor enumeration, Explorer folder capture, virtual desktops and
 The .NET Framework and .NET Standard targets retain their legacy interop paths.
 See [Native AOT qualification](Sources/DesktopManager.AotSmoke/README.md) for the contributor smoke consumer.
 
+Threaded services use bounded kernel-event waits for startup and synchronous worker calls, including STA callers.
+Startup normally has a five-second deadline; wallpaper/audio COM calls have a fifteen-second completion deadline,
+and hotkey registration and clipboard writes have five seconds. UI Automation respects its invocation deadline.
+A timeout cancels work that has not started. `NativeOperationOutcomeUnknownException` means a native operation
+is already running and may still apply its change: inspect the target before retrying a mutation. An in-flight
+native call cannot be terminated safely; its thread retains ownership and performs late-result cleanup.
+
 [![nuget downloads](https://img.shields.io/nuget/dt/DesktopManager?label=nuget%20downloads)](https://www.nuget.org/packages/DesktopManager)
 [![nuget version](https://img.shields.io/nuget/v/DesktopManager)](https://www.nuget.org/packages/DesktopManager)
 

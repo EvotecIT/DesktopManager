@@ -85,6 +85,7 @@ public sealed partial class AudioLoopbackCapture : IDisposable {
     /// such as a UI thread the handler invokes synchronously. Called from a handler, Stop returns at once and
     /// the capture ends after that handler.
     /// </remarks>
+    /// <exception cref="TimeoutException">The capture thread did not stop within two seconds. Cleanup continues on that thread.</exception>
     public void Stop() {
         CaptureRun? run;
         lock (_gate) {
@@ -95,16 +96,20 @@ public sealed partial class AudioLoopbackCapture : IDisposable {
             run.RequestStop();
         }
         if (run.Thread != Thread.CurrentThread) {
-            run.Thread!.Join();
+            if (!run.Thread!.Join(TimeSpan.FromSeconds(2))) {
+                throw new TimeoutException("The loopback capture thread did not stop within two seconds.");
+            }
         }
     }
 
-    /// <summary>Stops capturing and prevents restarting. Repeated calls have no effect.</summary>
+    /// <summary>Requests capture shutdown and prevents restarting.</summary>
+    /// <remarks>Waits up to two seconds. If shutdown is still pending, reports diagnostics and leaves cleanup with the capture thread.</remarks>
     public void Dispose() {
         lock (_gate) {
             _disposed = true;
         }
-        Stop();
+        try { Stop(); }
+        catch (TimeoutException exception) { DesktopManagerDiagnostics.Report($"Loopback capture shutdown is pending: {exception.Message}"); }
     }
 
     /// <summary>Owns one capture thread and its stop/default-change signals.</summary>

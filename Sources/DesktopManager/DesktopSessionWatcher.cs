@@ -17,7 +17,8 @@ public sealed class DesktopSessionWatcher : IDisposable {
     private DesktopSessionInfo _current;
     private int _activePolls;
     private bool _disposed;
-    private bool _disposeCompleted;
+    // Kept for this watcher's lifetime so concurrent/repeated disposal can observe the same kernel signal.
+    private readonly ManualResetEvent _pollsStopped = new(false);
 
     /// <summary>Initializes and starts a session watcher.</summary>
     /// <param name="pollInterval">The state refresh interval. The default is two seconds.</param>
@@ -49,6 +50,7 @@ public sealed class DesktopSessionWatcher : IDisposable {
     }
 
     /// <inheritdoc/>
+    /// <exception cref="TimeoutException">An active polling callback did not finish within two seconds.</exception>
     public void Dispose() {
         lock (_sync) {
             if (!_disposed) {
@@ -60,15 +62,10 @@ public sealed class DesktopSessionWatcher : IDisposable {
                 return;
             }
 
-            while (!_disposeCompleted) {
-                if (_activePolls == 0) {
-                    _disposeCompleted = true;
-                    System.Threading.Monitor.PulseAll(_sync);
-                    break;
-                }
-
-                System.Threading.Monitor.Wait(_sync);
-            }
+            if (_activePolls == 0) { _pollsStopped.Set(); }
+        }
+        if (!_pollsStopped.WaitOne(2000)) {
+            throw new TimeoutException("The desktop session callback did not stop within two seconds.");
         }
     }
 
@@ -127,8 +124,7 @@ public sealed class DesktopSessionWatcher : IDisposable {
             lock (_sync) {
                 _activePolls--;
                 if (_disposed && _activePolls == 0) {
-                    _disposeCompleted = true;
-                    System.Threading.Monitor.PulseAll(_sync);
+                    _pollsStopped.Set();
                 }
             }
         }

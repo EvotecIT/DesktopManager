@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace DesktopManager;
 
@@ -66,21 +65,27 @@ internal static class LockScreenNative {
             Release(randomAccess);
             Release(factory);
         }
-    });
+    }, abandonedResultHandler: path => File.Delete(path));
 
-    private static T RunInMta<T>(Func<T> operation) {
+    private static T RunInMta<T>(Func<T> operation, Action<T>? abandonedResultHandler = null) {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             throw new PlatformNotSupportedException("Lock screen images are only supported on Windows.");
         }
         // Keep an STA host (including Windows PowerShell) out of synchronous WinRT waits.
-        return Task.Run(() => {
-            Check(RoInitialize(1)); // RO_INIT_MULTITHREADED; S_FALSE is also balanced.
-            try {
-                return operation();
-            } finally {
-                RoUninitialize();
-            }
-        }).GetAwaiter().GetResult();
+        using var invocation = new WorkerInvocation<T>(abandonedResultHandler);
+        bool admitted = false;
+        try {
+            admitted = ThreadPool.QueueUserWorkItem(_ => invocation.Execute(() => {
+                Check(RoInitialize(1)); // RO_INIT_MULTITHREADED; S_FALSE is also balanced.
+                try { return operation(); }
+                finally { RoUninitialize(); }
+            }));
+            if (!admitted) { throw new InvalidOperationException("The lock screen operation could not be queued."); }
+        } catch {
+            if (!admitted) { invocation.Reject(); }
+            throw;
+        }
+        return invocation.GetResult("Lock screen", 35000);
     }
 
     private static IntPtr Activate() {

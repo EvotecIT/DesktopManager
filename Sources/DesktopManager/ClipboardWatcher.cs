@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
@@ -29,10 +28,9 @@ public sealed class ClipboardWatcher : IDisposable {
     private const int MinimumDibBytes = 40; // sizeof(BITMAPINFOHEADER)
     private const int OpenAttempts = 5;
     private const int OpenRetryDelayMilliseconds = 20;
-    private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Thread _thread;
-    private readonly ManualResetEventSlim _ready = new(false);
+    private readonly ThreadStartup _ready = new();
     private readonly ConcurrentDictionary<int, PutRequest> _puts = new();
     private readonly uint _excludeFromMonitoringFormat;
     private readonly uint _viewerIgnoreFormat;
@@ -51,23 +49,23 @@ public sealed class ClipboardWatcher : IDisposable {
     /// Starts listening for clipboard changes.
     /// </summary>
     /// <exception cref="Win32Exception">Windows refused the listener window or the clipboard listener.</exception>
-    /// <exception cref="TimeoutException">The listener thread did not start within ten seconds.</exception>
+    /// <exception cref="TimeoutException">The listener thread did not report readiness within five seconds.
+    /// Stop is requested, with up to two more seconds for the thread to exit.</exception>
     public ClipboardWatcher() {
         _excludeFromMonitoringFormat = NativeClipboardMethods.RegisterClipboardFormat("ExcludeClipboardContentFromMonitorProcessing");
         _viewerIgnoreFormat = NativeClipboardMethods.RegisterClipboardFormat("Clipboard Viewer Ignore");
         _historyFormat = NativeClipboardMethods.RegisterClipboardFormat("CanIncludeInClipboardHistory");
         _thread = new Thread(Run) { IsBackground = true, Name = "DesktopManager clipboard" };
         _thread.SetApartmentState(ApartmentState.STA);
-        _thread.Start();
-        // A listener that can't start must not hang the caller, and its failure is rethrown with its own type and stack.
-        if (!_ready.Wait(StartupTimeout)) {
+        try {
+            _ready.Start(_thread, "clipboard listener");
+        } catch {
             _disposed = true;
-            throw new TimeoutException("The clipboard listener did not start.");
-        }
-        if (_startError != null) {
-            _thread.Join();
-            _ready.Dispose();
-            ExceptionDispatchInfo.Capture(_startError).Throw();
+            MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            if (_thread.IsAlive) {
+                _thread.Join(TimeSpan.FromSeconds(2));
+            }
+            throw;
         }
     }
 
@@ -115,29 +113,28 @@ public sealed class ClipboardWatcher : IDisposable {
 
     private void Put(uint format, byte[] data) {
         ThrowIfDisposed();
+        if (Thread.CurrentThread == _thread) {
+            _handledSequence = ClipboardHelper.SetData(format, data, OpenAttempts, OpenRetryDelayMilliseconds, _window);
+            return;
+        }
         var request = new PutRequest(format, data);
+        using var invocation = request.Invocation;
         int id = Interlocked.Increment(ref _nextPut);
         _puts[id] = request;
         try {
-            // Writing on the watcher thread makes its window the clipboard owner, which is how its own
-            // update is recognized and skipped. A call from a handler runs inline.
-            NativeClipboardMethods.SendMessage(_window, WM_PUT, new IntPtr(id), IntPtr.Zero);
+            if (!MonitorNativeMethods.PostMessage(_window, WM_PUT, new IntPtr(id), IntPtr.Zero)) {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            invocation.GetResult("Clipboard write", 5000);
         } finally {
-            _puts.TryRemove(id, out _);
-        }
-
-        if (!request.Completed) {
-            throw new ObjectDisposedException(nameof(ClipboardWatcher));
-        }
-        if (request.Error != null) {
-            ExceptionDispatchInfo.Capture(request.Error).Throw();
+            if (_puts.TryRemove(id, out PutRequest? pending)) { pending.Cancel(); }
         }
     }
 
     private void Run() {
-        _threadId = MonitorNativeMethods.GetCurrentThreadId();
         bool listening = false;
         try {
+            _threadId = MonitorNativeMethods.GetCurrentThreadId();
             _wndProc = WndProc;
             _window = MonitorNativeMethods.CreateWindowExW(0, "Message", string.Empty, 0, 0, 0, 0, 0,
                 MonitorNativeMethods.HWND_MESSAGE, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
@@ -155,7 +152,7 @@ public sealed class ClipboardWatcher : IDisposable {
         }
 
         try {
-            _ready.Set();
+            _ready.Signal(_startError);
             if (_startError != null) {
                 return;
             }
@@ -176,6 +173,9 @@ public sealed class ClipboardWatcher : IDisposable {
                 MonitorNativeMethods.DispatchMessage(ref message);
             }
         } finally {
+            foreach (int id in _puts.Keys) {
+                if (_puts.TryRemove(id, out PutRequest? pending)) { pending.Cancel(); }
+            }
             if (listening) {
                 NativeClipboardMethods.RemoveClipboardFormatListener(_window);
             }
@@ -193,12 +193,9 @@ public sealed class ClipboardWatcher : IDisposable {
         if (msg == WM_PUT) {
             // Only requests this instance queued are honored; any other sender's WM_PUT is ignored.
             long id = wParam.ToInt64();
-            if (id >= int.MinValue && id <= int.MaxValue && _puts.TryGetValue((int)id, out PutRequest? request)) {
-                request.Run(_window);
-                // The watcher's own put is never reported, however the update for it is queued.
-                if (request.Error == null) {
-                    _handledSequence = request.Sequence;
-                }
+            if (id >= int.MinValue && id <= int.MaxValue && _puts.TryRemove((int)id, out PutRequest? request)) {
+                if (_disposed) { request.Cancel(); }
+                else { request.Run(_window, sequence => _handledSequence = sequence); }
             }
             return IntPtr.Zero;
         }
@@ -296,32 +293,24 @@ public sealed class ClipboardWatcher : IDisposable {
             throw new TimeoutException("The clipboard listener thread did not stop.");
         }
 
-        _ready.Dispose();
     }
 
     private sealed class PutRequest {
         private readonly uint _format;
         private readonly byte[] _data;
+        internal WorkerInvocation<uint> Invocation { get; } = new();
 
         internal PutRequest(uint format, byte[] data) {
             _format = format;
             _data = data;
         }
 
-        internal bool Completed { get; private set; }
+        internal void Run(IntPtr owner, Action<uint> handled) => Invocation.Execute(() => {
+            uint sequence = ClipboardHelper.SetData(_format, _data, OpenAttempts, OpenRetryDelayMilliseconds, owner);
+            handled(sequence);
+            return sequence;
+        });
 
-        internal Exception? Error { get; private set; }
-
-        internal uint Sequence { get; private set; }
-
-        internal void Run(IntPtr owner) {
-            try {
-                Sequence = ClipboardHelper.SetData(_format, _data, OpenAttempts, OpenRetryDelayMilliseconds, owner);
-            } catch (Exception ex) {
-                Error = ex;
-            } finally {
-                Completed = true;
-            }
-        }
+        internal void Cancel() => Invocation.Execute(() => throw new ObjectDisposedException(nameof(ClipboardWatcher)));
     }
 }

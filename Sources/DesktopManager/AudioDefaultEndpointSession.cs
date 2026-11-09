@@ -60,7 +60,8 @@ public sealed partial class AudioDefaultEndpointSession : IDisposable {
                 return true;
             });
         } catch {
-            _thread.Dispose();
+            // Subscription creation may finish after Invoke times out; retire it on the same apartment too.
+            Dispose();
             throw;
         }
     }
@@ -112,17 +113,15 @@ public sealed partial class AudioDefaultEndpointSession : IDisposable {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) {
             return;
         }
-        try {
-            _thread.Invoke(() => {
+        _thread.Dispose(() => {
+            try {
                 CloseBackend();
+            } finally {
                 IDisposable? subscription = _subscription;
                 _subscription = null;
                 subscription?.Dispose();
-                return true;
-            });
-        } finally {
-            _thread.Dispose();
-        }
+            }
+        });
     }
 
     private static IDisposable SubscribeToEndpointChanges(EventHandler<AudioEndpointChangedEventArgs> handler) {

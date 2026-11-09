@@ -8,17 +8,21 @@ param(
 
     [string] $PowerShellGalleryApiKeyPath = 'C:\Support\Important\PowerShellGalleryAPI.txt',
 
-    [string] $GitHubApiKeyPath = 'C:\Support\Important\GitHubAPI.txt'
+    [string] $GitHubApiKeyPath = 'C:\Support\Important\GitHubAPI.txt',
+
+    [string] $ModuleVersion = '4.X.0',
+
+    [switch] $SkipInstall
 )
 
 Import-Module PSPublishModule -MinimumVersion '3.0.130' -Force -ErrorAction Stop
 
-Build-Module -ModuleName 'DesktopManager' {
+Build-Module -ModuleName 'DesktopManager' -SkipInstall:$SkipInstall {
     $manifest = [ordered] @{
         PowerShellVersion      = '5.1'
         CompatiblePSEditions   = @('Desktop', 'Core')
         GUID                   = '56f85fa6-c622-4204-8e97-3d99e3e06e75'
-        ModuleVersion          = '4.X.0'
+        ModuleVersion          = $ModuleVersion
         Author                 = 'Przemyslaw Klys'
         CompanyName            = 'Evotec'
         Copyright              = "(c) 2011 - $((Get-Date).Year) Przemyslaw Klys @ Evotec. All rights reserved."

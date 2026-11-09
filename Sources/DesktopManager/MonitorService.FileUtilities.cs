@@ -4,6 +4,25 @@ using System.IO;
 namespace DesktopManager;
 
 public partial class MonitorService {
+    private static void WaitForWallpaperDownload(Func<System.Threading.CancellationToken, System.Threading.Tasks.Task> operation) {
+        using var cancellation = new System.Threading.CancellationTokenSource();
+        try { WorkerInvocation<bool>.WaitFor(operation(cancellation.Token), "Wallpaper download", 30000); }
+        catch {
+            cancellation.Cancel();
+            throw;
+        }
+    }
+
+    private static void SetTemporaryWallpaper(Stream stream, Action<string> operation) {
+        string temp = WriteStreamToTempFile(stream);
+        // Transfer the input to the request: cancellation retires it before execution,
+        // while an executing request retains it even if its caller's wait throws.
+        WallpaperComApartment.Invoke(() => {
+            operation(temp);
+            return true;
+        }, operationCleanup: () => DeleteTempFile(temp));
+    }
+
     private static string WriteStreamToTempFile(Stream stream) {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         long? originalPosition = null;

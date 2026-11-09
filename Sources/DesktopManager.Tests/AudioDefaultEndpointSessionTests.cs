@@ -9,6 +9,67 @@ public sealed class AudioDefaultEndpointSessionTests {
     private const int NotFound = unchecked((int)0x80070490);
 
     [TestMethod]
+    [DoNotParallelize]
+    public void Constructor_InvocationTimeout_RetiresLateSubscriptionOnItsOwningApartment() {
+        using var started = new ManualResetEvent(false);
+        using var release = new ManualResetEvent(false);
+        using var cleaned = new ManualResetEvent(false);
+        int subscribedOn = 0, disposedOn = 0;
+        Exception? failure = null;
+        var caller = new Thread(() => {
+            SynchronizationContext.SetSynchronizationContext(new SubscriptionTimeoutContext(started));
+            try {
+                Assert.ThrowsExactly<NativeOperationOutcomeUnknownException>(() => {
+                    using var session = new AudioDefaultEndpointSession(AudioDataFlow.Render, AudioRole.Multimedia,
+                        () => throw new InvalidOperationException("Construction must not open an endpoint."), _ => {
+                            subscribedOn = Thread.CurrentThread.ManagedThreadId;
+                            started.Set();
+                            if (!release.WaitOne(5000)) { throw new TimeoutException("The test did not release subscription creation."); }
+                            return new LateSubscription(() => {
+                                disposedOn = Thread.CurrentThread.ManagedThreadId;
+                                cleaned.Set();
+                            });
+                        });
+                });
+            } catch (Exception exception) { failure = exception; }
+            finally { SynchronizationContext.SetSynchronizationContext(null); }
+        }) { IsBackground = true };
+        caller.SetApartmentState(ApartmentState.STA);
+        caller.Start();
+        try {
+            Assert.IsTrue(caller.Join(10000), "The timed-out constructor did not return.");
+        } finally { release.Set(); }
+        Assert.IsTrue(cleaned.WaitOne(5000), "The subscription created after the caller timed out was not retired.");
+        if (failure != null) { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw(); }
+        Assert.AreEqual(subscribedOn, disposedOn, "Native subscription cleanup must remain on the owning apartment.");
+    }
+
+    private sealed class SubscriptionTimeoutContext : SynchronizationContext {
+        private readonly WaitHandle _started;
+        private bool _startup = true;
+        internal SubscriptionTimeoutContext(WaitHandle started) {
+            _started = started;
+            SetWaitNotificationRequired();
+        }
+        public override int Wait(IntPtr[] handles, bool waitAll, int millisecondsTimeout) {
+            if (_startup) {
+                _startup = false;
+                return WaitHelper(handles, waitAll, 5000);
+            }
+            if (WaitHelper(new[] { _started.SafeWaitHandle.DangerousGetHandle() }, false, 5000) != 0) {
+                throw new TimeoutException("Subscription creation did not start.");
+            }
+            return WaitHandle.WaitTimeout;
+        }
+    }
+
+    private sealed class LateSubscription : IDisposable {
+        private readonly Action _dispose;
+        internal LateSubscription(Action dispose) => _dispose = dispose;
+        public void Dispose() => _dispose();
+    }
+
+    [TestMethod]
     public void Session_FollowsMatchingDefaultChangesAndDepartedEndpoints_OnItsOwnMta() {
         var endpoints = new Endpoints();
         var session = new AudioDefaultEndpointSession(AudioDataFlow.Render, AudioRole.Multimedia, endpoints.Open, endpoints.Subscribe);
