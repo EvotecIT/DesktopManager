@@ -8,7 +8,7 @@ namespace DesktopManager;
 /// Holds a Windows execution-state request on a dedicated thread until disposed.
 /// </summary>
 public sealed class KeepAwakeLease : IDisposable {
-    private readonly ManualResetEvent _started = new(false);
+    private readonly ThreadStartup _started = new();
     private readonly ManualResetEvent _stop = new(false);
     private readonly Thread _thread;
     private Exception? _startFailure;
@@ -24,28 +24,32 @@ public sealed class KeepAwakeLease : IDisposable {
             IsBackground = true,
             Name = "DesktopManager Keep Awake"
         };
-        _thread.Start();
-        _started.WaitOne();
-        if (_startFailure != null) {
-            _stop.Dispose();
-            _started.Dispose();
-            throw new InvalidOperationException("Windows rejected the keep-awake request.", _startFailure);
+        try {
+            _started.Start(_thread, "keep-awake thread");
+        } catch {
+            _stop.Set();
+            if (!_thread.IsAlive || _thread.Join(TimeSpan.FromSeconds(2))) {
+                _stop.Dispose();
+            }
+            throw;
         }
     }
 
     /// <summary>Gets the behaviors held by this lease.</summary>
     public KeepAwakeOptions Options { get; }
 
-    /// <inheritdoc/>
+    /// <summary>Releases the execution-state request and waits up to two seconds for the worker to stop.</summary>
+    /// <exception cref="TimeoutException">The worker did not stop within two seconds.</exception>
     public void Dispose() {
         if (_disposed) {
             return;
         }
 
         _stop.Set();
-        _thread.Join();
+        if (!_thread.Join(TimeSpan.FromSeconds(2))) {
+            throw new TimeoutException("The keep-awake thread did not stop within two seconds.");
+        }
         _stop.Dispose();
-        _started.Dispose();
         _disposed = true;
     }
 
@@ -57,9 +61,9 @@ public sealed class KeepAwakeLease : IDisposable {
                 throw new Win32Exception();
             }
         } catch (Exception ex) {
-            _startFailure = ex;
+            _startFailure = new InvalidOperationException("Windows rejected the keep-awake request.", ex);
         } finally {
-            _started.Set();
+            _started.Signal(_startFailure);
         }
 
         if (_startFailure != null) {

@@ -36,6 +36,8 @@ public sealed partial class SystemPowerService {
     /// <summary>Creates a lease that prevents selected idle power behaviors until it is disposed.</summary>
     /// <param name="options">The behaviors to prevent.</param>
     /// <returns>A disposable keep-awake lease.</returns>
+    /// <exception cref="TimeoutException">The lease thread did not report readiness within five seconds.
+    /// Stop is requested, with up to two more seconds for the thread to exit.</exception>
     public KeepAwakeLease CreateKeepAwakeLease(KeepAwakeOptions options = KeepAwakeOptions.System) {
         KeepAwakeOptions supported = KeepAwakeOptions.System | KeepAwakeOptions.Display | KeepAwakeOptions.AwayMode;
         if (options == 0 || (options & ~supported) != 0) {

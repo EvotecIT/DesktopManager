@@ -123,7 +123,7 @@ internal sealed class NativeSessionTypingEnvironment : ISessionTypingEnvironment
     /// </summary>
     private sealed class PhysicalInputMonitor : IDisposable {
         private readonly Action _onUserInput;
-        private readonly ManualResetEventSlim _ready = new(false);
+        private readonly ThreadStartup _ready = new();
         private readonly Thread _thread;
         private MonitorNativeMethods.LowLevelKeyboardProc? _keyboardProc;
         private MonitorNativeMethods.LowLevelKeyboardProc? _mouseProc;
@@ -131,41 +131,53 @@ internal sealed class NativeSessionTypingEnvironment : ISessionTypingEnvironment
         private IntPtr _mouseHook;
         private uint _threadId;
         private Exception? _startError;
-        private bool _disposed;
+        private volatile bool _disposed;
 
         internal PhysicalInputMonitor(Action onUserInput) {
             _onUserInput = onUserInput;
             _thread = new Thread(Run) { IsBackground = true, Name = "DesktopManager session typing input monitor" };
-            _thread.Start();
-            if (!_ready.Wait(TimeSpan.FromSeconds(5))) {
-                throw new TimeoutException("The user input monitor did not start.");
-            }
-            if (_startError != null) {
-                _thread.Join();
-                ExceptionDispatchInfo.Capture(_startError).Throw();
+            try {
+                _ready.Start(_thread, "user input monitor");
+            } catch {
+                _disposed = true;
+                MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+                if (_thread.IsAlive) {
+                    _thread.Join(TimeSpan.FromSeconds(2));
+                }
+                throw;
             }
         }
 
         private void Run() {
             try {
-                _threadId = MonitorNativeMethods.GetCurrentThreadId();
-                IntPtr module = MonitorNativeMethods.GetModuleHandle(null);
-                _keyboardProc = KeyboardCallback;
-                _mouseProc = MouseCallback;
-                _keyboardHook = MonitorNativeMethods.SetWindowsHookEx(MonitorNativeMethods.WH_KEYBOARD_LL, _keyboardProc, module, 0);
-                _mouseHook = _keyboardHook == IntPtr.Zero ? IntPtr.Zero : MonitorNativeMethods.SetWindowsHookEx(SessionTypingNative.WH_MOUSE_LL, _mouseProc, module, 0);
-                if (_keyboardHook == IntPtr.Zero || _mouseHook == IntPtr.Zero) {
-                    _startError = new InvalidOperationException(
-                        "The user input monitor could not install its hooks, so typing could not stop when you touch the keyboard or mouse. Turn off stopping on user input to type anyway.",
-                        new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()));
+                try {
+                    _threadId = MonitorNativeMethods.GetCurrentThreadId();
+                    MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
+                    IntPtr module = MonitorNativeMethods.GetModuleHandle(null);
+                    _keyboardProc = KeyboardCallback;
+                    _mouseProc = MouseCallback;
+                    _keyboardHook = MonitorNativeMethods.SetWindowsHookEx(MonitorNativeMethods.WH_KEYBOARD_LL, _keyboardProc, module, 0);
+                    _mouseHook = _keyboardHook == IntPtr.Zero ? IntPtr.Zero : MonitorNativeMethods.SetWindowsHookEx(SessionTypingNative.WH_MOUSE_LL, _mouseProc, module, 0);
+                    if (_keyboardHook == IntPtr.Zero || _mouseHook == IntPtr.Zero) {
+                        _startError = new InvalidOperationException(
+                            "The user input monitor could not install its hooks, so typing could not stop when you touch the keyboard or mouse. Turn off stopping on user input to type anyway.",
+                            new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()));
+                    }
+                } catch (Exception exception) {
+                    _startError = exception;
+                }
+                _ready.Signal(_startError);
+                if (_startError != null) {
                     return;
                 }
-            } finally {
-                _ready.Set();
-            }
-
-            try {
-                while (MonitorNativeMethods.GetMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0) > 0) {
+                while (!_disposed) {
+                    if (!MonitorNativeMethods.PeekMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0, 1)) {
+                        MonitorNativeMethods.MsgWaitForMultipleObjectsEx(0, IntPtr.Zero, 100, 0x04FF, 4);
+                        continue;
+                    }
+                    if (message.message == MonitorNativeMethods.WM_QUIT) {
+                        break;
+                    }
                     MonitorNativeMethods.TranslateMessage(ref message);
                     MonitorNativeMethods.DispatchMessage(ref message);
                 }
@@ -175,7 +187,7 @@ internal sealed class NativeSessionTypingEnvironment : ISessionTypingEnvironment
         }
 
         private IntPtr KeyboardCallback(int code, IntPtr message, IntPtr data) {
-            if (code >= 0) {
+            if (code >= 0 && !_disposed) {
                 int kind = message.ToInt32();
                 if (kind == MonitorNativeMethods.WM_KEYDOWN_HOOK || kind == MonitorNativeMethods.WM_SYSKEYDOWN_HOOK) {
                     var keyboard = Marshal.PtrToStructure<MonitorNativeMethods.KBDLLHOOKSTRUCT>(data);
@@ -189,7 +201,7 @@ internal sealed class NativeSessionTypingEnvironment : ISessionTypingEnvironment
         }
 
         private IntPtr MouseCallback(int code, IntPtr message, IntPtr data) {
-            if (code >= 0 && IsPress(message.ToInt32())) {
+            if (code >= 0 && !_disposed && IsPress(message.ToInt32())) {
                 var mouse = Marshal.PtrToStructure<SessionTypingNative.MSLLHOOKSTRUCT>(data);
                 if ((mouse.Flags & SessionTypingNative.LLMHF_INJECTED) == 0) {
                     _onUserInput();
@@ -227,7 +239,6 @@ internal sealed class NativeSessionTypingEnvironment : ISessionTypingEnvironment
             _disposed = true;
             MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
             _thread.Join(TimeSpan.FromSeconds(2));
-            _ready.Dispose();
         }
     }
 }

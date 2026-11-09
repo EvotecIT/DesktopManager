@@ -1,3 +1,8 @@
+## 4.9.1 - 2026.11.09
+
+- Bound cursor-fence startup to five seconds, request stop on timeout, and allow up to two further seconds for hook-thread cleanup before throwing `TimeoutException`.
+- Use the same bounded startup handshake for window events, clipboard listeners, hotkey services, monitor notification windows, session-typing input monitoring, keep-awake leases, and audio and wallpaper COM threads. Late startup observes the stop request and releases native resources.
+
 ## 4.9.0 - 2026.11.07
 
 - Resolve media source application IDs to their registered display names or executable file descriptions, while keeping the raw ID in `SourceAppId`. Retry unavailable names and avoid reusing names from a different executable with the same basename.

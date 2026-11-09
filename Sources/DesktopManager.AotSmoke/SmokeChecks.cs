@@ -5,6 +5,10 @@ namespace DesktopManager.AotSmoke;
 internal static class SmokeChecks {
     internal static void Run(string area) {
         switch (area) {
+            case "cursor-fence":
+                using (new CursorFence(new RECT { Left = -32000, Top = -32000, Right = -31999, Bottom = -31999 }, CursorFenceMode.Locked)) { }
+                Console.WriteLine("Cursor fence started and stopped from STA; no input moved.");
+                break;
             case "monitors":
                 var monitors = new Monitors().GetMonitorSnapshots();
                 if (monitors.Count == 0) { throw new UnavailableException("No attached display geometry in this session."); }

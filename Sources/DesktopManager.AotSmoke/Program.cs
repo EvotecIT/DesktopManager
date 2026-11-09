@@ -14,7 +14,7 @@ internal static class Program {
         return buffer.ToString();
     }
 
-    private static readonly string[] Areas = ["monitors", "wallpaper", "slideshow", "checkpoint", "clipboard", "explorer", "explorer-fixture", "virtual-desktops", "audio", "audio-media", "uia"];
+    private static readonly string[] Areas = ["monitors", "wallpaper", "slideshow", "checkpoint", "clipboard", "cursor-fence", "explorer", "explorer-fixture", "virtual-desktops", "audio", "audio-media", "uia"];
 
     // Each native boundary runs in a disposable process: even a stuck COM server cannot hang the runner.
     [STAThread]

@@ -16,6 +16,7 @@ public sealed class HotkeyService : IDisposable {
     private static readonly Lazy<HotkeyService> _instance = new(() => new HotkeyService());
 
     /// <summary>Gets the shared instance.</summary>
+    /// <exception cref="TimeoutException">The message thread did not report readiness within five seconds.</exception>
     public static HotkeyService Instance => _instance.Value;
 
     private readonly Dictionary<int, Action> _callbacks = new();
@@ -23,23 +24,25 @@ public sealed class HotkeyService : IDisposable {
     private IntPtr _hwnd;
     private Thread? _thread;
     private MonitorNativeMethods.WndProc? _wndProc;
-    private readonly ManualResetEventSlim _ready = new(false);
+    private readonly ThreadStartup _ready = new();
     private readonly Queue<Action> _actions = new();
     private int _disposed;
     private Exception? _startupFailure;
     private const uint WM_RUN = MonitorNativeMethods.WM_APP + 1;
 
     /// <summary>Creates an independently owned hotkey service. Dispose it to release its registrations.</summary>
+    /// <exception cref="TimeoutException">The message thread did not report readiness within five seconds.</exception>
     public HotkeyService() {
         _thread = new Thread(MessageLoop) { IsBackground = true };
         _thread.SetApartmentState(ApartmentState.STA);
-        _thread.Start();
-        if (!_ready.Wait(10000)) {
+        try {
+            _ready.Start(_thread, "hotkey message window");
+        } catch {
             Interlocked.Exchange(ref _disposed, 1);
-            throw new TimeoutException("The hotkey message window did not start within 10 seconds.");
-        }
-        if (_startupFailure != null) {
-            ExceptionDispatchInfo.Capture(_startupFailure).Throw();
+            if (_hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.PostMessage(_hwnd, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            }
+            throw;
         }
     }
 
@@ -137,20 +140,37 @@ public sealed class HotkeyService : IDisposable {
     }
 
     private void MessageLoop() {
-        _wndProc = WndProc;
-        _hwnd = MonitorNativeMethods.CreateWindowExW(0, "Message", string.Empty, 0, 0, 0, 0, 0,
-            MonitorNativeMethods.HWND_MESSAGE, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
-        if (_hwnd == IntPtr.Zero) {
-            _startupFailure = new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-            _ready.Set();
+        try {
+            _wndProc = WndProc;
+            _hwnd = MonitorNativeMethods.CreateWindowExW(0, "Message", string.Empty, 0, 0, 0, 0, 0,
+                MonitorNativeMethods.HWND_MESSAGE, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            if (_hwnd == IntPtr.Zero) {
+                _startupFailure = new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                _ready.Signal(_startupFailure);
+                return;
+            }
+            MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
+                Marshal.GetFunctionPointerForDelegate(_wndProc));
+        } catch (Exception exception) {
+            _startupFailure = exception;
+        }
+        _ready.Signal(_startupFailure);
+        if (_startupFailure != null) {
+            if (_hwnd != IntPtr.Zero) {
+                MonitorNativeMethods.DestroyWindow(_hwnd);
+                _hwnd = IntPtr.Zero;
+            }
             return;
         }
-        MonitorNativeMethods.SetWindowLongPtr(_hwnd, MonitorNativeMethods.GWLP_WNDPROC,
-            Marshal.GetFunctionPointerForDelegate(_wndProc));
-        _ready.Set();
 
-        MonitorNativeMethods.MSG msg;
-        while (Volatile.Read(ref _disposed) == 0 && MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
+        while (Volatile.Read(ref _disposed) == 0) {
+            if (!MonitorNativeMethods.PeekMessage(out MonitorNativeMethods.MSG msg, IntPtr.Zero, 0, 0, 1)) {
+                MonitorNativeMethods.MsgWaitForMultipleObjectsEx(0, IntPtr.Zero, 100, 0x04FF, 4);
+                continue;
+            }
+            if (msg.message == MonitorNativeMethods.WM_QUIT) {
+                break;
+            }
             MonitorNativeMethods.TranslateMessage(ref msg);
             MonitorNativeMethods.DispatchMessage(ref msg);
         }
@@ -213,6 +233,5 @@ public sealed class HotkeyService : IDisposable {
                 DesktopManagerDiagnostics.Report("Hotkey shutdown is still pending on a callback.");
             }
         }
-        _ready.Dispose();
     }
 }

@@ -16,11 +16,16 @@ internal sealed class AudioComThread : IDisposable {
     private readonly Thread _thread;
 
     internal AudioComThread(string name) {
-        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new ThreadStartup();
         _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = name };
         _thread.SetApartmentState(ApartmentState.MTA);
-        _thread.Start();
-        ready.Task.GetAwaiter().GetResult();
+        try {
+            ready.Start(_thread, "audio COM thread");
+        } catch {
+            // A late COM initialization must drain an empty, completed queue and leave the apartment.
+            _queue.CompleteAdding();
+            throw;
+        }
     }
 
     internal bool IsCurrent => Thread.CurrentThread == _thread;
@@ -68,15 +73,15 @@ internal sealed class AudioComThread : IDisposable {
         }
     }
 
-    private void Run(TaskCompletionSource<bool> ready) {
+    private void Run(ThreadStartup ready) {
         try {
             EnterApartment();
         } catch (Exception exception) {
             _queue.CompleteAdding();
-            ready.SetException(exception);
+            ready.Signal(exception);
             return;
         }
-        ready.SetResult(true);
+        ready.Signal();
         try {
             foreach (Action action in _queue.GetConsumingEnumerable()) {
                 action();

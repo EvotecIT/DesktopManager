@@ -24,25 +24,30 @@ internal static class WallpaperComApartment {
 
     private static BlockingCollection<Action> Start() {
         var queue = new BlockingCollection<Action>();
-        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new ThreadStartup();
         var thread = new Thread(() => {
-            int result = MonitorNativeMethods.CoInitializeEx(IntPtr.Zero, 0);
-            if (result < 0) {
-                ready.SetException(Marshal.GetExceptionForHR(result)!);
+            try {
+                AudioComThread.EnterApartment();
+            } catch (Exception exception) {
+                ready.Signal(exception);
                 return;
             }
             _isCurrent = true;
-            ready.SetResult(true);
+            ready.Signal();
             try {
                 foreach (var action in queue.GetConsumingEnumerable()) { action(); }
             } finally {
                 _isCurrent = false;
-                if (result >= 0) { MonitorNativeMethods.CoUninitialize(); }
+                AudioComThread.LeaveApartment();
             }
         }) { IsBackground = true, Name = "DesktopManager wallpaper COM" };
         thread.SetApartmentState(ApartmentState.MTA);
-        thread.Start();
-        ready.Task.GetAwaiter().GetResult();
+        try {
+            ready.Start(thread, "wallpaper COM thread");
+        } catch {
+            queue.CompleteAdding();
+            throw;
+        }
         return queue;
     }
 }

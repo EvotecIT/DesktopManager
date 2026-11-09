@@ -21,12 +21,13 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
     private static readonly Lazy<LowLevelKeyboardHotkeyService> _instance = new(() => new LowLevelKeyboardHotkeyService());
 
     /// <summary>Gets the shared instance.</summary>
+    /// <exception cref="TimeoutException">The hook thread did not report readiness within five seconds.</exception>
     public static LowLevelKeyboardHotkeyService Instance => _instance.Value;
 
     private readonly Dictionary<int, LowLevelKeyboardHotkeyRegistration> _registrations = new();
     private readonly HashSet<int> _pressedRegistrations = new();
     private readonly HashSet<VirtualKey> _pressedKeys = new();
-    private readonly ManualResetEventSlim _ready = new(false);
+    private readonly ThreadStartup _ready = new();
     private readonly Queue<Action> _actions = new();
     private readonly object _syncRoot = new();
     private int _nextId;
@@ -35,16 +36,18 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
     private Thread? _thread;
     private MonitorNativeMethods.LowLevelKeyboardProc? _hookProc;
     private Exception? _startupException;
+    private volatile bool _stopping;
     private const uint WM_RUN = MonitorNativeMethods.WM_APP + 2;
 
     private LowLevelKeyboardHotkeyService() {
         _thread = new Thread(MessageLoop) { IsBackground = true };
         _thread.SetApartmentState(ApartmentState.STA);
-        _thread.Start();
-        _ready.Wait();
-
-        if (_startupException != null) {
-            ExceptionDispatchInfo.Capture(_startupException).Throw();
+        try {
+            _ready.Start(_thread, "low-level keyboard hook thread");
+        } catch {
+            _stopping = true;
+            MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            throw;
         }
     }
 
@@ -145,27 +148,37 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
 
     private void MessageLoop() {
         try {
-            _threadId = MonitorNativeMethods.GetCurrentThreadId();
-            _hookProc = HookCallback;
-            _hookHandle = MonitorNativeMethods.SetWindowsHookEx(
-                MonitorNativeMethods.WH_KEYBOARD_LL,
-                _hookProc,
-                MonitorNativeMethods.GetModuleHandle(null),
-                0);
+            try {
+                _threadId = MonitorNativeMethods.GetCurrentThreadId();
+                MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
+                _hookProc = HookCallback;
+                _hookHandle = MonitorNativeMethods.SetWindowsHookEx(
+                    MonitorNativeMethods.WH_KEYBOARD_LL,
+                    _hookProc,
+                    MonitorNativeMethods.GetModuleHandle(null),
+                    0);
 
-            if (_hookHandle == IntPtr.Zero) {
-                int error = Marshal.GetLastWin32Error();
-                _startupException = new DesktopManagerException(
-                    "SetWindowsHookEx",
-                    new System.ComponentModel.Win32Exception(error));
-                _ready.Set();
+                if (_hookHandle == IntPtr.Zero) {
+                    int error = Marshal.GetLastWin32Error();
+                    _startupException = new DesktopManagerException(
+                        "SetWindowsHookEx",
+                        new System.ComponentModel.Win32Exception(error));
+                }
+            } catch (Exception exception) {
+                _startupException = exception;
+            }
+            _ready.Signal(_startupException);
+            if (_startupException != null) {
                 return;
             }
-
-            _ready.Set();
-
-            MonitorNativeMethods.MSG msg;
-            while (MonitorNativeMethods.GetMessage(out msg, IntPtr.Zero, 0, 0) != 0) {
+            while (!_stopping) {
+                if (!MonitorNativeMethods.PeekMessage(out MonitorNativeMethods.MSG msg, IntPtr.Zero, 0, 0, 1)) {
+                    MonitorNativeMethods.MsgWaitForMultipleObjectsEx(0, IntPtr.Zero, 100, 0x04FF, 4);
+                    continue;
+                }
+                if (msg.message == MonitorNativeMethods.WM_QUIT) {
+                    break;
+                }
                 if (msg.message == WM_RUN) {
                     RunQueuedActions();
                     continue;
@@ -200,7 +213,7 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam) {
-        if (nCode < 0) {
+        if (nCode < 0 || _stopping) {
             return MonitorNativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
         }
 
@@ -347,12 +360,13 @@ public sealed class LowLevelKeyboardHotkeyService : IDisposable {
     /// <inheritdoc />
     public void Dispose() {
         if (_thread != null) {
+            _stopping = true;
             MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
-            _thread.Join();
+            if (Thread.CurrentThread != _thread && !_thread.Join(TimeSpan.FromSeconds(2))) {
+                throw new TimeoutException("The low-level keyboard hook thread did not stop within two seconds.");
+            }
             _thread = null;
         }
-
-        _ready.Dispose();
     }
 }
 

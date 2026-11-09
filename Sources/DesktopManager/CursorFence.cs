@@ -23,9 +23,8 @@ public sealed class CursorFence : IDisposable {
     private const int TimeOffset = 16;
 
     private readonly Thread _thread;
-    private readonly ManualResetEventSlim _ready = new(false);
+    private readonly ThreadStartup _ready = new();
     private readonly MonitorNativeMethods.LowLevelKeyboardProc _callback;
-    private Exception? _startError;
     private IntPtr _hook;
     private uint _threadId;
     private int _stopError;
@@ -41,6 +40,8 @@ public sealed class CursorFence : IDisposable {
     /// <param name="mode"><see cref="CursorFenceMode.Sticky"/> or <see cref="CursorFenceMode.Locked"/>.</param>
     /// <exception cref="ArgumentException"><paramref name="mode"/> is <see cref="CursorFenceMode.Off"/>.</exception>
     /// <exception cref="Win32Exception">Windows refused the mouse hook.</exception>
+    /// <exception cref="TimeoutException">Readiness was not reported within five seconds. Stop is requested,
+    /// with up to two more seconds for the hook thread to exit.</exception>
     public CursorFence(RECT bounds, CursorFenceMode mode) {
         if (mode == CursorFenceMode.Off) {
             throw new ArgumentException("Off does not need a mouse hook.", nameof(mode));
@@ -51,12 +52,15 @@ public sealed class CursorFence : IDisposable {
         // The hook API takes the same (code, wParam, lParam) signature for keyboard and mouse hooks.
         _callback = MouseHook;
         _thread = new Thread(Run) { IsBackground = true, Name = "DesktopManager cursor fence" };
-        _thread.Start();
-        _ready.Wait();
-        if (_startError != null) {
-            _thread.Join();
-            _ready.Dispose();
-            throw _startError;
+        try {
+            _ready.Start(_thread, "cursor fence thread");
+        } catch {
+            _stopping = true;
+            MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            if (_thread.IsAlive && !_thread.Join(TimeSpan.FromSeconds(2))) {
+                RemoveHook();
+            }
+            throw;
         }
     }
 
@@ -67,21 +71,28 @@ public sealed class CursorFence : IDisposable {
     public CursorFenceMode Mode { get; }
 
     private void Run() {
-        _threadId = MonitorNativeMethods.GetCurrentThreadId();
-        // Create the message queue before publishing readiness, so Dispose can always post WM_QUIT.
-        MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
         try {
-            _hook = MonitorNativeMethods.SetWindowsHookEx(
-                MonitorNativeMethods.WH_MOUSE_LL,
-                _callback,
-                MonitorNativeMethods.GetModuleHandle(null),
-                0);
-            if (_hook == IntPtr.Zero) {
-                _startError = new Win32Exception(Marshal.GetLastWin32Error());
+            Exception? startError = null;
+            try {
+                _threadId = MonitorNativeMethods.GetCurrentThreadId();
+                // Create the message queue before publishing readiness, so Dispose can always post WM_QUIT.
+                MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
+                if (!_stopping) {
+                    _hook = MonitorNativeMethods.SetWindowsHookEx(
+                        MonitorNativeMethods.WH_MOUSE_LL,
+                        _callback,
+                        MonitorNativeMethods.GetModuleHandle(null),
+                        0);
+                    if (_hook == IntPtr.Zero) {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
+                }
+            } catch (Exception exception) {
+                startError = exception;
             }
 
-            _ready.Set();
-            if (_startError != null) {
+            _ready.Signal(startError);
+            if (startError != null) {
                 return;
             }
 
@@ -151,7 +162,6 @@ public sealed class CursorFence : IDisposable {
             throw new Win32Exception(_stopError);
         }
         _disposed = true;
-        _ready.Dispose();
     }
 
     private void RemoveHook() {

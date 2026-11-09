@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
 using System.Runtime.Versioning;
 using System.Threading;
 
@@ -20,11 +19,10 @@ namespace DesktopManager;
 [SupportedOSPlatform("windows")]
 public sealed class WindowEventWatcher : IDisposable {
     private readonly Thread _thread;
-    private readonly ManualResetEventSlim _ready = new(false);
+    private readonly ThreadStartup _ready = new();
     private readonly MonitorNativeMethods.WinEventDelegate _callback;
     private readonly List<IntPtr> _hooks = new();
     private readonly uint _flags;
-    private Exception? _startError;
     private uint _threadId;
     private volatile bool _disposed;
 
@@ -35,6 +33,8 @@ public sealed class WindowEventWatcher : IDisposable {
     /// <param name="skipOwnProcess">True to ignore windows that belong to the current process.</param>
     /// <exception cref="ArgumentException"><paramref name="kinds"/> selects no events.</exception>
     /// <exception cref="InvalidOperationException">Windows refused a hook.</exception>
+    /// <exception cref="TimeoutException">The hook thread did not report readiness within five seconds.
+    /// Stop is requested, with up to two more seconds for the thread to exit.</exception>
     public WindowEventWatcher(WindowEventKinds kinds = WindowEventKinds.All, bool skipOwnProcess = false) {
         kinds &= WindowEventKinds.All;
         if (kinds == WindowEventKinds.None) {
@@ -45,12 +45,15 @@ public sealed class WindowEventWatcher : IDisposable {
         _flags = MonitorNativeMethods.WINEVENT_OUTOFCONTEXT | (skipOwnProcess ? MonitorNativeMethods.WINEVENT_SKIPOWNPROCESS : 0);
         _callback = OnWinEvent;
         _thread = new Thread(Run) { IsBackground = true, Name = "DesktopManager window events" };
-        _thread.Start();
-        _ready.Wait();
-        if (_startError != null) {
-            _thread.Join();
-            _ready.Dispose();
-            ExceptionDispatchInfo.Capture(_startError).Throw();
+        try {
+            _ready.Start(_thread, "window event thread");
+        } catch {
+            _disposed = true;
+            MonitorNativeMethods.PostThreadMessage(_threadId, MonitorNativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            if (_thread.IsAlive) {
+                _thread.Join(TimeSpan.FromSeconds(2));
+            }
+            throw;
         }
     }
 
@@ -61,33 +64,44 @@ public sealed class WindowEventWatcher : IDisposable {
     public WindowEventKinds Kinds { get; }
 
     private void Run() {
-        _threadId = MonitorNativeMethods.GetCurrentThreadId();
-        // Create the message queue before publishing readiness, so Dispose can always post WM_QUIT.
-        MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
         try {
-            foreach (WindowEventKinds kind in new[] {
-                WindowEventKinds.MoveSizeStarted, WindowEventKinds.MoveSizeEnded, WindowEventKinds.LocationChanged,
-                WindowEventKinds.Shown, WindowEventKinds.Destroyed, WindowEventKinds.Foreground }) {
-                if ((Kinds & kind) == 0) {
-                    continue;
-                }
+            Exception? startError = null;
+            try {
+                _threadId = MonitorNativeMethods.GetCurrentThreadId();
+                // Create the queue before readiness; late startup also observes _disposed below.
+                MonitorNativeMethods.PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
+                foreach (WindowEventKinds kind in new[] {
+                    WindowEventKinds.MoveSizeStarted, WindowEventKinds.MoveSizeEnded, WindowEventKinds.LocationChanged,
+                    WindowEventKinds.Shown, WindowEventKinds.Destroyed, WindowEventKinds.Foreground }) {
+                    if (_disposed || (Kinds & kind) == 0) {
+                        continue;
+                    }
 
-                uint native = ToNative(kind);
-                IntPtr hook = MonitorNativeMethods.SetWinEventHook(native, native, IntPtr.Zero, _callback, 0, 0, _flags);
-                if (hook == IntPtr.Zero) {
-                    _startError = new InvalidOperationException($"Windows refused the {kind} window event hook.");
-                    break;
-                }
+                    uint native = ToNative(kind);
+                    IntPtr hook = MonitorNativeMethods.SetWinEventHook(native, native, IntPtr.Zero, _callback, 0, 0, _flags);
+                    if (hook == IntPtr.Zero) {
+                        throw new InvalidOperationException($"Windows refused the {kind} window event hook.");
+                    }
 
-                _hooks.Add(hook);
+                    _hooks.Add(hook);
+                }
+            } catch (Exception exception) {
+                startError = exception;
             }
 
-            _ready.Set();
-            if (_startError != null) {
+            _ready.Signal(startError);
+            if (startError != null) {
                 return;
             }
 
-            while (MonitorNativeMethods.GetMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0) > 0) {
+            while (!_disposed) {
+                if (!MonitorNativeMethods.PeekMessage(out MonitorNativeMethods.MSG message, IntPtr.Zero, 0, 0, 1)) {
+                    MonitorNativeMethods.MsgWaitForMultipleObjectsEx(0, IntPtr.Zero, 100, 0x04FF, 4);
+                    continue;
+                }
+                if (message.message == MonitorNativeMethods.WM_QUIT) {
+                    break;
+                }
                 MonitorNativeMethods.TranslateMessage(ref message);
                 MonitorNativeMethods.DispatchMessage(ref message);
             }
@@ -156,7 +170,5 @@ public sealed class WindowEventWatcher : IDisposable {
         if (!_thread.Join(TimeSpan.FromSeconds(2))) {
             throw new TimeoutException("The window event thread did not stop.");
         }
-
-        _ready.Dispose();
     }
 }
