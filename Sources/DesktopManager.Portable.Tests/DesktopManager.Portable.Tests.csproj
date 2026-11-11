@@ -9,7 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../DesktopManager.Tests/FakeDesktopManager.cs" Link="Fixtures/FakeDesktopManager.cs" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="4.5.2" />
     <PackageReference Include="MSTest.TestFramework" Version="4.5.2" />
     <!-- Keep the older asset's internal platform-attribute polyfill separate from System.Runtime in this friend assembly. -->
