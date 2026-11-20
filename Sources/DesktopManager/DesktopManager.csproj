@@ -67,11 +67,11 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-      <PackageReference Include="System.Drawing.Common" Version="10.0.15" />
+      <PackageReference Include="System.Drawing.Common" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-      <PackageReference Include="System.Drawing.Common" Version="8.0.34" Condition="'$(TargetFramework)' == '$(DesktopManagerNet8WindowsTfm)'" />
+      <PackageReference Include="System.Drawing.Common" Version="11.0.0" Condition="'$(TargetFramework)' == '$(DesktopManagerNet8WindowsTfm)'" />
       <PackageReference Include="System.Drawing.Common" Version="11.0.0" Condition="'$(TargetFramework)' != '$(DesktopManagerNet8WindowsTfm)'" />
   </ItemGroup>
 
@@ -104,7 +104,7 @@
     </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-      <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.15" Condition="'$(TargetFramework)' == '$(DesktopManagerNet8WindowsTfm)'" />
+      <PackageReference Include="Microsoft.Win32.SystemEvents" Version="11.0.0" Condition="'$(TargetFramework)' == '$(DesktopManagerNet8WindowsTfm)'" />
       <PackageReference Include="Microsoft.Win32.SystemEvents" Version="11.0.0" Condition="'$(TargetFramework)' != '$(DesktopManagerNet8WindowsTfm)'" />
   </ItemGroup>
 
