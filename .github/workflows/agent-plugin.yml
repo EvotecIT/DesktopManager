@@ -160,7 +160,7 @@ jobs:
         with:
           name: desktopmanager-agent-plugin
           path: agent-plugin
-      - uses: EvotecIT/PSPublishModule/.github/actions/agent-plugin-publish@9e7d940d6a107e83d1d2a65a16ead0b2dc3a6979
+      - uses: EvotecIT/PSPublishModule/.github/actions/agent-plugin-publish@aec585cfb464390aa7727fa908050caf2e6ed663
         with:
           archive: agent-plugin
           github-token: ${{ secrets.GITHUB_TOKEN }}
