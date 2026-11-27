@@ -54,7 +54,7 @@ jobs:
         run: |
           dotnet --info
           dotnet workload list
-      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@5af552fc2c07f232e7a0f48c9f00952de18c094b
+      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@aec585cfb464390aa7727fa908050caf2e6ed663
         id: graphs
         with:
           mode: restore
@@ -83,7 +83,7 @@ jobs:
         with:
           name: nuget-graphs-windows
           path: ${{ runner.temp }}/native-graphs
-      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@5af552fc2c07f232e7a0f48c9f00952de18c094b
+      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@aec585cfb464390aa7727fa908050caf2e6ed663
         id: snapshot
         with:
           mode: scan
@@ -107,7 +107,7 @@ jobs:
         with:
           name: nuget-snapshot-windows
           path: ${{ runner.temp }}/snapshot
-      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@5af552fc2c07f232e7a0f48c9f00952de18c094b
+      - uses: EvotecIT/PSPublishModule/.github/actions/dotnet-dependency-submission@aec585cfb464390aa7727fa908050caf2e6ed663
         with:
           mode: submit
           snapshot-file: ${{ runner.temp }}/snapshot/snapshot.json
